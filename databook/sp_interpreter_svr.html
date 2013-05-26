@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+{% autoescape true %}
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>SPALM Web Interpreter</title>
+<!--[if lt IE 9]>
+<script type="text/javascript" src="/static/flashcanvas.js"></script>
+<![endif]-->
+<!--
+<script type="text/javascript" src="/static/uuCanvas.js"></script>
+-->
+<script type="text/javascript">
+<!--
+// ***** 動作開始その2 *****
+init_func2 = function () {
+    // ***** 自動実行 *****
+    run_button();
+};
+// -->
+</script>
+<script type="text/javascript" src="/static/sp_interpreter.js"></script>
+</head>
+
+<body id="body1">
+
+<form action="#" onsubmit="run_button(); return false;">
+
+<table width="95%"><tr>
+<th align="center" colspan="3" style="word-spacing: 6px;">SPALM Web Interpreter</th>
+</tr><tr>
+<th width="33%"></th>
+<th align="center" width="33%"><canvas id="canvas1" width="240" height="320" style="background-color: gray;">
+Cannot use canvas tag.
+</canvas><br><canvas id="canvas2" width="240" height="18" style="background-color: gray;"></canvas></th>
+<th align="left" width="33%"><!-- No.<select id="prog_sel1">
+<option value="----">----</option></select>
+<input type="button" id="load_button1" value="ロード" onclick="load_button();"><br><br> -->
+状態：<span id="runstat_show1">停止</span></th>
+</tr></table>
+
+<table width="95%"><tr>
+<th align="left" valign="top" style="white-space: nowrap;">ソース</th>
+<th align="left" width="95%"><textarea id="src_text1" cols="40" rows="14" style="width: 100%;">{{ article.source }}</textarea></th>
+<th align="left" valign="top"><input type="submit" id="run_button1" value="実行"><br>
+<input type="button" id="stop_buttton1" value="停止" onclick="stop_button();"></th>
+</tr></table>
+
+<input type="checkbox" name="debug_chk1" id="debug_chk1" value="1" style="margin-top: 1px;"><span style="font-size: 90%;">詳細表示</span>
+
+</form>
+
+<pre style="margin-top: 2px;"><span id="debug_show1"></span></pre>
+
+</body>
+</html>
+{% endautoescape %}

@@ -1,0 +1,147 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+{% autoescape true %}
+<html lang="ja">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<meta http-equiv="Content-Style-Type" content="text/css">
+<meta http-equiv="Content-Script-Type" content="text/javascript">
+<title>{{ databook_title }}</title>
+<style type="text/css">
+<!--
+.main_container {
+    margin-left: 10px;
+    margin-right: 10px;
+    margin-top: 10px;
+}
+.top_text {
+    width: 100%;
+    margin-bottom: 10px;
+    text-align: center;
+    font-size: 105%;
+    font-weight: bold;
+}
+
+.data_input table {
+    width: 100%;
+    margin-top: 10px;
+}
+.data_input th {
+    white-space: nowrap;
+}
+
+.data_table table {
+    width: 100%;
+    margin-top: 10px;
+    border-collapse: collapse;
+}
+.data_table table, .data_table th, .data_table td {
+    border: 1px solid #808080;
+}
+.data_table tr:nth-child(2n+1) {
+    background-color: #f0ffff;
+}
+.data_table tr:nth-child(5n+1) {
+    border-bottom: 2px solid #808080;
+}
+.data_table th {
+    background-color: #4682b4;
+    color: #ffffff;
+    white-space: nowrap;
+}
+.data_table .nowrap {
+    white-space: nowrap;
+}
+
+-->
+</style>
+</head>
+
+<body>
+<div class="main_container">
+<div class="top_text">{{ databook_title }}</div>
+<!-- <a href="{{ url|safe }}">{{ url_linktext }}</a><br><br> -->
+
+１．概要<br>
+&nbsp;&nbsp;SPALM Web Interpreter のプログラムを登録可能なデータベースです。(Google App Engine を利用しています)<br>
+&nbsp;&nbsp;タイトル名を入力して編集ボタンをクリックすると、データ編集の画面が開きます。<br>
+&nbsp;&nbsp;そこでプログラムを入力してセーブボタンをクリックすると、データが登録されます。<br>
+&nbsp;&nbsp;また、起動ボタンをクリックすると SPALM Web Interpreter の画面を表示し、プログラムを実行します。<br>
+<br>
+２．注意事項<br>
+（１）タイトル名の入力で、すでに登録されている名称を入力した場合は、既存データの変更になります。<br>
+&nbsp;&nbsp;データを新規作成する場合は、登録されていないタイトル名を入力してください。<br>
+&nbsp;&nbsp;また、現状の制限事項として、一度セーブしたタイトル名は、変更や削除をすることができません。<br>
+<br>
+（２）データは、日付の新しい順に50件だけ表示されます。<br>
+&nbsp;&nbsp;それ以降のデータは、単語検索でのみアクセス可能になります。<br>
+&nbsp;&nbsp;したがって、古いデータを編集／起動するには、タイトル名等を覚えておく必要があります。<br>
+<br>
+（３）現状、SPALM Web Interpreter の実行画面では、プログラム（ソース）をセーブすることができません。<br>
+&nbsp;&nbsp;このため、データ編集画面のソース欄にコピー＆ペーストして、データ編集画面でセーブする必要があります。<br>
+<br>
+（４）運用上の都合により、データベースが利用できなくなったり、データが消えたりする可能性があります。<br>
+&nbsp;&nbsp;必要なデータは各自でバックアップを取っておくようお願いいたします。<br>
+<br>
+
+<div class="data_input">
+<form action="{{ editpage_url }}" method="post">
+<table><tr>
+<th align="left">タイトル:</th>
+<th align="left" width="50%"><input type="text" name="title" style="width: 100%;">
+<input type="hidden" name="db" value="{{ databook_name }}"></th>
+<th align="left" width="50%"><input type="submit" value=" 編集 "></th>
+</tr></table>
+</form>
+<form action="{{ mainpage_url }}" method="get">
+<table><tr>
+<th align="left">単語検索:</th>
+<th align="left" width="50%"><input type="text" name="word" style="width: 100%;">
+<input type="hidden" name="db" value="{{ databook_name }}"></th>
+<th align="left" width="50%"><input type="submit" value=" 検索 "></th>
+{% if message_data %}
+</tr><tr>
+<th align="left" colspan="3">{{ message_data }}</th>
+{% endif %}
+{% if search_flag %}
+</tr><tr>
+<th align="left" colspan="3">検索結果:{{ search_count }}件
+<input type="button" value="一覧に戻る" onclick="location.href='{{ mainpage_url }}?db={{ databook_name }}';"></th>
+{% endif %}
+</tr></table>
+</form>
+</div>
+
+<div class="data_table">
+<table>
+<tr>
+<th>タイトル</th>
+<th>作者</th>
+<th>内容</th>
+<th>日時</th>
+<th colspan="2">操作</th>
+</tr>
+{% for article in articles %}
+<tr>
+<td width="20%">{{ article.title }}</td>
+<td width="20%">{{ article.author }}</td>
+<td width="40%">{{ article.content }}</td>
+<td class="nowrap">{{ article.date.strftime('%Y-%m-%d %H:%M:%S %Z') }}</td>
+<td class="nowrap"><form action="{{ editpage_url }}" method="post">
+<input type="hidden" name="title" value="{{ article.title }}">
+<input type="hidden" name="db" value="{{ databook_name }}">
+<input type="submit" value=" 編集 ">
+</form></td>
+<td class="nowrap"><form action="{{ runpage_url }}" method="post" target="run_prog">
+<input type="hidden" name="title" value="{{ article.title }}">
+<input type="hidden" name="db" value="{{ databook_name }}">
+<input type="submit" value=" 起動 ">
+</form></td>
+</tr>
+{% endfor %}
+</table>
+</div>
+
+</div>
+</body>
+</html>
+{% endautoescape %}
