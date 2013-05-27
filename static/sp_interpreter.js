@@ -1,7 +1,7 @@
 // This file is encoded with UTF-8 without BOM.
 
 // sp_interpreter.html
-// 2013-5-20 v1.47
+// 2013-5-27 v1.48
 
 
 // SPALM Web Interpreter
@@ -920,6 +920,17 @@ var Interpreter;
         // ***** マウス座標を取得 *****
         getmousepos(ev);
     }
+    function mousedown_canvas(ev) {
+        // ***** プログラムの実行中は Canvas内でのマウスの機能(領域選択等)を抑制する *****
+        if (running_flag) {
+            // ***** IE8対策 *****
+            if (ev.preventDefault) {
+                ev.preventDefault();
+            } else {
+                ev.returnValue = false;
+            }
+        }
+    }
     function mouseup(ev) {
         var num;
         // ***** マウスボタン状態を取得 *****
@@ -944,13 +955,9 @@ var Interpreter;
         mousex = -10000;
         mousey = -10000;
     }
-    function contextmenu(ev) {
-        // ***** マウス座標を取得 *****
-        getmousepos(ev);
-        // ***** プログラムの実行中は マウスの機能(メニュー表示等)を抑制する *****
-        if (running_flag &&
-            mousex >= 0 && mousex < can1.width &&
-            mousey >= 0 && mousey < can1.height) {
+    function contextmenu_canvas(ev) {
+        // ***** プログラムの実行中は Canvas内でのマウスの機能(メニュー表示等)を抑制する *****
+        if (running_flag) {
             // ***** IE8対策 *****
             if (ev.preventDefault) {
                 ev.preventDefault();
@@ -1093,16 +1100,27 @@ var Interpreter;
             document.addEventListener("mouseup",     mouseup,     false);
             document.addEventListener("mousemove",   mousemove,   false);
             document.addEventListener("mouseout",    mouseout,    false);
-            document.addEventListener("contextmenu", contextmenu, false);
+            // document.addEventListener("contextmenu", contextmenu, false);
         } else if (document.attachEvent) {
             // ***** IE8対策 *****
             document.attachEvent("onmousedown",   mousedown);
             document.attachEvent("onmouseup",     mouseup);
             document.attachEvent("onmousemove",   mousemove);
             document.attachEvent("onmouseout",    mouseout);
-            document.attachEvent("oncontextmenu", contextmenu);
+            // document.attachEvent("oncontextmenu", contextmenu);
         } else {
             Alm2("Interpreter.init:-:マウスの状態が取得できません。");
+        }
+        // ***** Canvas内のマウスイベント登録 *****
+        if (can1.addEventListener) {
+            can1.addEventListener("mousedown",   mousedown_canvas,   false);
+            can1.addEventListener("contextmenu", contextmenu_canvas, false);
+        } else if (can1.attachEvent) {
+            // ***** IE8対策 *****
+            can1.attachEvent("onmousedown",   mousedown_canvas);
+            can1.attachEvent("oncontextmenu", contextmenu_canvas);
+        } else {
+            Alm2("Interpreter.init:-:Canvas内のマウスの状態が取得できません。");
         }
         // ***** 戻り値を返す *****
         ret = true;
