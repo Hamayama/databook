@@ -11,6 +11,9 @@ from google.appengine.api import users
 from google.appengine.ext import ndb
 from google.appengine.api import search
 
+# databook.py
+# 2013-5-28 v1.09
+
 # Google App Engine / Python による データベース アプリケーション
 
 # ****************************************
@@ -213,8 +216,8 @@ class RunPage(webapp2.RequestHandler):
         databook_name = get_databook_name(self.request.get('db'))
 
         # 記事のタイトルをチェック
-        req_title = self.request.get('title')
-        if not req_title.strip():
+        req_title = self.request.get('title').strip()
+        if not req_title:
             no_article = 1
         else:
             no_article = 0
@@ -247,8 +250,8 @@ class EditPage(webapp2.RequestHandler):
         message_data = ''
 
         # 記事のタイトルをチェック
-        req_title = self.request.get('title')
-        if not req_title.strip():
+        req_title = self.request.get('title').strip()
+        if not req_title:
             self.redirect(mainpage_url + '?' + urllib.urlencode({'db': databook_name}))
             return
 
@@ -314,8 +317,8 @@ class Databook(webapp2.RequestHandler):
         message_data = ''
 
         # 記事のタイトルをチェック
-        req_title = self.request.get('title')
-        if not req_title.strip():
+        req_title = self.request.get('title').strip()
+        if not req_title:
             self.redirect(mainpage_url + '?' + urllib.urlencode({'db': databook_name}))
             return
 
