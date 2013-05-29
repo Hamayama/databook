@@ -12,7 +12,7 @@ from google.appengine.ext import ndb
 from google.appengine.api import search
 
 # databook.py
-# 2013-5-28 v1.09
+# 2013-5-29 v1.10
 
 # Google App Engine / Python による データベース アプリケーション
 
@@ -346,8 +346,8 @@ class Databook(webapp2.RequestHandler):
         #     article.author = users.get_current_user().nickname()
 
         # 送信されたデータを記事に設定
-        article.author = self.request.get('author')
-        article.content = self.request.get('content')
+        article.author = self.request.get('author').strip()
+        article.content = self.request.get('content').strip()
         article.source = self.request.get('source')
         if self.request.get('datechg') == '1':
             article.date = datetime.datetime.now()

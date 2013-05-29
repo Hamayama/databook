@@ -27,6 +27,9 @@ handlers:
 #  script: main.app
 #  secure: always
 
+#builtins:
+#- remote_api: on
+
 libraries:
 - name: webapp2
   version: latest
