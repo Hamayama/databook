@@ -22,3 +22,10 @@ indexes:
   - name: title
   - name: date
     direction: desc
+
+- kind: Article
+  ancestor: yes
+  properties:
+  - name: show_flag
+  - name: date
+    direction: desc

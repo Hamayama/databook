@@ -73,7 +73,7 @@
 <form action="{{ editpage_url }}" method="post">
 <table><tr>
 {% if message_data %}
-<th align="left">{{ message_data }}</th>
+<th align="left"><div style="margin-bottom: 8px;">{{ message_data }}</div></th>
 </tr><tr>
 {% endif %}
 {% if article.bkup_dates %}
@@ -92,7 +92,8 @@
 </tr><tr>
 <th align="left">（※）セーブせずに起動をクリックすると、過去にセーブした時点のデータで起動しますのでご注意ください。</th>
 {% else %}
-<th align="left">（新規データです）</th>
+</tr><tr>
+<th align="left"><div style="margin-bottom: 8px;">（新規データです）</div></th>
 </tr><tr>
 <th align="left">（※）セーブせずに起動をクリックすると、空データで起動しますのでご注意ください。</th>
 {% endif %}

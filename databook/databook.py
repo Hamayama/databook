@@ -12,7 +12,7 @@ from google.appengine.ext import ndb
 from google.appengine.api import search
 
 # databook.py
-# 2013-5-29 v1.10
+# 2013-5-30 v1.11
 
 # Google App Engine / Python による データベース アプリケーション
 
@@ -116,6 +116,8 @@ class Article(ndb.Model):
     bkup_lastupdate = ndb.DateTimeProperty()
     # 全文検索用ドキュメントID
     search_doc_id = ndb.StringProperty()
+    # 表示フラグ
+    show_flag = ndb.IntegerProperty()
 
 
 # ****************************************
@@ -138,6 +140,10 @@ class MainPage(webapp2.RequestHandler):
         search_flag = False
         search_count = 0
         search_word = self.request.get('word').strip()
+        show_all_flag = False
+        if search_word.startswith('=*') == True:
+            show_all_flag = True
+            search_word = search_word[2:]
         if search_word:
             # 全文検索を行うとき
             articles = []
@@ -161,7 +167,8 @@ class MainPage(webapp2.RequestHandler):
                     articles_query = Article.query(Article.title == req_title, ancestor=databook_key(databook_name)).order(-Article.date)
                     articles_temp = articles_query.fetch(1)
                     if len(articles_temp) >= 1:
-                        articles.append(articles_temp[0])
+                        if show_all_flag == True or articles_temp[0].show_flag == 1:
+                            articles.append(articles_temp[0])
             except (search.QueryError, search.InvalidRequest), e:
                 # クエリーエラーのとき
                 message_data = message_data + '（クエリーエラー:検索文字列に記号が含まれると発生することがあります）'
@@ -170,7 +177,10 @@ class MainPage(webapp2.RequestHandler):
         else:
             # 全文検索を行わないとき
             # 記事を取得(日付の新しい順に50件まで)
-            articles_query = Article.query(ancestor=databook_key(databook_name)).order(-Article.date)
+            if show_all_flag == True:
+                articles_query = Article.query(ancestor=databook_key(databook_name)).order(-Article.date)
+            else:
+                articles_query = Article.query(Article.show_flag == 1, ancestor=databook_key(databook_name)).order(-Article.date)
             articles = articles_query.fetch(50)
 
         # ログイン/ログアウトURL設定(今回未使用)
@@ -270,7 +280,9 @@ class EditPage(webapp2.RequestHandler):
             article.bkup_contents = []
             article.bkup_sources = []
             article.bkup_dates = []
+            article.bkup_lastupdate = datetime.datetime.min
             article.search_doc_id = ''
+            article.show_flag = 1
         else:
             article = articles[0]
             # バックアップをロードするかのチェック
@@ -337,7 +349,9 @@ class Databook(webapp2.RequestHandler):
             article.bkup_contents = []
             article.bkup_sources = []
             article.bkup_dates = []
+            article.bkup_lastupdate = datetime.datetime.min
             article.search_doc_id = ''
+            article.show_flag = 1
         else:
             article = articles[0]
 
@@ -351,6 +365,21 @@ class Databook(webapp2.RequestHandler):
         article.source = self.request.get('source')
         if self.request.get('datechg') == '1':
             article.date = datetime.datetime.now()
+
+        # 記事の非表示(保守用)
+        if article.author.startswith('=hide') == True:
+            article.show_flag = 0
+        else:
+            article.show_flag = 1
+
+        # # 記事の削除(保守用)
+        # if article.author.startswith('=delete') == True and article.bkup_dates:
+        #     if article.search_doc_id:
+        #         search.Index(name=databook_indexname).delete(article.search_doc_id)
+        #     article.key.delete()
+        #     self.redirect(mainpage_url + '?' + urllib.urlencode({'db': databook_name}))
+        #     return
+
         # バックアップの保存
         # (10分以内のときは、バックアップを追加しないで上書きとする)
         time_diff_minutes = 10000
