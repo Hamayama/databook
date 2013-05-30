@@ -12,7 +12,7 @@ from google.appengine.ext import ndb
 from google.appengine.api import search
 
 # databook.py
-# 2013-5-30 v1.11
+# 2013-5-30 v1.12
 
 # Google App Engine / Python による データベース アプリケーション
 
@@ -366,6 +366,7 @@ class Databook(webapp2.RequestHandler):
         if self.request.get('datechg') == '1':
             article.date = datetime.datetime.now()
 
+
         # 記事の非表示(保守用)
         if article.author.startswith('=hide') == True:
             article.show_flag = 0
@@ -374,11 +375,31 @@ class Databook(webapp2.RequestHandler):
 
         # # 記事の削除(保守用)
         # if article.author.startswith('=delete') == True and article.bkup_dates:
+        #     # (関連する全文検索用ドキュメントがあればそれも削除)
         #     if article.search_doc_id:
         #         search.Index(name=databook_indexname).delete(article.search_doc_id)
         #     article.key.delete()
         #     self.redirect(mainpage_url + '?' + urllib.urlencode({'db': databook_name}))
         #     return
+
+        # # 全文検索用ドキュメントの個別削除(保守用)
+        # if article.author.startswith('=index_delete') == True:
+        #     doc_id = article.content
+        #     search.Index(name=databook_indexname).delete(doc_id)
+        #     self.redirect(mainpage_url + '?' + urllib.urlencode({'db': databook_name}))
+        #     return
+
+        # # 全文検索用ドキュメントの全削除(保守用)
+        # if article.author.startswith('=all_index_delete') == True:
+        #     search_index = search.Index(name=databook_indexname)
+        #     while True:
+        #         doc_ids = [doc.doc_id for doc in search_index.get_range(ids_only=True)]
+        #         if not doc_ids:
+        #             break
+        #         search_index.delete(doc_ids)
+        #     self.redirect(mainpage_url + '?' + urllib.urlencode({'db': databook_name}))
+        #     return
+
 
         # バックアップの保存
         # (10分以内のときは、バックアップを追加しないで上書きとする)
@@ -405,14 +426,6 @@ class Databook(webapp2.RequestHandler):
                 article.bkup_dates = article.bkup_dates[:10]
             article.bkup_lastupdate = datetime.datetime.now()
 
-
-        # # 全文検索用ドキュメントを全削除(保守用)
-        # search_index = search.Index(name=databook_indexname)
-        # while True:
-        #     doc_ids = [doc.doc_id for doc in search_index.get_range(ids_only=True)]
-        #     if not doc_ids:
-        #         break
-        #     search_index.delete(doc_ids)
 
         # 全文検索用ドキュメントを登録する
         date_str = article.date.replace(tzinfo=UTC()).astimezone(JapanTZ()).strftime('%Y-%m-%d %H:%M:%S %Z')
