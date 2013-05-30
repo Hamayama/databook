@@ -12,7 +12,7 @@ from google.appengine.ext import ndb
 from google.appengine.api import search
 
 # databook.py
-# 2013-5-30 v1.13
+# 2013-5-30 v1.14
 
 # Google App Engine / Python による データベース アプリケーション
 
@@ -111,7 +111,8 @@ class Article(ndb.Model):
     date = ndb.DateTimeProperty()
     bkup_authors = ndb.StringProperty(repeated=True)
     bkup_contents = ndb.StringProperty(repeated=True)
-    bkup_sources = ndb.StringProperty(repeated=True)
+    # bkup_sources = ndb.StringProperty(repeated=True)
+    bkup_sources = ndb.TextProperty(repeated=True)
     bkup_dates = ndb.DateTimeProperty(repeated=True)
     bkup_lastupdate = ndb.DateTimeProperty()
     # 全文検索用ドキュメントID
@@ -155,7 +156,7 @@ class MainPage(webapp2.RequestHandler):
             # ソートオプションに設定する
             sort_opts = search.SortOptions(expressions=expr_list)
             # クエリーオプションに設定する
-            #   (最大50件、ソートオプション指定、検索結果はタイトルのみ取得)
+            # (最大50件、ソートオプション指定、検索結果はタイトルのみ取得)
             query_opts = search.QueryOptions(limit=50, sort_options=sort_opts, returned_fields=['title'])
             try:
                 # 単語とクエリーオプションを指定して全文検索実行
