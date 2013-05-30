@@ -1,8 +1,8 @@
-＜Google App Engine / Python による データベース アプリケーション＞
+＜Google App Engine / Python による データベース アプリケーション1＞
 
 
 1. 概要  
-    Google App Engine / Python を利用したデータベース アプリケーションです。  
+    Google App Engine / Python を利用したデータベース アプリケーション1です。  
     内容としては、SPALM Web Interpreter のプログラムを、Web上で管理するもの  
     となっています。  
     
@@ -19,7 +19,7 @@
     現状 ユーザ認証の機能はありません。  
     
     もう少し詳しい説明と実行例は、以下にあります。  
-    https://sites.google.com/site/hamayama1010/gae_p_database  
+    https://sites.google.com/site/hamayama1010/gae_p_database1  
 
 
-(2013-5-27)
+(2013-5-31)
