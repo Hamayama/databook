@@ -12,7 +12,7 @@ from google.appengine.ext import ndb
 from google.appengine.api import search
 
 # databook.py
-# 2013-5-30 v1.12
+# 2013-5-30 v1.13
 
 # Google App Engine / Python による データベース アプリケーション
 
@@ -141,6 +141,7 @@ class MainPage(webapp2.RequestHandler):
         search_count = 0
         search_word = self.request.get('word').strip()
         show_all_flag = False
+        # 先頭が =* のときは表示フラグを無視
         if search_word.startswith('=*') == True:
             show_all_flag = True
             search_word = search_word[2:]
