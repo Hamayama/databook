@@ -69,6 +69,14 @@
 <input type="button" value="起動" onclick="submit();" style="margin-left: 10px;">
 <input type="button" value="戻る" onclick="if (confirm('編集を終了します。よろしいですか？')) { location.href='{{ mainpage_url }}?db={{ databook_name }}'; }" style="margin-left: 10px;">
 </form>
+{% if admin_login %}
+<form action="{{ update_url }}" method="post">
+<input type="hidden" name="title" value="{{ article.title }}">
+<input type="hidden" name="db" value="{{ databook_name }}">
+<input type="hidden" name="delete" value="1">
+<input type="button" value="削除" onclick="if (confirm('データを削除します（履歴も含めて削除されます）。よろしいですか？')) { submit(); }" style="margin-left: 10px;">
+</form>
+{% endif %}
 
 <form action="{{ editpage_url }}" method="post">
 <table><tr>

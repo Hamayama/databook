@@ -12,7 +12,7 @@ from google.appengine.ext import ndb
 from google.appengine.api import search
 
 # databook.py
-# 2013-5-30 v1.14
+# 2013-6-3 v1.15
 
 # Google App Engine / Python による データベース アプリケーション
 
@@ -137,6 +137,11 @@ class MainPage(webapp2.RequestHandler):
         # 表示メッセージの初期化
         message_data = ''
 
+        # 管理者ログインのチェック
+        admin_login = False
+        if users.is_current_user_admin():
+            admin_login = True
+
         # 全文検索の単語をチェック
         search_flag = False
         search_count = 0
@@ -185,13 +190,14 @@ class MainPage(webapp2.RequestHandler):
                 articles_query = Article.query(Article.show_flag == 1, ancestor=databook_key(databook_name)).order(-Article.date)
             articles = articles_query.fetch(50)
 
-        # ログイン/ログアウトURL設定(今回未使用)
+        # ログイン/ログアウトURL設定
         if users.get_current_user():
             url = users.create_logout_url(self.request.uri)
-            url_linktext = 'Logout'
+            url_linktext = '[ログアウト]'
         else:
             url = users.create_login_url(self.request.uri)
-            url_linktext = 'Login'
+            # url_linktext = '[ログイン]'
+            url_linktext = '[管理]'
 
         # 記事を表示用に整形
         for article in articles:
@@ -205,6 +211,7 @@ class MainPage(webapp2.RequestHandler):
         # 文字コード変換(表示用)
         databook_title = databook_title.decode('utf-8')
         message_data = message_data.decode('utf-8')
+        url_linktext = url_linktext.decode('utf-8')
 
         # メインページのテンプレートに記事データを埋め込んで表示
         template = jinja_environment.get_template(mainpage_html)
@@ -217,6 +224,7 @@ class MainPage(webapp2.RequestHandler):
                                                 message_data=message_data,
                                                 search_flag=search_flag,
                                                 search_count=search_count,
+                                                admin_login=admin_login,
                                                 url=url,
                                                 url_linktext=url_linktext))
 
@@ -266,6 +274,11 @@ class EditPage(webapp2.RequestHandler):
         if not req_title:
             self.redirect(mainpage_url + '?' + urllib.urlencode({'db': databook_name}))
             return
+
+        # 管理者ログインのチェック
+        admin_login = False
+        if users.is_current_user_admin():
+            admin_login = True
 
         # 記事を検索(タイトルで1件だけ)
         articles_query = Article.query(Article.title == req_title, ancestor=databook_key(databook_name)).order(-Article.date)
@@ -317,7 +330,8 @@ class EditPage(webapp2.RequestHandler):
                                                 runpage_url=runpage_url,
                                                 mainpage_url=mainpage_url,
                                                 editpage_url=editpage_url,
-                                                message_data=message_data))
+                                                message_data=message_data,
+                                                admin_login=admin_login))
 
 
 # ***** データブックの更新 *****
@@ -335,6 +349,11 @@ class Databook(webapp2.RequestHandler):
         if not req_title:
             self.redirect(mainpage_url + '?' + urllib.urlencode({'db': databook_name}))
             return
+
+        # 管理者ログインのチェック
+        admin_login = False
+        if users.is_current_user_admin():
+            admin_login = True
 
         # 記事を検索(タイトルで1件だけ)
         articles_query = Article.query(Article.title == req_title, ancestor=databook_key(databook_name)).order(-Article.date)
@@ -375,32 +394,37 @@ class Databook(webapp2.RequestHandler):
         else:
             article.show_flag = 1
 
-        # # 記事の削除(保守用)
-        # if article.author.startswith('=delete') == True and article.bkup_dates:
-        #     # (関連する全文検索用ドキュメントがあればそれも削除)
-        #     if article.search_doc_id:
-        #         search.Index(name=databook_indexname).delete(article.search_doc_id)
-        #     article.key.delete()
-        #     self.redirect(mainpage_url + '?' + urllib.urlencode({'db': databook_name}))
-        #     return
+        # 記事の削除(保守用)
+        # if article.author.startswith('=delete') == True:
+        if self.request.get('delete') == '1':
+            if admin_login and article.bkup_dates:
+                # (関連する全文検索用ドキュメントがあればそれも削除)
+                if article.search_doc_id:
+                    search.Index(name=databook_indexname).delete(article.search_doc_id)
+                article.key.delete()
+            self.redirect(mainpage_url + '?' + urllib.urlencode({'db': databook_name}))
+            return
 
-        # # 全文検索用ドキュメントの個別削除(保守用)
-        # if article.author.startswith('=index_delete') == True:
-        #     doc_id = article.content
-        #     search.Index(name=databook_indexname).delete(doc_id)
-        #     self.redirect(mainpage_url + '?' + urllib.urlencode({'db': databook_name}))
-        #     return
+        # 全文検索用ドキュメントの個別削除(保守用)
+        if article.author.startswith('=index_delete') == True:
+            if admin_login:
+                doc_id = article.content
+                if doc_id:
+                    search.Index(name=databook_indexname).delete(doc_id)
+            self.redirect(mainpage_url + '?' + urllib.urlencode({'db': databook_name}))
+            return
 
-        # # 全文検索用ドキュメントの全削除(保守用)
-        # if article.author.startswith('=all_index_delete') == True:
-        #     search_index = search.Index(name=databook_indexname)
-        #     while True:
-        #         doc_ids = [doc.doc_id for doc in search_index.get_range(ids_only=True)]
-        #         if not doc_ids:
-        #             break
-        #         search_index.delete(doc_ids)
-        #     self.redirect(mainpage_url + '?' + urllib.urlencode({'db': databook_name}))
-        #     return
+        # 全文検索用ドキュメントの全削除(保守用)
+        if article.author.startswith('=all_index_delete') == True:
+            if admin_login:
+                search_index = search.Index(name=databook_indexname)
+                while True:
+                    doc_ids = [doc.doc_id for doc in search_index.get_range(ids_only=True)]
+                    if not doc_ids:
+                        break
+                    search_index.delete(doc_ids)
+            self.redirect(mainpage_url + '?' + urllib.urlencode({'db': databook_name}))
+            return
 
 
         # バックアップの保存
@@ -475,7 +499,8 @@ class Databook(webapp2.RequestHandler):
                                                 runpage_url=runpage_url,
                                                 mainpage_url=mainpage_url,
                                                 editpage_url=editpage_url,
-                                                message_data=message_data))
+                                                message_data=message_data,
+                                                admin_login=admin_login))
 
 
 # ****************************************
