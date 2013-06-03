@@ -22,6 +22,7 @@ handlers:
 - url: /databook.*
   script: databook.databook.application
   secure: always
+#  login: required
 
 #- url: .*
 #  script: main.app
