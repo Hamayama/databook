@@ -1,7 +1,7 @@
 // This file is encoded with UTF-8 without BOM.
 
 // sp_interpreter.js
-// 2013-5-28 v1.49
+// 2013-6-5 v1.50
 
 
 // SPALM Web Interpreter
@@ -452,6 +452,12 @@ function stop_button() {
 //   Interpreter.setdebug(dbg_mode)  デバッグ用
 //     dbg_mode  =0:通常モード,=1:デバッグモード
 //
+//   Interpreter.setcolor(can1_forecolor, can1_backcolor, can2_forecolor, can2_backcolor)  色設定
+//     can1_forecolor  Canvasの文字色を、文字列で指定("#ffffff" 等)
+//     can1_backcolor  Canvasの背景色を、文字列で指定("#808080" 等)
+//     can2_forecolor  ソフトキー表示エリアの背景色を、文字列で指定("#ffffff" 等)
+//     can2_backcolor  ソフトキー表示エリアの背景色を、文字列で指定("#808080" 等)
+//
 // その他 情報等 :
 //
 //   新しい命令の追加は、
@@ -472,10 +478,14 @@ var Interpreter;
     var ctx1;                   // Canvasのコンテキスト
     var can1_width_init = 240;  // Canvasの幅(px)の初期値
     var can1_height_init = 320; // Canvasの高さ(px)の初期値
+    var can1_forecolor_init = "#ffffff"; // Canvasの文字色の初期値
+    var can1_backcolor_init = "#808080"; // Canvasの背景色の初期値
     var can2;                   // ソフトキー表示エリアのCanvas要素
     var ctx2;                   // ソフトキー表示エリアのCanvasのコンテキスト
-    var softkey_width = 240;    // ソフトキー表示エリアの幅(px)
-    var softkey_height = 18;    // ソフトキー表示エリアの高さ(px)
+    var can2_width_init = 240;  // ソフトキー表示エリアの幅(px)
+    var can2_height_init = 18;  // ソフトキー表示エリアの高さ(px)
+    var can2_forecolor_init = "#ffffff"; // ソフトキー表示エリアの文字色の初期値
+    var can2_backcolor_init = "#808080"; // ソフトキー表示エリアの背景色の初期値
     var can;                    // 現在の描画先のCanvas要素
     var ctx;                    // 現在の描画先のCanvasコンテキスト
     var ctx_originx;            // 座標系の原点座標X(px)
@@ -1025,6 +1035,15 @@ var Interpreter;
     }
     Interpreter.setdebug = setdebug;
 
+    // ***** 色設定 *****
+    function setcolor(can1_forecolor, can1_backcolor, can2_forecolor, can2_backcolor) {
+        if (can1_forecolor != "") { can1_forecolor_init = can1_forecolor; }
+        if (can1_backcolor != "") { can1_backcolor_init = can1_backcolor; }
+        if (can2_forecolor != "") { can2_forecolor_init = can2_forecolor; }
+        if (can2_backcolor != "") { can2_backcolor_init = can2_backcolor; }
+    }
+    Interpreter.setcolor = setcolor;
+
     // ***** 正負と小数も含めた数値チェック(-0.123等) *****
     function isFullDigit(num_st) {
         // if (num_st.match(/^[+-]?[0-9]*[\.]?[0-9]+$/)) { return true; } // 間違い
@@ -1135,7 +1154,7 @@ var Interpreter;
         ctx.textAlign = "left";
         ctx.textBaseline = "top";
         // ***** 色設定 *****
-        color_val = "rgb(255, 255, 255)";
+        color_val = can1_forecolor_init;
         ctx.strokeStyle = color_val;
         ctx.fillStyle = color_val;
         // ***** 線の幅設定 *****
@@ -1196,10 +1215,10 @@ var Interpreter;
 
     // ***** ソフトキー表示 *****
     function disp_softkey() {
-        ctx2.fillStyle = "rgb(255, 255, 255)";
+        ctx2.fillStyle = can2_backcolor_init;
         ctx2.fillRect(0, 0, can2.width, can2.height);
         ctx2.font = "16px " + font_family;
-        ctx2.fillStyle = "rgb(0, 0, 0)";
+        ctx2.fillStyle = can2_forecolor_init;
         ctx2.textAlign = "left";
         ctx2.textBaseline = "top";
         if (softkey[0] != "") {
@@ -1236,12 +1255,15 @@ var Interpreter;
         // ***** Canvasのリサイズ *****
         can1.width = can1_width_init;
         can1.height = can1_height_init;
-        can2.width = softkey_width;
-        can2.height = softkey_height;
+        can2.width = can2_width_init;
+        can2.height = can2_height_init;
         can1.style.width = can1_width_init + "px";
         can1.style.height = can1_height_init + "px";
-        can2.style.width = softkey_width + "px";
-        can2.style.height = softkey_height + "px";
+        can2.style.width = can2_width_init + "px";
+        can2.style.height = can2_height_init + "px";
+        // ***** Canvasの背景色設定 *****
+        can1.style.backgroundColor = can1_backcolor_init;
+        can2.style.backgroundColor = can2_backcolor_init;
         // ***** Canvasのクリア *****
         ctx1.clearRect(0, 0, can1.width, can1.height);
         ctx2.clearRect(0, 0, can2.width, can2.height);
@@ -2183,7 +2205,7 @@ var Interpreter;
                     }
                     // ***** FlashCanvas Pro (将来用) で必要 *****
                     if (typeof (FlashCanvas) != "undefined") {
-                        imgvars[a1].can.style.backgroundColor = "gray";
+                        imgvars[a1].can.style.backgroundColor = can1_backcolor_init;
                         document.getElementById("body1").appendChild(imgvars[a1].can);
                         FlashCanvas.initElement(imgvars[a1].can);
                     }
@@ -2212,7 +2234,7 @@ var Interpreter;
                     }
                     // ***** FlashCanvas Pro (将来用) で必要 *****
                     if (typeof (FlashCanvas) != "undefined") {
-                        imgvars[a1].can.style.backgroundColor = "gray";
+                        imgvars[a1].can.style.backgroundColor = can1_backcolor_init;
                         document.getElementById("body1").appendChild(imgvars[a1].can);
                         FlashCanvas.initElement(imgvars[a1].can);
                     }
@@ -2269,7 +2291,7 @@ var Interpreter;
                     }
                     // ***** FlashCanvas Pro (将来用) で必要 *****
                     if (typeof (FlashCanvas) != "undefined") {
-                        imgvars[a1].can.style.backgroundColor = "gray";
+                        imgvars[a1].can.style.backgroundColor = can1_backcolor_init;
                         document.getElementById("body1").appendChild(imgvars[a1].can);
                         FlashCanvas.initElement(imgvars[a1].can);
                     }

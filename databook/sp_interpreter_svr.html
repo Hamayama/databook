@@ -4,6 +4,21 @@
 <head>
 <meta charset="utf-8">
 <title>SPALM Web Interpreter</title>
+<style type="text/css">
+<!--
+.main_container { /* ページ全体 */
+    background-color: #253960; /* 背景色 */
+    color: #ffffff;            /* 文字色 */
+}
+#canvas1 {        /* Canvas要素 */
+    background-color: #808080; /* 背景色 */
+    border: 1px solid #000000; /* 境界線 */
+}
+#canvas2 {        /* ソフトキー表示エリア */
+    background-color: #253960; /* 背景色 */
+}
+-->
+</style>
 <!--[if lt IE 9]>
 <script type="text/javascript" src="/static/flashcanvas.js"></script>
 <![endif]-->
@@ -14,6 +29,9 @@
 <!--
 // ***** 動作開始その2 *****
 init_func2 = function () {
+    // ***** 色設定 *****
+    // (引数は、Canvas要素の文字色,背景色,ソフトキー表示エリアの文字色,背景色)
+    Interpreter.setcolor("", "", "#ffffff", "#253960");
     // ***** 自動実行 *****
     run_button();
 };
@@ -22,7 +40,7 @@ init_func2 = function () {
 <script type="text/javascript" src="/static/sp_interpreter.js"></script>
 </head>
 
-<body id="body1">
+<body class="main_container" id="body1">
 
 <form action="#" onsubmit="run_button(); return false;">
 
@@ -30,9 +48,9 @@ init_func2 = function () {
 <th align="center" colspan="3" style="word-spacing: 6px;">SPALM Web Interpreter</th>
 </tr><tr>
 <th width="33%"></th>
-<th align="center" width="33%"><canvas id="canvas1" width="240" height="320" style="background-color: gray;">
+<th align="center" width="33%"><canvas id="canvas1" width="240" height="320">
 Cannot use canvas tag.
-</canvas><br><canvas id="canvas2" width="240" height="18" style="background-color: gray;"></canvas></th>
+</canvas><br><canvas id="canvas2" width="240" height="18"></canvas></th>
 <th align="left" width="33%"><!-- No.<select id="prog_sel1">
 <option value="----">----</option></select>
 <input type="button" id="load_button1" value="ロード" onclick="load_button();"><br><br> -->
