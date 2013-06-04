@@ -12,9 +12,9 @@ from google.appengine.ext import ndb
 from google.appengine.api import search
 
 # databook.py
-# 2013-6-3 v1.15
+# 2013-6-4 v1.16
 
-# Google App Engine / Python による データベース アプリケーション
+# Google App Engine / Python による データベース アプリケーション1
 
 # ****************************************
 #               初期設定等
@@ -142,6 +142,24 @@ class MainPage(webapp2.RequestHandler):
         if users.is_current_user_admin():
             admin_login = True
 
+        # 管理者ログイン中の表示
+        admin_message = ''
+        if users.get_current_user():
+            if admin_login:
+                admin_message = '（管理者としてログインしています）'
+            else:
+                admin_message = '（管理者ではありません）'
+
+        # ログイン/ログアウトURL設定
+        if users.get_current_user():
+            url = users.create_logout_url(self.request.uri)
+            url_linktext = '[ログアウト]'
+        else:
+            url = users.create_login_url(self.request.uri)
+            # url_linktext = '[ログイン]'
+            url_linktext = '[管理]'
+
+
         # 全文検索の単語をチェック
         search_flag = False
         search_count = 0
@@ -190,14 +208,6 @@ class MainPage(webapp2.RequestHandler):
                 articles_query = Article.query(Article.show_flag == 1, ancestor=databook_key(databook_name)).order(-Article.date)
             articles = articles_query.fetch(50)
 
-        # ログイン/ログアウトURL設定
-        if users.get_current_user():
-            url = users.create_logout_url(self.request.uri)
-            url_linktext = '[ログアウト]'
-        else:
-            url = users.create_login_url(self.request.uri)
-            # url_linktext = '[ログイン]'
-            url_linktext = '[管理]'
 
         # 記事を表示用に整形
         for article in articles:
@@ -211,6 +221,7 @@ class MainPage(webapp2.RequestHandler):
         # 文字コード変換(表示用)
         databook_title = databook_title.decode('utf-8')
         message_data = message_data.decode('utf-8')
+        admin_message = admin_message.decode('utf-8')
         url_linktext = url_linktext.decode('utf-8')
 
         # メインページのテンプレートに記事データを埋め込んで表示
@@ -225,6 +236,7 @@ class MainPage(webapp2.RequestHandler):
                                                 search_flag=search_flag,
                                                 search_count=search_count,
                                                 admin_login=admin_login,
+                                                admin_message=admin_message,
                                                 url=url,
                                                 url_linktext=url_linktext))
 

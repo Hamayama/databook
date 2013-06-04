@@ -59,7 +59,7 @@
 <body>
 <div class="main_container">
 <div class="top_text">{{ databook_title }}</div>
-{% if admin_login %}<b>管理者ログイン中</b>{% endif %} <a href="{{ url|safe }}">{{ url_linktext }}</a><br><br>
+<b>{{ admin_message }}</b> <a href="{{ url|safe }}">{{ url_linktext }}</a><br><br>
 １．概要<br>
 &nbsp;&nbsp;SPALM Web Interpreter のプログラムを登録可能なデータベースです。(Google App Engine を利用しています)<br>
 &nbsp;&nbsp;タイトル名を入力して編集ボタンをクリックすると、データ編集の画面が開きます。<br>
