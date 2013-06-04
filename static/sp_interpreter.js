@@ -479,13 +479,13 @@ var Interpreter;
     var can1_width_init = 240;  // Canvasの幅(px)の初期値
     var can1_height_init = 320; // Canvasの高さ(px)の初期値
     var can1_forecolor_init = "#ffffff"; // Canvasの文字色の初期値
-    var can1_backcolor_init = "#808080"; // Canvasの背景色の初期値
+    var can1_backcolor_init = "#606060"; // Canvasの背景色の初期値
     var can2;                   // ソフトキー表示エリアのCanvas要素
     var ctx2;                   // ソフトキー表示エリアのCanvasのコンテキスト
     var can2_width_init = 240;  // ソフトキー表示エリアの幅(px)
     var can2_height_init = 18;  // ソフトキー表示エリアの高さ(px)
     var can2_forecolor_init = "#ffffff"; // ソフトキー表示エリアの文字色の初期値
-    var can2_backcolor_init = "#808080"; // ソフトキー表示エリアの背景色の初期値
+    var can2_backcolor_init = "#606060"; // ソフトキー表示エリアの背景色の初期値
     var can;                    // 現在の描画先のCanvas要素
     var ctx;                    // 現在の描画先のCanvasコンテキスト
     var ctx_originx;            // 座標系の原点座標X(px)
