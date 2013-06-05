@@ -1,7 +1,7 @@
 // This file is encoded with UTF-8 without BOM.
 
 // sp_interpreter.js
-// 2013-6-5 v1.50
+// 2013-6-5 v1.51
 
 
 // SPALM Web Interpreter
@@ -453,10 +453,10 @@ function stop_button() {
 //     dbg_mode  =0:通常モード,=1:デバッグモード
 //
 //   Interpreter.setcolor(can1_forecolor, can1_backcolor, can2_forecolor, can2_backcolor)  色設定
-//     can1_forecolor  Canvasの文字色を、文字列で指定("#ffffff" 等)
-//     can1_backcolor  Canvasの背景色を、文字列で指定("#808080" 等)
-//     can2_forecolor  ソフトキー表示エリアの背景色を、文字列で指定("#ffffff" 等)
-//     can2_backcolor  ソフトキー表示エリアの背景色を、文字列で指定("#808080" 等)
+//     can1_forecolor  Canvasの文字色を、文字列で指定("#ffffff" 等。""なら設定しない)
+//     can1_backcolor  Canvasの背景色を、文字列で指定("#808080" 等。""なら設定しない)
+//     can2_forecolor  ソフトキー表示エリアの背景色を、文字列で指定("#ffffff" 等。""なら設定しない)
+//     can2_backcolor  ソフトキー表示エリアの背景色を、文字列で指定("#808080" 等。""なら設定しない)
 //
 // その他 情報等 :
 //
@@ -1007,12 +1007,14 @@ var Interpreter;
     // ***** 実行状態通知 *****
     var runstatchanged = function () { };
     function setrunstatcallback(cb_func) {
+        if (ParamCheckNG(cb_func)) { Alm("setrunstatcallback:0001"); return false; }
         if (typeof (cb_func) == "function") { runstatchanged = cb_func; }
     }
     Interpreter.setrunstatcallback = setrunstatcallback;
 
     // ***** ロード中状態設定/取得 *****
     function setloadstat(load_stat) {
+        if (ParamCheckNG(load_stat)) { Alm("setloadstat:0001"); return false; }
         loading_flag = load_stat;
         runstatchanged();
         if (loading_flag == 2) { loading_flag = false; }
@@ -1031,12 +1033,17 @@ var Interpreter;
 
     // ***** デバッグ用 *****
     function setdebug(dbg_mode) {
+        if (ParamCheckNG(dbg_mode)) { Alm("setdebug:0001"); return false; }
         debug_mode = dbg_mode;
     }
     Interpreter.setdebug = setdebug;
 
     // ***** 色設定 *****
     function setcolor(can1_forecolor, can1_backcolor, can2_forecolor, can2_backcolor) {
+        if (ParamCheckNG(can1_forecolor)) { Alm("setcolor:0001"); return false; }
+        if (ParamCheckNG(can1_backcolor)) { Alm("setcolor:0002"); return false; }
+        if (ParamCheckNG(can2_forecolor)) { Alm("setcolor:0003"); return false; }
+        if (ParamCheckNG(can2_backcolor)) { Alm("setcolor:0004"); return false; }
         if (can1_forecolor != "") { can1_forecolor_init = can1_forecolor; }
         if (can1_backcolor != "") { can1_backcolor_init = can1_backcolor; }
         if (can2_forecolor != "") { can2_forecolor_init = can2_forecolor; }
