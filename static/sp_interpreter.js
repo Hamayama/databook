@@ -1,7 +1,7 @@
 // This file is encoded with UTF-8 without BOM.
 
 // sp_interpreter.js
-// 2013-6-5 v1.51
+// 2013-6-7 v1.52
 
 
 // SPALM Web Interpreter
@@ -72,7 +72,7 @@ function init_func() {
     if (list_id == "") {
         load_listfile("list0001.txt", false);
     } else {
-        if (check_id(list_id, 5)) {
+        if (check_id(list_id, 8)) {
             load_listfile("list" + list_id + ".txt", true);
         } else {
             Alm2("init_func:-:リストファイル指定エラー");
@@ -214,7 +214,7 @@ function load_listfile(fname, error_show_flag) {
                     elm = document.getElementById("prog_sel1");
                     elm.length = 0;
                     for (i = 0; i < prog_id.length; i++) {
-                        if (check_id(prog_id[i], 5)) {
+                        if (check_id(prog_id[i], 8)) {
                             elm.length++;
                             elm.options[elm.length - 1].value = prog_id[i];
                             elm.options[elm.length - 1].text  = prog_id[i];
@@ -381,7 +381,7 @@ function load_button() {
     if (Interpreter.getloadstat()) { Alm2("load_button:-:プログラムロード中です。"); return ret; }
     // ***** ソースファイルの読み込み *****
     prog_id = document.getElementById("prog_sel1").options[document.getElementById("prog_sel1").selectedIndex].value;
-    if (!check_id(prog_id, 5)) { Alm("load_button:0003"); return ret; }
+    if (!check_id(prog_id, 8)) { Alm("load_button:0003"); return ret; }
     load_srcfile("prog" + prog_id + ".txt", false);
     // ***** 戻り値を返す *****
     ret = true;
@@ -430,14 +430,14 @@ function stop_button() {
 //
 // 公開I/F :
 //
-//   Interpreter.init()         初期化
+//   Interpreter.init()        初期化
 //
-//   Interpreter.run(src_st)    実行
+//   Interpreter.run(src_st)   実行
 //     src_st  プログラムのソース
 //
-//   Interpreter.stop()         停止
+//   Interpreter.stop()        停止
 //
-//   Interpreter.getrunstat()   実行状態取得
+//   Interpreter.getrunstat()  実行状態取得
 //     戻り値  =true:実行中,=false:停止
 //
 //   Interpreter.setrunstatcallback(cb_func)  実行状態通知
@@ -453,10 +453,10 @@ function stop_button() {
 //     dbg_mode  =0:通常モード,=1:デバッグモード
 //
 //   Interpreter.setcolor(can1_forecolor, can1_backcolor, can2_forecolor, can2_backcolor)  色設定
-//     can1_forecolor  Canvasの文字色を、文字列で指定("#ffffff" 等。""なら設定しない)
-//     can1_backcolor  Canvasの背景色を、文字列で指定("#808080" 等。""なら設定しない)
-//     can2_forecolor  ソフトキー表示エリアの背景色を、文字列で指定("#ffffff" 等。""なら設定しない)
-//     can2_backcolor  ソフトキー表示エリアの背景色を、文字列で指定("#808080" 等。""なら設定しない)
+//     can1_forecolor  Canvasの文字色を文字列で指定する("#ffffff" 等。""なら設定しない)
+//     can1_backcolor  Canvasの背景色を文字列で指定する("#707070" 等。""なら設定しない)
+//     can2_forecolor  ソフトキー表示エリアの文字色を文字列で指定する("#ffffff" 等。""なら設定しない)
+//     can2_backcolor  ソフトキー表示エリアの背景色を文字列で指定する("#707070" 等。""なら設定しない)
 //
 // その他 情報等 :
 //
@@ -567,6 +567,143 @@ var Interpreter;
         white:0xffffff, black:0, navy:0x80, teal:0x8080, maroon:0x800000, purple:0x800080,
         olive:0x808000, silver:0xc0c0c0, lime:0xff00, fuchsia:0xff00ff };
                                 // 定数
+
+    // ***** 初期化 *****
+    function init() {
+        var ret;
+
+        // ***** 戻り値の初期化 *****
+        ret = false;
+        // ***** Canvasの初期化 *****
+        can1 = document.getElementById("canvas1");
+        if (!can1 || !can1.getContext) { Alm2("Interpreter.init:-:描画機能が利用できません。"); return ret; }
+        // ctx1 = can1.getContext("2d");
+        can2 = document.getElementById("canvas2");
+        if (!can2 || !can2.getContext) { Alm2("Interpreter.init:+:描画機能が利用できません。"); return ret; }
+        // ctx2 = can2.getContext("2d");
+        // ***** キーボードイベント登録 *****
+        if (document.addEventListener) {
+            document.addEventListener("keydown",  keydown,  false);
+            document.addEventListener("keyup",    keyup,    false);
+            document.addEventListener("keypress", keypress, false);
+        } else if (document.attachEvent) {
+            // ***** IE8対策 *****
+            document.attachEvent("onkeydown",  keydown);
+            document.attachEvent("onkeyup",    keyup);
+            document.attachEvent("onkeypress", keypress);
+        } else {
+            Alm2("Interpreter.init:-:キーボードの状態が取得できません。");
+        }
+        // ***** マウスイベント登録 *****
+        if (document.addEventListener) {
+            document.addEventListener("mousedown",   mousedown,   false);
+            document.addEventListener("mouseup",     mouseup,     false);
+            document.addEventListener("mousemove",   mousemove,   false);
+            document.addEventListener("mouseout",    mouseout,    false);
+            // document.addEventListener("contextmenu", contextmenu, false);
+        } else if (document.attachEvent) {
+            // ***** IE8対策 *****
+            document.attachEvent("onmousedown",   mousedown);
+            document.attachEvent("onmouseup",     mouseup);
+            document.attachEvent("onmousemove",   mousemove);
+            document.attachEvent("onmouseout",    mouseout);
+            // document.attachEvent("oncontextmenu", contextmenu);
+        } else {
+            Alm2("Interpreter.init:-:マウスの状態が取得できません。");
+        }
+        // ***** Canvas内のマウスイベント登録 *****
+        if (can1.addEventListener) {
+            can1.addEventListener("mousedown",   mousedown_canvas,   false);
+            can1.addEventListener("contextmenu", contextmenu_canvas, false);
+        } else if (can1.attachEvent) {
+            // ***** IE8対策 *****
+            can1.attachEvent("onmousedown",   mousedown_canvas);
+            can1.attachEvent("oncontextmenu", contextmenu_canvas);
+        } else {
+            Alm2("Interpreter.init:-:Canvas内のマウスの状態が取得できません。");
+        }
+        // ***** 戻り値を返す *****
+        ret = true;
+        return ret;
+    }
+    Interpreter.init = init;
+
+    // ***** 実行 *****
+    function run(src_st) {
+        var ret;
+
+        // ***** 戻り値の初期化 *****
+        ret = false;
+        // ***** 引数のチェック *****
+        if (ParamCheckNG(src_st)) { Alm2("Interpreter.run:-:ソースがありません。"); return ret; }
+        // ***** ソース設定 *****
+        src = src_st;
+        // ***** 実行開始 *****
+        run_start();
+        // ***** 戻り値を返す *****
+        ret = true;
+        return ret;
+    }
+    Interpreter.run = run;
+
+    // ***** 停止 *****
+    function stop() {
+        stop_flag = true;
+    }
+    Interpreter.stop = stop;
+
+    // ***** 実行状態取得 *****
+    function getrunstat() {
+        return running_flag;
+    }
+    Interpreter.getrunstat = getrunstat;
+
+    // ***** 実行状態通知 *****
+    var runstatchanged = function () { };
+    function setrunstatcallback(cb_func) {
+        if (ParamCheckNG(cb_func)) { Alm("Interpreter.setrunstatcallback:0001"); return false; }
+        if (typeof (cb_func) == "function") { runstatchanged = cb_func; }
+    }
+    Interpreter.setrunstatcallback = setrunstatcallback;
+
+    // ***** ロード中状態設定 *****
+    function setloadstat(load_stat) {
+        if (ParamCheckNG(load_stat)) { Alm("Interpreter.setloadstat:0001"); return false; }
+        loading_flag = load_stat;
+        runstatchanged();
+        if (loading_flag == 2) { loading_flag = false; }
+    }
+    Interpreter.setloadstat = setloadstat;
+
+    // ***** ロード中状態取得 *****
+    function getloadstat() {
+        return loading_flag;
+    }
+    Interpreter.getloadstat = getloadstat;
+
+    // ***** デバッグ用 *****
+    function setdebug(dbg_mode) {
+        if (ParamCheckNG(dbg_mode)) { Alm("Interpreter.setdebug:0001"); return false; }
+        debug_mode = dbg_mode;
+    }
+    Interpreter.setdebug = setdebug;
+
+    // ***** 色設定 *****
+    function setcolor(can1_forecolor, can1_backcolor, can2_forecolor, can2_backcolor) {
+        if (ParamCheckNG(can1_forecolor)) { Alm("Interpreter.setcolor:0001"); return false; }
+        if (ParamCheckNG(can1_backcolor)) { Alm("Interpreter.setcolor:0002"); return false; }
+        if (ParamCheckNG(can2_forecolor)) { Alm("Interpreter.setcolor:0003"); return false; }
+        if (ParamCheckNG(can2_backcolor)) { Alm("Interpreter.setcolor:0004"); return false; }
+        if (can1_forecolor != "") { can1_forecolor_init = can1_forecolor; }
+        if (can1_backcolor != "") { can1_backcolor_init = can1_backcolor; }
+        if (can2_forecolor != "") { can2_forecolor_init = can2_forecolor; }
+        if (can2_backcolor != "") { can2_backcolor_init = can2_backcolor; }
+    }
+    Interpreter.setcolor = setcolor;
+
+    // ***** 公開I/Fはここまで *****
+
+    // ***** 以下は内部処理用 *****
 
     // ***** 変数用クラス *****
     var Vars = (function () {
@@ -998,59 +1135,6 @@ var Interpreter;
         }
     }
 
-    // ***** 実行状態取得 *****
-    function getrunstat() {
-        return running_flag;
-    }
-    Interpreter.getrunstat = getrunstat;
-
-    // ***** 実行状態通知 *****
-    var runstatchanged = function () { };
-    function setrunstatcallback(cb_func) {
-        if (ParamCheckNG(cb_func)) { Alm("setrunstatcallback:0001"); return false; }
-        if (typeof (cb_func) == "function") { runstatchanged = cb_func; }
-    }
-    Interpreter.setrunstatcallback = setrunstatcallback;
-
-    // ***** ロード中状態設定/取得 *****
-    function setloadstat(load_stat) {
-        if (ParamCheckNG(load_stat)) { Alm("setloadstat:0001"); return false; }
-        loading_flag = load_stat;
-        runstatchanged();
-        if (loading_flag == 2) { loading_flag = false; }
-    }
-    Interpreter.setloadstat = setloadstat;
-    function getloadstat() {
-        return loading_flag;
-    }
-    Interpreter.getloadstat = getloadstat;
-
-    // ***** 停止 *****
-    function stop() {
-        stop_flag = true;
-    }
-    Interpreter.stop = stop;
-
-    // ***** デバッグ用 *****
-    function setdebug(dbg_mode) {
-        if (ParamCheckNG(dbg_mode)) { Alm("setdebug:0001"); return false; }
-        debug_mode = dbg_mode;
-    }
-    Interpreter.setdebug = setdebug;
-
-    // ***** 色設定 *****
-    function setcolor(can1_forecolor, can1_backcolor, can2_forecolor, can2_backcolor) {
-        if (ParamCheckNG(can1_forecolor)) { Alm("setcolor:0001"); return false; }
-        if (ParamCheckNG(can1_backcolor)) { Alm("setcolor:0002"); return false; }
-        if (ParamCheckNG(can2_forecolor)) { Alm("setcolor:0003"); return false; }
-        if (ParamCheckNG(can2_backcolor)) { Alm("setcolor:0004"); return false; }
-        if (can1_forecolor != "") { can1_forecolor_init = can1_forecolor; }
-        if (can1_backcolor != "") { can1_backcolor_init = can1_backcolor; }
-        if (can2_forecolor != "") { can2_forecolor_init = can2_forecolor; }
-        if (can2_backcolor != "") { can2_backcolor_init = can2_backcolor; }
-    }
-    Interpreter.setcolor = setcolor;
-
     // ***** 正負と小数も含めた数値チェック(-0.123等) *****
     function isFullDigit(num_st) {
         // if (num_st.match(/^[+-]?[0-9]*[\.]?[0-9]+$/)) { return true; } // 間違い
@@ -1093,66 +1177,6 @@ var Interpreter;
         // ***** 加算されないので注意 *****
         // pc2++;
     }
-
-    // ***** 初期化 *****
-    function init() {
-        var ret;
-
-        // ***** 戻り値の初期化 *****
-        ret = false;
-        // ***** Canvasの初期化 *****
-        can1 = document.getElementById("canvas1");
-        if (!can1 || !can1.getContext) { Alm2("Interpreter.init:-:描画機能が利用できません。"); return ret; }
-        // ctx1 = can1.getContext("2d");
-        can2 = document.getElementById("canvas2");
-        if (!can2 || !can2.getContext) { Alm2("Interpreter.init:+:描画機能が利用できません。"); return ret; }
-        // ctx2 = can2.getContext("2d");
-        // ***** キーボードイベント登録 *****
-        if (document.addEventListener) {
-            document.addEventListener("keydown",  keydown,  false);
-            document.addEventListener("keyup",    keyup,    false);
-            document.addEventListener("keypress", keypress, false);
-        } else if (document.attachEvent) {
-            // ***** IE8対策 *****
-            document.attachEvent("onkeydown",  keydown);
-            document.attachEvent("onkeyup",    keyup);
-            document.attachEvent("onkeypress", keypress);
-        } else {
-            Alm2("Interpreter.init:-:キーボードの状態が取得できません。");
-        }
-        // ***** マウスイベント登録 *****
-        if (document.addEventListener) {
-            document.addEventListener("mousedown",   mousedown,   false);
-            document.addEventListener("mouseup",     mouseup,     false);
-            document.addEventListener("mousemove",   mousemove,   false);
-            document.addEventListener("mouseout",    mouseout,    false);
-            // document.addEventListener("contextmenu", contextmenu, false);
-        } else if (document.attachEvent) {
-            // ***** IE8対策 *****
-            document.attachEvent("onmousedown",   mousedown);
-            document.attachEvent("onmouseup",     mouseup);
-            document.attachEvent("onmousemove",   mousemove);
-            document.attachEvent("onmouseout",    mouseout);
-            // document.attachEvent("oncontextmenu", contextmenu);
-        } else {
-            Alm2("Interpreter.init:-:マウスの状態が取得できません。");
-        }
-        // ***** Canvas内のマウスイベント登録 *****
-        if (can1.addEventListener) {
-            can1.addEventListener("mousedown",   mousedown_canvas,   false);
-            can1.addEventListener("contextmenu", contextmenu_canvas, false);
-        } else if (can1.attachEvent) {
-            // ***** IE8対策 *****
-            can1.attachEvent("onmousedown",   mousedown_canvas);
-            can1.attachEvent("oncontextmenu", contextmenu_canvas);
-        } else {
-            Alm2("Interpreter.init:-:Canvas内のマウスの状態が取得できません。");
-        }
-        // ***** 戻り値を返す *****
-        ret = true;
-        return ret;
-    }
-    Interpreter.init = init;
 
     // ***** Canvasの各設定の初期化 *****
     function init_canvas_setting(ctx) {
@@ -1245,8 +1269,8 @@ var Interpreter;
         }
     }
 
-    // ***** 実行 *****
-    function run(src_st) {
+    // ***** 実行開始 *****
+    function run_start() {
         var ret;
         var i;
         var msg;
@@ -1254,8 +1278,6 @@ var Interpreter;
 
         // ***** 戻り値の初期化 *****
         ret = false;
-        // ***** 引数のチェック *****
-        if (ParamCheckNG(src_st)) { Alm2("Interpreter.run:-:ソースがありません。"); return ret; }
         // ***** Canvasのコンテキストを取得 *****
         ctx1 = can1.getContext("2d");
         ctx2 = can2.getContext("2d");
@@ -1287,9 +1309,7 @@ var Interpreter;
         disp_softkey();
         // ***** デバッグ表示クリア *****
         DebugShowClear();
-        // ***** ソース設定 *****
-        src = src_st;
-        // ***** 処理開始 *****
+        // ***** 実行開始 *****
         DebugShow("実行開始\n");
         // ***** シンボル初期化 *****
         try {
@@ -1410,7 +1430,6 @@ var Interpreter;
         ret = true;
         return ret;
     }
-    Interpreter.run = run;
 
     // ***** 継続実行 *****
     function run_continuously() {
@@ -1422,7 +1441,7 @@ var Interpreter;
         // ***** 戻り値の初期化 *****
         ret = false;
         // ***** 継続実行 *****
-        // Alm2(symbol_line[pc] + ":" + symbol[pc]);
+        // alert(symbol_line[pc] + ":" + symbol[pc]);
         try {
             loop_time_start = new Date().getTime();
             while (pc < symbol_len) {
@@ -1657,11 +1676,11 @@ var Interpreter;
                 if (sym == "copy") {
                     match("(");
                     // a1 = getvarname();
-                    a1 = getvarname_withmode(2); // ポインタ対応
+                    a1 = getvarname(2); // ポインタ対応
                     match(","); a2 = parseInt(expression(), 10);
                     match(","); 
                     // a3 = getvarname();
-                    a3 = getvarname_withmode(2); // ポインタ対応
+                    a3 = getvarname(2); // ポインタ対応
                     match(","); a4 = parseInt(expression(), 10);
                     match(","); a5 = parseInt(expression(), 10);
                     match(")");
@@ -1697,10 +1716,10 @@ var Interpreter;
                 if (sym == "copyall") {
                     match("(");
                     // a1 = getvarname();
-                    a1 = getvarname_withmode(2); // ポインタ対応
+                    a1 = getvarname(2); // ポインタ対応
                     match(","); 
                     // a2 = getvarname();
-                    a2 = getvarname_withmode(2); // ポインタ対応
+                    a2 = getvarname(2); // ポインタ対応
                     match(")");
                     // ***** 配列変数の一括コピー *****
                     vars.copyVarArray(a1, a2);
@@ -1712,7 +1731,7 @@ var Interpreter;
                 if (sym == "disimg") {
                     match("(");
                     // a1 = getvarname();
-                    a1 = getvarname_withmode(2); // ポインタ対応
+                    a1 = getvarname(2); // ポインタ対応
                     match(")");
                     if (imgvars.hasOwnProperty(a1)) {
                         delete imgvars[a1];
@@ -1723,7 +1742,7 @@ var Interpreter;
                 if (sym == "disvar") {
                     match("(");
                     // a1 = getvarname();
-                    a1 = getvarname_withmode(2); // ポインタ対応
+                    a1 = getvarname(2); // ポインタ対応
                     match(")");
                     // delete vars[a1];
                     vars.deleteVar(a1);
@@ -1739,7 +1758,7 @@ var Interpreter;
                 if (sym == "drawarea") {
                     match("(");
                     // a1 = getvarname();
-                    a1 = getvarname_withmode(2); // ポインタ対応
+                    a1 = getvarname(2); // ポインタ対応
                     match(","); a2 = parseInt(expression(), 10); // 先X
                     match(","); a3 = parseInt(expression(), 10); // 先Y
                     match(","); a4 = parseInt(expression(), 10); // 元X
@@ -1763,7 +1782,7 @@ var Interpreter;
                 if (sym == "drawimg") {
                     match("(");
                     // a1 = getvarname();
-                    a1 = getvarname_withmode(2); // ポインタ対応
+                    a1 = getvarname(2); // ポインタ対応
                     match(","); a2 = parseInt(expression(), 10); // X
                     match(","); a3 = parseInt(expression(), 10); // Y
                     match(","); a4 = parseInt(expression(), 10); // アンカー
@@ -1804,7 +1823,7 @@ var Interpreter;
                 if (sym == "drawscaledimg") {
                     match("(");
                     // a1 = getvarname();
-                    a1 = getvarname_withmode(2); // ポインタ対応
+                    a1 = getvarname(2); // ポインタ対応
                     match(","); a2 = parseInt(expression(), 10); // 先X
                     match(","); a3 = parseInt(expression(), 10); // 先Y
                     match(","); a4 = parseInt(expression(), 10); // 先W
@@ -1946,7 +1965,7 @@ var Interpreter;
                         // ***** 変数名取得 *****
                         pc--;
                         // var_name = getvarname();
-                        var_name = getvarname_withmode(2); // ポインタ対応
+                        var_name = getvarname(2); // ポインタ対応
                         // ***** 変数名を関数名とする *****
                         sym = var_name;
                     }
@@ -1975,7 +1994,7 @@ var Interpreter;
                     } else {
                         match(",");
                         // a1 = getvarname();
-                        a1 = getvarname_withmode(2); // ポインタ対応
+                        a1 = getvarname(2); // ポインタ対応
                     }
                     match(")");
                     // ***** 関数の呼び出し *****
@@ -1998,7 +2017,7 @@ var Interpreter;
                         i = 0;
                         while (pc < symbol_len) {
                             // var_name = getvarname(); // これはポインタ対応不可
-                            var_name = getvarname_withmode(3); // 関数の引数用
+                            var_name = getvarname(3); // 関数の引数用
                             if (i < func_params.length) {
                                 // vars[var_name] = func_params[i];
                                 vars.setVarValue(var_name, func_params[i]);
@@ -2159,7 +2178,7 @@ var Interpreter;
                 if (sym == "loadimg") {
                     match("(");
                     // a1 = getvarname();
-                    a1 = getvarname_withmode(2); // ポインタ対応
+                    a1 = getvarname(2); // ポインタ対応
                     match(","); a2 = String(expression()); // 画像データ文字列
                     match(")");
                     // ***** FlashCanvas用 *****
@@ -2228,7 +2247,7 @@ var Interpreter;
                 if (sym == "loadimgdata") {
                     match("(");
                     // a1 = getvarname();
-                    a1 = getvarname_withmode(2); // ポインタ対応
+                    a1 = getvarname(2); // ポインタ対応
                     match(","); a2 = String(expression()); // 画像データ文字列(data URI scheme)
                     match(")");
                     // ***** Canvasの生成 *****
@@ -2284,7 +2303,7 @@ var Interpreter;
                 if (sym == "makeimg") {
                     match("(");
                     // a1 = getvarname();
-                    a1 = getvarname_withmode(2); // ポインタ対応
+                    a1 = getvarname(2); // ポインタ対応
                     match(","); a2 = parseInt(expression(), 10); // W
                     match(","); a3 = parseInt(expression(), 10); // H
                     match(")");
@@ -2655,7 +2674,7 @@ var Interpreter;
                 if (sym == "trgt") {
                     match("(");
                     // a1 = getvarname();
-                    a1 = getvarname_withmode(2); // ポインタ対応
+                    a1 = getvarname(2); // ポインタ対応
                     match(")");
                     if (a1 == "off") {
                         can = can1;
@@ -2723,7 +2742,7 @@ var Interpreter;
             case "@":
                 match("(");
                 // a1 = getvarname();
-                a1 = getvarname_withmode(2); // ポインタ対応
+                a1 = getvarname(2); // ポインタ対応
                 i = 0;
                 while (pc < symbol_len) {
                     if (symbol[pc] == ")") { break; }
@@ -3328,7 +3347,7 @@ var Interpreter;
                 if (sym == "loadimgstat") {
                     match("(");
                     // a1 = getvarname();
-                    a1 = getvarname_withmode(2); // ポインタ対応
+                    a1 = getvarname(2); // ポインタ対応
                     match(")");
                     // ***** 完了フラグをチェックして返す *****
                     num = 0;
@@ -3538,7 +3557,7 @@ var Interpreter;
                 if (sym == "split") {
                     match("(");
                     // a1 = getvarname();
-                    a1 = getvarname_withmode(2); // ポインタ対応
+                    a1 = getvarname(2); // ポインタ対応
                     match(","); a2 = String(expression());
                     match(","); a3 = String(expression());
                     if (symbol[pc] == ")") {
@@ -3724,11 +3743,11 @@ var Interpreter;
                     if (symbol[pc] == "(") {
                         match("(");
                         // var_name = getvarname();
-                        var_name = getvarname_withmode(2); // ポインタ対応
+                        var_name = getvarname(2); // ポインタ対応
                         match(")");
                     } else {
                         // var_name = getvarname();
-                        var_name = getvarname_withmode(2); // ポインタ対応
+                        var_name = getvarname(2); // ポインタ対応
                     }
                     // // ***** 変数がなければ作成 *****
                     // // if (typeof (vars[var_name]) == "undefined") { vars[var_name] = 0; }
@@ -3773,7 +3792,7 @@ var Interpreter;
             // ***** 変数名取得 *****
             pc--;
             // var_name = getvarname();
-            var_name = getvarname_withmode(2); // ポインタ対応
+            var_name = getvarname(2); // ポインタ対応
         }
         // ***** アルファベットかアンダースコアかポインタのとき *****
         if (isAlpha(ch) || ch == "_" || ch == "*") {
@@ -3825,7 +3844,7 @@ var Interpreter;
                     i = 0;
                     while (pc < symbol_len) {
                         // var_name = getvarname(); // これはポインタ対応不可
-                        var_name = getvarname_withmode(3); // 関数の引数用
+                        var_name = getvarname(3); // 関数の引数用
                         if (i < func_params.length) {
                             // vars[var_name] = func_params[i];
                             vars.setVarValue(var_name, func_params[i]);
@@ -3913,7 +3932,7 @@ var Interpreter;
                 // ***** 変数名取得 *****
                 pc--;
                 // var_name = getvarname();
-                var_name = getvarname_withmode(1); // ポインタ非対応
+                var_name = getvarname(1); // ポインタ非対応
             }
 
             // // ***** 変数がなければ作成 *****
@@ -4024,10 +4043,10 @@ var Interpreter;
         return num;
     }
 
-    // ***** 変数名取得(モード選択あり) *****
+    // ***** 変数名取得 *****
     // mode  モード(=1:ポインタ非対応, =2:ポインタ対応, =3:関数の引数用)
     // function getvarname() {
-    function getvarname_withmode(mode) {
+    function getvarname(mode) {
         var var_name;
         var var_name2;
         var array_index;
@@ -4042,12 +4061,12 @@ var Interpreter;
             if (var_name == "*") {
                 if (symbol[pc] == "(") {
                     match("(");
-                    var_name = getvarname_withmode(2); // ポインタ対応
+                    var_name = getvarname(2); // ポインタ対応
                     // var_name = String(vars[var_name]);
                     var_name = String(vars.getVarValue(var_name));
                     match(")");
                 } else {
-                    var_name = getvarname_withmode(2); // ポインタ対応
+                    var_name = getvarname(2); // ポインタ対応
                     // var_name = String(vars[var_name]);
                     var_name = String(vars.getVarValue(var_name));
                 }
@@ -4062,10 +4081,10 @@ var Interpreter;
             if (var_name == "*") {
                 if (symbol[pc] == "(") {
                     match("(");
-                    var_name = getvarname_withmode(3); // 関数の引数用
+                    var_name = getvarname(3); // 関数の引数用
                     match(")");
                 } else {
-                    var_name = getvarname_withmode(3); // 関数の引数用
+                    var_name = getvarname(3); // 関数の引数用
                 }
             }
             // (このまま下に降りて変数名の続き(配列の[]等)をサーチする)
@@ -5258,12 +5277,12 @@ var Interpreter;
             case "m":
                 if (sym == "mismake") {
                     match("("); no = parseInt(expression(), 10);
-                    match(","); useflag_var_name = getvarname_withmode(2);
-                    match(","); x100_var_name = getvarname_withmode(2);
-                    match(","); y100_var_name = getvarname_withmode(2);
-                    match(","); degree_var_name = getvarname_withmode(2);
-                    match(","); speed100_var_name = getvarname_withmode(2);
-                    match(","); ch_var_name = getvarname_withmode(2);
+                    match(","); useflag_var_name = getvarname(2); // ポインタ対応
+                    match(","); x100_var_name = getvarname(2); // ポインタ対応
+                    match(","); y100_var_name = getvarname(2); // ポインタ対応
+                    match(","); degree_var_name = getvarname(2); // ポインタ対応
+                    match(","); speed100_var_name = getvarname(2); // ポインタ対応
+                    match(","); ch_var_name = getvarname(2); // ポインタ対応
                     match(","); min_x = parseInt(expression(), 10);
                     match(","); max_x = parseInt(expression(), 10);
                     match(","); min_y = parseInt(expression(), 10);
@@ -5324,7 +5343,7 @@ var Interpreter;
                 if (sym == "mistext") {
                     match("(");
                     // a1 = getvarname();
-                    a1 = getvarname_withmode(2); // ポインタ対応
+                    a1 = getvarname(2); // ポインタ対応
                     match(","); a2 = parseInt(expression(), 10);
                     match(","); a3 = parseInt(expression(), 10);
                     if (symbol[pc] == ")") {
@@ -5371,7 +5390,7 @@ var Interpreter;
                     match("("); a1 = String(expression());
                     match(",");
                     // a2 = getvarname();
-                    a2 = getvarname_withmode(2); // ポインタ対応
+                    a2 = getvarname(2); // ポインタ対応
                     if (symbol[pc] == ")") {
                         a3 = 0;
                         a4 = 0;
@@ -5398,7 +5417,7 @@ var Interpreter;
                 if (sym == "transimg") {
                     match("(");
                     // a1 = getvarname();
-                    a1 = getvarname_withmode(2); // ポインタ対応
+                    a1 = getvarname(2); // ポインタ対応
                     match(","); a2 = parseInt(expression(), 10); // RGB
                     match(")");
                     if (imgvars.hasOwnProperty(a1)) {
@@ -5428,7 +5447,7 @@ var Interpreter;
                 if (sym == "txtmake") {
                     match("(");
                     // a1 = getvarname();
-                    a1 = getvarname_withmode(2); // ポインタ対応
+                    a1 = getvarname(2); // ポインタ対応
                     match(","); a2 = parseInt(expression(), 10);
                     match(","); a3 = parseInt(expression(), 10);
                     match(","); a4 = String(expression());
@@ -5453,7 +5472,7 @@ var Interpreter;
                 if (sym == "txtdraw") {
                     match("(");
                     // a1 = getvarname();
-                    a1 = getvarname_withmode(2); // ポインタ対応
+                    a1 = getvarname(2); // ポインタ対応
                     match(","); a2 = parseInt(expression(), 10);
                     match(","); a3 = parseInt(expression(), 10);
                     if (symbol[pc] == ")") {
@@ -5498,7 +5517,7 @@ var Interpreter;
                 if (sym == "txtdrawimg") {
                     match("(");
                     // a1 = getvarname();
-                    a1 = getvarname_withmode(2); // ポインタ対応
+                    a1 = getvarname(2); // ポインタ対応
                     match(","); a2 = parseInt(expression(), 10);
                     match(","); a3 = parseInt(expression(), 10);
                     match(","); x1 = parseInt(expression(), 10);
@@ -5547,14 +5566,14 @@ var Interpreter;
                 if (sym == "txtovr") {
                     match("(");
                     // a1 = getvarname();
-                    a1 = getvarname_withmode(2); // ポインタ対応
+                    a1 = getvarname(2); // ポインタ対応
                     match(","); a2 = parseInt(expression(), 10);
                     match(","); a3 = parseInt(expression(), 10);
                     match(","); x1 = parseInt(expression(), 10);
                     match(","); y1 = parseInt(expression(), 10);
                     match(",");
                     // b1 = getvarname();
-                    b1 = getvarname_withmode(2); // ポインタ対応
+                    b1 = getvarname(2); // ポインタ対応
                     match(","); b2 = parseInt(expression(), 10);
                     match(","); b3 = parseInt(expression(), 10);
                     if (symbol[pc] == ")") {
@@ -5614,7 +5633,7 @@ var Interpreter;
                 if (sym == "txtpset") {
                     match("(");
                     // a1 = getvarname();
-                    a1 = getvarname_withmode(2); // ポインタ対応
+                    a1 = getvarname(2); // ポインタ対応
                     match(","); a2 = parseInt(expression(), 10);
                     match(","); a3 = parseInt(expression(), 10);
                     match(","); x1 = parseInt(expression(), 10);
@@ -5636,7 +5655,7 @@ var Interpreter;
                 if (sym == "txtline") {
                     match("(");
                     // a1 = getvarname();
-                    a1 = getvarname_withmode(2); // ポインタ対応
+                    a1 = getvarname(2); // ポインタ対応
                     match(","); a2 = parseInt(expression(), 10);
                     match(","); a3 = parseInt(expression(), 10);
                     match(","); x1 = parseInt(expression(), 10);
@@ -5699,7 +5718,7 @@ var Interpreter;
                 if (sym == "txtbox") {
                     match("(");
                     // a1 = getvarname();
-                    a1 = getvarname_withmode(2); // ポインタ対応
+                    a1 = getvarname(2); // ポインタ対応
                     match(","); a2 = parseInt(expression(), 10);
                     match(","); a3 = parseInt(expression(), 10);
                     match(","); x1 = parseInt(expression(), 10);
@@ -5730,7 +5749,7 @@ var Interpreter;
                 if (sym == "txtfbox") {
                     match("(");
                     // a1 = getvarname();
-                    a1 = getvarname_withmode(2); // ポインタ対応
+                    a1 = getvarname(2); // ポインタ対応
                     match(","); a2 = parseInt(expression(), 10);
                     match(","); a3 = parseInt(expression(), 10);
                     match(","); x1 = parseInt(expression(), 10);
@@ -5758,7 +5777,7 @@ var Interpreter;
                 if (sym == "txtcircle") {
                     match("(");
                     // a1 = getvarname();
-                    a1 = getvarname_withmode(2); // ポインタ対応
+                    a1 = getvarname(2); // ポインタ対応
                     match(","); a2 = parseInt(expression(), 10);
                     match(","); a3 = parseInt(expression(), 10);
                     match(","); x1 = parseInt(expression(), 10);
@@ -5818,7 +5837,7 @@ var Interpreter;
                 if (sym == "txtfcircle") {
                     match("(");
                     // a1 = getvarname();
-                    a1 = getvarname_withmode(2); // ポインタ対応
+                    a1 = getvarname(2); // ポインタ対応
                     match(","); a2 = parseInt(expression(), 10);
                     match(","); a3 = parseInt(expression(), 10);
                     match(","); x1 = parseInt(expression(), 10);
@@ -6142,7 +6161,7 @@ var Interpreter;
                 if (sym == "txtbchk") {
                     match("(");
                     // a1 = getvarname();
-                    a1 = getvarname_withmode(2); // ポインタ対応
+                    a1 = getvarname(2); // ポインタ対応
                     match(","); a2 = parseInt(expression(), 10);
                     match(","); a3 = parseInt(expression(), 10);
                     match(","); x1 = parseInt(expression(), 10);
@@ -6180,7 +6199,7 @@ var Interpreter;
                 if (sym == "txtpget") {
                     match("(");
                     // a1 = getvarname();
-                    a1 = getvarname_withmode(2); // ポインタ対応
+                    a1 = getvarname(2); // ポインタ対応
                     match(","); a2 = parseInt(expression(), 10);
                     match(","); a3 = parseInt(expression(), 10);
                     match(","); x1 = parseInt(expression(), 10);
@@ -6542,7 +6561,7 @@ var Interpreter;
             var i;
             var han, zen;
             var ch, cz, cz2;
-            // Alm2("ConvZenHan.makeTable:-:実行されました。");
+            // alert("ConvZenHan.makeTable:-:実行されました。");
             // ***** アルファベット *****
             ConvZenHan.alphaToZenkaku = {};
             ConvZenHan.alphaToHankaku = {};
