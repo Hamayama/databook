@@ -12,7 +12,7 @@ from google.appengine.ext import ndb
 from google.appengine.api import search
 
 # databook.py
-# 2013-6-4 v1.16
+# 2013-6-8 v1.17
 
 # Google App Engine / Python による データベース アプリケーション1
 
@@ -270,7 +270,8 @@ class RunPage(webapp2.RequestHandler):
 
         # 実行ページのテンプレートに記事データを埋め込んで表示
         template = jinja_environment.get_template(runpage_html)
-        self.response.out.write(template.render(databook_name=databook_name, article=article))
+        self.response.out.write(template.render(databook_name=databook_name,
+                                                article=article))
 
 
 # ***** 編集ページの表示 *****
@@ -393,11 +394,12 @@ class Databook(webapp2.RequestHandler):
         #     article.author = users.get_current_user().nickname()
 
         # 送信されたデータを記事に設定
-        article.author = self.request.get('author').strip()
-        article.content = self.request.get('content').strip()
-        article.source = self.request.get('source')
-        if self.request.get('datechg') == '1':
-            article.date = datetime.datetime.now()
+        if self.request.get('delete') != '1' and self.request.get('rename') != '1':
+            article.author = self.request.get('author').strip()
+            article.content = self.request.get('content').strip()
+            article.source = self.request.get('source')
+            if self.request.get('datechg') == '1':
+                article.date = datetime.datetime.now()
 
 
         # 記事の非表示(保守用)
@@ -438,59 +440,84 @@ class Databook(webapp2.RequestHandler):
             self.redirect(mainpage_url + '?' + urllib.urlencode({'db': databook_name}))
             return
 
+        # 記事のタイトル変更(保守用)
+        rename_flag = 0
+        if self.request.get('rename') == '1':
+            new_title = self.request.get('newtitle').strip()
+            if admin_login and new_title and new_title != article.title and article.bkup_dates:
+                # 記事を検索(新タイトルで1件だけ)
+                articles_query = Article.query(Article.title == new_title, ancestor=databook_key(databook_name)).order(-Article.date)
+                articles_temp = articles_query.fetch(1)
+                # 記事が存在しなければ、タイトルを変更できる
+                if len(articles_temp) < 1:
+                    article.title = new_title
+                    rename_flag = 1
+                else:
+                    rename_flag = 2
+            else:
+                rename_flag = 2
+
 
         # バックアップの保存
         # (10分以内のときは、バックアップを追加しないで上書きとする)
-        time_diff_minutes = 10000
-        if article.bkup_lastupdate:
-            time_diff = datetime.datetime.now() - article.bkup_lastupdate
-            time_diff_minutes = time_diff.days * 24 * 60 + time_diff.seconds / 60
-        if time_diff_minutes <= 10:
-            # 最新のバックアップを上書き
-            article.bkup_authors[0] = article.author
-            article.bkup_contents[0] = article.content
-            article.bkup_sources[0] = article.source
-            article.bkup_dates[0] = article.date
-        else:
-            # バックアップを追加(最大10件)
-            article.bkup_authors.insert(0, article.author)
-            article.bkup_contents.insert(0, article.content)
-            article.bkup_sources.insert(0, article.source)
-            article.bkup_dates.insert(0, article.date)
-            if len(article.bkup_dates) > 10:
-                article.bkup_authors = article.bkup_authors[:10]
-                article.bkup_contents = article.bkup_contents[:10]
-                article.bkup_sources = article.bkup_sources[:10]
-                article.bkup_dates = article.bkup_dates[:10]
-            article.bkup_lastupdate = datetime.datetime.now()
+        if rename_flag == 0:
+            time_diff_minutes = 10000
+            if article.bkup_lastupdate:
+                time_diff = datetime.datetime.now() - article.bkup_lastupdate
+                time_diff_minutes = time_diff.days * 24 * 60 + time_diff.seconds / 60
+            if time_diff_minutes <= 10:
+                # 最新のバックアップを上書き
+                article.bkup_authors[0] = article.author
+                article.bkup_contents[0] = article.content
+                article.bkup_sources[0] = article.source
+                article.bkup_dates[0] = article.date
+            else:
+                # バックアップを追加(最大10件)
+                article.bkup_authors.insert(0, article.author)
+                article.bkup_contents.insert(0, article.content)
+                article.bkup_sources.insert(0, article.source)
+                article.bkup_dates.insert(0, article.date)
+                if len(article.bkup_dates) > 10:
+                    article.bkup_authors = article.bkup_authors[:10]
+                    article.bkup_contents = article.bkup_contents[:10]
+                    article.bkup_sources = article.bkup_sources[:10]
+                    article.bkup_dates = article.bkup_dates[:10]
+                article.bkup_lastupdate = datetime.datetime.now()
 
 
         # 全文検索用ドキュメントを登録する
-        date_str = article.date.replace(tzinfo=UTC()).astimezone(JapanTZ()).strftime('%Y-%m-%d %H:%M:%S %Z')
-        doc_content = article.title + ' ' + article.author + ' ' + article.content + ' ' + date_str
-        if article.search_doc_id:
-            # すでに登録されていれば上書き
-            doc = search.Document(
-                doc_id=article.search_doc_id,
-                fields=[search.TextField(name='title',   value=article.title, language='ja'),
-                        search.TextField(name='content', value=doc_content,   language='ja'),
-                        search.DateField(name='date',    value=article.date)])
-            put_result = search.Index(name=databook_indexname).put(doc)
-        else:
-            # 登録されていなければ新規作成(このときドキュメントIDを記憶しておく)
-            doc = search.Document(
-                fields=[search.TextField(name='title',   value=article.title, language='ja'),
-                        search.TextField(name='content', value=doc_content,   language='ja'),
-                        search.DateField(name='date',    value=article.date)])
-            put_result = search.Index(name=databook_indexname).put(doc)
-            # ↓これではドキュメントIDとれないので注意。putの戻り値から取得する必要がある
-            # article.search_doc_id = doc.doc_id
-            article.search_doc_id = put_result[0].id
+        if rename_flag == 0 or rename_flag == 1:
+            date_str = article.date.replace(tzinfo=UTC()).astimezone(JapanTZ()).strftime('%Y-%m-%d %H:%M:%S %Z')
+            doc_content = article.title + ' ' + article.author + ' ' + article.content + ' ' + date_str
+            if article.search_doc_id:
+                # すでに登録されていれば上書き
+                doc = search.Document(
+                    doc_id=article.search_doc_id,
+                    fields=[search.TextField(name='title',   value=article.title, language='ja'),
+                            search.TextField(name='content', value=doc_content,   language='ja'),
+                            search.DateField(name='date',    value=article.date)])
+                put_result = search.Index(name=databook_indexname).put(doc)
+            else:
+                # 登録されていなければ新規作成(このときドキュメントIDを記憶しておく)
+                doc = search.Document(
+                    fields=[search.TextField(name='title',   value=article.title, language='ja'),
+                            search.TextField(name='content', value=doc_content,   language='ja'),
+                            search.DateField(name='date',    value=article.date)])
+                put_result = search.Index(name=databook_indexname).put(doc)
+                # ↓これではドキュメントIDとれないので注意。putの戻り値から取得する必要がある
+                # article.search_doc_id = doc.doc_id
+                article.search_doc_id = put_result[0].id
 
 
         # 記事をデータブックに登録
-        article.put()
-        message_data = message_data + '（セーブしました）'
+        if rename_flag == 0:
+            article.put()
+            message_data = message_data + '（セーブしました）'
+        elif rename_flag == 1:
+            article.put()
+            message_data = message_data + '（タイトルを変更しました）'
+        else:
+            message_data = message_data + '（タイトルを変更できません（名称が不正または同名が存在する等））'
 
         # # メインページに戻る
         # self.redirect(mainpage_url + '?' + urllib.urlencode({'db': databook_name}))

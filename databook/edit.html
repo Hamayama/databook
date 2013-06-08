@@ -17,7 +17,7 @@
     margin-right: 10px;
     margin-top: 10px;
 }
-.top_text {
+.title_text {
     width: 100%;
     text-align: center;
     font-size: 105%;
@@ -42,7 +42,7 @@
 
 <body class="main_container">
 <div class="main_frame">
-<div class="top_text">データ編集</div>
+<div class="title_text">データ編集</div>
 
 <div class="data_edit">
 <form action="{{ update_url }}" method="post">
@@ -73,12 +73,20 @@
 <input type="button" value="起動" onclick="submit();" style="margin-left: 10px;">
 <input type="button" value="戻る" onclick="if (confirm('編集を終了します。よろしいですか？')) { location.href='{{ mainpage_url }}?db={{ databook_name }}'; }" style="margin-left: 10px;">
 </form>
-{% if admin_login %}
+{% if admin_login and article.bkup_dates %}
 <form action="{{ update_url }}" method="post">
 <input type="hidden" name="title" value="{{ article.title }}">
 <input type="hidden" name="db" value="{{ databook_name }}">
 <input type="hidden" name="delete" value="1">
 <input type="button" value="削除" onclick="if (confirm('データを削除します（履歴も含めて削除されます）。よろしいですか？')) { submit(); }" style="margin-left: 10px;">
+</form>
+<form action="{{ update_url }}" method="post">
+<input type="hidden" name="title" value="{{ article.title }}">
+<input type="hidden" name="db" value="{{ databook_name }}">
+<input type="hidden" name="rename" value="1">
+<b style="font-size: 90%; margin-left: 10px;">タイトル変更 :</b>
+<input type="text" name="newtitle" value="{{ article.title }}" style="margin-left: 0px;">
+<input type="button" value="変更" onclick="if (confirm('タイトルを変更します（他の未セーブの変更は破棄されます）。よろしいですか？')) { submit(); }" style="margin-left: 0px;">
 </form>
 {% endif %}
 
@@ -98,16 +106,16 @@
 <input type="hidden" name="db" value="{{ databook_name }}">
 <input type="button" value="ロード" onclick="if (confirm('履歴（バックアップデータ）をロードします。よろしいですか？')) { submit(); }"><th>
 </tr><tr>
-<th align="left">（※）履歴（バックアップデータ）は、最新の10件までを保存しています。</th>
+<th align="left" style="white-space: normal;">（※）履歴（バックアップデータ）は、最新の10件までを保存しています。</th>
 </tr><tr>
-<th align="left">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ただし10分以内の変更は1件に統合されます。また上にあるものほど新しくなっています。</th>
+<th align="left" style="white-space: normal;">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ただし10分以内の変更は1件に統合されます。また上にあるものほど新しくなっています。</th>
 </tr><tr>
-<th align="left">（※）セーブせずに起動をクリックすると、過去にセーブした時点のデータで起動しますのでご注意ください。</th>
+<th align="left" style="white-space: normal;">（※）セーブせずに起動をクリックすると、過去にセーブした時点のデータで起動しますのでご注意ください。</th>
 {% else %}
 </tr><tr>
-<th align="left"><div style="margin-bottom: 8px;">（新規データです）</div></th>
+<th align="left" style="white-space: normal;"><div style="margin-bottom: 8px;">（新規データです）</div></th>
 </tr><tr>
-<th align="left">（※）セーブせずに起動をクリックすると、空データで起動しますのでご注意ください。</th>
+<th align="left" style="white-space: normal;">（※）セーブせずに起動をクリックすると、空データで起動しますのでご注意ください。</th>
 {% endif %}
 </tr></table>
 </form>
