@@ -12,7 +12,7 @@ from google.appengine.ext import ndb
 from google.appengine.api import search
 
 # databook.py
-# 2013-6-8 v1.17
+# 2013-6-9 v1.18
 
 # Google App Engine / Python による データベース アプリケーション1
 
@@ -235,6 +235,7 @@ class MainPage(webapp2.RequestHandler):
                                                 message_data=message_data,
                                                 search_flag=search_flag,
                                                 search_count=search_count,
+                                                search_word=search_word,
                                                 admin_login=admin_login,
                                                 admin_message=admin_message,
                                                 url=url,

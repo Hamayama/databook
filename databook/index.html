@@ -79,14 +79,13 @@
 &nbsp;&nbsp;また、現状の制限事項として、一度セーブしたタイトル名は、変更や削除をすることができません。<br>
 <br>
 （２）データは、日付の新しい順に50件だけ表示されます。<br>
-&nbsp;&nbsp;それ以降のデータは、検索でのみアクセス可能になります。<br>
-&nbsp;&nbsp;したがって、古いデータを編集／起動するには、タイトル名等を覚えておく必要があります。<br>
+&nbsp;&nbsp;それ以降のデータは、正確なタイトル名の入力もしくは検索でのみ アクセス可能です。<br>
 <br>
 （３）現状、SPALM Web Interpreter の実行画面では、プログラム（ソース）をセーブすることができません。<br>
 &nbsp;&nbsp;このため、データ編集画面のソース欄にコピー＆ペーストして、データ編集画面でセーブする必要があります。<br>
 <br>
-（４）不具合や仕様変更により、データベースが利用できなくなったり、データが消えたりする可能性があります。<br>
-&nbsp;&nbsp;あらかじめご了承ください。<br>
+（４）運用上の都合や不具合等により、データベースが利用できなくなったり、データが消えたりする可能性<br>
+&nbsp;&nbsp;があります。あらかじめご了承ください。<br>
 <br>
 
 <div class="data_input">
@@ -101,19 +100,23 @@
 <form action="{{ mainpage_url }}" method="get">
 <table><tr>
 <th align="left">単語検索:</th>
-<th align="left" width="50%"><input type="text" name="word" style="width: 100%;">
+<th align="left" width="50%"><input type="text" name="word" value="{{ search_word }}" style="width: 100%;">
 <input type="hidden" name="db" value="{{ databook_name }}"></th>
 <th align="left" width="50%"><input type="submit" value=" 検索 "></th>
+</tr></table>
+<table style="margin-top: 5px;">
 {% if message_data %}
-</tr><tr>
-<th align="left" colspan="3">{{ message_data }}</th>
+<tr>
+<th align="left">{{ message_data }}</th>
+</tr>
 {% endif %}
 {% if search_flag %}
-</tr><tr>
-<th align="left" colspan="3">検索結果:{{ search_count }}件
+<tr>
+<th align="left">検索結果:{{ search_count }}件
 <input type="button" value="一覧に戻る" onclick="location.href='{{ mainpage_url }}?db={{ databook_name }}';"></th>
+</tr>
 {% endif %}
-</tr></table>
+</table>
 </form>
 </div>
 
