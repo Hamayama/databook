@@ -12,7 +12,7 @@ from google.appengine.ext import ndb
 from google.appengine.api import search
 
 # databook.py
-# 2013-6-9 v1.18
+# 2013-6-11 v1.19
 
 # Google App Engine / Python による データベース アプリケーション1
 
@@ -294,6 +294,11 @@ class EditPage(webapp2.RequestHandler):
         if users.is_current_user_admin():
             admin_login = True
 
+        # 日時更新のチェック(デフォルトON)
+        update_flag = 1
+        if self.request.get('datechg') == '0':
+            update_flag = 0
+
         # 記事を検索(タイトルで1件だけ)
         articles_query = Article.query(Article.title == req_title, ancestor=databook_key(databook_name)).order(-Article.date)
         articles = articles_query.fetch(1)
@@ -322,8 +327,10 @@ class EditPage(webapp2.RequestHandler):
                     article.author = article.bkup_authors[req_bkup_no]
                     article.content = article.bkup_contents[req_bkup_no]
                     article.source = article.bkup_sources[req_bkup_no]
-                    article.date = article.bkup_dates[req_bkup_no]
-                    message_data = message_data + '（ロードしました）'
+                    # article.date = article.bkup_dates[req_bkup_no]
+                    date_temp = article.bkup_dates[req_bkup_no]
+                    date_temp = date_temp.replace(tzinfo=UTC()).astimezone(JapanTZ())
+                    message_data = message_data + '（「' + date_temp.strftime('%Y-%m-%d %H:%M:%S %Z') + '」の履歴をロードしました）'
             # 全文検索用ドキュメントの登録チェック
             if not article.search_doc_id:
                 message_data = message_data + '（全文検索未登録）'
@@ -345,7 +352,8 @@ class EditPage(webapp2.RequestHandler):
                                                 mainpage_url=mainpage_url,
                                                 editpage_url=editpage_url,
                                                 message_data=message_data,
-                                                admin_login=admin_login))
+                                                admin_login=admin_login,
+                                                update_flag=update_flag))
 
 
 # ***** データブックの更新 *****
@@ -368,6 +376,11 @@ class Databook(webapp2.RequestHandler):
         admin_login = False
         if users.is_current_user_admin():
             admin_login = True
+
+        # 日時更新のチェック(デフォルトOFF)
+        update_flag = 0
+        if self.request.get('datechg') == '1':
+            update_flag = 1
 
         # 記事を検索(タイトルで1件だけ)
         articles_query = Article.query(Article.title == req_title, ancestor=databook_key(databook_name)).order(-Article.date)
@@ -399,7 +412,7 @@ class Databook(webapp2.RequestHandler):
             article.author = self.request.get('author').strip()
             article.content = self.request.get('content').strip()
             article.source = self.request.get('source')
-            if self.request.get('datechg') == '1':
+            if update_flag == 1:
                 article.date = datetime.datetime.now()
 
 
@@ -518,7 +531,7 @@ class Databook(webapp2.RequestHandler):
             article.put()
             message_data = message_data + '（タイトルを変更しました）'
         else:
-            message_data = message_data + '（タイトルを変更できません（名称が不正または同名が存在する等））'
+            message_data = message_data + '（タイトルを変更できません（名称が不正もしくは同名が存在する等））'
 
         # # メインページに戻る
         # self.redirect(mainpage_url + '?' + urllib.urlencode({'db': databook_name}))
@@ -540,7 +553,8 @@ class Databook(webapp2.RequestHandler):
                                                 mainpage_url=mainpage_url,
                                                 editpage_url=editpage_url,
                                                 message_data=message_data,
-                                                admin_login=admin_login))
+                                                admin_login=admin_login,
+                                                update_flag=update_flag))
 
 
 # ****************************************

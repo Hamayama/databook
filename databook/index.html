@@ -102,15 +102,15 @@
 </tr></table>
 <table style="margin-top: 5px;">
 {% if message_data %}
-<tr>
-<th align="left">{{ message_data }}</th>
-</tr>
+    <tr>
+    <th align="left">{{ message_data }}</th>
+    </tr>
 {% endif %}
 {% if search_flag %}
-<tr>
-<th align="left">検索結果:{{ search_count }}件
-<input type="button" value="一覧に戻る" onclick="location.href='{{ mainpage_url }}?db={{ databook_name }}';"></th>
-</tr>
+    <tr>
+    <th align="left">検索結果:{{ search_count }}件
+    <input type="button" value="一覧に戻る" onclick="location.href='{{ mainpage_url }}?db={{ databook_name }}';"></th>
+    </tr>
 {% endif %}
 </table>
 </form>
@@ -126,22 +126,22 @@
 <th colspan="2">操作</th>
 </tr>
 {% for article in articles %}
-<tr>
-<td width="20%">{{ article.title }}</td>
-<td width="20%">{{ article.author }}</td>
-<td width="40%">{{ article.content }}</td>
-<td class="nowrap">{{ article.date.strftime('%Y-%m-%d %H:%M:%S %Z') }}</td>
-<td class="nowrap"><form action="{{ editpage_url }}" method="post">
-<input type="hidden" name="title" value="{{ article.title }}">
-<input type="hidden" name="db" value="{{ databook_name }}">
-<input type="submit" value=" 編集 ">
-</form></td>
-<td class="nowrap"><form action="{{ runpage_url }}" method="post" target="run_prog">
-<input type="hidden" name="title" value="{{ article.title }}">
-<input type="hidden" name="db" value="{{ databook_name }}">
-<input type="submit" value=" 起動 ">
-</form></td>
-</tr>
+    <tr>
+    <td width="20%">{{ article.title }}</td>
+    <td width="20%">{{ article.author }}</td>
+    <td width="40%">{{ article.content }}</td>
+    <td class="nowrap">{{ article.date.strftime('%Y-%m-%d %H:%M:%S %Z') }}</td>
+    <td class="nowrap"><form action="{{ editpage_url }}" method="post">
+    <input type="hidden" name="title" value="{{ article.title }}">
+    <input type="hidden" name="db" value="{{ databook_name }}">
+    <input type="submit" value=" 編集 ">
+    </form></td>
+    <td class="nowrap"><form action="{{ runpage_url }}" method="post" target="run_prog">
+    <input type="hidden" name="title" value="{{ article.title }}">
+    <input type="hidden" name="db" value="{{ databook_name }}">
+    <input type="submit" value=" 起動 ">
+    </form></td>
+    </tr>
 {% endfor %}
 </table>
 </div>

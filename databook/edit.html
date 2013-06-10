@@ -38,6 +38,21 @@
 
 -->
 </style>
+<script type="text/javascript">
+<!--
+function datechg_click() {
+    if (document.getElementById("datechg1").checked) {
+        document.getElementById("datechg2").value = "1";
+        document.getElementById("datechg3").value = "1";
+        document.getElementById("datechg4").value = "1";
+    } else {
+        document.getElementById("datechg2").value = "0";
+        document.getElementById("datechg3").value = "0";
+        document.getElementById("datechg4").value = "0";
+    }
+}
+// -->
+</script>
 </head>
 
 <body class="main_container">
@@ -60,64 +75,75 @@
 </tr><tr>
 <th align="left" valign="top">ソース :</th>
 <th align="left" width="95%"><textarea name="source" cols="40" rows="20" style="width: 100%;">{{ article.source }}</textarea></th>
-</tr><tr>
-<th align="left" colspan="2">日時 : {{ article.date.strftime('%Y-%m-%d %H:%M:%S %Z') }}</th>
-</tr><tr>
-<th align="left" colspan="2"><input type="checkbox" name="datechg" value="1" checked>日時を更新する</th>
-</tr></table>
+</tr>
+{% if article.bkup_dates %}
+    <tr>
+    <th align="left" colspan="2">日時 : {{ article.date.strftime('%Y-%m-%d %H:%M:%S %Z') }}</th>
+    </tr><tr>
+    <th align="left" colspan="2"><input type="checkbox" name="datechg" id="datechg1" onclick="datechg_click();" value="1" {% if update_flag == 1 %}checked{% endif %}>日時を更新する</th>
+    </tr>
+{% else %}
+    <tr>
+    <th align="left" colspan="2"><input type="hidden" name="datechg" value="1"></th>
+    </tr>
+{% endif %}
+</table>
 <input type="button" value="セーブ" onclick="submit();">
 </form>
 <form action="{{ runpage_url }}" method="post" target="run_prog">
 <input type="hidden" name="title" value="{{ article.title }}">
 <input type="hidden" name="db" value="{{ databook_name }}">
-<input type="button" value="起動" onclick="submit();" style="margin-left: 10px;">
+{% if article.bkup_dates %}
+    <input type="button" value="起動" onclick="submit();" style="margin-left: 10px;">
+{% endif %}
 <input type="button" value="戻る" onclick="if (confirm('編集を終了します。よろしいですか？')) { location.href='{{ mainpage_url }}?db={{ databook_name }}'; }" style="margin-left: 10px;">
 </form>
 {% if admin_login and article.bkup_dates %}
-<form action="{{ update_url }}" method="post">
-<input type="hidden" name="title" value="{{ article.title }}">
-<input type="hidden" name="db" value="{{ databook_name }}">
-<input type="hidden" name="delete" value="1">
-<input type="button" value="削除" onclick="if (confirm('データを削除します（履歴も含めて削除されます）。よろしいですか？')) { submit(); }" style="margin-left: 10px;">
-</form>
-<form action="{{ update_url }}" method="post">
-<input type="hidden" name="title" value="{{ article.title }}">
-<input type="hidden" name="db" value="{{ databook_name }}">
-<input type="hidden" name="rename" value="1">
-<b style="font-size: 90%; margin-left: 10px;">タイトル変更 :</b>
-<input type="text" name="newtitle" value="{{ article.title }}" style="margin-left: 0px;">
-<input type="button" value="変更" onclick="if (confirm('タイトルを変更します（他の未セーブの変更は破棄されます）。よろしいですか？')) { submit(); }" style="margin-left: 0px;">
-</form>
+    <form action="{{ update_url }}" method="post">
+    <input type="hidden" name="title" value="{{ article.title }}">
+    <input type="hidden" name="db" value="{{ databook_name }}">
+    <input type="hidden" name="datechg" id="datechg2" value="{{ update_flag }}">
+    <input type="hidden" name="delete" value="1">
+    <input type="button" value="削除" onclick="if (confirm('データを削除します（履歴も含めて削除されます）。よろしいですか？')) { submit(); }" style="margin-left: 10px;">
+    </form>
+    <form action="{{ update_url }}" method="post">
+    <input type="hidden" name="title" value="{{ article.title }}">
+    <input type="hidden" name="db" value="{{ databook_name }}">
+    <input type="hidden" name="datechg" id="datechg3" value="{{ update_flag }}">
+    <input type="hidden" name="rename" value="1">
+    <b style="font-size: 90%; margin-left: 10px;">タイトル変更 :</b>
+    <input type="text" name="newtitle" value="{{ article.title }}" style="margin-left: 0px;">
+    <input type="button" value="変更" onclick="if (confirm('タイトルを変更します（他の未セーブの変更は破棄されます）。よろしいですか？')) { submit(); }" style="margin-left: 0px;">
+    </form>
 {% endif %}
 
 <form action="{{ editpage_url }}" method="post">
-<table><tr>
+<table>
 {% if message_data %}
-<th align="left"><div style="margin-bottom: 8px;">{{ message_data }}</div></th>
-</tr><tr>
+    <tr>
+    <th align="left"><div style="margin-bottom: 8px;">{{ message_data }}</div></th>
+    </tr>
 {% endif %}
 {% if article.bkup_dates %}
-<th align="left">履歴 : <select name="bkup_sel">
+    <tr>
+    <th align="left"><div style="margin-bottom: 8px;">履歴 : <select name="bkup_sel">
     {% for bkup_date in article.bkup_dates %}
-<option value="{{ loop.index }}">{{ bkup_date.strftime('%Y-%m-%d %H:%M:%S %Z') }}</option>
+        <option value="{{ loop.index }}">{{ bkup_date.strftime('%Y-%m-%d %H:%M:%S %Z') }}</option>
     {% endfor %}
-</select>
-<input type="hidden" name="title" value="{{ article.title }}">
-<input type="hidden" name="db" value="{{ databook_name }}">
-<input type="button" value="ロード" onclick="if (confirm('履歴（バックアップデータ）をロードします。よろしいですか？')) { submit(); }"><th>
-</tr><tr>
-<th align="left" style="white-space: normal;">（※）履歴（バックアップデータ）は、最新の10件までを保存しています。</th>
-</tr><tr>
-<th align="left" style="white-space: normal;">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ただし10分以内の変更は1件に統合されます。また上にあるものほど新しくなっています。</th>
-</tr><tr>
-<th align="left" style="white-space: normal;">（※）セーブせずに起動をクリックすると、過去のセーブデータで起動しますのでご注意ください。</th>
+    </select>
+    <input type="hidden" name="title" value="{{ article.title }}">
+    <input type="hidden" name="db" value="{{ databook_name }}">
+    <input type="hidden" name="datechg" id="datechg4" value="{{ update_flag }}">
+    <input type="button" value="ロード" onclick="if (confirm('履歴（バックアップデータ）をロードします。よろしいですか？')) { submit(); }"></div><th>
+    </tr><tr>
+    <th align="left" style="white-space: normal;">（※）セーブせずに起動をクリックすると、過去のセーブデータで起動しますのでご注意ください。</th>
+    </tr>
 {% else %}
-</tr><tr>
-<th align="left" style="white-space: normal;"><div style="margin-bottom: 8px;">（新規データです）</div></th>
-</tr><tr>
-<th align="left" style="white-space: normal;">（※）セーブせずに起動をクリックすると、空データで起動しますのでご注意ください。</th>
+    <tr>
+    <th align="left" style="white-space: normal;"><div style="margin-bottom: 8px;">（新規データです）</div></th>
+    </tr>
 {% endif %}
-</tr></table>
+</table>
 </form>
 </div>
 
