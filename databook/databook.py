@@ -12,7 +12,7 @@ from google.appengine.ext import ndb
 from google.appengine.api import search
 
 # databook.py
-# 2013-6-11 v1.19
+# 2013-6-11 v1.20
 
 # Google App Engine / Python による データベース アプリケーション1
 
@@ -295,9 +295,9 @@ class EditPage(webapp2.RequestHandler):
             admin_login = True
 
         # 日時更新のチェック(デフォルトON)
-        update_flag = 1
+        datechg_flag = 1
         if self.request.get('datechg') == '0':
-            update_flag = 0
+            datechg_flag = 0
 
         # 記事を検索(タイトルで1件だけ)
         articles_query = Article.query(Article.title == req_title, ancestor=databook_key(databook_name)).order(-Article.date)
@@ -353,7 +353,7 @@ class EditPage(webapp2.RequestHandler):
                                                 editpage_url=editpage_url,
                                                 message_data=message_data,
                                                 admin_login=admin_login,
-                                                update_flag=update_flag))
+                                                datechg_flag=datechg_flag))
 
 
 # ***** データブックの更新 *****
@@ -378,9 +378,9 @@ class Databook(webapp2.RequestHandler):
             admin_login = True
 
         # 日時更新のチェック(デフォルトOFF)
-        update_flag = 0
+        datechg_flag = 0
         if self.request.get('datechg') == '1':
-            update_flag = 1
+            datechg_flag = 1
 
         # 記事を検索(タイトルで1件だけ)
         articles_query = Article.query(Article.title == req_title, ancestor=databook_key(databook_name)).order(-Article.date)
@@ -412,7 +412,7 @@ class Databook(webapp2.RequestHandler):
             article.author = self.request.get('author').strip()
             article.content = self.request.get('content').strip()
             article.source = self.request.get('source')
-            if update_flag == 1:
+            if datechg_flag == 1:
                 article.date = datetime.datetime.now()
 
 
@@ -554,7 +554,7 @@ class Databook(webapp2.RequestHandler):
                                                 editpage_url=editpage_url,
                                                 message_data=message_data,
                                                 admin_login=admin_login,
-                                                update_flag=update_flag))
+                                                datechg_flag=datechg_flag))
 
 
 # ****************************************

@@ -80,7 +80,7 @@ function datechg_click() {
     <tr>
     <th align="left" colspan="2">日時 : {{ article.date.strftime('%Y-%m-%d %H:%M:%S %Z') }}</th>
     </tr><tr>
-    <th align="left" colspan="2"><input type="checkbox" name="datechg" id="datechg1" onclick="datechg_click();" value="1" {% if update_flag == 1 %}checked{% endif %}>日時を更新する</th>
+    <th align="left" colspan="2"><input type="checkbox" name="datechg" id="datechg1" onclick="datechg_click();" value="1" {% if datechg_flag == 1 %}checked{% endif %}>日時を更新する</th>
     </tr>
 {% else %}
     <tr>
@@ -102,14 +102,14 @@ function datechg_click() {
     <form action="{{ update_url }}" method="post">
     <input type="hidden" name="title" value="{{ article.title }}">
     <input type="hidden" name="db" value="{{ databook_name }}">
-    <input type="hidden" name="datechg" id="datechg2" value="{{ update_flag }}">
+    <input type="hidden" name="datechg" id="datechg2" value="{{ datechg_flag }}">
     <input type="hidden" name="delete" value="1">
     <input type="button" value="削除" onclick="if (confirm('データを削除します（履歴も含めて削除されます）。よろしいですか？')) { submit(); }" style="margin-left: 10px;">
     </form>
     <form action="{{ update_url }}" method="post">
     <input type="hidden" name="title" value="{{ article.title }}">
     <input type="hidden" name="db" value="{{ databook_name }}">
-    <input type="hidden" name="datechg" id="datechg3" value="{{ update_flag }}">
+    <input type="hidden" name="datechg" id="datechg3" value="{{ datechg_flag }}">
     <input type="hidden" name="rename" value="1">
     <b style="font-size: 90%; margin-left: 10px;">タイトル変更 :</b>
     <input type="text" name="newtitle" value="{{ article.title }}" style="margin-left: 0px;">
@@ -133,7 +133,7 @@ function datechg_click() {
     </select>
     <input type="hidden" name="title" value="{{ article.title }}">
     <input type="hidden" name="db" value="{{ databook_name }}">
-    <input type="hidden" name="datechg" id="datechg4" value="{{ update_flag }}">
+    <input type="hidden" name="datechg" id="datechg4" value="{{ datechg_flag }}">
     <input type="button" value="ロード" onclick="if (confirm('履歴（バックアップデータ）をロードします。よろしいですか？')) { submit(); }"></div><th>
     </tr><tr>
     <th align="left" style="white-space: normal;">（※）セーブせずに起動をクリックすると、過去のセーブデータで起動しますのでご注意ください。</th>
