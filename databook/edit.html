@@ -65,7 +65,6 @@ function datechg_click() {
 <th align="left" colspan="2">タイトル : {{ article.title }}
 <input type="hidden" name="title" value="{{ article.title }}">
 <input type="hidden" name="db" value="{{ databook_name }}"></th>
-<!-- <th align="left" width="95%"><input type="text" name="title" value="{{ article.title }}" style="width: 50%;"></th> -->
 </tr><tr>
 <th align="left">作者 :</th>
 <th align="left" width="95%"><input type="text" name="author" value="{{ article.author }}" style="width: 50%;"></th>
@@ -75,19 +74,15 @@ function datechg_click() {
 </tr><tr>
 <th align="left" valign="top">ソース :</th>
 <th align="left" width="95%"><textarea name="source" cols="40" rows="20" style="width: 100%;">{{ article.source }}</textarea></th>
-</tr>
+</tr><tr>
 {% if article.bkup_dates %}
-    <tr>
     <th align="left" colspan="2">日時 : {{ article.date.strftime('%Y-%m-%d %H:%M:%S %Z') }}</th>
     </tr><tr>
     <th align="left" colspan="2"><input type="checkbox" name="datechg" id="datechg1" onclick="datechg_click();" value="1" {% if datechg_flag == 1 %}checked{% endif %}>日時を更新する</th>
-    </tr>
 {% else %}
-    <tr>
     <th align="left" colspan="2"><input type="hidden" name="datechg" value="1"></th>
-    </tr>
 {% endif %}
-</table>
+</tr></table>
 <input type="button" value="セーブ" onclick="submit();">
 </form>
 <form action="{{ runpage_url }}" method="post" target="run_prog">
@@ -117,16 +112,14 @@ function datechg_click() {
     </form>
 {% endif %}
 
-<form action="{{ editpage_url }}" method="post">
-<table>
+<table><tr>
 {% if message_data %}
-    <tr>
-    <th align="left"><div style="margin-bottom: 8px;">{{ message_data }}</div></th>
-    </tr>
+    <th align="left" style="white-space: normal;"><div style="margin-bottom: 8px;">{{ message_data }}</div></th>
+    </tr><tr>
 {% endif %}
 {% if article.bkup_dates %}
-    <tr>
-    <th align="left"><div style="margin-bottom: 8px;">履歴 : <select name="bkup_sel">
+    <th align="left"><form action="{{ editpage_url }}" method="post">
+    <div style="margin-bottom: 8px;">履歴 : <select name="bkup_sel">
     {% for bkup_date in article.bkup_dates %}
         <option value="{{ loop.index }}">{{ bkup_date.strftime('%Y-%m-%d %H:%M:%S %Z') }}</option>
     {% endfor %}
@@ -134,17 +127,15 @@ function datechg_click() {
     <input type="hidden" name="title" value="{{ article.title }}">
     <input type="hidden" name="db" value="{{ databook_name }}">
     <input type="hidden" name="datechg" id="datechg4" value="{{ datechg_flag }}">
-    <input type="button" value="ロード" onclick="if (confirm('履歴（バックアップデータ）をロードします。よろしいですか？')) { submit(); }"></div><th>
+    <input type="button" value="ロード" onclick="if (confirm('履歴（バックアップデータ）をロードします。よろしいですか？')) { submit(); }">
+    </div>
+    </form></th>
     </tr><tr>
     <th align="left" style="white-space: normal;">（※）セーブせずに起動をクリックすると、過去のセーブデータで起動しますのでご注意ください。</th>
-    </tr>
 {% else %}
-    <tr>
-    <th align="left" style="white-space: normal;"><div style="margin-bottom: 8px;">（新規データです）</div></th>
-    </tr>
+    <th align="left" style="white-space: normal;">（新規データです）</th>
 {% endif %}
-</table>
-</form>
+</tr></table>
 </div>
 
 </div>
