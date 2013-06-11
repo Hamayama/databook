@@ -42,13 +42,13 @@
 <!--
 function datechg_click() {
     if (document.getElementById("datechg1").checked) {
-        document.getElementById("datechg2").value = "1";
-        document.getElementById("datechg3").value = "1";
-        document.getElementById("datechg4").value = "1";
+        if (document.getElementById("datechg2")) { document.getElementById("datechg2").value = "1"; }
+        if (document.getElementById("datechg3")) { document.getElementById("datechg3").value = "1"; }
+        if (document.getElementById("datechg4")) { document.getElementById("datechg4").value = "1"; }
     } else {
-        document.getElementById("datechg2").value = "0";
-        document.getElementById("datechg3").value = "0";
-        document.getElementById("datechg4").value = "0";
+        if (document.getElementById("datechg2")) { document.getElementById("datechg2").value = "0"; }
+        if (document.getElementById("datechg3")) { document.getElementById("datechg3").value = "0"; }
+        if (document.getElementById("datechg4")) { document.getElementById("datechg4").value = "0"; }
     }
 }
 // -->
