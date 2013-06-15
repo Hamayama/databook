@@ -1,7 +1,7 @@
 // This file is encoded with UTF-8 without BOM.
 
 // sp_interpreter.js
-// 2013-6-7 v1.52
+// 2013-6-15 v1.53
 
 
 // SPALM Web Interpreter
@@ -1588,8 +1588,9 @@ var Interpreter;
                     }
                     ctx.closePath();
                     ctx.stroke();
-                    // ***** Chrome v23 で円が閉じない件の対策(中心を0.5ずらしたとき) *****
-                    ctx.fillRect(a + x0, y0, 0.5, 0.5);
+                    // 以下は不要になったもよう(Chrome v27)
+                    // // ***** Chrome v23 で円が閉じない件の対策(中心を0.5ずらしたとき) *****
+                    // ctx.fillRect(a + x0, y0, 0.5, 0.5);
                     return true;
                 }
                 break;
@@ -1876,8 +1877,9 @@ var Interpreter;
                         ctx.lineTo(a * Math.cos(2 * Math.PI * i / 100) + x0, b * Math.sin(2 * Math.PI * i / 100) + y0);
                     }
                     ctx.closePath();
-                    // ***** Chrome v23 で塗りつぶさない件の対策 *****
-                    ctx.rect(x0, y0, 1, 1);     // 真ん中に小さな四角を描くと、塗りつぶしエリアが反転するもよう
+                    // 以下は不要になったもよう(Chrome v27)
+                    // // ***** Chrome v23 で塗りつぶさない件の対策 *****
+                    // ctx.rect(x0, y0, 1, 1);     // 真ん中に小さな四角を描くと、塗りつぶしエリアが反転するもよう
                     ctx.fill();
                     // 以下は不要になったもよう(Chrome v24)
                     // ctx.fillRect(x0, y0, 1, 1); // 反転して抜けた真ん中の小さな四角をさらに塗りつぶす
@@ -1907,8 +1909,9 @@ var Interpreter;
                         ctx.lineTo(a * Math.cos(rad1 + rad2 * i / 100) + x0, b * Math.sin(rad1 + rad2 * i / 100) + y0);
                     }
                     ctx.closePath();
-                    // ***** Chrome v23 で塗りつぶさない件の対策 *****
-                    ctx.rect(x0, y0, 1, 1);     // 真ん中に小さな四角を描くと、塗りつぶしエリアが反転するもよう
+                    // 以下は不要になったもよう(Chrome v27)
+                    // // ***** Chrome v23 で塗りつぶさない件の対策 *****
+                    // ctx.rect(x0, y0, 1, 1);     // 真ん中に小さな四角を描くと、塗りつぶしエリアが反転するもよう
                     ctx.fill();
                     // 以下は不要になったもよう(Chrome v24)
                     // ctx.fillRect(x0, y0, 1, 1); // 反転して抜けた真ん中の小さな四角をさらに塗りつぶす
@@ -1944,11 +1947,13 @@ var Interpreter;
                     ctx.lineTo(a1 , a2 + ry);
                     ctx.quadraticCurveTo(a1, a2, a1 + rx, a2);
                     ctx.closePath();
-                    // ***** Chrome v23 でカーブを描画しない件の対策 *****
-                    ctx.rotate(45 * Math.PI / 180);          // 回転させるとなぜか描画する
+                    // 以下は不要になったもよう(Chrome v27)
+                    // // ***** Chrome v23 でカーブを描画しない件の対策 *****
+                    // ctx.rotate(45 * Math.PI / 180);          // 回転させるとなぜか描画する
                     ctx.fill();
-                    ctx.setTransform(1, 0, 0, 1, 0, 0);      // 座標系を元に戻す
-                    set_canvas_axis(ctx);                    // 座標系を再設定
+                    // 以下は不要になったもよう(Chrome v27)
+                    // ctx.setTransform(1, 0, 0, 1, 0, 0);      // 座標系を元に戻す
+                    // set_canvas_axis(ctx);                    // 座標系を再設定
                     return true;
                 }
                 if (sym == "func") {
@@ -2190,7 +2195,7 @@ var Interpreter;
                     col_data = [];
                     for (j = 0; j < col_num; j++) {
                         col_data[j] = {};
-                        col_data[j].r = parseInt(g_data[i++] ,10);
+                        col_data[j].r = parseInt(g_data[i++], 10);
                         col_data[j].g = parseInt(g_data[i++], 10);
                         col_data[j].b = parseInt(g_data[i++], 10);
                     }
@@ -2386,8 +2391,9 @@ var Interpreter;
                         ctx.lineTo(a * Math.cos(rad1 + rad2 * i / 100) + x0, b * Math.sin(rad1 + rad2 * i / 100) + y0);
                     }
                     ctx.stroke();
-                    // ***** Chrome v23 で円が閉じない件の対策(中心を0.5ずらしたとき) *****
-                    ctx.fillRect(a * Math.cos(rad1) + x0, b * Math.sin(rad1) + y0, 0.5, 0.5);
+                    // 以下は不要になったもよう(Chrome v27)
+                    // // ***** Chrome v23 で円が閉じない件の対策(中心を0.5ずらしたとき) *****
+                    // ctx.fillRect(a * Math.cos(rad1) + x0, b * Math.sin(rad1) + y0, 0.5, 0.5);
                     return true;
                 }
                 break;
@@ -2492,11 +2498,13 @@ var Interpreter;
                     ctx.lineTo(a1 , a2 + ry);
                     ctx.quadraticCurveTo(a1, a2, a1 + rx, a2);
                     ctx.closePath();
-                    // ***** Chrome v23 でカーブを描画しない件の対策 *****
-                    ctx.rotate(45 * Math.PI / 180);          // 回転させるとなぜか描画する
+                    // 以下は不要になったもよう(Chrome v27)
+                    // // ***** Chrome v23 でカーブを描画しない件の対策 *****
+                    // ctx.rotate(45 * Math.PI / 180);          // 回転させるとなぜか描画する
                     ctx.stroke();
-                    ctx.setTransform(1, 0, 0, 1, 0, 0);      // 座標系を元に戻す
-                    set_canvas_axis(ctx);                    // 座標系を再設定
+                    // 以下は不要になったもよう(Chrome v27)
+                    // ctx.setTransform(1, 0, 0, 1, 0, 0);      // 座標系を元に戻す
+                    // set_canvas_axis(ctx);                    // 座標系を再設定
                     return true;
                 }
                 break;
@@ -4995,7 +5003,7 @@ var Interpreter;
         var b1, b2, b3;
         var ch;
         var st1, st2;
-        var x1, y1, x2, y2, x3, y3, x4, y4;
+        var x0, y0, x1, y1, x2, y2, x3, y3, x4, y4;
         var w1, h1, dx1, dy1, sx1, sy1, e1;
         var r1, a, b, x_old, y_old, drawflag;
         var img_data;
@@ -5272,6 +5280,42 @@ var Interpreter;
                     set_canvas_axis(ctx);                    // 座標系を再設定
                     return true;
                 }
+                if (sym == "fpoly") {
+                    match("(");
+                    // a1 = getvarname();
+                    a1 = getvarname(2); // ポインタ対応
+                    match(",");
+                    // b1 = getvarname();
+                    b1 = getvarname(2); // ポインタ対応
+                    match(","); a2 = parseInt(expression(), 10);
+                    match(","); a3 = parseInt(expression(), 10);
+                    match(")");
+
+                    // ***** NaN対策 *****
+                    a2 = a2 | 0;
+                    a3 = a3 | 0;
+
+                    // ***** エラーチェック *****
+                    if (a2 < 0 || a3 < 0 || a2 > a3) { return true; }
+                    // ***** 描画処理 *****
+                    ctx.beginPath();
+                    i = a2;
+                    // x0 = parseInt(vars[a1 + "[" + i + "]"], 10);
+                    x0 = parseInt(vars.getVarValue(a1 + "[" + i + "]"), 10);
+                    // y0 = parseInt(vars[b1 + "[" + i + "]"], 10);
+                    y0 = parseInt(vars.getVarValue(b1 + "[" + i + "]"), 10);
+                    ctx.moveTo(x0, y0);
+                    for (i = a2 + 1; i <= a3; i++) {
+                        // x1 = parseInt(vars[a1 + "[" + i + "]"], 10);
+                        x1 = parseInt(vars.getVarValue(a1 + "[" + i + "]"), 10);
+                        // y1 = parseInt(vars[b1 + "[" + i + "]"], 10);
+                        y1 = parseInt(vars.getVarValue(b1 + "[" + i + "]"), 10);
+                        ctx.lineTo(x1, y1);
+                    }
+                    ctx.closePath();
+                    ctx.fill();
+                    return true;
+                }
                 break;
 
             case "m":
@@ -5381,6 +5425,45 @@ var Interpreter;
                             }
                         }
                     }
+                    return true;
+                }
+                break;
+
+            case "p":
+                if (sym == "poly") {
+                    match("(");
+                    // a1 = getvarname();
+                    a1 = getvarname(2); // ポインタ対応
+                    match(",");
+                    // b1 = getvarname();
+                    b1 = getvarname(2); // ポインタ対応
+                    match(","); a2 = parseInt(expression(), 10);
+                    match(","); a3 = parseInt(expression(), 10);
+                    match(")");
+
+                    // ***** NaN対策 *****
+                    a2 = a2 | 0;
+                    a3 = a3 | 0;
+
+                    // ***** エラーチェック *****
+                    if (a2 < 0 || a3 < 0 || a2 > a3) { return true; }
+                    // ***** 描画処理 *****
+                    ctx.beginPath();
+                    i = a2;
+                    // x0 = parseInt(vars[a1 + "[" + i + "]"], 10);
+                    x0 = parseInt(vars.getVarValue(a1 + "[" + i + "]"), 10);
+                    // y0 = parseInt(vars[b1 + "[" + i + "]"], 10);
+                    y0 = parseInt(vars.getVarValue(b1 + "[" + i + "]"), 10);
+                    ctx.moveTo(x0, y0);
+                    for (i = a2 + 1; i <= a3; i++) {
+                        // x1 = parseInt(vars[a1 + "[" + i + "]"], 10);
+                        x1 = parseInt(vars.getVarValue(a1 + "[" + i + "]"), 10);
+                        // y1 = parseInt(vars[b1 + "[" + i + "]"], 10);
+                        y1 = parseInt(vars.getVarValue(b1 + "[" + i + "]"), 10);
+                        ctx.lineTo(x1, y1);
+                    }
+                    ctx.closePath();
+                    ctx.stroke();
                     return true;
                 }
                 break;
