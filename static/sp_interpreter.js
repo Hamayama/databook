@@ -1,7 +1,7 @@
 // This file is encoded with UTF-8 without BOM.
 
 // sp_interpreter.js
-// 2013-6-15 v1.53
+// 2013-6-15 v1.54
 
 
 // SPALM Web Interpreter
@@ -5439,6 +5439,11 @@ var Interpreter;
                     b1 = getvarname(2); // ポインタ対応
                     match(","); a2 = parseInt(expression(), 10);
                     match(","); a3 = parseInt(expression(), 10);
+                    if (symbol[pc] == ")") {
+                        a4 = 0;
+                    } else {
+                        match(","); a4 = parseInt(expression(), 10);
+                    }
                     match(")");
 
                     // ***** NaN対策 *****
@@ -5462,7 +5467,7 @@ var Interpreter;
                         y1 = parseInt(vars.getVarValue(b1 + "[" + i + "]"), 10);
                         ctx.lineTo(x1, y1);
                     }
-                    ctx.closePath();
+                    if (a4 == 0) { ctx.closePath(); }
                     ctx.stroke();
                     return true;
                 }
