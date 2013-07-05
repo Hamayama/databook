@@ -1,7 +1,7 @@
 // This file is encoded with UTF-8 without BOM.
 
 // sp_interpreter.js
-// 2013-6-15 v1.54
+// 2013-7-5 v1.55
 
 
 // SPALM Web Interpreter
@@ -467,6 +467,8 @@ function stop_button() {
 //
 //   内部クラス一覧
 //     Var         変数用クラス
+//
+//   外部クラス一覧
 //     ConvZenHan  文字列の全角半角変換用クラス(staticクラス)
 //     FloodFill   領域塗りつぶし用クラス
 //     Missile     ミサイル用クラス
@@ -474,6 +476,11 @@ function stop_button() {
 //
 var Interpreter;
 (function (Interpreter) {
+    var max_array_size = 10000; // 処理する配列の個数最大値
+    var max_str_size = 10000;   // 処理する文字数最大値
+    var max_image_size = 4000;  // 画像の縦横のサイズ最大値(px)
+    var max_scale_size = 1000;  // 座標系の倍率最大値
+
     var can1;                   // Canvas要素
     var ctx1;                   // Canvasのコンテキスト
     var can1_width_init = 240;  // Canvasの幅(px)の初期値
@@ -713,7 +720,7 @@ var Interpreter;
             this.localvars = localvars;
         }
         // ***** 全変数を削除する *****
-        Vars.prototype.clearVars = function() {
+        Vars.prototype.clearVars = function () {
             var var_name;
 
             for (var_name in this.globalvars) {
@@ -728,7 +735,7 @@ var Interpreter;
             }
         };
         // ***** 変数を削除する *****
-        Vars.prototype.deleteVar = function(var_name) {
+        Vars.prototype.deleteVar = function (var_name) {
             var glb, loc;
 
             // ***** 引数のチェック *****
@@ -766,8 +773,43 @@ var Interpreter;
             // ローカル変数もグローバル変数も存在しない
             return true;
         };
+        // ***** 変数の存在チェック *****
+        Vars.prototype.checkVar = function (var_name) {
+            var glb, loc;
+
+            // ***** 引数のチェック *****
+            if (var_name == "") { return true; }
+            // ***** 接頭語のチェック *****
+            glb = false;
+            loc = false;
+            if (var_name.indexOf("global ") == 0) { glb = true; var_name = var_name.substring(7); }
+            if (var_name.indexOf("glb ")    == 0) { glb = true; var_name = var_name.substring(4); }
+            if (var_name.indexOf("local ")  == 0) { loc = true; var_name = var_name.substring(6); }
+            if (var_name.indexOf("loc ")    == 0) { loc = true; var_name = var_name.substring(4); }
+            // ***** グローバル変数のみを使うとき *****
+            if (this.localvars == null || use_local_vars == false || glb == true) {
+                if (!this.globalvars.hasOwnProperty(var_name)) { return false; }
+                return true;
+            }
+            // ***** ローカル変数のみを使うとき *****
+            if (loc == true) {
+                if (!this.localvars.hasOwnProperty(var_name)) { return false; }
+                return true;
+            }
+            // ***** グローバル変数とローカル変数を両方使うとき *****
+            // ローカル変数が存在する
+            if (this.localvars.hasOwnProperty(var_name)) {
+                return true;
+            }
+            // グローバル変数が存在する
+            if (this.globalvars.hasOwnProperty(var_name)) {
+                return true;
+            }
+            // ローカル変数もグローバル変数も存在しない
+            return false;
+        };
         // ***** 変数の値を取得する *****
-        Vars.prototype.getVarValue = function(var_name) {
+        Vars.prototype.getVarValue = function (var_name) {
             var i, j;
             var array_name;
             var array_name2;
@@ -825,7 +867,7 @@ var Interpreter;
             return this.localvars[var_name];
         };
         // ***** 変数の値を設定する *****
-        Vars.prototype.setVarValue = function(var_name, var_value) {
+        Vars.prototype.setVarValue = function (var_name, var_value) {
             var i, j;
             var array_name;
             var array_name2;
@@ -885,7 +927,7 @@ var Interpreter;
             return true;
         };
         // ***** 配列変数の一括コピー *****
-        Vars.prototype.copyVarArray = function(var_name1, var_name2) {
+        Vars.prototype.copyVarArray = function (var_name1, var_name2) {
             var glb, loc;
             var var_name1_len;
             var var_name_from;
@@ -1691,6 +1733,12 @@ var Interpreter;
                     a4 = a4 | 0;
                     a5 = a5 | 0;
 
+                    // ***** エラーチェック *****
+                    // if (a5 > max_array_size) {
+                    if (!(a5 <= max_array_size)) {
+                        throw new Error("処理する配列の個数が不正です。" + max_array_size + "以下である必要があります。");
+                    }
+                    if (a5 <= 0) { return true; }
                     // ***** コピー処理 *****
                     if (a1 == a3 && a2 > a4) { // 前から処理か後から処理か
                         i_start = 0;
@@ -1703,6 +1751,10 @@ var Interpreter;
                     }
                     i = i_start;
                     while (true) {
+
+                        // // ***** 配列の存在チェック *****
+                        // if (!vars.checkVar(a1 + "[" + (a2 + i) + "]")) { break; }
+
                         // a6 = vars[a1 + "[" + (a2 + i) + "]"];
                         a6 = vars.getVarValue(a1 + "[" + (a2 + i) + "]");
                         // vars[a3 + "[" + (a4 + i) + "]"] = a6;
@@ -2171,11 +2223,6 @@ var Interpreter;
                     match("(");
                     a1 = parseFloat(expression()); // W
                     match(")");
-                    // ***** エラーチェック *****
-                    if (a1 <= 0) {
-                        throw new Error("線の幅の値が不正です。0以下の値は指定できません。");
-                    }
-                    // ***** 線の幅を設定 *****
                     line_width = a1;
                     ctx.lineWidth = line_width;
                     return true;
@@ -2202,9 +2249,13 @@ var Interpreter;
                     trans_col_no = parseInt(g_data[i++], 10);
                     img_w = parseInt(g_data[i++], 10);
                     img_h = parseInt(g_data[i++], 10);
-                    if (!(img_w > 0 && img_h > 0)) {
-                        throw new Error("画像データが不正です。");
+
+                    // ***** エラーチェック *****
+                    // if (img_w <= 0 || img_w > max_image_size || img_h <= 0 || img_h > max_image_size) {
+                    if (!(img_w > 0 && img_w <= max_image_size && img_h > 0 && img_h <= max_image_size)) {
+                        throw new Error("画像の縦横のサイズが不正です。1-" + max_image_size + "の間である必要があります。");
                     }
+
                     img_data = ctx.createImageData(img_w, img_h);
                     k = 0;
                     while (i < g_data.length) {
@@ -2312,6 +2363,13 @@ var Interpreter;
                     match(","); a2 = parseInt(expression(), 10); // W
                     match(","); a3 = parseInt(expression(), 10); // H
                     match(")");
+
+                    // ***** エラーチェック *****
+                    // if (a2 <= 0 || a2 > max_image_size || a3 <= 0 || a3 > max_image_size) {
+                    if (!(a2 > 0 && a2 <= max_image_size && a3 > 0 && a3 <= max_image_size)) {
+                        throw new Error("画像の縦横のサイズが不正です。1-" + max_image_size + "の範囲で指定してください。");
+                    }
+
                     // ***** Canvasの生成 *****
                     imgvars[a1] = {};
                     // ***** uuCanvas用 *****
@@ -2539,8 +2597,9 @@ var Interpreter;
                     }
                     match(")");
                     // ***** エラーチェック *****
-                    if (a1 <= 0 || a1 > 1000 || a2 <= 0 || a2 > 1000) {
-                        throw new Error("倍率の値が不正です。0以下や1000より大きい値は指定できません。");
+                    // if (a1 <= 0 || a1 > max_scale_size || a2 <= 0 || a2 > max_scale_size) {
+                    if (!(a1 > 0 && a1 <= max_scale_size && a2 > 0 && a2 <= max_scale_size)) {
+                        throw new Error("座標系の倍率の値が不正です。0より大きく" + max_scale_size + "以下の数値を指定してください。");
                     }
                     // ***** 座標系の倍率設定 *****
                     ctx_scalex = a1;
@@ -2590,9 +2649,11 @@ var Interpreter;
                     }
                     match(")");
                     // ***** エラーチェック *****
-                    if (a1 <= 0 || a1 >= 4000 || a2 <= 0 || a2 >= 4000 ||
-                        a3 <= 0 || a3 >= 4000 || a4 <= 0 || a4 >= 4000) {
-                        throw new Error("サイズの値が不正です。0以下や4000以上の値は指定できません。");
+                    // if (a1 <= 0 || a1 >= max_image_size || a2 <= 0 || a2 >= max_image_size ||
+                    //     a3 <= 0 || a3 >= max_image_size || a4 <= 0 || a4 >= max_image_size) {
+                    if (!(a1 > 0 && a1 <= max_image_size && a2 > 0 && a2 <= max_image_size &&
+                          a3 > 0 && a3 <= max_image_size && a4 > 0 && a4 <= max_image_size)) {
+                        throw new Error("縦横のサイズの値が不正です。1-" + max_image_size + "の範囲で指定してください。");
                     }
                     // ***** 画面サイズ設定 *****
                     can1.width = a1;
@@ -3219,7 +3280,8 @@ var Interpreter;
                     x1 = x1 | 0; // 整数化
                     y1 = y1 | 0; // 整数化
                     // ***** エラーチェック *****
-                    if (x1 < 0 || x1 >= can.width || y1 < 0 || y1 >= can.height) { return 0; }
+                    // if (x1 < 0 || x1 >= can.width || y1 < 0 || y1 >= can.height) { return 0; }
+                    if (!(x1 >= 0 && x1 < can.width && y1 >= 0 && y1 < can.height)) { return 0; }
                     // ***** 画像データを取得 *****
                     img_data = ctx.getImageData(x1, y1, 1, 1);
                     // ***** 色情報を取得 *****
@@ -3293,6 +3355,54 @@ var Interpreter;
                     a1 = parseInt(expression(), 10);
                     match(")");
                     num = a1;
+                    return num;
+                }
+                break;
+
+            case "j":
+                if (sym == "join") {
+                    match("(");
+                    // a1 = getvarname();
+                    a1 = getvarname(2); // ポインタ対応
+                    match(","); a2 = String(expression());
+                    if (symbol[pc] == ")") {
+                        a3 = 0;
+                        a4 = null;
+                    } else {
+                        match(","); a3 = parseInt(expression(), 10);
+                        if (symbol[pc] == ")") {
+                            a4 = null;
+                        } else {
+                            match(","); a4 = parseInt(expression(), 10);
+                        }
+                    }
+                    match(")");
+
+                    // ***** NaN対策 *****
+                    a3 = a3 | 0;
+
+                    // ***** エラーチェック *****
+                    // if (a4 != null && (a4 - a3 + 1 < 1 || a4 - a3 + 1 > max_array_size)) {
+                    if (!(a4 == null || (a4 - a3 + 1 >= 1 && a4 - a3 + 1 <= max_array_size))) {
+                        throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
+                    }
+
+                    // ***** 連結処理 *****
+                    num = "";
+                    i = a3;
+                    do {
+                        // ***** 配列の存在チェック *****
+                        if (a4 == null && !vars.checkVar(a1 + "[" + i + "]")) { break; }
+
+                        if (num == "") {
+                            // num = num + vars[a1 + "[" + i + "]"];
+                            num = num + vars.getVarValue(a1 + "[" + i + "]");
+                        } else {
+                            // num = num + a2 + vars[a1 + "[" + i + "]"];
+                            num = num + a2 + vars.getVarValue(a1 + "[" + i + "]");
+                        }
+                        i++;
+                    } while (a4 == null || i <= a4);
                     return num;
                 }
                 break;
@@ -5296,16 +5406,30 @@ var Interpreter;
                     a3 = a3 | 0;
 
                     // ***** エラーチェック *****
-                    if (a2 < 0 || a3 < 0 || a2 > a3) { return true; }
+                    // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
+                    if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
+                        throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
+                    }
+
                     // ***** 描画処理 *****
-                    ctx.beginPath();
                     i = a2;
+
+                    // // ***** 配列の存在チェック *****
+                    // if (!vars.checkVar(a1 + "[" + i + "]")) { return true; }
+                    // if (!vars.checkVar(b1 + "[" + i + "]")) { return true; }
+
+                    ctx.beginPath();
                     // x0 = parseInt(vars[a1 + "[" + i + "]"], 10);
                     x0 = parseInt(vars.getVarValue(a1 + "[" + i + "]"), 10);
                     // y0 = parseInt(vars[b1 + "[" + i + "]"], 10);
                     y0 = parseInt(vars.getVarValue(b1 + "[" + i + "]"), 10);
                     ctx.moveTo(x0, y0);
                     for (i = a2 + 1; i <= a3; i++) {
+
+                        // // ***** 配列の存在チェック *****
+                        // if (!vars.checkVar(a1 + "[" + i + "]")) { break; }
+                        // if (!vars.checkVar(b1 + "[" + i + "]")) { break; }
+
                         // x1 = parseInt(vars[a1 + "[" + i + "]"], 10);
                         x1 = parseInt(vars.getVarValue(a1 + "[" + i + "]"), 10);
                         // y1 = parseInt(vars[b1 + "[" + i + "]"], 10);
@@ -5406,7 +5530,11 @@ var Interpreter;
                     a3 = a3 | 0;
 
                     // ***** エラーチェック *****
-                    if (a2 < 0 || a3 < 0 || a2 > a3) { return true; }
+                    // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
+                    if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
+                        throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
+                    }
+
                     // ***** 全ミサイルを描画 *****
                     for (mis_no in missile) {
                         if (missile.hasOwnProperty(mis_no)) {
@@ -5451,16 +5579,30 @@ var Interpreter;
                     a3 = a3 | 0;
 
                     // ***** エラーチェック *****
-                    if (a2 < 0 || a3 < 0 || a2 > a3) { return true; }
+                    // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
+                    if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
+                        throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
+                    }
+
                     // ***** 描画処理 *****
-                    ctx.beginPath();
                     i = a2;
+
+                    // // ***** 配列の存在チェック *****
+                    // if (!vars.checkVar(a1 + "[" + i + "]")) { return true; }
+                    // if (!vars.checkVar(b1 + "[" + i + "]")) { return true; }
+
+                    ctx.beginPath();
                     // x0 = parseInt(vars[a1 + "[" + i + "]"], 10);
                     x0 = parseInt(vars.getVarValue(a1 + "[" + i + "]"), 10);
                     // y0 = parseInt(vars[b1 + "[" + i + "]"], 10);
                     y0 = parseInt(vars.getVarValue(b1 + "[" + i + "]"), 10);
                     ctx.moveTo(x0, y0);
                     for (i = a2 + 1; i <= a3; i++) {
+
+                        // // ***** 配列の存在チェック *****
+                        // if (!vars.checkVar(a1 + "[" + i + "]")) { break; }
+                        // if (!vars.checkVar(b1 + "[" + i + "]")) { break; }
+
                         // x1 = parseInt(vars[a1 + "[" + i + "]"], 10);
                         x1 = parseInt(vars.getVarValue(a1 + "[" + i + "]"), 10);
                         // y1 = parseInt(vars[b1 + "[" + i + "]"], 10);
@@ -5547,8 +5689,15 @@ var Interpreter;
                     a3 = a3 | 0;
 
                     // ***** エラーチェック *****
-                    // if (a2 < 0 || a3 < 0 || a2 > a3 || a4.length == 0 || a5 <= 0) { return true; }
-                    if (a2 < 0 || a3 < 0 || a2 > a3) { return true; }
+                    // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
+                    if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
+                        throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
+                    }
+                    // if (a5 > max_str_size) {
+                    if (!(a5 <= max_str_size)) {
+                        throw new Error("処理する文字数が不正です。" + max_str_size + "以下である必要があります。");
+                    }
+
                     // ***** 作成処理 *****
                     st1 = strrepeatsub(a4, a5);
                     for (i = a2; i <= a3; i++) {
@@ -5576,10 +5725,19 @@ var Interpreter;
                     a2 = a2 | 0;
                     a3 = a3 | 0;
 
+
                     // ***** エラーチェック *****
-                    if (a2 < 0 || a3 < 0 || a2 > a3) { return true; }
+                    // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
+                    if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
+                        throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
+                    }
+
                     // ***** 描画処理 *****
                     for (i = a2; i <= a3; i++) {
+
+                        // // ***** 配列の存在チェック *****
+                        // if (!vars.checkVar(a1 + "[" + i + "]")) { break; }
+
                         // st1 = vars[a1 + "[" + i + "]"];
                         st1 = vars.getVarValue(a1 + "[" + i + "]");
 
@@ -5619,9 +5777,17 @@ var Interpreter;
                     a3 = a3 | 0;
 
                     // ***** エラーチェック *****
-                    if (a2 < 0 || a3 < 0 || a2 > a3) { return true; }
+                    // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
+                    if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
+                        throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
+                    }
+
                     // ***** 描画処理 *****
                     for (i = a2; i <= a3; i++) {
+
+                        // // ***** 配列の存在チェック *****
+                        // if (!vars.checkVar(a1 + "[" + i + "]")) { break; }
+
                         // st1 = vars[a1 + "[" + i + "]"];
                         st1 = vars.getVarValue(a1 + "[" + i + "]");
                         st1 = String(st1);
@@ -5678,8 +5844,15 @@ var Interpreter;
                     b3 = b3 | 0;
 
                     // ***** エラーチェック *****
-                    if (a2 < 0 || a3 < 0 || a2 > a3) { return true; }
-                    if (b2 < 0 || b3 < 0 || b2 > b3) { return true; }
+                    // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
+                    if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
+                        throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
+                    }
+                    // if (b3 - b2 + 1 < 1 || b3 - b2 + 1 > max_array_size) {
+                    if (!(b3 - b2 + 1 >= 1 && b3 - b2 + 1 <= max_array_size)) {
+                        throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
+                    }
+
                     // ***** 描画処理 *****
                     if (a1 == b1 && y1 < b2) { // 前から処理か後から処理か
                         i_start = b2;
@@ -5694,6 +5867,11 @@ var Interpreter;
                     i = i_start;
                     while (true) {
                         if (y1 >= a2 && y1 <= a3) {
+
+                            // // ***** 配列の存在チェック *****
+                            // if (!vars.checkVar(a1 + "[" + y1 + "]")) { break; }
+                            // if (!vars.checkVar(b1 + "[" + i + "]")) { break; }
+
                             // st1 = vars[a1 + "[" + y1 + "]"];
                             st1 = vars.getVarValue(a1 + "[" + y1 + "]");
                             st1 = String(st1);
@@ -5734,7 +5912,11 @@ var Interpreter;
                     a3 = a3 | 0;
 
                     // ***** エラーチェック *****
-                    if (a2 < 0 || a3 < 0 || a2 > a3 || a4.length == 0) { return true; }
+                    // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
+                    if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
+                        throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
+                    }
+
                     // ***** 描画処理 *****
                     // txtpsetsub(a1, a2, a3, x1, y1, a4);
                     txtovrsub(a1, a2, a3, x1, y1, a4);
@@ -5758,7 +5940,19 @@ var Interpreter;
                     a3 = a3 | 0;
 
                     // ***** エラーチェック *****
-                    if (a2 < 0 || a3 < 0 || a2 > a3 || a4.length == 0) { return true; }
+                    // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
+                    if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
+                        throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
+                    }
+                    // if (Math.abs(x2 - x1) + 1 > max_str_size) {
+                    if (!(Math.abs(x2 - x1) + 1 <= max_str_size)) {
+                        throw new Error("処理する文字数が不正です。" + max_str_size + "以下である必要があります。");
+                    }
+                    // if (Math.abs(y2 - y1) + 1 > max_str_size) {
+                    if (!(Math.abs(y2 - y1) + 1 <= max_str_size)) {
+                        throw new Error("処理する文字数が不正です。" + max_str_size + "以下である必要があります。");
+                    }
+
                     // ***** 描画処理 *****
                     if ((x2 - x1) > 0) {
                         dx1 = x2 - x1; sx1 =  1;
@@ -5821,7 +6015,19 @@ var Interpreter;
                     a3 = a3 | 0;
 
                     // ***** エラーチェック *****
-                    if (a2 < 0 || a3 < 0 || a2 > a3 || a4.length == 0) { return true; }
+                    // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
+                    if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
+                        throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
+                    }
+                    // if (Math.abs(x2 - x1) + 1 > max_str_size) {
+                    if (!(Math.abs(x2 - x1) + 1 <= max_str_size)) {
+                        throw new Error("処理する文字数が不正です。" + max_str_size + "以下である必要があります。");
+                    }
+                    // if (Math.abs(y2 - y1) + 1 > max_str_size) {
+                    if (!(Math.abs(y2 - y1) + 1 <= max_str_size)) {
+                        throw new Error("処理する文字数が不正です。" + max_str_size + "以下である必要があります。");
+                    }
+
                     // ***** 描画処理 *****
                     if (x1 > x2) { x3 = x2; x4 = x1; } else { x3 = x1; x4 = x2; }
                     if (y1 > y2) { y3 = y2; y4 = y1; } else { y3 = y1; y4 = y2; }
@@ -5852,7 +6058,19 @@ var Interpreter;
                     a3 = a3 | 0;
 
                     // ***** エラーチェック *****
-                    if (a2 < 0 || a3 < 0 || a2 > a3 || a4.length == 0) { return true; }
+                    // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
+                    if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
+                        throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
+                    }
+                    // if (Math.abs(x2 - x1) + 1 > max_str_size) {
+                    if (!(Math.abs(x2 - x1) + 1 <= max_str_size)) {
+                        throw new Error("処理する文字数が不正です。" + max_str_size + "以下である必要があります。");
+                    }
+                    // if (Math.abs(y2 - y1) + 1 > max_str_size) {
+                    if (!(Math.abs(y2 - y1) + 1 <= max_str_size)) {
+                        throw new Error("処理する文字数が不正です。" + max_str_size + "以下である必要があります。");
+                    }
+
                     // ***** 描画処理 *****
                     if (x1 > x2) { x3 = x2; x4 = x1; } else { x3 = x1; x4 = x2; }
                     if (y1 > y2) { y3 = y2; y4 = y1; } else { y3 = y1; y4 = y2; }
@@ -5881,8 +6099,16 @@ var Interpreter;
                     a3 = a3 | 0;
 
                     // ***** エラーチェック *****
-                    if (a2 < 0 || a3 < 0 || a2 > a3 || a4.length == 0) { return true; }
+                    // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
+                    if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
+                        throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
+                    }
+                    // if (r1 > max_str_size) {
+                    if (!(r1 <= max_str_size)) {
+                        throw new Error("処理する文字数が不正です。" + max_str_size + "以下である必要があります。");
+                    }
                     if (r1 < 0) { return true; }
+
                     // ***** 描画処理 *****
                     if (a < 1) { a = 1; }
                     if (b < 1) { b = 1; }
@@ -5941,8 +6167,16 @@ var Interpreter;
                     a3 = a3 | 0;
 
                     // ***** エラーチェック *****
-                    if (a2 < 0 || a3 < 0 || a2 > a3 || a4.length == 0) { return true; }
+                    // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
+                    if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
+                        throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
+                    }
+                    // if (r1 > max_str_size) {
+                    if (!(r1 <= max_str_size)) {
+                        throw new Error("処理する文字数が不正です。" + max_str_size + "以下である必要があります。");
+                    }
                     if (r1 < 0) { return true; }
+
                     // ***** 描画処理 *****
                     if (a < 1) { a = 1; }
                     if (b < 1) { b = 1; }
@@ -5979,6 +6213,7 @@ var Interpreter;
         var st1;
         var x1, y1, x2, y2, x3, y3, x4, y4;
         var w1, h1, w2, h2;
+        var dr, di, mr, mi, cr, ci, tr, ti, zr, zi, rep, norm2;
         var char_flag;
 
         var mis, mis_no;
@@ -6036,6 +6271,38 @@ var Interpreter;
                 break;
 
             case "c":
+                if (sym == "calcfrac") {
+                    match("("); x1 = parseFloat(expression());
+                    match(","); y1 = parseFloat(expression());
+                    match(","); dr = parseFloat(expression());
+                    match(","); di = parseFloat(expression());
+                    match(","); mr = parseFloat(expression());
+                    match(","); mi = parseFloat(expression());
+                    match(","); cr = parseFloat(expression());
+                    match(","); ci = parseFloat(expression());
+                    if (symbol[pc] == ")") {
+                        rep = 50;
+                        norm2 = 4;
+                    } else {
+                        match(","); rep = parseInt(expression(), 10);
+                        if (symbol[pc] == ")") {
+                            norm2 = 4;
+                        } else {
+                            match(","); norm2 = parseFloat(expression());
+                        }
+                    }
+                    match(")");
+                    tr = x1 * dr + mr;
+                    ti = y1 * di + mi;
+                    for (num = 0; num < rep; num++) {
+                        zr = tr * tr - ti * ti + cr;
+                        zi = 2 * tr * ti       + ci;
+                        if (zr * zr + zi * zi > norm2) { break; }
+                        tr = zr;
+                        ti = zi;
+                    }
+                    return num;
+                }
                 if (sym == "charcode") {
                     match("("); a1 = String(expression());
                     if (symbol[pc] == ")") {
@@ -6150,6 +6417,13 @@ var Interpreter;
                     match("("); a1 = String(expression());
                     match(","); a2 = parseInt(expression(), 10);
                     match(")");
+
+                    // ***** エラーチェック *****
+                    // if (a2 > max_str_size) {
+                    if (!(a2 <= max_str_size)) {
+                        throw new Error("処理する文字数が不正です。" + max_str_size + "以下である必要があります。");
+                    }
+
                     num = strrepeatsub(a1, a2);
                     return num;
                 }
@@ -6264,13 +6538,30 @@ var Interpreter;
                     a3 = a3 | 0;
 
                     // ***** エラーチェック *****
-                    if (a2 < 0 || a3 < 0 || a2 > a3 || a4.length == 0) { return 0; }
+                    // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
+                    if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
+                        throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
+                    }
+                    // if (Math.abs(x2 - x1) + 1 > max_str_size) {
+                    if (!(Math.abs(x2 - x1) + 1 <= max_str_size)) {
+                        throw new Error("処理する文字数が不正です。" + max_str_size + "以下である必要があります。");
+                    }
+                    // if (Math.abs(y2 - y1) + 1 > max_str_size) {
+                    if (!(Math.abs(y2 - y1) + 1 <= max_str_size)) {
+                        throw new Error("処理する文字数が不正です。" + max_str_size + "以下である必要があります。");
+                    }
+                    if (a4.length == 0) { return 0; }
+
                     // ***** 取得処理 *****
                     if (x1 > x2) { x3 = x2; x4 = x1; } else { x3 = x1; x4 = x2; }
                     if (y1 > y2) { y3 = y2; y4 = y1; } else { y3 = y1; y4 = y2; }
                     num = 0;
                     for (i = y3; i <= y4; i++) {
                         if (i >= a2 && i <= a3) {
+
+                            // ***** 配列の存在チェック *****
+                            if (!vars.checkVar(a1 + "[" + i + "]")) { continue; }
+
                             // st1 = vars[a1 + "[" + i + "]"];
                             st1 = vars.getVarValue(a1 + "[" + i + "]");
                             st1 = String(st1);
@@ -6299,10 +6590,18 @@ var Interpreter;
                     a3 = a3 | 0;
 
                     // ***** エラーチェック *****
-                    if (a2 < 0 || a3 < 0 || a2 > a3) { return ""; }
+                    // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
+                    if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
+                        throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
+                    }
+
                     // ***** 取得処理 *****
                     num = "";
                     if (y1 >= a2 && y1 <= a3) {
+
+                        // ***** 配列の存在チェック *****
+                        if (!vars.checkVar(a1 + "[" + y1 + "]")) { return ""; }
+
                         // st1 = vars[a1 + "[" + y1 + "]"];
                         st1 = vars.getVarValue(a1 + "[" + y1 + "]");
                         st1 = String(st1);
@@ -6324,7 +6623,7 @@ var Interpreter;
 
 
     // ***** 文字列配列の点設定処理サブ *****
-    function txtpsetsub(var_name, min_y, max_y, x, y, ch){
+    function txtpsetsub(var_name, min_y, max_y, x, y, ch) {
         var st1;
 
         // ***** エラーチェック *****
@@ -6332,6 +6631,10 @@ var Interpreter;
         if (ch.length > 1) { ch = ch.substring(0, 1); }
         // ***** 点設定処理 *****
         if (y >= min_y && y <= max_y) {
+
+            // // ***** 配列の存在チェック *****
+            // if (!vars.checkVar(var_name + "[" + y + "]")) { return; }
+
             // st1 = vars[var_name + "[" + y + "]"];
             st1 = vars.getVarValue(var_name + "[" + y + "]");
             st1 = String(st1);
@@ -6343,11 +6646,15 @@ var Interpreter;
         }
     }
     // ***** 文字列配列の上書き処理サブ *****
-    function txtovrsub(var_name, min_y, max_y, x, y, st2){
+    function txtovrsub(var_name, min_y, max_y, x, y, st2) {
         var st1;
 
         // ***** 上書き処理 *****
         if (y >= min_y && y <= max_y) {
+
+            // // ***** 配列の存在チェック *****
+            // if (!vars.checkVar(var_name + "[" + y + "]")) { return; }
+
             // st1 = vars[var_name + "[" + y + "]"];
             st1 = vars.getVarValue(var_name + "[" + y + "]");
             st1 = String(st1);
@@ -6357,7 +6664,7 @@ var Interpreter;
         }
     }
     // ***** 文字列の繰り返し関数サブ *****
-    function strrepeatsub(st1, count){
+    function strrepeatsub(st1, count) {
         var ret_st;
 
         // ***** 戻り値の初期化 *****
@@ -6448,614 +6755,6 @@ var Interpreter;
     }
 
 
-    // ***** 文字列の全角半角変換用クラス(staticクラス) *****
-    var ConvZenHan = (function () {
-        // ***** コンストラクタ *****
-        // ***** (staticなクラスなので未使用) *****
-        function ConvZenHan() { }
-        // ***** 全角に変換する(staticメソッド) *****
-        // ***** (staticなメソッドなのでprototype未使用) *****
-        // ConvZenHan.prototype.toZenkaku = function(st1, mode1) {
-        ConvZenHan.toZenkaku = function(st1, mode1) {
-            var st2;
-            var mode2;
-            // ***** 引数をコピー *****
-            st2 = st1;
-            if (mode1 == "") { mode2 = "anpskd"; } else { mode2 = mode1; }
-            // ***** アルファベットを全角に変換 *****
-            if (mode2.indexOf("a") >= 0) {
-                st2 = st2.replace(/[\u0041-\u005A]|[\u0061-\u007A]/g,
-                    function (c) {
-                        if (!ConvZenHan.alphaToZenkaku.hasOwnProperty(c)) { return c; }
-                        return ConvZenHan.alphaToZenkaku[c];
-                    }
-                );
-            }
-            // ***** 数字を全角に変換 *****
-            if (mode2.indexOf("n") >= 0) {
-                st2 = st2.replace(/[\u0030-\u0039]/g,
-                    function (c) {
-                        if (!ConvZenHan.numberToZenkaku.hasOwnProperty(c)) { return c; }
-                        return ConvZenHan.numberToZenkaku[c];
-                    }
-                );
-            }
-            // ***** 記号を全角に変換 *****
-            if (mode2.indexOf("p") >= 0) {
-                st2 = st2.replace(/[\u0021-\u007E]|[\uFF61-\uFF64]|[\u00A2-\u00A5]/g,
-                    function (c) {
-                        if (!ConvZenHan.punctuationToZenkaku.hasOwnProperty(c)) { return c; }
-                        return ConvZenHan.punctuationToZenkaku[c];
-                    }
-                );
-            }
-            // ***** スペースを全角に変換 *****
-            if (mode2.indexOf("s") >= 0) {
-                st2 = st2.replace(/ /g,
-                    function (c) {
-                        if (!ConvZenHan.spaceToZenkaku.hasOwnProperty(c)) { return c; }
-                        return ConvZenHan.spaceToZenkaku[c];
-                    }
-                );
-            }
-
-            // ***** カタカナを全角に変換 *****
-            if (mode2.indexOf("k") >= 0 || mode2.indexOf("h") >= 0) {
-                st2 = st2.replace(/[\uFF65-\uFF9D][ﾞﾟ]?/g,
-                    function (c) {
-                        if (!ConvZenHan.katakanaToZenkaku.hasOwnProperty(c)) { return c; }
-                        return ConvZenHan.katakanaToZenkaku[c];
-                    }
-                );
-            }
-            // ***** カタカナ(全角)をひらがなに変換 *****
-            if (mode2.indexOf("h") >= 0) {
-                st2 = st2.replace(/[\u30A1-\u30FC]/g,
-                    function (c) {
-                        if (!ConvZenHan.KatakanaToHiragana.hasOwnProperty(c)) { return c; }
-                        return ConvZenHan.KatakanaToHiragana[c];
-                    }
-                );
-            }
-            // ***** ひらがなをカタカナ(全角)に変換 *****
-            if (mode2.indexOf("t") >= 0) {
-                st2 = st2.replace(/[\u3041-\u3094]/g,
-                    function (c) {
-                        if (!ConvZenHan.HiraganaToKatakana.hasOwnProperty(c)) { return c; }
-                        return ConvZenHan.HiraganaToKatakana[c];
-                    }
-                );
-            }
-
-            // ***** 濁点を結合 *****
-            if (mode2.indexOf("m") >= 0) {
-                st2 = st2.replace(/[\u30A1-\u30FC][ﾞﾟ゛゜]?|[\u3041-\u3094][ﾞﾟ゛゜]?/g,
-                    function (c) {
-                        if (!ConvZenHan.DakutenMarge.hasOwnProperty(c)) { return c; }
-                        return ConvZenHan.DakutenMarge[c];
-                    }
-                );
-            }
-            // ***** 濁点を分離 *****
-            if (mode2.indexOf("v") >= 0) {
-                st2 = st2.replace(/[\u30A1-\u30FC]|[\u3041-\u3094]/g,
-                    function (c) {
-                        if (!ConvZenHan.DakutenSplit.hasOwnProperty(c)) { return c; }
-                        return ConvZenHan.DakutenSplit[c];
-                    }
-                );
-            }
-            // ***** 濁点を全角に変換 *****
-            if (mode2.indexOf("d") >= 0) {
-                st2 = st2.replace(/[ﾞﾟ]/g,
-                    function (c) {
-                        if (!ConvZenHan.DakutenToZenkaku.hasOwnProperty(c)) { return c; }
-                        return ConvZenHan.DakutenToZenkaku[c];
-                    }
-                );
-            }
-            // ***** 戻り値を返す *****
-            return st2;
-        };
-        // ***** 半角に変換する(staticメソッド) *****
-        ConvZenHan.toHankaku = function(st1, mode1) {
-            var st2;
-            var mode2;
-            // ***** 引数をコピー *****
-            st2 = st1;
-            if (mode1 == "") { mode2 = "anpskd"; } else { mode2 = mode1; }
-            // ***** アルファベットを半角に変換 *****
-            if (mode2.indexOf("a") >= 0) {
-                st2 = st2.replace(/[\uFF21-\uFF3A]|[\uFF41-\uFF5A]/g,
-                    function (c) {
-                        if (!ConvZenHan.alphaToHankaku.hasOwnProperty(c)) { return c; }
-                        return ConvZenHan.alphaToHankaku[c];
-                    }
-                );
-            }
-            // ***** 数字を半角に変換 *****
-            if (mode2.indexOf("n") >= 0) {
-                st2 = st2.replace(/[\uFF10-\uFF19]/g,
-                    function (c) {
-                        if (!ConvZenHan.numberToHankaku.hasOwnProperty(c)) { return c; }
-                        return ConvZenHan.numberToHankaku[c];
-                    }
-                );
-            }
-            // ***** 記号を半角に変換 *****
-            if (mode2.indexOf("p") >= 0) {
-                st2 = st2.replace(/[\uFF01-\uFF5E]|[\u3001-\u300D]|[\uFFE0-\uFFE5]/g,
-                    function (c) {
-                        if (!ConvZenHan.punctuationToHankaku.hasOwnProperty(c)) { return c; }
-                        return ConvZenHan.punctuationToHankaku[c];
-                    }
-                );
-            }
-            // ***** スペースを半角に変換 *****
-            if (mode2.indexOf("s") >= 0) {
-                st2 = st2.replace(/[\u3000]/g,
-                    function (c) {
-                        if (!ConvZenHan.spaceToHankaku.hasOwnProperty(c)) { return c; }
-                        return ConvZenHan.spaceToHankaku[c];
-                    }
-                );
-            }
-
-            // ***** ひらがなをカタカナ(全角)に変換 *****
-            if (mode2.indexOf("t") >= 0) {
-                st2 = st2.replace(/[\u3041-\u3094]/g,
-                    function (c) {
-                        if (!ConvZenHan.HiraganaToKatakana.hasOwnProperty(c)) { return c; }
-                        return ConvZenHan.HiraganaToKatakana[c];
-                    }
-                );
-            }
-            // ***** カタカナを半角に変換 *****
-            if (mode2.indexOf("k") >= 0 || mode2.indexOf("t") >= 0) {
-                st2 = st2.replace(/[\u30A1-\u30FC]/g,
-                    function (c) {
-                        if (!ConvZenHan.katakanaToHankaku.hasOwnProperty(c)) { return c; }
-                        return ConvZenHan.katakanaToHankaku[c];
-                    }
-                );
-            }
-
-            // ***** 濁点を分離 *****
-            if (mode2.indexOf("v") >= 0) {
-                st2 = st2.replace(/[\u30A1-\u30FC]|[\u3041-\u3094]/g,
-                    function (c) {
-                        if (!ConvZenHan.DakutenSplit.hasOwnProperty(c)) { return c; }
-                        return ConvZenHan.DakutenSplit[c];
-                    }
-                );
-            }
-            // ***** 濁点を半角に変換 *****
-            if (mode2.indexOf("d") >= 0) {
-                st2 = st2.replace(/[゛゜]/g,
-                    function (c) {
-                        if (!ConvZenHan.DakutenToHankaku.hasOwnProperty(c)) { return c; }
-                        return ConvZenHan.DakutenToHankaku[c];
-                    }
-                );
-            }
-            // ***** 戻り値を返す *****
-            return st2;
-        };
-
-        // ***** 以下は内部処理用 *****
-
-        // ***** 変換テーブル生成(内部処理用)(staticメソッド) *****
-        ConvZenHan.makeTable = function() {
-            var i;
-            var han, zen;
-            var ch, cz, cz2;
-            // alert("ConvZenHan.makeTable:-:実行されました。");
-            // ***** アルファベット *****
-            ConvZenHan.alphaToZenkaku = {};
-            ConvZenHan.alphaToHankaku = {};
-            for (i = 0x41; i <= 0x5A; i++) { // 「A」～「Z」
-                ConvZenHan.alphaToZenkaku[String.fromCharCode(i)] = String.fromCharCode(i + 0xFEE0);
-                ConvZenHan.alphaToHankaku[String.fromCharCode(i + 0xFEE0)] = String.fromCharCode(i);
-            }
-            for (i = 0x61; i <= 0x7A; i++) { // 「a」～「z」
-                ConvZenHan.alphaToZenkaku[String.fromCharCode(i)] = String.fromCharCode(i + 0xFEE0);
-                ConvZenHan.alphaToHankaku[String.fromCharCode(i + 0xFEE0)] = String.fromCharCode(i);
-            }
-            // ***** 数字 *****
-            ConvZenHan.numberToZenkaku = {};
-            ConvZenHan.numberToHankaku = {};
-            for (i = 0x30; i <= 0x39; i++) { // 「0」～「9」
-                ConvZenHan.numberToZenkaku[String.fromCharCode(i)] = String.fromCharCode(i + 0xFEE0);
-                ConvZenHan.numberToHankaku[String.fromCharCode(i + 0xFEE0)] = String.fromCharCode(i);
-            }
-            // ***** 記号 *****
-            ConvZenHan.punctuationToZenkaku = {};
-            ConvZenHan.punctuationToHankaku = {};
-            for (i = 0x21; i <= 0x2F; i++) { // 「!」～「/」
-                ConvZenHan.punctuationToZenkaku[String.fromCharCode(i)] = String.fromCharCode(i + 0xFEE0);
-                ConvZenHan.punctuationToHankaku[String.fromCharCode(i + 0xFEE0)] = String.fromCharCode(i);
-            }
-            for (i = 0x3A; i <= 0x40; i++) { // 「:」～「@」
-                ConvZenHan.punctuationToZenkaku[String.fromCharCode(i)] = String.fromCharCode(i + 0xFEE0);
-                ConvZenHan.punctuationToHankaku[String.fromCharCode(i + 0xFEE0)] = String.fromCharCode(i);
-            }
-            for (i = 0x5B; i <= 0x60; i++) { // 「[」～「`」
-                ConvZenHan.punctuationToZenkaku[String.fromCharCode(i)] = String.fromCharCode(i + 0xFEE0);
-                ConvZenHan.punctuationToHankaku[String.fromCharCode(i + 0xFEE0)] = String.fromCharCode(i);
-            }
-            for (i = 0x7B; i <= 0x7E; i++) { // 「{」～「~」
-                ConvZenHan.punctuationToZenkaku[String.fromCharCode(i)] = String.fromCharCode(i + 0xFEE0);
-                ConvZenHan.punctuationToHankaku[String.fromCharCode(i + 0xFEE0)] = String.fromCharCode(i);
-            }
-            ConvZenHan.punctuationToZenkaku["\uFF61"] = "。"; // 「。」の文字コードは \u3002
-            ConvZenHan.punctuationToZenkaku["\uFF62"] = "「"; // 「「」の文字コードは \u300C
-            ConvZenHan.punctuationToZenkaku["\uFF63"] = "」"; // 「」」の文字コードは \u300D
-            ConvZenHan.punctuationToZenkaku["\uFF64"] = "、"; // 「、」の文字コードは \u3001
-            ConvZenHan.punctuationToZenkaku["\u00A2"] = "￠"; // 「￠」の文字コードは \uFFE0
-            ConvZenHan.punctuationToZenkaku["\u00A3"] = "￡"; // 「￡」の文字コードは \uFFE1
-            ConvZenHan.punctuationToZenkaku["\u00A5"] = "￥"; // 「￥」の文字コードは \uFFE5
-            ConvZenHan.punctuationToHankaku["。"] = "\uFF61";
-            ConvZenHan.punctuationToHankaku["「"] = "\uFF62";
-            ConvZenHan.punctuationToHankaku["」"] = "\uFF63";
-            ConvZenHan.punctuationToHankaku["、"] = "\uFF64";
-            ConvZenHan.punctuationToHankaku["￠"] = "\u00A2";
-            ConvZenHan.punctuationToHankaku["￡"] = "\u00A3";
-            ConvZenHan.punctuationToHankaku["￥"] = "\u00A5";
-            // ***** スペース *****
-            ConvZenHan.spaceToZenkaku = {};
-            ConvZenHan.spaceToHankaku = {};
-            han = " ";      // 半角スペース (\u0020)
-            zen = "\u3000"; // 全角スペース (\u3000)
-            for (i = 0; i < han.length; i++) {
-                ConvZenHan.spaceToZenkaku[han.charAt(i)] = zen.charAt(i);
-                ConvZenHan.spaceToHankaku[zen.charAt(i)] = han.charAt(i);
-            }
-            // ***** カタカナ *****
-            ConvZenHan.katakanaToZenkaku = {};
-            ConvZenHan.katakanaToHankaku = {};
-            han = "ｱｲｳｴｵｧｨｩｪｫｶｷｸｹｺｻｼｽｾｿﾀﾁﾂｯﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔｬﾕｭﾖｮﾗﾘﾙﾚﾛﾜｦﾝｰ･";
-            zen = "アイウエオァィゥェォカキクケコサシスセソタチツッテトナニヌネノハヒフヘホマミムメモヤャユュヨョラリルレロワヲンー・";
-            for (i = 0; i < han.length; i++) {
-                ch = han.charAt(i);
-                cz = zen.charAt(i);
-                ConvZenHan.katakanaToZenkaku[ch] = cz;
-                ConvZenHan.katakanaToHankaku[cz] = ch;
-                if (cz.match(/[カキクケコサシスセソタチツテトハヒフヘホ]/)) {
-                    ConvZenHan.katakanaToZenkaku[ch + "ﾞ"] = String.fromCharCode(cz.charCodeAt(0) + 1);
-                    ConvZenHan.katakanaToHankaku[String.fromCharCode(cz.charCodeAt(0) + 1)] = ch + "ﾞ";
-                } else {
-                    ConvZenHan.katakanaToZenkaku[ch + "ﾞ"] = cz + "ﾞ";   // その他の濁点はそのまま
-                }
-                if (cz.match(/[ハヒフヘホ]/)) {
-                    ConvZenHan.katakanaToZenkaku[ch + "ﾟ"] = String.fromCharCode(cz.charCodeAt(0) + 2);
-                    ConvZenHan.katakanaToHankaku[String.fromCharCode(cz.charCodeAt(0) + 2)] = ch + "ﾟ";
-                } else {
-                    ConvZenHan.katakanaToZenkaku[ch + "ﾟ"] = cz + "ﾟ";   // その他の半濁点はそのまま
-                }
-            }
-            ConvZenHan.katakanaToZenkaku["ｳﾞ"] = "\u30F4";
-            ConvZenHan.katakanaToZenkaku["ﾜﾞ"] = "\u30F7";
-            ConvZenHan.katakanaToZenkaku["ｦﾞ"] = "\u30FA";
-            ConvZenHan.katakanaToHankaku["\u30F4"] = "ｳﾞ";
-            ConvZenHan.katakanaToHankaku["\u30F7"] = "ﾜﾞ";
-            ConvZenHan.katakanaToHankaku["\u30FA"] = "ｦﾞ";
-            // ***** ひらがなとカタカナ *****
-            ConvZenHan.HiraganaToKatakana = {};
-            ConvZenHan.KatakanaToHiragana = {};
-            for (i = 0x3041; i <= 0x3094; i++) { // 「あ」の小文字 ～ 「う」の濁点
-                ConvZenHan.HiraganaToKatakana[String.fromCharCode(i)] = String.fromCharCode(i + 0x60);
-                ConvZenHan.KatakanaToHiragana[String.fromCharCode(i + 0x60)] = String.fromCharCode(i);
-            }
-            // ***** 濁点と半濁点 *****
-            ConvZenHan.DakutenToZenkaku = {};
-            ConvZenHan.DakutenToHankaku = {};
-            han = "ﾞﾟ";
-            zen = "゛゜";
-            for (i = 0; i < han.length; i++) {
-                ConvZenHan.DakutenToZenkaku[han.charAt(i)] = zen.charAt(i);
-                ConvZenHan.DakutenToHankaku[zen.charAt(i)] = han.charAt(i);
-            }
-            ConvZenHan.DakutenSplit = {};
-            ConvZenHan.DakutenMarge = {};
-            han = "ｱｲｳｴｵｧｨｩｪｫｶｷｸｹｺｻｼｽｾｿﾀﾁﾂｯﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔｬﾕｭﾖｮﾗﾘﾙﾚﾛﾜｦﾝｰ･";
-            zen = "アイウエオァィゥェォカキクケコサシスセソタチツッテトナニヌネノハヒフヘホマミムメモヤャユュヨョラリルレロワヲンー・";
-            for (i = 0; i < han.length; i++) {
-                ch = han.charAt(i);
-                cz = zen.charAt(i);
-                cz2 = String.fromCharCode(cz.charCodeAt(0) - 0x60); // ひらがな
-                if (cz.match(/[カキクケコサシスセソタチツテトハヒフヘホ]/)) {
-                    ConvZenHan.DakutenSplit[String.fromCharCode(cz.charCodeAt(0) + 1)] = cz + "ﾞ";
-                    ConvZenHan.DakutenSplit[String.fromCharCode(cz2.charCodeAt(0) + 1)] = cz2 + "ﾞ";
-                    ConvZenHan.DakutenMarge[cz + "ﾞ"] = String.fromCharCode(cz.charCodeAt(0) + 1);
-                    ConvZenHan.DakutenMarge[cz2 + "ﾞ"] = String.fromCharCode(cz2.charCodeAt(0) + 1);
-                    ConvZenHan.DakutenMarge[cz + "゛"] = String.fromCharCode(cz.charCodeAt(0) + 1);
-                    ConvZenHan.DakutenMarge[cz2 + "゛"] = String.fromCharCode(cz2.charCodeAt(0) + 1);
-                }
-                if (cz.match(/[ハヒフヘホ]/)) {
-                    ConvZenHan.DakutenSplit[String.fromCharCode(cz.charCodeAt(0) + 2)] = cz + "ﾟ";
-                    ConvZenHan.DakutenSplit[String.fromCharCode(cz2.charCodeAt(0) + 2)] = cz2 + "ﾟ";
-                    ConvZenHan.DakutenMarge[cz + "ﾟ"] = String.fromCharCode(cz.charCodeAt(0) + 2);
-                    ConvZenHan.DakutenMarge[cz2 + "ﾟ"] = String.fromCharCode(cz2.charCodeAt(0) + 2);
-                    ConvZenHan.DakutenMarge[cz + "゜"] = String.fromCharCode(cz.charCodeAt(0) + 2);
-                    ConvZenHan.DakutenMarge[cz2 + "゜"] = String.fromCharCode(cz2.charCodeAt(0) + 2);
-                }
-            }
-            ConvZenHan.DakutenSplit["\u30F4"] = "ウﾞ";
-            ConvZenHan.DakutenSplit["\u30F7"] = "ワﾞ";
-            ConvZenHan.DakutenSplit["\u30F8"] = "ヰﾞ";
-            ConvZenHan.DakutenSplit["\u30F9"] = "ヱﾞ";
-            ConvZenHan.DakutenSplit["\u30FA"] = "ヲﾞ";
-            ConvZenHan.DakutenSplit["\u3094"] = "うﾞ";
-            ConvZenHan.DakutenMarge["ウﾞ"] = "\u30F4";
-            ConvZenHan.DakutenMarge["ワﾞ"] = "\u30F7";
-            ConvZenHan.DakutenMarge["ヰﾞ"] = "\u30F8";
-            ConvZenHan.DakutenMarge["ヱﾞ"] = "\u30F9";
-            ConvZenHan.DakutenMarge["ヲﾞ"] = "\u30FA";
-            ConvZenHan.DakutenMarge["うﾞ"] = "\u3094";
-            ConvZenHan.DakutenMarge["ウ゛"] = "\u30F4";
-            ConvZenHan.DakutenMarge["ワ゛"] = "\u30F7";
-            ConvZenHan.DakutenMarge["ヰ゛"] = "\u30F8";
-            ConvZenHan.DakutenMarge["ヱ゛"] = "\u30F9";
-            ConvZenHan.DakutenMarge["ヲ゛"] = "\u30FA";
-            ConvZenHan.DakutenMarge["う゛"] = "\u3094";
-        };
-
-        // ***** 変換テーブルをここで1回だけ生成 *****
-        ConvZenHan.makeTable();
-
-        return ConvZenHan; // これがないとクラスが動かないので注意
-    })();
-
-
-    // ***** 領域塗りつぶし用クラス *****
-    var FloodFill = (function () {
-        // ***** コンストラクタ *****
-        function FloodFill(can, ctx, x, y, threshold, paint_mode, bound_col, bound_alpha) {
-            // ***** 初期化 *****
-            this.can = can;               // Canvas要素
-            this.ctx = ctx;               // Canvasのコンテキスト
-            this.width = can.width;       // Canvasの幅(px)
-            this.height = can.height;     // Canvasの高さ(px)
-            this.x = x | 0;               // 塗りつぶし開始座標X(px)
-            this.y = y | 0;               // 塗りつぶし開始座標Y(px)
-            this.threshold = threshold;   // 同色と判定するしきい値(0-255)
-            this.paint_mode = paint_mode; // 塗りつぶしモード(=0:同一色領域, =1:境界色指定)
-            this.paint_col = {};          // 塗りつぶされる色(オブジェクト)
-            this.paint_col.r = 0;         // 塗りつぶされる色 R
-            this.paint_col.g = 0;         // 塗りつぶされる色 G
-            this.paint_col.b = 0;         // 塗りつぶされる色 B
-            this.paint_col.a = 0;         // 塗りつぶされる色 alpha
-            this.bound_col = {};                             // 境界色(オブジェクト)
-            this.bound_col.r = (bound_col & 0xff0000) >> 16; // 境界色 R
-            this.bound_col.g = (bound_col & 0x00ff00) >> 8;  // 境界色 G
-            this.bound_col.b = (bound_col & 0x0000ff);       // 境界色 B
-            this.bound_col.a = bound_alpha;                  // 境界色 alpha
-            this.seed_buf = [];           // シードバッファ(配列)
-            this.img_data = {};           // 画像データ(オブジェクト)
-        }
-        // ***** 点の色を取得(内部処理用) *****
-        FloodFill.prototype.getPixel = function(x, y) {
-            var ret_col = {};
-
-            // ***** 戻り値の初期化 *****
-            ret_col.r = 0;
-            ret_col.g = 0;
-            ret_col.b = 0;
-            ret_col.a = 0;
-            // ***** エラーチェック *****
-            if (x < 0 || x >= this.width)  { return ret_col; }
-            if (y < 0 || y >= this.height) { return ret_col; }
-            // ***** 点の色を取得 *****
-            ret_col.r = this.img_data.data[(x + y * this.width) * 4];
-            ret_col.g = this.img_data.data[(x + y * this.width) * 4 + 1];
-            ret_col.b = this.img_data.data[(x + y * this.width) * 4 + 2];
-            ret_col.a = this.img_data.data[(x + y * this.width) * 4 + 3];
-            // ***** 戻り値を返す *****
-            return ret_col;
-        };
-        // ***** 境界色のチェック(内部処理用) *****
-        FloodFill.prototype.checkColor = function(x, y) {
-            var ret;
-            var diff2;
-            var pixel_col;
-
-            // ***** 戻り値の初期化 *****
-            ret = false;
-            // ***** エラーチェック *****
-            if (x < 0 || x >= this.width)  { return ret; }
-            if (y < 0 || y >= this.height) { return ret; }
-            // ***** 色の比較 *****
-            pixel_col = this.getPixel(x, y);
-            if (this.paint_mode == 0) {
-                diff2 = (this.paint_col.r - pixel_col.r) * (this.paint_col.r - pixel_col.r) +
-                        (this.paint_col.g - pixel_col.g) * (this.paint_col.g - pixel_col.g) +
-                        (this.paint_col.b - pixel_col.b) * (this.paint_col.b - pixel_col.b) +
-                        (this.paint_col.a - pixel_col.a) * (this.paint_col.a - pixel_col.a);
-            } else {
-                diff2 = (this.bound_col.r - pixel_col.r) * (this.bound_col.r - pixel_col.r) +
-                        (this.bound_col.g - pixel_col.g) * (this.bound_col.g - pixel_col.g) +
-                        (this.bound_col.b - pixel_col.b) * (this.bound_col.b - pixel_col.b) +
-                        (this.bound_col.a - pixel_col.a) * (this.bound_col.a - pixel_col.a);
-            }
-            if (diff2 <= this.threshold * this.threshold * 4) { ret = true; } // 4倍してスケールを合わせる
-            // ***** 戻り値を返す *****
-            if (this.paint_mode != 0) {
-                ret = !ret;
-            }
-            return ret;
-        };
-        // ***** 線分をスキャンしてシードを登録(内部処理用) *****
-        FloodFill.prototype.scanLine = function(x1, x2, y, y_from) {
-            var x, x1_tmp;
-            var seed_info = {};
-
-            // ***** 線分をスキャン *****
-            x = x1;
-            while (x <= x2) {
-                // ***** 非領域色をスキップ *****
-                while (x <= x2) {
-                    if (this.checkColor(x, y)) { break; }
-                    x++;
-                }
-                if (x > x2) { break; }
-                x1_tmp = x;
-                // ***** 領域色をスキャン *****
-                while (x <= x2) {
-                    if (!this.checkColor(x, y)) { break; }
-                    x++;
-                }
-                // ***** シードを登録 *****
-                seed_info = {};
-                seed_info.x1 = x1_tmp;     // 左端座標X1
-                seed_info.x2 = x - 1;      // 右端座標X2
-                seed_info.y = y;           // 水平座標Y
-                seed_info.y_from = y_from; // 親シードの水平座標Y_From
-                this.seed_buf.push(seed_info);
-            }
-        };
-        // ***** 塗りつぶし処理 *****
-        FloodFill.prototype.fill = function() {
-            var i;
-            var x, y;
-            var x1, x2;
-            var seed_info = {};
-            var filled_buf = [];
-
-            // ***** エラーチェック *****
-            if (this.x < 0 || this.x >= this.width)  { return false; }
-            if (this.y < 0 || this.y >= this.height) { return false; }
-            // ***** 画像データを取得 *****
-            this.img_data = this.ctx.getImageData(0, 0, this.width, this.height);
-            // ***** 塗りつぶされる色を取得 *****
-            this.paint_col = this.getPixel(this.x, this.y);
-            // ***** 塗りつぶし済みチェック用のバッファを生成 *****
-            filled_buf = [];
-            for (i = 0; i < this.width * this.height; i++) {
-                filled_buf[i] = 0;
-            }
-            // ***** 開始点をシード登録 *****
-            seed_info = {};
-            seed_info.x1 = this.x;     // 左端座標X1
-            seed_info.x2 = this.x;     // 右端座標X2
-            seed_info.y = this.y;      // 水平座標Y
-            seed_info.y_from = this.y; // 親シードの水平座標Y_From
-            this.seed_buf.push(seed_info);
-            // ***** シードがなくなるまでループ *****
-            while (this.seed_buf.length > 0) {
-                // ***** シードを1個取り出す *****
-                seed_info = this.seed_buf.shift();
-                x = seed_info.x1;
-                y = seed_info.y;
-                // ***** 塗りつぶし済みならば処理をしない *****
-                if (filled_buf[x + y * this.width] == 1) { continue; }
-                // ***** 左方向の境界を探す *****
-                x1 = seed_info.x1;
-                while (x1 > 0) {
-                    if (!this.checkColor(x1 - 1, y)) { break; }
-                    x1--;
-                }
-                // ***** 右方向の境界を探す *****
-                x2 = seed_info.x2;
-                while (x2 < this.width - 1) {
-                    if (!this.checkColor(x2 + 1, y)) { break; }
-                    x2++;
-                }
-                // ***** 線分を描画して、塗りつぶし済みチェック用のバッファを更新 *****
-                this.ctx.fillRect(x1, y, x2 - x1 + 1, 1);
-                for (x = x1; x <= x2; x++) {
-                    filled_buf[x + y * this.width] = 1;
-                }
-                // ***** 1つ上の線分をスキャン *****
-                if (y - 1 >= 0) {
-                    if (y - 1 == seed_info.y_from) {
-                        if (seed_info.x1 >= 0 && x1 < seed_info.x1) {
-                            this.scanLine(x1, seed_info.x1 - 1, y - 1, y); 
-                        }
-                        if (seed_info.x2 < this.width && seed_info.x2 < x2) {
-                            this.scanLine(seed_info.x2 + 1, x2, y - 1, y);
-                        }
-                    } else {
-                        this.scanLine(x1, x2, y - 1, y);
-                    }
-                }
-                // ***** 1つ下の線分をスキャン *****
-                if (y + 1 < this.height) {
-                    if (y + 1 == seed_info.y_from) {
-                        if (seed_info.x1 >= 0 && x1 < seed_info.x1) {
-                            this.scanLine(x1, seed_info.x1 - 1, y + 1, y); 
-                        }
-                        if (seed_info.x2 < this.width && seed_info.x2 < x2) {
-                            this.scanLine(seed_info.x2 + 1, x2, y + 1, y);
-                        }
-                    } else {
-                        this.scanLine(x1, x2, y + 1, y);
-                    }
-                }
-            }
-            return true;
-        };
-        return FloodFill; // これがないとクラスが動かないので注意
-    })();
-
-
-    // ***** ミサイル用クラス *****
-    var Missile = (function () {
-        // ***** コンストラクタ *****
-        function Missile(no, useflag, x100, y100, degree, speed100, ch, 
-            min_x, max_x, min_y, max_y, div_x, div_y,
-            useflag_var_name, x100_var_name, y100_var_name,
-            degree_var_name, speed100_var_name, ch_var_name) {
-            // ***** 初期化 *****
-            this.no = no;                               // ミサイル番号
-            this.useflag = useflag;                     // 有効フラグ
-            this.x100 = x100;                           // 座標x(文字で数える)の100倍の値
-            this.y100 = y100;                           // 座標y(文字で数える)の100倍の値
-            this.degree = degree;                       // 角度(0-360)
-            this.speed100 = speed100;                   // 速度の100倍の値
-            this.ch = ch;                               // 表示する文字列
-            this.min_x = min_x;                         // xの最小値
-            this.max_x = max_x;                         // xの最大値
-            this.min_y = min_y;                         // yの最小値
-            this.max_y = max_y;                         // yの最大値
-            this.div_x = div_x;                         // x方向の速度の倍率の逆数
-            this.div_y = div_y;                         // y方向の速度の倍率の逆数
-            this.useflag_var_name = useflag_var_name;   // 有効フラグ の変数名
-            this.x100_var_name = x100_var_name;         // 座標x(文字で数える)の100倍の値 の変数名
-            this.y100_var_name = y100_var_name;         // 座標y(文字で数える)の100倍の値 の変数名
-            this.degree_var_name = degree_var_name;     // 角度(0-360) の変数名
-            this.speed100_var_name = speed100_var_name; // 速度の100倍の値 の変数名
-            this.ch_var_name = ch_var_name;             // 表示する文字列 の変数名
-            // ***** 0除算エラー対策 *****
-            if (this.div_x == 0) { this.div_x = 1; }
-            if (this.div_y == 0) { this.div_y = 1; }
-        }
-        // ***** 移動 *****
-        Missile.prototype.move = function() {
-            var x1, y1;
-
-            // ***** 有効チェック *****
-            if (this.useflag != 0) {
-                // ***** 次の座標を計算 *****
-                this.x100 = this.x100 + this.speed100 * Math.cos(this.degree * Math.PI / 180) / this.div_x;
-                this.y100 = this.y100 + this.speed100 * Math.sin(this.degree * Math.PI / 180) / this.div_y;
-                this.x100 = this.x100 | 0; // 整数化
-                this.y100 = this.y100 | 0; // 整数化
-                x1 = this.x100 / 100;
-                y1 = this.y100 / 100;
-                // ***** 座標の範囲チェック *****
-                // ***** NaN対策 *****
-                // (NaNの!=以外の比較はfalseになるので、そのとき無効になるように 条件を逆にしておく)
-                // if (x1 < this.min_x || x1 > this.max_x || y1 < this.min_y || y1 > this.max_y) {
-                if (!(x1 >= this.min_x && x1 <= this.max_x && y1 >= this.min_y && y1 <= this.max_y)) {
-                    // ***** 範囲外なら無効にする *****
-                    this.useflag = 0;
-                }
-            }
-        };
-        return Missile; // これがないとクラスが動かないので注意
-    })();
-
-
     // ***** 音楽全停止 *****
     function audstopall() {
         var aud_no;
@@ -7068,777 +6767,1388 @@ var Interpreter;
     }
 
 
-    // ***** MML音楽演奏用クラス *****
-    var MMLPlayer = (function () {
-        // ***** コンストラクタ *****
-        function MMLPlayer() {
-            // ***** Web Audio API関係 *****
-            this.node = null;    // 音声バッファソースノード(操作用オブジェクト)
-            this.gnode = null;   // ゲインノード  (音量調整用オブジェクト)
-            this.gain = 1;       // ゲイン        (音量)(0-1)
-            this.speedrate = 1;  // 再生速度レート(=1:等倍)
-            this.adbuf = null;   // 音声バッファ  (管理用オブジェクト)
-            this.addata = [];    // 音声データ    (配列)(Float32Arrayで各要素は-1～1までの値)
-            this.pos = [];       // 音声データ位置(配列)(チャンネルごと)(単位は絶対音長(4分音符が48になる))
-            this.tempo_chg = []; // テンポ変更情報(配列)(全チャンネル共通)
-            this.compiled = 0;   // コンパイル状態(=0:未,=1:コンパイル中,=2:完了)
+})(Interpreter || (Interpreter = {}));
+
+
+// ***** 以下は外部クラス *****
+
+
+// ***** 文字列の全角半角変換用クラス(staticクラス) *****
+var ConvZenHan = (function () {
+    // ***** コンストラクタ *****
+    // ***** (staticなクラスなので未使用) *****
+    function ConvZenHan() { }
+    // ***** 全角に変換する(staticメソッド) *****
+    // ***** (staticなメソッドなのでprototype未使用) *****
+    // ConvZenHan.prototype.toZenkaku = function (st1, mode1) {
+    ConvZenHan.toZenkaku = function (st1, mode1) {
+        var st2;
+        var mode2;
+        // ***** 引数をコピー *****
+        st2 = st1;
+        if (mode1 == "") { mode2 = "anpskd"; } else { mode2 = mode1; }
+        // ***** アルファベットを全角に変換 *****
+        if (mode2.indexOf("a") >= 0) {
+            st2 = st2.replace(/[\u0041-\u005A]|[\u0061-\u007A]/g,
+                function (c) {
+                    if (!ConvZenHan.alphaToZenkaku.hasOwnProperty(c)) { return c; }
+                    return ConvZenHan.alphaToZenkaku[c];
+                }
+            );
         }
-        // ***** 定数 *****
-        MMLPlayer.MAX_CH = 8;          // 最大チャンネル数(増やすと音が小さくなる)
-        MMLPlayer.SAMPLE_RATE = 22050; // サンプリングレート(Hz)(これより小さいとエラー)
-
-        // ***** Chrome v23 で何回もnewするとエラーになるため *****
-        // ***** ここで1回だけnewする *****
-        MMLPlayer.AudioContext = window.AudioContext || window.webkitAudioContext;
-        if (MMLPlayer.AudioContext) {
-            MMLPlayer.adctx = new MMLPlayer.AudioContext(); // 音声コンテキスト
+        // ***** 数字を全角に変換 *****
+        if (mode2.indexOf("n") >= 0) {
+            st2 = st2.replace(/[\u0030-\u0039]/g,
+                function (c) {
+                    if (!ConvZenHan.numberToZenkaku.hasOwnProperty(c)) { return c; }
+                    return ConvZenHan.numberToZenkaku[c];
+                }
+            );
+        }
+        // ***** 記号を全角に変換 *****
+        if (mode2.indexOf("p") >= 0) {
+            st2 = st2.replace(/[\u0021-\u007E]|[\uFF61-\uFF64]|[\u00A2-\u00A5]/g,
+                function (c) {
+                    if (!ConvZenHan.punctuationToZenkaku.hasOwnProperty(c)) { return c; }
+                    return ConvZenHan.punctuationToZenkaku[c];
+                }
+            );
+        }
+        // ***** スペースを全角に変換 *****
+        if (mode2.indexOf("s") >= 0) {
+            st2 = st2.replace(/ /g,
+                function (c) {
+                    if (!ConvZenHan.spaceToZenkaku.hasOwnProperty(c)) { return c; }
+                    return ConvZenHan.spaceToZenkaku[c];
+                }
+            );
         }
 
-        // ***** 再生状態取得 *****
-        // (戻り値は =0:停止, =1:演奏開始中, =2:演奏中, =3:演奏終了)
-        MMLPlayer.prototype.getStatus = function() {
-            // ***** Web Audio APIの存在チェック *****
-            if (!MMLPlayer.AudioContext) { return 0; }
-            // ***** 未再生のチェック *****
-            if (this.node == null) { return 0; }
-            // ***** 再生状態を返す *****
-            return this.node.playbackState;
-        };
-        // ***** 音量設定 *****
-        MMLPlayer.prototype.setVolume = function(volume) {
-            // ***** Web Audio APIの存在チェック *****
-            if (!MMLPlayer.AudioContext) { return false; }
-            // ***** ゲイン(音量)設定 *****
-            this.gain = volume / 100;
-            if (this.gain < 0) { this.gain = 0; }
-            if (this.gain > 1) { this.gain = 1; }
-            if (this.gnode != null) {
-                this.gnode.gain.value = this.gain;
-            }
-            return true;
-        };
-        // ***** 再生速度レート設定 *****
-        MMLPlayer.prototype.setSpeedRate = function(speed_rate) {
-            // ***** Web Audio APIの存在チェック *****
-            if (!MMLPlayer.AudioContext) { return false; }
-            // ***** 再生速度レート設定 *****
-            this.speed_rate = speed_rate;
-            if (this.node != null) {
-                this.node.playbackRate.value = this.speed_rate;
-            }
-            return true;
-        };
-        // ***** 再生 *****
-        // (引数を非0にするとループ再生)
-        MMLPlayer.prototype.play = function(repeat_flag) {
-            // ***** Web Audio APIの存在チェック *****
-            if (!MMLPlayer.AudioContext) { return false; }
-            // ***** 停止 *****
-            this.stop();
-            // ***** コンパイル完了のチェック *****
-            if (this.compiled < 2) { return false; }
-            // ***** 再生 *****
-            // (毎回ここで 音声バッファソースノードを作らないと 連続再生できなかった)
-            // (ノードの接続は、ソースノード → ゲインノード → 出力先 の順となる)
-            this.node = MMLPlayer.adctx.createBufferSource();
-            this.node.buffer = this.adbuf;
-            if (repeat_flag) { this.node.loop = true; } else { this.node.loop = false; }
-            this.node.playbackRate.value = this.speed_rate;
-            this.gnode = MMLPlayer.adctx.createGainNode();
-            this.gnode.gain.value = this.gain;
-            this.node.connect(this.gnode);
-            this.gnode.connect(MMLPlayer.adctx.destination);
-            this.node.noteOn(0);
-            return true;
-        };
-        // ***** 停止 *****
-        MMLPlayer.prototype.stop = function() {
-            // ***** Web Audio APIの存在チェック *****
-            if (!MMLPlayer.AudioContext) { return false; }
-            // ***** 未再生のチェック *****
-            if (this.node == null) { return false; }
-            // ***** 停止 *****
-            this.node.noteOff(0);
-            this.node.disconnect();
-            this.node = null;
-            this.gnode.disconnect();
-            this.gnode = null;
-            return true;
-        };
-        // ***** MMLを設定してコンパイルする *****
-        MMLPlayer.prototype.setMML = function(mml_st) {
-            var i;
-            var tokens = []; // トークン(配列)
-            var addata_len;  // 必要な音声バッファのサイズ
-            var chdata_len;  // チャンネル1個の音声バッファのサイズ
+        // ***** カタカナを全角に変換 *****
+        if (mode2.indexOf("k") >= 0 || mode2.indexOf("h") >= 0) {
+            st2 = st2.replace(/[\uFF65-\uFF9D][ﾞﾟ]?/g,
+                function (c) {
+                    if (!ConvZenHan.katakanaToZenkaku.hasOwnProperty(c)) { return c; }
+                    return ConvZenHan.katakanaToZenkaku[c];
+                }
+            );
+        }
+        // ***** カタカナ(全角)をひらがなに変換 *****
+        if (mode2.indexOf("h") >= 0) {
+            st2 = st2.replace(/[\u30A1-\u30FC]/g,
+                function (c) {
+                    if (!ConvZenHan.KatakanaToHiragana.hasOwnProperty(c)) { return c; }
+                    return ConvZenHan.KatakanaToHiragana[c];
+                }
+            );
+        }
+        // ***** ひらがなをカタカナ(全角)に変換 *****
+        if (mode2.indexOf("t") >= 0) {
+            st2 = st2.replace(/[\u3041-\u3094]/g,
+                function (c) {
+                    if (!ConvZenHan.HiraganaToKatakana.hasOwnProperty(c)) { return c; }
+                    return ConvZenHan.HiraganaToKatakana[c];
+                }
+            );
+        }
 
-            // ***** Web Audio APIの存在チェック *****
-            if (!MMLPlayer.AudioContext) { return false; }
-            // ***** 引数のチェック *****
-            if (typeof (mml_st) == "undefined") { return false; }
-            if (mml_st == null) { return false; }
-            // ***** 停止 *****
-            this.stop();
-            // ***** コンパイル中にする *****
-            this.compiled = 1;
-            // ***** MMLをトークン分割 *****
-            tokens = this.tokenize(mml_st);
-            // ***** コンパイル(パス1) *****
-            // (テンポ変更情報を抽出して、
-            //  必要な音声バッファのサイズを計算可能とする)
-            this.compile(tokens, 1);
-            // ***** 実時間テーブル作成 *****
-            this.makeTimeTable();
-            // DebugShow("pos=" + JSON.stringify(this.pos) + "\n");
-            // DebugShow("tempo_chg=" + JSON.stringify(this.tempo_chg) + "\n");
-            // ***** 音声バッファの確保 *****
-            addata_len = 0;
-            for (i = 0; i < MMLPlayer.MAX_CH; i++) {
-                chdata_len = MMLPlayer.SAMPLE_RATE * this.getRealTime(this.pos[i]);
-                if (addata_len < chdata_len) { addata_len = chdata_len; }
+        // ***** 濁点を結合 *****
+        if (mode2.indexOf("m") >= 0) {
+            st2 = st2.replace(/[\u30A1-\u30FC][ﾞﾟ゛゜]?|[\u3041-\u3094][ﾞﾟ゛゜]?/g,
+                function (c) {
+                    if (!ConvZenHan.DakutenMarge.hasOwnProperty(c)) { return c; }
+                    return ConvZenHan.DakutenMarge[c];
+                }
+            );
+        }
+        // ***** 濁点を分離 *****
+        if (mode2.indexOf("v") >= 0) {
+            st2 = st2.replace(/[\u30A1-\u30FC]|[\u3041-\u3094]/g,
+                function (c) {
+                    if (!ConvZenHan.DakutenSplit.hasOwnProperty(c)) { return c; }
+                    return ConvZenHan.DakutenSplit[c];
+                }
+            );
+        }
+        // ***** 濁点を全角に変換 *****
+        if (mode2.indexOf("d") >= 0) {
+            st2 = st2.replace(/[ﾞﾟ]/g,
+                function (c) {
+                    if (!ConvZenHan.DakutenToZenkaku.hasOwnProperty(c)) { return c; }
+                    return ConvZenHan.DakutenToZenkaku[c];
+                }
+            );
+        }
+        // ***** 戻り値を返す *****
+        return st2;
+    };
+    // ***** 半角に変換する(staticメソッド) *****
+    ConvZenHan.toHankaku = function (st1, mode1) {
+        var st2;
+        var mode2;
+        // ***** 引数をコピー *****
+        st2 = st1;
+        if (mode1 == "") { mode2 = "anpskd"; } else { mode2 = mode1; }
+        // ***** アルファベットを半角に変換 *****
+        if (mode2.indexOf("a") >= 0) {
+            st2 = st2.replace(/[\uFF21-\uFF3A]|[\uFF41-\uFF5A]/g,
+                function (c) {
+                    if (!ConvZenHan.alphaToHankaku.hasOwnProperty(c)) { return c; }
+                    return ConvZenHan.alphaToHankaku[c];
+                }
+            );
+        }
+        // ***** 数字を半角に変換 *****
+        if (mode2.indexOf("n") >= 0) {
+            st2 = st2.replace(/[\uFF10-\uFF19]/g,
+                function (c) {
+                    if (!ConvZenHan.numberToHankaku.hasOwnProperty(c)) { return c; }
+                    return ConvZenHan.numberToHankaku[c];
+                }
+            );
+        }
+        // ***** 記号を半角に変換 *****
+        if (mode2.indexOf("p") >= 0) {
+            st2 = st2.replace(/[\uFF01-\uFF5E]|[\u3001-\u300D]|[\uFFE0-\uFFE5]/g,
+                function (c) {
+                    if (!ConvZenHan.punctuationToHankaku.hasOwnProperty(c)) { return c; }
+                    return ConvZenHan.punctuationToHankaku[c];
+                }
+            );
+        }
+        // ***** スペースを半角に変換 *****
+        if (mode2.indexOf("s") >= 0) {
+            st2 = st2.replace(/[\u3000]/g,
+                function (c) {
+                    if (!ConvZenHan.spaceToHankaku.hasOwnProperty(c)) { return c; }
+                    return ConvZenHan.spaceToHankaku[c];
+                }
+            );
+        }
+
+        // ***** ひらがなをカタカナ(全角)に変換 *****
+        if (mode2.indexOf("t") >= 0) {
+            st2 = st2.replace(/[\u3041-\u3094]/g,
+                function (c) {
+                    if (!ConvZenHan.HiraganaToKatakana.hasOwnProperty(c)) { return c; }
+                    return ConvZenHan.HiraganaToKatakana[c];
+                }
+            );
+        }
+        // ***** カタカナを半角に変換 *****
+        if (mode2.indexOf("k") >= 0 || mode2.indexOf("t") >= 0) {
+            st2 = st2.replace(/[\u30A1-\u30FC]/g,
+                function (c) {
+                    if (!ConvZenHan.katakanaToHankaku.hasOwnProperty(c)) { return c; }
+                    return ConvZenHan.katakanaToHankaku[c];
+                }
+            );
+        }
+
+        // ***** 濁点を分離 *****
+        if (mode2.indexOf("v") >= 0) {
+            st2 = st2.replace(/[\u30A1-\u30FC]|[\u3041-\u3094]/g,
+                function (c) {
+                    if (!ConvZenHan.DakutenSplit.hasOwnProperty(c)) { return c; }
+                    return ConvZenHan.DakutenSplit[c];
+                }
+            );
+        }
+        // ***** 濁点を半角に変換 *****
+        if (mode2.indexOf("d") >= 0) {
+            st2 = st2.replace(/[゛゜]/g,
+                function (c) {
+                    if (!ConvZenHan.DakutenToHankaku.hasOwnProperty(c)) { return c; }
+                    return ConvZenHan.DakutenToHankaku[c];
+                }
+            );
+        }
+        // ***** 戻り値を返す *****
+        return st2;
+    };
+
+    // ***** 以下は内部処理用 *****
+
+    // ***** 変換テーブル生成(内部処理用)(staticメソッド) *****
+    ConvZenHan.makeTable = function () {
+        var i;
+        var han, zen;
+        var ch, cz, cz2;
+        // alert("ConvZenHan.makeTable:-:実行されました。");
+        // ***** アルファベット *****
+        ConvZenHan.alphaToZenkaku = {};
+        ConvZenHan.alphaToHankaku = {};
+        for (i = 0x41; i <= 0x5A; i++) { // 「A」～「Z」
+            ConvZenHan.alphaToZenkaku[String.fromCharCode(i)] = String.fromCharCode(i + 0xFEE0);
+            ConvZenHan.alphaToHankaku[String.fromCharCode(i + 0xFEE0)] = String.fromCharCode(i);
+        }
+        for (i = 0x61; i <= 0x7A; i++) { // 「a」～「z」
+            ConvZenHan.alphaToZenkaku[String.fromCharCode(i)] = String.fromCharCode(i + 0xFEE0);
+            ConvZenHan.alphaToHankaku[String.fromCharCode(i + 0xFEE0)] = String.fromCharCode(i);
+        }
+        // ***** 数字 *****
+        ConvZenHan.numberToZenkaku = {};
+        ConvZenHan.numberToHankaku = {};
+        for (i = 0x30; i <= 0x39; i++) { // 「0」～「9」
+            ConvZenHan.numberToZenkaku[String.fromCharCode(i)] = String.fromCharCode(i + 0xFEE0);
+            ConvZenHan.numberToHankaku[String.fromCharCode(i + 0xFEE0)] = String.fromCharCode(i);
+        }
+        // ***** 記号 *****
+        ConvZenHan.punctuationToZenkaku = {};
+        ConvZenHan.punctuationToHankaku = {};
+        for (i = 0x21; i <= 0x2F; i++) { // 「!」～「/」
+            ConvZenHan.punctuationToZenkaku[String.fromCharCode(i)] = String.fromCharCode(i + 0xFEE0);
+            ConvZenHan.punctuationToHankaku[String.fromCharCode(i + 0xFEE0)] = String.fromCharCode(i);
+        }
+        for (i = 0x3A; i <= 0x40; i++) { // 「:」～「@」
+            ConvZenHan.punctuationToZenkaku[String.fromCharCode(i)] = String.fromCharCode(i + 0xFEE0);
+            ConvZenHan.punctuationToHankaku[String.fromCharCode(i + 0xFEE0)] = String.fromCharCode(i);
+        }
+        for (i = 0x5B; i <= 0x60; i++) { // 「[」～「`」
+            ConvZenHan.punctuationToZenkaku[String.fromCharCode(i)] = String.fromCharCode(i + 0xFEE0);
+            ConvZenHan.punctuationToHankaku[String.fromCharCode(i + 0xFEE0)] = String.fromCharCode(i);
+        }
+        for (i = 0x7B; i <= 0x7E; i++) { // 「{」～「~」
+            ConvZenHan.punctuationToZenkaku[String.fromCharCode(i)] = String.fromCharCode(i + 0xFEE0);
+            ConvZenHan.punctuationToHankaku[String.fromCharCode(i + 0xFEE0)] = String.fromCharCode(i);
+        }
+        ConvZenHan.punctuationToZenkaku["\uFF61"] = "。"; // 「。」の文字コードは \u3002
+        ConvZenHan.punctuationToZenkaku["\uFF62"] = "「"; // 「「」の文字コードは \u300C
+        ConvZenHan.punctuationToZenkaku["\uFF63"] = "」"; // 「」」の文字コードは \u300D
+        ConvZenHan.punctuationToZenkaku["\uFF64"] = "、"; // 「、」の文字コードは \u3001
+        ConvZenHan.punctuationToZenkaku["\u00A2"] = "￠"; // 「￠」の文字コードは \uFFE0
+        ConvZenHan.punctuationToZenkaku["\u00A3"] = "￡"; // 「￡」の文字コードは \uFFE1
+        ConvZenHan.punctuationToZenkaku["\u00A5"] = "￥"; // 「￥」の文字コードは \uFFE5
+        ConvZenHan.punctuationToHankaku["。"] = "\uFF61";
+        ConvZenHan.punctuationToHankaku["「"] = "\uFF62";
+        ConvZenHan.punctuationToHankaku["」"] = "\uFF63";
+        ConvZenHan.punctuationToHankaku["、"] = "\uFF64";
+        ConvZenHan.punctuationToHankaku["￠"] = "\u00A2";
+        ConvZenHan.punctuationToHankaku["￡"] = "\u00A3";
+        ConvZenHan.punctuationToHankaku["￥"] = "\u00A5";
+        // ***** スペース *****
+        ConvZenHan.spaceToZenkaku = {};
+        ConvZenHan.spaceToHankaku = {};
+        han = " ";      // 半角スペース (\u0020)
+        zen = "\u3000"; // 全角スペース (\u3000)
+        for (i = 0; i < han.length; i++) {
+            ConvZenHan.spaceToZenkaku[han.charAt(i)] = zen.charAt(i);
+            ConvZenHan.spaceToHankaku[zen.charAt(i)] = han.charAt(i);
+        }
+        // ***** カタカナ *****
+        ConvZenHan.katakanaToZenkaku = {};
+        ConvZenHan.katakanaToHankaku = {};
+        han = "ｱｲｳｴｵｧｨｩｪｫｶｷｸｹｺｻｼｽｾｿﾀﾁﾂｯﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔｬﾕｭﾖｮﾗﾘﾙﾚﾛﾜｦﾝｰ･";
+        zen = "アイウエオァィゥェォカキクケコサシスセソタチツッテトナニヌネノハヒフヘホマミムメモヤャユュヨョラリルレロワヲンー・";
+        for (i = 0; i < han.length; i++) {
+            ch = han.charAt(i);
+            cz = zen.charAt(i);
+            ConvZenHan.katakanaToZenkaku[ch] = cz;
+            ConvZenHan.katakanaToHankaku[cz] = ch;
+            if (cz.match(/[カキクケコサシスセソタチツテトハヒフヘホ]/)) {
+                ConvZenHan.katakanaToZenkaku[ch + "ﾞ"] = String.fromCharCode(cz.charCodeAt(0) + 1);
+                ConvZenHan.katakanaToHankaku[String.fromCharCode(cz.charCodeAt(0) + 1)] = ch + "ﾞ";
+            } else {
+                ConvZenHan.katakanaToZenkaku[ch + "ﾞ"] = cz + "ﾞ";   // その他の濁点はそのまま
             }
-            if (addata_len == 0) { return false; } // DOMエラー対応
-            this.adbuf = MMLPlayer.adctx.createBuffer(1, addata_len, MMLPlayer.SAMPLE_RATE);
-            this.addata = this.adbuf.getChannelData(0);
-            // ***** コンパイル(パス2) *****
-            // (音声データの値を計算して、音声バッファに格納する)
-            this.compile(tokens, 2);
-            // ***** 音声データの範囲チェック *****
-            for (i = 0; i < addata_len; i++) {
-                if (this.addata[i] >  1) { this.addata[i] =  1; }
-                if (this.addata[i] < -1) { this.addata[i] = -1; }
+            if (cz.match(/[ハヒフヘホ]/)) {
+                ConvZenHan.katakanaToZenkaku[ch + "ﾟ"] = String.fromCharCode(cz.charCodeAt(0) + 2);
+                ConvZenHan.katakanaToHankaku[String.fromCharCode(cz.charCodeAt(0) + 2)] = ch + "ﾟ";
+            } else {
+                ConvZenHan.katakanaToZenkaku[ch + "ﾟ"] = cz + "ﾟ";   // その他の半濁点はそのまま
             }
-            // ***** コンパイル完了 *****
-            this.compiled = 2;
-            return true;
-        };
-        // ***** 音楽データを設定してコンパイルする *****
-        // (MMLではなくて、data URI schemeで音楽データ(mp3等)を直接渡す場合に
-        //  使用する (setMMLの代わりに使用する) )
-        // (decodeAudioData()が非同期のため、コンパイル完了までに時間がかかる
-        //  ので注意)
-        MMLPlayer.prototype.setAUDData = function(aud_data_st) {
-            var i;
-            var bin_st;    // バイナリデータ文字列
-            var mime_st;   // MIME文字列
-            var uint8_arr; // バイナリデータ(型付配列)
-            var self;      // this保存用
-
-            // ***** Web Audio APIの存在チェック *****
-            if (!MMLPlayer.AudioContext) { return false; }
-            // ***** 引数のチェック *****
-            if (typeof (aud_data_st) == "undefined") { return false; }
-            if (aud_data_st == null) { return false; }
-            // ***** 停止 *****
-            this.stop();
-            // ***** コンパイル中にする *****
-            this.compiled = 1;
-            // ***** 音楽データを設定 *****
-            // (Base64の文字列をバイナリデータに変換してデコードする)
-            bin_st = atob(aud_data_st.split(',')[1]);
-            mime_st = aud_data_st.split(',')[0].split(':')[1].split(';')[0];
-            uint8_arr = new Uint8Array(bin_st.length);
-            for (i = 0; i < bin_st.length; i++) {
-                uint8_arr[i] = bin_st.charCodeAt(i);
+        }
+        ConvZenHan.katakanaToZenkaku["ｳﾞ"] = "\u30F4";
+        ConvZenHan.katakanaToZenkaku["ﾜﾞ"] = "\u30F7";
+        ConvZenHan.katakanaToZenkaku["ｦﾞ"] = "\u30FA";
+        ConvZenHan.katakanaToHankaku["\u30F4"] = "ｳﾞ";
+        ConvZenHan.katakanaToHankaku["\u30F7"] = "ﾜﾞ";
+        ConvZenHan.katakanaToHankaku["\u30FA"] = "ｦﾞ";
+        // ***** ひらがなとカタカナ *****
+        ConvZenHan.HiraganaToKatakana = {};
+        ConvZenHan.KatakanaToHiragana = {};
+        for (i = 0x3041; i <= 0x3094; i++) { // 「あ」の小文字 ～ 「う」の濁点
+            ConvZenHan.HiraganaToKatakana[String.fromCharCode(i)] = String.fromCharCode(i + 0x60);
+            ConvZenHan.KatakanaToHiragana[String.fromCharCode(i + 0x60)] = String.fromCharCode(i);
+        }
+        // ***** 濁点と半濁点 *****
+        ConvZenHan.DakutenToZenkaku = {};
+        ConvZenHan.DakutenToHankaku = {};
+        han = "ﾞﾟ";
+        zen = "゛゜";
+        for (i = 0; i < han.length; i++) {
+            ConvZenHan.DakutenToZenkaku[han.charAt(i)] = zen.charAt(i);
+            ConvZenHan.DakutenToHankaku[zen.charAt(i)] = han.charAt(i);
+        }
+        ConvZenHan.DakutenSplit = {};
+        ConvZenHan.DakutenMarge = {};
+        han = "ｱｲｳｴｵｧｨｩｪｫｶｷｸｹｺｻｼｽｾｿﾀﾁﾂｯﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔｬﾕｭﾖｮﾗﾘﾙﾚﾛﾜｦﾝｰ･";
+        zen = "アイウエオァィゥェォカキクケコサシスセソタチツッテトナニヌネノハヒフヘホマミムメモヤャユュヨョラリルレロワヲンー・";
+        for (i = 0; i < han.length; i++) {
+            ch = han.charAt(i);
+            cz = zen.charAt(i);
+            cz2 = String.fromCharCode(cz.charCodeAt(0) - 0x60); // ひらがな
+            if (cz.match(/[カキクケコサシスセソタチツテトハヒフヘホ]/)) {
+                ConvZenHan.DakutenSplit[String.fromCharCode(cz.charCodeAt(0) + 1)] = cz + "ﾞ";
+                ConvZenHan.DakutenSplit[String.fromCharCode(cz2.charCodeAt(0) + 1)] = cz2 + "ﾞ";
+                ConvZenHan.DakutenMarge[cz + "ﾞ"] = String.fromCharCode(cz.charCodeAt(0) + 1);
+                ConvZenHan.DakutenMarge[cz2 + "ﾞ"] = String.fromCharCode(cz2.charCodeAt(0) + 1);
+                ConvZenHan.DakutenMarge[cz + "゛"] = String.fromCharCode(cz.charCodeAt(0) + 1);
+                ConvZenHan.DakutenMarge[cz2 + "゛"] = String.fromCharCode(cz2.charCodeAt(0) + 1);
             }
-            self = this;
-            MMLPlayer.adctx.decodeAudioData(uint8_arr.buffer, function(adbuf) { 
-                self.adbuf = adbuf;
-                // ***** コンパイル完了 *****
-                self.compiled = 2;
-            });
-            return true;
-        };
-
-        // ***** 以下は内部処理用 *****
-
-        // ***** 実時間テーブル作成(内部処理用) *****
-        MMLPlayer.prototype.makeTimeTable = function() {
-            var i;
-            var rtime;    // 実時間(sec)
-            var pos_last; // 音声データ位置保存用(単位は絶対音長(4分音符が48になる))
-            var tempo;    // テンポ(1分間に演奏する4分音符の数)
-
-            // ***** 「テンポ変更位置の実時間」を計算して保存しておく *****
-            rtime = 0;
-            pos_last = 0;
-            tempo = 120;
-            for (i = 0; i < this.tempo_chg.length; i++) {
-                rtime += (this.tempo_chg[i].pos - pos_last) * 60 / 48 / tempo;
-                this.tempo_chg[i].rtime = rtime;
-                pos_last = this.tempo_chg[i].pos;
-                tempo = this.tempo_chg[i].val;
+            if (cz.match(/[ハヒフヘホ]/)) {
+                ConvZenHan.DakutenSplit[String.fromCharCode(cz.charCodeAt(0) + 2)] = cz + "ﾟ";
+                ConvZenHan.DakutenSplit[String.fromCharCode(cz2.charCodeAt(0) + 2)] = cz2 + "ﾟ";
+                ConvZenHan.DakutenMarge[cz + "ﾟ"] = String.fromCharCode(cz.charCodeAt(0) + 2);
+                ConvZenHan.DakutenMarge[cz2 + "ﾟ"] = String.fromCharCode(cz2.charCodeAt(0) + 2);
+                ConvZenHan.DakutenMarge[cz + "゜"] = String.fromCharCode(cz.charCodeAt(0) + 2);
+                ConvZenHan.DakutenMarge[cz2 + "゜"] = String.fromCharCode(cz2.charCodeAt(0) + 2);
             }
-        };
-        // ***** 実時間取得(内部処理用) *****
-        MMLPlayer.prototype.getRealTime = function(pos) {
-            var i;
-            var rtime;    // 実時間(sec)
-            var pos_last; // 音声データ位置保存用(単位は絶対音長(4分音符が48になる))
-            var tempo;    // テンポ(1分間に演奏する4分音符の数)
+        }
+        ConvZenHan.DakutenSplit["\u30F4"] = "ウﾞ";
+        ConvZenHan.DakutenSplit["\u30F7"] = "ワﾞ";
+        ConvZenHan.DakutenSplit["\u30F8"] = "ヰﾞ";
+        ConvZenHan.DakutenSplit["\u30F9"] = "ヱﾞ";
+        ConvZenHan.DakutenSplit["\u30FA"] = "ヲﾞ";
+        ConvZenHan.DakutenSplit["\u3094"] = "うﾞ";
+        ConvZenHan.DakutenMarge["ウﾞ"] = "\u30F4";
+        ConvZenHan.DakutenMarge["ワﾞ"] = "\u30F7";
+        ConvZenHan.DakutenMarge["ヰﾞ"] = "\u30F8";
+        ConvZenHan.DakutenMarge["ヱﾞ"] = "\u30F9";
+        ConvZenHan.DakutenMarge["ヲﾞ"] = "\u30FA";
+        ConvZenHan.DakutenMarge["うﾞ"] = "\u3094";
+        ConvZenHan.DakutenMarge["ウ゛"] = "\u30F4";
+        ConvZenHan.DakutenMarge["ワ゛"] = "\u30F7";
+        ConvZenHan.DakutenMarge["ヰ゛"] = "\u30F8";
+        ConvZenHan.DakutenMarge["ヱ゛"] = "\u30F9";
+        ConvZenHan.DakutenMarge["ヲ゛"] = "\u30FA";
+        ConvZenHan.DakutenMarge["う゛"] = "\u3094";
+    };
 
-            // ***** 音声データ位置から実時間を計算して返す *****
-            // ***** (事前に計算した「テンポ変更位置の実時間」を利用する) *****
-            rtime = 0;
-            pos_last = 0;
-            tempo = 120;
-            for (i = 0; i < this.tempo_chg.length; i++) {
-                if (this.tempo_chg[i].pos >= pos) { break; }
+    // ***** 変換テーブルをここで1回だけ生成 *****
+    ConvZenHan.makeTable();
+
+    return ConvZenHan; // これがないとクラスが動かないので注意
+})();
+
+
+// ***** 領域塗りつぶし用クラス *****
+var FloodFill = (function () {
+    // ***** コンストラクタ *****
+    function FloodFill(can, ctx, x, y, threshold, paint_mode, bound_col, bound_alpha) {
+        // ***** 初期化 *****
+        this.can = can;               // Canvas要素
+        this.ctx = ctx;               // Canvasのコンテキスト
+        this.width = can.width;       // Canvasの幅(px)
+        this.height = can.height;     // Canvasの高さ(px)
+        this.x = x | 0;               // 塗りつぶし開始座標X(px)
+        this.y = y | 0;               // 塗りつぶし開始座標Y(px)
+        this.threshold = threshold;   // 同色と判定するしきい値(0-255)
+        this.paint_mode = paint_mode; // 塗りつぶしモード(=0:同一色領域, =1:境界色指定)
+        this.paint_col = {};          // 塗りつぶされる色(オブジェクト)
+        this.paint_col.r = 0;         // 塗りつぶされる色 R
+        this.paint_col.g = 0;         // 塗りつぶされる色 G
+        this.paint_col.b = 0;         // 塗りつぶされる色 B
+        this.paint_col.a = 0;         // 塗りつぶされる色 alpha
+        this.bound_col = {};                             // 境界色(オブジェクト)
+        this.bound_col.r = (bound_col & 0xff0000) >> 16; // 境界色 R
+        this.bound_col.g = (bound_col & 0x00ff00) >> 8;  // 境界色 G
+        this.bound_col.b = (bound_col & 0x0000ff);       // 境界色 B
+        this.bound_col.a = bound_alpha;                  // 境界色 alpha
+        this.seed_buf = [];           // シードバッファ(配列)
+        this.img_data = {};           // 画像データ(オブジェクト)
+    }
+    // ***** 点の色を取得(内部処理用) *****
+    FloodFill.prototype.getPixel = function (x, y) {
+        var ret_col = {};
+
+        // ***** 戻り値の初期化 *****
+        ret_col.r = 0;
+        ret_col.g = 0;
+        ret_col.b = 0;
+        ret_col.a = 0;
+        // ***** エラーチェック *****
+        if (x < 0 || x >= this.width)  { return ret_col; }
+        if (y < 0 || y >= this.height) { return ret_col; }
+        // ***** 点の色を取得 *****
+        ret_col.r = this.img_data.data[(x + y * this.width) * 4];
+        ret_col.g = this.img_data.data[(x + y * this.width) * 4 + 1];
+        ret_col.b = this.img_data.data[(x + y * this.width) * 4 + 2];
+        ret_col.a = this.img_data.data[(x + y * this.width) * 4 + 3];
+        // ***** 戻り値を返す *****
+        return ret_col;
+    };
+    // ***** 境界色のチェック(内部処理用) *****
+    FloodFill.prototype.checkColor = function (x, y) {
+        var ret;
+        var diff2;
+        var pixel_col;
+
+        // ***** 戻り値の初期化 *****
+        ret = false;
+        // ***** エラーチェック *****
+        if (x < 0 || x >= this.width)  { return ret; }
+        if (y < 0 || y >= this.height) { return ret; }
+        // ***** 色の比較 *****
+        pixel_col = this.getPixel(x, y);
+        if (this.paint_mode == 0) {
+            diff2 = (this.paint_col.r - pixel_col.r) * (this.paint_col.r - pixel_col.r) +
+                    (this.paint_col.g - pixel_col.g) * (this.paint_col.g - pixel_col.g) +
+                    (this.paint_col.b - pixel_col.b) * (this.paint_col.b - pixel_col.b) +
+                    (this.paint_col.a - pixel_col.a) * (this.paint_col.a - pixel_col.a);
+        } else {
+            diff2 = (this.bound_col.r - pixel_col.r) * (this.bound_col.r - pixel_col.r) +
+                    (this.bound_col.g - pixel_col.g) * (this.bound_col.g - pixel_col.g) +
+                    (this.bound_col.b - pixel_col.b) * (this.bound_col.b - pixel_col.b) +
+                    (this.bound_col.a - pixel_col.a) * (this.bound_col.a - pixel_col.a);
+        }
+        if (diff2 <= this.threshold * this.threshold * 4) { ret = true; } // 4倍してスケールを合わせる
+        // ***** 戻り値を返す *****
+        if (this.paint_mode != 0) {
+            ret = !ret;
+        }
+        return ret;
+    };
+    // ***** 線分をスキャンしてシードを登録(内部処理用) *****
+    FloodFill.prototype.scanLine = function (x1, x2, y, y_from) {
+        var x, x1_tmp;
+        var seed_info = {};
+
+        // ***** 線分をスキャン *****
+        x = x1;
+        while (x <= x2) {
+            // ***** 非領域色をスキップ *****
+            while (x <= x2) {
+                if (this.checkColor(x, y)) { break; }
+                x++;
             }
-            if (i > 0) {
-                rtime = this.tempo_chg[i - 1].rtime;
-                pos_last = this.tempo_chg[i - 1].pos;
-                tempo = this.tempo_chg[i - 1].val;
+            if (x > x2) { break; }
+            x1_tmp = x;
+            // ***** 領域色をスキャン *****
+            while (x <= x2) {
+                if (!this.checkColor(x, y)) { break; }
+                x++;
             }
-            rtime += (pos - pos_last) * 60 / 48 / tempo;
-            return rtime;
-        };
-        // ***** 音符追加(内部処理用) *****
-        // MMLPlayer.prototype.addNote = function(ch, note, velocity, nlength1, nlength2) {
-        MMLPlayer.prototype.addNote = function(ch, note, nlength1, nlength2, prog, volume, pass_no) {
-            var i;
-            var rtime1;  // 音符開始位置の実時間(sec)
-            var rtime2;  // 音符終了位置の実時間(sec)
-            var nlen1;   // 音長  (単位は実時間(sec)xサンプリングレート(Hz))
-            var nlen2;   // 発音長(単位は実時間(sec)xサンプリングレート(Hz))
-            var freq;    // 音符の周波数(Hz)
-            // var t;       // 時間(sec)
-            var phase;   // 位相(ラジアン)
-            var wave;    // 波形(-1～1まで)
-            var fade;    // フェードアウト割合(0-1まで)
+            // ***** シードを登録 *****
+            seed_info = {};
+            seed_info.x1 = x1_tmp;     // 左端座標X1
+            seed_info.x2 = x - 1;      // 右端座標X2
+            seed_info.y = y;           // 水平座標Y
+            seed_info.y_from = y_from; // 親シードの水平座標Y_From
+            this.seed_buf.push(seed_info);
+        }
+    };
+    // ***** 塗りつぶし処理 *****
+    FloodFill.prototype.fill = function () {
+        var i;
+        var x, y;
+        var x1, x2;
+        var seed_info = {};
+        var filled_buf = [];
 
-            var PI;      // 定数キャッシュ用
-            var phase_c; // 定数キャッシュ用
-            var amp_c;   // 定数キャッシュ用
-            var pos_int; // 定数キャッシュ用
-
-            // ***** 音符追加 *****
-            if (pass_no == 2) {
-                // ***** 音長計算 *****
-                rtime1 = this.getRealTime(this.pos[ch]);
-                rtime2 = this.getRealTime(this.pos[ch] + nlength1);
-                nlen1 = MMLPlayer.SAMPLE_RATE * (rtime2 - rtime1);
-                // ***** 発音長計算 *****
-                if (nlength1 > 0) {
-                    nlen2 = nlen1 * nlength2 / nlength1;
+        // ***** エラーチェック *****
+        if (this.x < 0 || this.x >= this.width)  { return false; }
+        if (this.y < 0 || this.y >= this.height) { return false; }
+        // ***** 画像データを取得 *****
+        this.img_data = this.ctx.getImageData(0, 0, this.width, this.height);
+        // ***** 塗りつぶされる色を取得 *****
+        this.paint_col = this.getPixel(this.x, this.y);
+        // ***** 塗りつぶし済みチェック用のバッファを生成 *****
+        filled_buf = [];
+        for (i = 0; i < this.width * this.height; i++) {
+            filled_buf[i] = 0;
+        }
+        // ***** 開始点をシード登録 *****
+        seed_info = {};
+        seed_info.x1 = this.x;     // 左端座標X1
+        seed_info.x2 = this.x;     // 右端座標X2
+        seed_info.y = this.y;      // 水平座標Y
+        seed_info.y_from = this.y; // 親シードの水平座標Y_From
+        this.seed_buf.push(seed_info);
+        // ***** シードがなくなるまでループ *****
+        while (this.seed_buf.length > 0) {
+            // ***** シードを1個取り出す *****
+            seed_info = this.seed_buf.shift();
+            x = seed_info.x1;
+            y = seed_info.y;
+            // ***** 塗りつぶし済みならば処理をしない *****
+            if (filled_buf[x + y * this.width] == 1) { continue; }
+            // ***** 左方向の境界を探す *****
+            x1 = seed_info.x1;
+            while (x1 > 0) {
+                if (!this.checkColor(x1 - 1, y)) { break; }
+                x1--;
+            }
+            // ***** 右方向の境界を探す *****
+            x2 = seed_info.x2;
+            while (x2 < this.width - 1) {
+                if (!this.checkColor(x2 + 1, y)) { break; }
+                x2++;
+            }
+            // ***** 線分を描画して、塗りつぶし済みチェック用のバッファを更新 *****
+            this.ctx.fillRect(x1, y, x2 - x1 + 1, 1);
+            for (x = x1; x <= x2; x++) {
+                filled_buf[x + y * this.width] = 1;
+            }
+            // ***** 1つ上の線分をスキャン *****
+            if (y - 1 >= 0) {
+                if (y - 1 == seed_info.y_from) {
+                    if (seed_info.x1 >= 0 && x1 < seed_info.x1) {
+                        this.scanLine(x1, seed_info.x1 - 1, y - 1, y); 
+                    }
+                    if (seed_info.x2 < this.width && seed_info.x2 < x2) {
+                        this.scanLine(seed_info.x2 + 1, x2, y - 1, y);
+                    }
                 } else {
-                    nlen2 = 0;
+                    this.scanLine(x1, x2, y - 1, y);
                 }
-                // ***** 音符の周波数計算 *****
-                freq = 13.75 * Math.pow(2, (note - 9) / 12);
-
-                // ***** 定数を先に計算しておく *****
-                PI = Math.PI;
-                phase_c = 2 * PI * freq / MMLPlayer.SAMPLE_RATE;
-                amp_c = volume / 127 / MMLPlayer.MAX_CH;
-                pos_int = parseInt(MMLPlayer.SAMPLE_RATE * rtime1, 10);
-
-                // ***** 音声データの値を計算 *****
-                for (i = 0; i < nlen1; i++) {
-                    // phase = 2 * Math.PI * freq * i / MMLPlayer.SAMPLE_RATE;
-                    phase = phase_c * i;
-                    switch (prog) {
-                        case 0:   // 方形波
-                            wave = (Math.sin(phase) > 0) ? 1 : -1;
-                            break;
-                        case 1:   // 正弦波
-                            wave = Math.sin(phase);
-                            break;
-                        case 2:   // のこぎり波
-                            wave = (phase % (PI * 2)) / (PI * 2) * 2 - 1;
-                            break;
-                        case 3:   // 三角波
-                            wave = Math.asin(Math.sin(phase)) / (PI / 2);
-                            break;
-                        case 4:   // ホワイトノイズ
-                            wave = Math.random() * 2 - 1;
-                            break;
-                        case 500: // ピアノ(仮)
-                            // t = i / MMLPlayer.SAMPLE_RATE;
-                            wave = ((Math.sin(phase) > 0) ? 1 : -1) * Math.exp(-5 * (i / MMLPlayer.SAMPLE_RATE));
-                            break;
-                        default:  // 方形波
-                            wave = (Math.sin(phase) > 0) ? 1 : -1;
-                            break;
+            }
+            // ***** 1つ下の線分をスキャン *****
+            if (y + 1 < this.height) {
+                if (y + 1 == seed_info.y_from) {
+                    if (seed_info.x1 >= 0 && x1 < seed_info.x1) {
+                        this.scanLine(x1, seed_info.x1 - 1, y + 1, y); 
                     }
-                    if (nlen2 == 0) {
+                    if (seed_info.x2 < this.width && seed_info.x2 < x2) {
+                        this.scanLine(seed_info.x2 + 1, x2, y + 1, y);
+                    }
+                } else {
+                    this.scanLine(x1, x2, y + 1, y);
+                }
+            }
+        }
+        return true;
+    };
+    return FloodFill; // これがないとクラスが動かないので注意
+})();
+
+
+// ***** ミサイル用クラス *****
+var Missile = (function () {
+    // ***** コンストラクタ *****
+    function Missile(no, useflag, x100, y100, degree, speed100, ch, 
+        min_x, max_x, min_y, max_y, div_x, div_y,
+        useflag_var_name, x100_var_name, y100_var_name,
+        degree_var_name, speed100_var_name, ch_var_name) {
+        // ***** 初期化 *****
+        this.no = no;                               // ミサイル番号
+        this.useflag = useflag;                     // 有効フラグ
+        this.x100 = x100;                           // 座標x(文字で数える)の100倍の値
+        this.y100 = y100;                           // 座標y(文字で数える)の100倍の値
+        this.degree = degree;                       // 角度(0-360)
+        this.speed100 = speed100;                   // 速度の100倍の値
+        this.ch = ch;                               // 表示する文字列
+        this.min_x = min_x;                         // xの最小値
+        this.max_x = max_x;                         // xの最大値
+        this.min_y = min_y;                         // yの最小値
+        this.max_y = max_y;                         // yの最大値
+        this.div_x = div_x;                         // x方向の速度の倍率の逆数
+        this.div_y = div_y;                         // y方向の速度の倍率の逆数
+        this.useflag_var_name = useflag_var_name;   // 有効フラグ の変数名
+        this.x100_var_name = x100_var_name;         // 座標x(文字で数える)の100倍の値 の変数名
+        this.y100_var_name = y100_var_name;         // 座標y(文字で数える)の100倍の値 の変数名
+        this.degree_var_name = degree_var_name;     // 角度(0-360) の変数名
+        this.speed100_var_name = speed100_var_name; // 速度の100倍の値 の変数名
+        this.ch_var_name = ch_var_name;             // 表示する文字列 の変数名
+        // ***** 0除算エラー対策 *****
+        if (this.div_x == 0) { this.div_x = 1; }
+        if (this.div_y == 0) { this.div_y = 1; }
+    }
+    // ***** 移動 *****
+    Missile.prototype.move = function () {
+        var x1, y1;
+
+        // ***** 有効チェック *****
+        if (this.useflag != 0) {
+            // ***** 次の座標を計算 *****
+            this.x100 = this.x100 + this.speed100 * Math.cos(this.degree * Math.PI / 180) / this.div_x;
+            this.y100 = this.y100 + this.speed100 * Math.sin(this.degree * Math.PI / 180) / this.div_y;
+            this.x100 = this.x100 | 0; // 整数化
+            this.y100 = this.y100 | 0; // 整数化
+            x1 = this.x100 / 100;
+            y1 = this.y100 / 100;
+            // ***** 座標の範囲チェック *****
+            // ***** NaN対策 *****
+            // (NaNの!=以外の比較はfalseになるので、そのとき無効になるように 条件を逆にしておく)
+            // if (x1 < this.min_x || x1 > this.max_x || y1 < this.min_y || y1 > this.max_y) {
+            if (!(x1 >= this.min_x && x1 <= this.max_x && y1 >= this.min_y && y1 <= this.max_y)) {
+                // ***** 範囲外なら無効にする *****
+                this.useflag = 0;
+            }
+        }
+    };
+    return Missile; // これがないとクラスが動かないので注意
+})();
+
+
+// ***** MML音楽演奏用クラス *****
+var MMLPlayer = (function () {
+    // ***** コンストラクタ *****
+    function MMLPlayer() {
+        // ***** Web Audio API関係 *****
+        this.node = null;    // 音声バッファソースノード(操作用オブジェクト)
+        this.gnode = null;   // ゲインノード  (音量調整用オブジェクト)
+        this.gain = 1;       // ゲイン        (音量)(0-1)
+        this.speedrate = 1;  // 再生速度レート(=1:等倍)
+        this.adbuf = null;   // 音声バッファ  (管理用オブジェクト)
+        this.addata = [];    // 音声データ    (配列)(Float32Arrayで各要素は-1～1までの値)
+        this.pos = [];       // 音声データ位置(配列)(チャンネルごと)(単位は絶対音長(4分音符が48になる))
+        this.tempo_chg = []; // テンポ変更情報(配列)(全チャンネル共通)
+        this.compiled = 0;   // コンパイル状態(=0:未,=1:コンパイル中,=2:完了)
+    }
+    // ***** 定数 *****
+    MMLPlayer.MAX_CH = 8;          // 最大チャンネル数(増やすと音が小さくなる)
+    MMLPlayer.SAMPLE_RATE = 22050; // サンプリングレート(Hz)(これより小さいとエラー)
+
+    // ***** Chrome v23 で何回もnewするとエラーになるため *****
+    // ***** ここで1回だけnewする *****
+    MMLPlayer.AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (MMLPlayer.AudioContext) {
+        MMLPlayer.adctx = new MMLPlayer.AudioContext(); // 音声コンテキスト
+    }
+
+    // ***** 再生状態取得 *****
+    // (戻り値は =0:停止, =1:演奏開始中, =2:演奏中, =3:演奏終了)
+    MMLPlayer.prototype.getStatus = function () {
+        // ***** Web Audio APIの存在チェック *****
+        if (!MMLPlayer.AudioContext) { return 0; }
+        // ***** 未再生のチェック *****
+        if (this.node == null) { return 0; }
+        // ***** 再生状態を返す *****
+        return this.node.playbackState;
+    };
+    // ***** 音量設定 *****
+    MMLPlayer.prototype.setVolume = function (volume) {
+        // ***** Web Audio APIの存在チェック *****
+        if (!MMLPlayer.AudioContext) { return false; }
+        // ***** ゲイン(音量)設定 *****
+        this.gain = volume / 100;
+        if (this.gain < 0) { this.gain = 0; }
+        if (this.gain > 1) { this.gain = 1; }
+        if (this.gnode != null) {
+            this.gnode.gain.value = this.gain;
+        }
+        return true;
+    };
+    // ***** 再生速度レート設定 *****
+    MMLPlayer.prototype.setSpeedRate = function (speed_rate) {
+        // ***** Web Audio APIの存在チェック *****
+        if (!MMLPlayer.AudioContext) { return false; }
+        // ***** 再生速度レート設定 *****
+        this.speed_rate = speed_rate;
+        if (this.node != null) {
+            this.node.playbackRate.value = this.speed_rate;
+        }
+        return true;
+    };
+    // ***** 再生 *****
+    // (引数を非0にするとループ再生)
+    MMLPlayer.prototype.play = function (repeat_flag) {
+        // ***** Web Audio APIの存在チェック *****
+        if (!MMLPlayer.AudioContext) { return false; }
+        // ***** 停止 *****
+        this.stop();
+        // ***** コンパイル完了のチェック *****
+        if (this.compiled < 2) { return false; }
+        // ***** 再生 *****
+        // (毎回ここで 音声バッファソースノードを作らないと 連続再生できなかった)
+        // (ノードの接続は、ソースノード → ゲインノード → 出力先 の順となる)
+        this.node = MMLPlayer.adctx.createBufferSource();
+        this.node.buffer = this.adbuf;
+        if (repeat_flag) { this.node.loop = true; } else { this.node.loop = false; }
+        this.node.playbackRate.value = this.speed_rate;
+        this.gnode = MMLPlayer.adctx.createGainNode();
+        this.gnode.gain.value = this.gain;
+        this.node.connect(this.gnode);
+        this.gnode.connect(MMLPlayer.adctx.destination);
+        this.node.noteOn(0);
+        return true;
+    };
+    // ***** 停止 *****
+    MMLPlayer.prototype.stop = function () {
+        // ***** Web Audio APIの存在チェック *****
+        if (!MMLPlayer.AudioContext) { return false; }
+        // ***** 未再生のチェック *****
+        if (this.node == null) { return false; }
+        // ***** 停止 *****
+        this.node.noteOff(0);
+        this.node.disconnect();
+        this.node = null;
+        this.gnode.disconnect();
+        this.gnode = null;
+        return true;
+    };
+    // ***** MMLを設定してコンパイルする *****
+    MMLPlayer.prototype.setMML = function (mml_st) {
+        var i;
+        var tokens = []; // トークン(配列)
+        var addata_len;  // 必要な音声バッファのサイズ
+        var chdata_len;  // チャンネル1個の音声バッファのサイズ
+
+        // ***** Web Audio APIの存在チェック *****
+        if (!MMLPlayer.AudioContext) { return false; }
+        // ***** 引数のチェック *****
+        if (typeof (mml_st) == "undefined") { return false; }
+        if (mml_st == null) { return false; }
+        // ***** 停止 *****
+        this.stop();
+        // ***** コンパイル中にする *****
+        this.compiled = 1;
+        // ***** MMLをトークン分割 *****
+        tokens = this.tokenize(mml_st);
+        // ***** コンパイル(パス1) *****
+        // (テンポ変更情報を抽出して、
+        //  必要な音声バッファのサイズを計算可能とする)
+        this.compile(tokens, 1);
+        // ***** 実時間テーブル作成 *****
+        this.makeTimeTable();
+        // DebugShow("pos=" + JSON.stringify(this.pos) + "\n");
+        // DebugShow("tempo_chg=" + JSON.stringify(this.tempo_chg) + "\n");
+        // ***** 音声バッファの確保 *****
+        addata_len = 0;
+        for (i = 0; i < MMLPlayer.MAX_CH; i++) {
+            chdata_len = MMLPlayer.SAMPLE_RATE * this.getRealTime(this.pos[i]);
+            if (addata_len < chdata_len) { addata_len = chdata_len; }
+        }
+        if (addata_len == 0) { return false; } // DOMエラー対応
+        this.adbuf = MMLPlayer.adctx.createBuffer(1, addata_len, MMLPlayer.SAMPLE_RATE);
+        this.addata = this.adbuf.getChannelData(0);
+        // ***** コンパイル(パス2) *****
+        // (音声データの値を計算して、音声バッファに格納する)
+        this.compile(tokens, 2);
+        // ***** 音声データの範囲チェック *****
+        for (i = 0; i < addata_len; i++) {
+            if (this.addata[i] >  1) { this.addata[i] =  1; }
+            if (this.addata[i] < -1) { this.addata[i] = -1; }
+        }
+        // ***** コンパイル完了 *****
+        this.compiled = 2;
+        return true;
+    };
+    // ***** 音楽データを設定してコンパイルする *****
+    // (MMLではなくて、data URI schemeで音楽データ(mp3等)を直接渡す場合に
+    //  使用する (setMMLの代わりに使用する) )
+    // (decodeAudioData()が非同期のため、コンパイル完了までに時間がかかる
+    //  ので注意)
+    MMLPlayer.prototype.setAUDData = function (aud_data_st) {
+        var i;
+        var bin_st;    // バイナリデータ文字列
+        var mime_st;   // MIME文字列
+        var uint8_arr; // バイナリデータ(型付配列)
+        var self;      // this保存用
+
+        // ***** Web Audio APIの存在チェック *****
+        if (!MMLPlayer.AudioContext) { return false; }
+        // ***** 引数のチェック *****
+        if (typeof (aud_data_st) == "undefined") { return false; }
+        if (aud_data_st == null) { return false; }
+        // ***** 停止 *****
+        this.stop();
+        // ***** コンパイル中にする *****
+        this.compiled = 1;
+        // ***** 音楽データを設定 *****
+        // (Base64の文字列をバイナリデータに変換してデコードする)
+        bin_st = atob(aud_data_st.split(',')[1]);
+        mime_st = aud_data_st.split(',')[0].split(':')[1].split(';')[0];
+        uint8_arr = new Uint8Array(bin_st.length);
+        for (i = 0; i < bin_st.length; i++) {
+            uint8_arr[i] = bin_st.charCodeAt(i);
+        }
+        self = this;
+        MMLPlayer.adctx.decodeAudioData(uint8_arr.buffer, function (adbuf) { 
+            self.adbuf = adbuf;
+            // ***** コンパイル完了 *****
+            self.compiled = 2;
+        });
+        return true;
+    };
+
+    // ***** 以下は内部処理用 *****
+
+    // ***** 実時間テーブル作成(内部処理用) *****
+    MMLPlayer.prototype.makeTimeTable = function () {
+        var i;
+        var rtime;    // 実時間(sec)
+        var pos_last; // 音声データ位置保存用(単位は絶対音長(4分音符が48になる))
+        var tempo;    // テンポ(1分間に演奏する4分音符の数)
+
+        // ***** 「テンポ変更位置の実時間」を計算して保存しておく *****
+        rtime = 0;
+        pos_last = 0;
+        tempo = 120;
+        for (i = 0; i < this.tempo_chg.length; i++) {
+            rtime += (this.tempo_chg[i].pos - pos_last) * 60 / 48 / tempo;
+            this.tempo_chg[i].rtime = rtime;
+            pos_last = this.tempo_chg[i].pos;
+            tempo = this.tempo_chg[i].val;
+        }
+    };
+    // ***** 実時間取得(内部処理用) *****
+    MMLPlayer.prototype.getRealTime = function (pos) {
+        var i;
+        var rtime;    // 実時間(sec)
+        var pos_last; // 音声データ位置保存用(単位は絶対音長(4分音符が48になる))
+        var tempo;    // テンポ(1分間に演奏する4分音符の数)
+
+        // ***** 音声データ位置から実時間を計算して返す *****
+        // ***** (事前に計算した「テンポ変更位置の実時間」を利用する) *****
+        rtime = 0;
+        pos_last = 0;
+        tempo = 120;
+        for (i = 0; i < this.tempo_chg.length; i++) {
+            if (this.tempo_chg[i].pos >= pos) { break; }
+        }
+        if (i > 0) {
+            rtime = this.tempo_chg[i - 1].rtime;
+            pos_last = this.tempo_chg[i - 1].pos;
+            tempo = this.tempo_chg[i - 1].val;
+        }
+        rtime += (pos - pos_last) * 60 / 48 / tempo;
+        return rtime;
+    };
+    // ***** 音符追加(内部処理用) *****
+    // MMLPlayer.prototype.addNote = function (ch, note, velocity, nlength1, nlength2) {
+    MMLPlayer.prototype.addNote = function (ch, note, nlength1, nlength2, prog, volume, pass_no) {
+        var i;
+        var rtime1;  // 音符開始位置の実時間(sec)
+        var rtime2;  // 音符終了位置の実時間(sec)
+        var nlen1;   // 音長  (単位は実時間(sec)xサンプリングレート(Hz))
+        var nlen2;   // 発音長(単位は実時間(sec)xサンプリングレート(Hz))
+        var freq;    // 音符の周波数(Hz)
+        // var t;       // 時間(sec)
+        var phase;   // 位相(ラジアン)
+        var wave;    // 波形(-1～1まで)
+        var fade;    // フェードアウト割合(0-1まで)
+
+        var PI;      // 定数キャッシュ用
+        var phase_c; // 定数キャッシュ用
+        var amp_c;   // 定数キャッシュ用
+        var pos_int; // 定数キャッシュ用
+
+        // ***** 音符追加 *****
+        if (pass_no == 2) {
+            // ***** 音長計算 *****
+            rtime1 = this.getRealTime(this.pos[ch]);
+            rtime2 = this.getRealTime(this.pos[ch] + nlength1);
+            nlen1 = MMLPlayer.SAMPLE_RATE * (rtime2 - rtime1);
+            // ***** 発音長計算 *****
+            if (nlength1 > 0) {
+                nlen2 = nlen1 * nlength2 / nlength1;
+            } else {
+                nlen2 = 0;
+            }
+            // ***** 音符の周波数計算 *****
+            freq = 13.75 * Math.pow(2, (note - 9) / 12);
+
+            // ***** 定数を先に計算しておく *****
+            PI = Math.PI;
+            phase_c = 2 * PI * freq / MMLPlayer.SAMPLE_RATE;
+            amp_c = volume / 127 / MMLPlayer.MAX_CH;
+            pos_int = parseInt(MMLPlayer.SAMPLE_RATE * rtime1, 10);
+
+            // ***** 音声データの値を計算 *****
+            for (i = 0; i < nlen1; i++) {
+                // phase = 2 * Math.PI * freq * i / MMLPlayer.SAMPLE_RATE;
+                phase = phase_c * i;
+                switch (prog) {
+                    case 0:   // 方形波
+                        wave = (Math.sin(phase) > 0) ? 1 : -1;
+                        break;
+                    case 1:   // 正弦波
+                        wave = Math.sin(phase);
+                        break;
+                    case 2:   // のこぎり波
+                        wave = (phase % (PI * 2)) / (PI * 2) * 2 - 1;
+                        break;
+                    case 3:   // 三角波
+                        wave = Math.asin(Math.sin(phase)) / (PI / 2);
+                        break;
+                    case 4:   // ホワイトノイズ
+                        wave = Math.random() * 2 - 1;
+                        break;
+                    case 500: // ピアノ(仮)
+                        // t = i / MMLPlayer.SAMPLE_RATE;
+                        wave = ((Math.sin(phase) > 0) ? 1 : -1) * Math.exp(-5 * (i / MMLPlayer.SAMPLE_RATE));
+                        break;
+                    default:  // 方形波
+                        wave = (Math.sin(phase) > 0) ? 1 : -1;
+                        break;
+                }
+                if (nlen2 == 0) {
+                    fade = 1;
+                } else {
+                    if ((i / nlen2) < 0.8) {
                         fade = 1;
+                    } else if (i < nlen2) {
+                        fade = (1 - (i / nlen2)) / (1 - 0.8);
                     } else {
-                        if ((i / nlen2) < 0.8) {
-                            fade = 1;
-                        } else if (i < nlen2) {
-                            fade = (1 - (i / nlen2)) / (1 - 0.8);
-                        } else {
-                            fade = 0;
-                        }
+                        fade = 0;
                     }
-                    // this.addata[pos_int + i] += (volume / 127) * wave * fade / MMLPlayer.MAX_CH;
-                    this.addata[pos_int + i] += amp_c * wave * fade;
                 }
+                // this.addata[pos_int + i] += (volume / 127) * wave * fade / MMLPlayer.MAX_CH;
+                this.addata[pos_int + i] += amp_c * wave * fade;
             }
-            // ***** 音声データ位置を計算 *****
-            this.pos[ch] = this.pos[ch] + nlength1;
-        };
-        // ***** 休符追加(内部処理用) *****
-        // MMLPlayer.prototype.addRest = function(ch, nlength1, nlength2) {
-        MMLPlayer.prototype.addRest = function(ch, nlength1) {
-            // ***** 音声データ位置を計算 *****
-            this.pos[ch] = this.pos[ch] + nlength1;
-        };
-        // ***** コンパイル(内部処理用) *****
-        MMLPlayer.prototype.compile = function(tokens, pass_no) {
-            var tokens_len;     // トークン数
-            // ***** 全体状態 *****
-            var ch;             // チャンネル選択
-            var tempo;          // テンポ(1分間に演奏する4分音符の数)
-            var oct_chg;        // オクターブ記号変更
-            var vol_max;        // ボリューム最大値
-            // ***** 各チャンネルの状態 *****
-            var prog = [];      // 音色      (配列)
-            var volume = [];    // 音量      (配列)
-            var velocity = [];  // ベロシティ(配列)(将来用)
-            var alength = [];   // 音長      (配列)
-            var qtime = [];     // 発音割合  (配列)
-            var octave = [];    // オクターブ(配列)
-            var sharp = [];     // 調号      (2次元配列)
-            var tie = [];       // タイ状態  (配列)
-            var loop = [];      // ループ状態(配列)
-            // ***** テンポ変更情報 *****
-            var tempo_obj = {}; // テンポ変更情報格納用(連想配列オブジェクト)
-            var tempo_sort = function (a,b) { return (a.pos - b.pos); }; // ソート用(比較関数)
-            // ***** その他の変数 *****
-            var i, j;
-            var index, note, nlength1, nlength2, val;
-            var type_chr, data_chr, data_chr2;
-            var loop_no, loop_count;
+        }
+        // ***** 音声データ位置を計算 *****
+        this.pos[ch] = this.pos[ch] + nlength1;
+    };
+    // ***** 休符追加(内部処理用) *****
+    // MMLPlayer.prototype.addRest = function (ch, nlength1, nlength2) {
+    MMLPlayer.prototype.addRest = function (ch, nlength1) {
+        // ***** 音声データ位置を計算 *****
+        this.pos[ch] = this.pos[ch] + nlength1;
+    };
+    // ***** コンパイル(内部処理用) *****
+    MMLPlayer.prototype.compile = function (tokens, pass_no) {
+        var tokens_len;     // トークン数
+        // ***** 全体状態 *****
+        var ch;             // チャンネル選択
+        var tempo;          // テンポ(1分間に演奏する4分音符の数)
+        var oct_chg;        // オクターブ記号変更
+        var vol_max;        // ボリューム最大値
+        // ***** 各チャンネルの状態 *****
+        var prog = [];      // 音色      (配列)
+        var volume = [];    // 音量      (配列)
+        var velocity = [];  // ベロシティ(配列)(将来用)
+        var alength = [];   // 音長      (配列)
+        var qtime = [];     // 発音割合  (配列)
+        var octave = [];    // オクターブ(配列)
+        var sharp = [];     // 調号      (2次元配列)
+        var tie = [];       // タイ状態  (配列)
+        var loop = [];      // ループ状態(配列)
+        // ***** テンポ変更情報 *****
+        var tempo_obj = {}; // テンポ変更情報格納用(連想配列オブジェクト)
+        var tempo_sort = function (a,b) { return (a.pos - b.pos); }; // ソート用(比較関数)
+        // ***** その他の変数 *****
+        var i, j;
+        var index, note, nlength1, nlength2, val;
+        var type_chr, data_chr, data_chr2;
+        var loop_no, loop_count;
 
-            // ***** 全体状態の初期化 *****
-            ch = 0;
-            tempo = 120;
-            oct_chg = 0;
-            vol_max = 127;
-            if (pass_no == 1) {
-                this.tempo_chg = [];
-                tempo_obj = {};
-                tempo_obj.pos = 0;     // テンポ変更位置(単位は絶対音長(4分音符が48になる))
-                tempo_obj.val = tempo; // テンポ変更値(1分間に演奏する4分音符の数)
-                tempo_obj.rtime = 0;   // テンポ変更位置の実時間(sec)(これは後で計算する)
-                // this.tempo_chg.push(tempo_obj); // これを追加するとソートでおかしくなる
+        // ***** 全体状態の初期化 *****
+        ch = 0;
+        tempo = 120;
+        oct_chg = 0;
+        vol_max = 127;
+        if (pass_no == 1) {
+            this.tempo_chg = [];
+            tempo_obj = {};
+            tempo_obj.pos = 0;     // テンポ変更位置(単位は絶対音長(4分音符が48になる))
+            tempo_obj.val = tempo; // テンポ変更値(1分間に演奏する4分音符の数)
+            tempo_obj.rtime = 0;   // テンポ変更位置の実時間(sec)(これは後で計算する)
+            // this.tempo_chg.push(tempo_obj); // これを追加するとソートでおかしくなる
+        }
+        // ***** 各チャンネルの状態の初期化 *****
+        for (i = 0; i < MMLPlayer.MAX_CH; i++) {
+            prog[i] = 0;
+            volume[i] = 120;
+            velocity[i] = 100;
+            alength[i] = 48;
+            qtime[i] = 8;
+            octave[i] = 4;
+            sharp[i] = [];
+            for (j = 0; j < 7; j++) { // cdefgabの7個分の調号
+                sharp[i][j] = 0;
             }
-            // ***** 各チャンネルの状態の初期化 *****
-            for (i = 0; i < MMLPlayer.MAX_CH; i++) {
-                prog[i] = 0;
-                volume[i] = 120;
-                velocity[i] = 100;
-                alength[i] = 48;
-                qtime[i] = 8;
-                octave[i] = 4;
-                sharp[i] = [];
-                for (j = 0; j < 7; j++) { // cdefgabの7個分の調号
-                    sharp[i][j] = 0;
-                }
-                tie[i] = {};
-                tie[i].flag = false;  // タイのフラグ
-                tie[i].note = 0;      // タイの音の高さ
-                tie[i].length = 0;    // タイの音長
-                loop[i] = {};
-                loop[i].begin = [];   // ループ開始(配列)
-                loop[i].end = [];     // ループ終了(配列)
-                loop[i].counter = []; // ループ回数(配列)
-                this.pos[i] = 0;      // 音声データ位置(チャンネルごと)
-            }
-            // ***** トークンの解析 *****
-            index = 0;
-            tokens_len = tokens.length;
-            while (index < tokens_len) {
-                // ***** タイプとデータを取得 *****
-                type_chr = tokens[index].charAt(0);
-                data_chr = this.getTokenChar(tokens[index++]);
-                // ***** タイプによって場合分け *****
-                switch (type_chr) {
-                case "1": // 数字
-                    break;
-                case "2": // 音符と休符
-                    // ***** 音の高さを計算 *****
-                    if (data_chr == "r") {
-                        // ***** 休符は音の高さなし *****
-                        note = 0;
-                    } else {
-                        // ***** 音符の音の高さを数値化 *****
-                        note = "c d ef g a b".indexOf(data_chr);
-                        // ***** オクターブを加算 *****
-                        note = note + (octave[ch] + 1) * 12;
-                        // ***** シャープ、フラット、ナチュラルがあるときはそれを計算 *****
-                        switch (this.getTokenChar(tokens[index])) {
-                        case "+": // シャープ
-                        case "#": // シャープ
-                            index++;
-                            note++;
-                            break;
-                        case "-": // フラット
-                            index++;
-                            note--;
-                            break;
-                        case "=": // ナチュラル
-                        case "*": // ナチュラル
-                            index++;
-                            break;
-                        default:  // その他のときは調号の分を計算
-                            val = "cdefgab".indexOf(data_chr);
-                            if (val >= 0) { note = note + sharp[ch][val]; }
-                            break;
-                        }
-                        // ***** 音の高さ範囲チェック *****
-                        if (note < 0) { note = 0; }
-                        if (note > 127) { note = 127; }
+            tie[i] = {};
+            tie[i].flag = false;  // タイのフラグ
+            tie[i].note = 0;      // タイの音の高さ
+            tie[i].length = 0;    // タイの音長
+            loop[i] = {};
+            loop[i].begin = [];   // ループ開始(配列)
+            loop[i].end = [];     // ループ終了(配列)
+            loop[i].counter = []; // ループ回数(配列)
+            this.pos[i] = 0;      // 音声データ位置(チャンネルごと)
+        }
+        // ***** トークンの解析 *****
+        index = 0;
+        tokens_len = tokens.length;
+        while (index < tokens_len) {
+            // ***** タイプとデータを取得 *****
+            type_chr = tokens[index].charAt(0);
+            data_chr = this.getTokenChar(tokens[index++]);
+            // ***** タイプによって場合分け *****
+            switch (type_chr) {
+            case "1": // 数字
+                break;
+            case "2": // 音符と休符
+                // ***** 音の高さを計算 *****
+                if (data_chr == "r") {
+                    // ***** 休符は音の高さなし *****
+                    note = 0;
+                } else {
+                    // ***** 音符の音の高さを数値化 *****
+                    note = "c d ef g a b".indexOf(data_chr);
+                    // ***** オクターブを加算 *****
+                    note = note + (octave[ch] + 1) * 12;
+                    // ***** シャープ、フラット、ナチュラルがあるときはそれを計算 *****
+                    switch (this.getTokenChar(tokens[index])) {
+                    case "+": // シャープ
+                    case "#": // シャープ
+                        index++;
+                        note++;
+                        break;
+                    case "-": // フラット
+                        index++;
+                        note--;
+                        break;
+                    case "=": // ナチュラル
+                    case "*": // ナチュラル
+                        index++;
+                        break;
+                    default:  // その他のときは調号の分を計算
+                        val = "cdefgab".indexOf(data_chr);
+                        if (val >= 0) { note = note + sharp[ch][val]; }
+                        break;
                     }
-                    // ***** 音長の計算 *****
+                    // ***** 音の高さ範囲チェック *****
+                    if (note < 0) { note = 0; }
+                    if (note > 127) { note = 127; }
+                }
+                // ***** 音長の計算 *****
+                // ***** 絶対音長があるときは絶対音長を取得 *****
+                if (this.getTokenChar(tokens[index]) == "%") {
+                    index++;
+                    val = this.getTokenValue(tokens[index++]);
+                    if (val < 0) { val = 0; }
+                    if (val > 1000) { val = 1000; } // エラーチェック追加
+                    nlength1 = val;
+                } else {
+                    // ***** 音長があるときは音長を取得 *****
+                    val = this.getTokenValueForErr(tokens[index]);
+                    if (val > 1000) { val = 1000; } // エラーチェック追加
+                    if (val == 0) {
+                        index++;
+                        nlength1 = 0;
+                    } else if (val > 0) {
+                        index++;
+                        nlength1 = 48 * 4 / val;
+                    } else {
+                        nlength1 = alength[ch];
+                    }
+                    // ***** 付点があるときは音長を1.5倍 *****
+                    if (this.getTokenChar(tokens[index]) == ".") {
+                        index++;
+                        nlength1 = nlength1 * 3 / 2;
+                    }
+                }
+                nlength2 = nlength1 * qtime[ch] / 8;
+                // ***** スラーの処理 *****
+                if (tie[ch].flag == true && tie[ch].note != note && note > 0) {
+                    // ***** 音符または休符を追加 *****
+                    if (tie[ch].note > 0) {
+                        // ***** 音符追加 *****
+                        // _track.addNote(ch, tie[ch].note, velocity[ch], tie[ch].length, 0);
+                        this.addNote(ch, tie[ch].note, tie[ch].length, 0, prog[ch], volume[ch], pass_no);
+                    } else {
+                        // ***** 休符追加 *****
+                        // _track.addRest(ch, tie[ch].length, 0);
+                        this.addRest(ch, tie[ch].length);
+                    }
+                    // ***** タイを解除 *****
+                    tie[ch].flag = false;
+                    tie[ch].note = 0;
+                    tie[ch].length = 0;
+                }
+                // ***** タイまたはスラーのとき *****
+                if (this.getTokenChar(tokens[index]) == "&") {
+                    index++;
+                    // ***** タイのフラグを立てて、処理は次回にまわす *****
+                    tie[ch].flag = true;
+                    if (note > 0) { tie[ch].note = note; }
+                    tie[ch].length = tie[ch].length + nlength1;
+                } else {
+                    // ***** タイの処理 *****
+                    if (tie[ch].flag == true) {
+                        // ***** 音符を確定する *****
+                        note = tie[ch].note;
+                        nlength1 = tie[ch].length + nlength1;
+                        nlength2 = tie[ch].length + nlength2;
+                        // ***** タイを解除 *****
+                        tie[ch].flag = false;
+                        tie[ch].note = 0;
+                        tie[ch].length = 0;
+                    }
+                    // ***** 音符または休符を追加 *****
+                    if (note > 0) {
+                        // ***** 音符追加 *****
+                        // _track.addNote(ch, note, velocity[ch], nlength1, nlength2);
+                        this.addNote(ch, note, nlength1, nlength2, prog[ch], volume[ch], pass_no);
+                    } else {
+                        // ***** 休符追加 *****
+                        // _track.addRest(ch, nlength1, nlength2);
+                        this.addRest(ch, nlength1);
+                    }
+                }
+                break;
+            case "3": // その他の文字
+                switch (data_chr) { // コマンドに応じて処理
+                case "!": // 拡張コマンド
+                    data_chr2 = this.getTokenChar(tokens[index++]);
+                    switch (data_chr2) {
+                    case "c": // チャンネル切替(0-(MAX_CH-1))
+                        val = this.getTokenValue(tokens[index++]);
+                        if (val < 0) { val = 0; }
+                        if (val > (MMLPlayer.MAX_CH - 1)) { val = MMLPlayer.MAX_CH - 1; }
+                        ch = val;
+                        // ***** ループを解除 *****
+                        // ***** (今の作りではチャンネル切り替えをまたぐループは不可) *****
+                        loop[ch].begin = [];
+                        loop[ch].end = [];
+                        loop[ch].counter = [];
+                        break;
+                    case "o": // オクターブ記号変更(トグル)
+                        if (oct_chg == 0) { oct_chg = 1; } else { oct_chg = 0; }
+                        break;
+                    case "v": // ボリューム最大値(1-1000)
+                        val = this.getTokenValue(tokens[index++]);
+                        if (val < 1) { val = 1; }
+                        if (val > 1000) { val = 1000; } // エラーチェック追加
+                        vol_max = val;
+                        break;
+                    case "+": // 調号シャープ
+                    case "#": // 調号シャープ
+                    case "-": // 調号フラット
+                    case "=": // 調号ナチュラル
+                    case "*": // 調号ナチュラル
+                        do {
+                            val = "cdefgab".indexOf(this.getTokenChar(tokens[index]));
+                            if (val >= 0) {
+                                index++;
+                                if (data_chr2 == "+" || data_chr2 == "#") { sharp[ch][val] = 1; }
+                                else if (data_chr2 == "-") { sharp[ch][val] = -1; }
+                                else if (data_chr2 == "=" || data_chr2 == "*") { sharp[ch][val] = 0; }
+                            }
+                        } while (val >= 0);
+                        break;
+                    }
+                    break;
+                case "t": // テンポ切替(20-300) → (20-1200)
+                    val = this.getTokenValue(tokens[index++]);
+                    if (val < 20) { val = 20; }
+                    // if (val > 300) { val = 300; }
+                    if (val > 1200) { val = 1200; }
+                    tempo = val;
+                    // _track.setTempo(ch, tempo);
+                    if (pass_no == 1) {
+                        tempo_obj = {};
+                        tempo_obj.pos = this.pos[ch]; // テンポ変更位置(単位は絶対音長(4分音符が48になる))
+                        tempo_obj.val = tempo;        // テンポ変更値(1分間に演奏する4分音符の数)
+                        tempo_obj.rtime = 0;          // テンポ変更位置の実時間(sec)(これは後で計算する)
+                        this.tempo_chg.push(tempo_obj);
+                        this.tempo_chg.sort(tempo_sort);
+                    }
+                    break;
+                case "v": // チャンネル音量(0-vol_max)
+                    val = this.getTokenValue(tokens[index++]);
+                    if (val < 0) { val = 0; }
+                    if (val > vol_max) { val = vol_max; }
+                    volume[ch] = (val * 127) / vol_max; // 内部では音量は 0-127
+                    // _track.setChannelVolume(ch, volume[ch]);
+                    break;
+                case "k": // ベロシティ(0-127)
+                    val = this.getTokenValue(tokens[index++]);
+                    if (val < 0) { val = 0; }
+                    if (val > 127) { val = 127; }
+                    velocity[ch] = val;
+                    break;
+                case "@": // 音色切替(0-1000)
+                    val = this.getTokenValue(tokens[index++]);
+                    if (val < 0) { val = 0; }
+                    if (val > 1000) { val = 1000; } // エラーチェック追加
+                    prog[ch] = val;
+                    // _track.changeProg(ch, prog[ch]);
+                    break;
+                case "l": // 音長指定(0-1000)
                     // ***** 絶対音長があるときは絶対音長を取得 *****
                     if (this.getTokenChar(tokens[index]) == "%") {
                         index++;
                         val = this.getTokenValue(tokens[index++]);
                         if (val < 0) { val = 0; }
                         if (val > 1000) { val = 1000; } // エラーチェック追加
-                        nlength1 = val;
+                        alength[ch] = val;
                     } else {
-                        // ***** 音長があるときは音長を取得 *****
-                        val = this.getTokenValueForErr(tokens[index]);
+                        // ***** 音長を取得 *****
+                        val = this.getTokenValue(tokens[index++]);
+                        if (val < 0) { val = 0; }
                         if (val > 1000) { val = 1000; } // エラーチェック追加
                         if (val == 0) {
-                            index++;
-                            nlength1 = 0;
-                        } else if (val > 0) {
-                            index++;
-                            nlength1 = 48 * 4 / val;
+                            alength[ch] = 0;
                         } else {
-                            nlength1 = alength[ch];
+                            alength[ch] = 48 * 4 / val;
                         }
                         // ***** 付点があるときは音長を1.5倍 *****
                         if (this.getTokenChar(tokens[index]) == ".") {
                             index++;
-                            nlength1 = nlength1 * 3 / 2;
-                        }
-                    }
-                    nlength2 = nlength1 * qtime[ch] / 8;
-                    // ***** スラーの処理 *****
-                    if (tie[ch].flag == true && tie[ch].note != note && note > 0) {
-                        // ***** 音符または休符を追加 *****
-                        if (tie[ch].note > 0) {
-                            // ***** 音符追加 *****
-                            // _track.addNote(ch, tie[ch].note, velocity[ch], tie[ch].length, 0);
-                            this.addNote(ch, tie[ch].note, tie[ch].length, 0, prog[ch], volume[ch], pass_no);
-                        } else {
-                            // ***** 休符追加 *****
-                            // _track.addRest(ch, tie[ch].length, 0);
-                            this.addRest(ch, tie[ch].length);
-                        }
-                        // ***** タイを解除 *****
-                        tie[ch].flag = false;
-                        tie[ch].note = 0;
-                        tie[ch].length = 0;
-                    }
-                    // ***** タイまたはスラーのとき *****
-                    if (this.getTokenChar(tokens[index]) == "&") {
-                        index++;
-                        // ***** タイのフラグを立てて、処理は次回にまわす *****
-                        tie[ch].flag = true;
-                        if (note > 0) { tie[ch].note = note; }
-                        tie[ch].length = tie[ch].length + nlength1;
-                    } else {
-                        // ***** タイの処理 *****
-                        if (tie[ch].flag == true) {
-                            // ***** 音符を確定する *****
-                            note = tie[ch].note;
-                            nlength1 = tie[ch].length + nlength1;
-                            nlength2 = tie[ch].length + nlength2;
-                            // ***** タイを解除 *****
-                            tie[ch].flag = false;
-                            tie[ch].note = 0;
-                            tie[ch].length = 0;
-                        }
-                        // ***** 音符または休符を追加 *****
-                        if (note > 0) {
-                            // ***** 音符追加 *****
-                            // _track.addNote(ch, note, velocity[ch], nlength1, nlength2);
-                            this.addNote(ch, note, nlength1, nlength2, prog[ch], volume[ch], pass_no);
-                        } else {
-                            // ***** 休符追加 *****
-                            // _track.addRest(ch, nlength1, nlength2);
-                            this.addRest(ch, nlength1);
+                            alength[ch] = alength[ch] * 3 / 2;
                         }
                     }
                     break;
-                case "3": // その他の文字
-                    switch (data_chr) { // コマンドに応じて処理
-                    case "!": // 拡張コマンド
-                        data_chr2 = this.getTokenChar(tokens[index++]);
-                        switch (data_chr2) {
-                        case "c": // チャンネル切替(0-(MAX_CH-1))
-                            val = this.getTokenValue(tokens[index++]);
-                            if (val < 0) { val = 0; }
-                            if (val > (MMLPlayer.MAX_CH - 1)) { val = MMLPlayer.MAX_CH - 1; }
-                            ch = val;
-                            // ***** ループを解除 *****
-                            // ***** (今の作りではチャンネル切り替えをまたぐループは不可) *****
-                            loop[ch].begin = [];
-                            loop[ch].end = [];
-                            loop[ch].counter = [];
-                            break;
-                        case "o": // オクターブ記号変更(トグル)
-                            if (oct_chg == 0) { oct_chg = 1; } else { oct_chg = 0; }
-                            break;
-                        case "v": // ボリューム最大値(1-1000)
-                            val = this.getTokenValue(tokens[index++]);
-                            if (val < 1) { val = 1; }
-                            if (val > 1000) { val = 1000; } // エラーチェック追加
-                            vol_max = val;
-                            break;
-                        case "+": // 調号シャープ
-                        case "#": // 調号シャープ
-                        case "-": // 調号フラット
-                        case "=": // 調号ナチュラル
-                        case "*": // 調号ナチュラル
-                            do {
-                                val = "cdefgab".indexOf(this.getTokenChar(tokens[index]));
+                case "q": // 発音割合指定(1-8)
+                    val = this.getTokenValue(tokens[index++]);
+                    if (val < 1) { val = 1; }
+                    if (val > 8) { val = 8; }
+                    qtime[ch] = val;
+                    break;
+                case "o": // オクターブ指定(0-8)
+                    val = this.getTokenValue(tokens[index++]);
+                    if (val < 0) { val = 0; }
+                    if (val > 8) { val = 8; }
+                    octave[ch] = val;
+                    break;
+                case "<": // オクターブ下げ(0-8)
+                    if (oct_chg == 0) {
+                        if (octave[ch] > 0) { octave[ch]--; }
+                    } else {
+                        if (octave[ch] < 8) { octave[ch]++; }
+                    }
+                    break;
+                case ">": // オクターブ上げ(0-8)
+                    if (oct_chg == 0) {
+                        if (octave[ch] < 8) { octave[ch]++; }
+                    } else {
+                        if (octave[ch] > 0) { octave[ch]--; }
+                    }
+                    break;
+                case "[": // ループ開始
+                    // ***** ループ情報を生成 *****
+                    loop[ch].begin.push(index);
+                    loop[ch].end.push(0);
+                    loop[ch].counter.push(-1);
+                    break;
+                case "]": // ループ終了
+                    // ***** ループ有無のチェック *****
+                    loop_no = loop[ch].begin.length - 1;
+                    if (loop_no >= 0) {
+                        loop_count = loop[ch].counter[loop_no];
+                        // ***** ループ最終回のとき *****
+                        if (loop_count == -2) {
+                            // ***** ループ終了位置へジャンプ *****
+                            index = loop[ch].end[loop_no];
+                            // ***** ループ情報を破棄 *****
+                            loop[ch].begin.pop();
+                            loop[ch].end.pop();
+                            loop[ch].counter.pop();
+                        } else {
+                            // ***** ループ初回のとき *****
+                            if (loop_count == -1) {
+                                // ***** ループ回数取得 *****
+                                val = this.getTokenValueForErr(tokens[index]);
+                                if (val > 100) { val = 100; } // エラーチェック追加
                                 if (val >= 0) {
                                     index++;
-                                    if (data_chr2 == "+" || data_chr2 == "#") { sharp[ch][val] = 1; }
-                                    else if (data_chr2 == "-") { sharp[ch][val] = -1; }
-                                    else if (data_chr2 == "=" || data_chr2 == "*") { sharp[ch][val] = 0; }
+                                    loop_count = val - 1;
                                 }
-                            } while (val >= 0);
-                            break;
-                        }
-                        break;
-                    case "t": // テンポ切替(20-300) → (20-1200)
-                        val = this.getTokenValue(tokens[index++]);
-                        if (val < 20) { val = 20; }
-                        // if (val > 300) { val = 300; }
-                        if (val > 1200) { val = 1200; }
-                        tempo = val;
-                        // _track.setTempo(ch, tempo);
-                        if (pass_no == 1) {
-                            tempo_obj = {};
-                            tempo_obj.pos = this.pos[ch]; // テンポ変更位置(単位は絶対音長(4分音符が48になる))
-                            tempo_obj.val = tempo;        // テンポ変更値(1分間に演奏する4分音符の数)
-                            tempo_obj.rtime = 0;          // テンポ変更位置の実時間(sec)(これは後で計算する)
-                            this.tempo_chg.push(tempo_obj);
-                            this.tempo_chg.sort(tempo_sort);
-                        }
-                        break;
-                    case "v": // チャンネル音量(0-vol_max)
-                        val = this.getTokenValue(tokens[index++]);
-                        if (val < 0) { val = 0; }
-                        if (val > vol_max) { val = vol_max; }
-                        volume[ch] = (val * 127) / vol_max; // 内部では音量は 0-127
-                        // _track.setChannelVolume(ch, volume[ch]);
-                        break;
-                    case "k": // ベロシティ(0-127)
-                        val = this.getTokenValue(tokens[index++]);
-                        if (val < 0) { val = 0; }
-                        if (val > 127) { val = 127; }
-                        velocity[ch] = val;
-                        break;
-                    case "@": // 音色切替(0-1000)
-                        val = this.getTokenValue(tokens[index++]);
-                        if (val < 0) { val = 0; }
-                        if (val > 1000) { val = 1000; } // エラーチェック追加
-                        prog[ch] = val;
-                        // _track.changeProg(ch, prog[ch]);
-                        break;
-                    case "l": // 音長指定(0-1000)
-                        // ***** 絶対音長があるときは絶対音長を取得 *****
-                        if (this.getTokenChar(tokens[index]) == "%") {
-                            index++;
-                            val = this.getTokenValue(tokens[index++]);
-                            if (val < 0) { val = 0; }
-                            if (val > 1000) { val = 1000; } // エラーチェック追加
-                            alength[ch] = val;
-                        } else {
-                            // ***** 音長を取得 *****
-                            val = this.getTokenValue(tokens[index++]);
-                            if (val < 0) { val = 0; }
-                            if (val > 1000) { val = 1000; } // エラーチェック追加
-                            if (val == 0) {
-                                alength[ch] = 0;
-                            } else {
-                                alength[ch] = 48 * 4 / val;
+                                if (loop_count <= 0) { loop_count = 1; }
+                                // ***** ループ終了位置を保存 *****
+                                loop[ch].end[loop_no] = index;
                             }
-                            // ***** 付点があるときは音長を1.5倍 *****
-                            if (this.getTokenChar(tokens[index]) == ".") {
-                                index++;
-                                alength[ch] = alength[ch] * 3 / 2;
-                            }
+                            // ***** ループ先頭位置へジャンプ *****
+                            index = loop[ch].begin[loop_no];
+                            // ***** ループ回数を減らす *****
+                            loop_count--;
+                            if (loop_count <= 0) { loop_count = -2; }
+                            loop[ch].counter[loop_no] = loop_count;
                         }
-                        break;
-                    case "q": // 発音割合指定(1-8)
-                        val = this.getTokenValue(tokens[index++]);
-                        if (val < 1) { val = 1; }
-                        if (val > 8) { val = 8; }
-                        qtime[ch] = val;
-                        break;
-                    case "o": // オクターブ指定(0-8)
-                        val = this.getTokenValue(tokens[index++]);
-                        if (val < 0) { val = 0; }
-                        if (val > 8) { val = 8; }
-                        octave[ch] = val;
-                        break;
-                    case "<": // オクターブ下げ(0-8)
-                        if (oct_chg == 0) {
-                            if (octave[ch] > 0) { octave[ch]--; }
-                        } else {
-                            if (octave[ch] < 8) { octave[ch]++; }
+                    }
+                    break;
+                case ":": // 最終回ループ脱出
+                    // ***** ループ有無のチェック *****
+                    loop_no = loop[ch].begin.length - 1;
+                    if (loop_no >= 0) {
+                        loop_count = loop[ch].counter[loop_no];
+                        // ***** ループ最終回のとき *****
+                        if (loop_count == -2) {
+                            // ***** ループ終了位置へジャンプ *****
+                            index = loop[ch].end[loop_no];
+                            // ***** ループ情報を破棄 *****
+                            loop[ch].begin.pop();
+                            loop[ch].end.pop();
+                            loop[ch].counter.pop();
                         }
-                        break;
-                    case ">": // オクターブ上げ(0-8)
-                        if (oct_chg == 0) {
-                            if (octave[ch] < 8) { octave[ch]++; }
-                        } else {
-                            if (octave[ch] > 0) { octave[ch]--; }
-                        }
-                        break;
-                    case "[": // ループ開始
-                        // ***** ループ情報を生成 *****
-                        loop[ch].begin.push(index);
-                        loop[ch].end.push(0);
-                        loop[ch].counter.push(-1);
-                        break;
-                    case "]": // ループ終了
-                        // ***** ループ有無のチェック *****
-                        loop_no = loop[ch].begin.length - 1;
-                        if (loop_no >= 0) {
-                            loop_count = loop[ch].counter[loop_no];
-                            // ***** ループ最終回のとき *****
-                            if (loop_count == -2) {
-                                // ***** ループ終了位置へジャンプ *****
-                                index = loop[ch].end[loop_no];
-                                // ***** ループ情報を破棄 *****
-                                loop[ch].begin.pop();
-                                loop[ch].end.pop();
-                                loop[ch].counter.pop();
-                            } else {
-                                // ***** ループ初回のとき *****
-                                if (loop_count == -1) {
-                                    // ***** ループ回数取得 *****
-                                    val = this.getTokenValueForErr(tokens[index]);
-                                    if (val > 100) { val = 100; } // エラーチェック追加
-                                    if (val >= 0) {
-                                        index++;
-                                        loop_count = val - 1;
-                                    }
-                                    if (loop_count <= 0) { loop_count = 1; }
-                                    // ***** ループ終了位置を保存 *****
-                                    loop[ch].end[loop_no] = index;
-                                }
-                                // ***** ループ先頭位置へジャンプ *****
-                                index = loop[ch].begin[loop_no];
-                                // ***** ループ回数を減らす *****
-                                loop_count--;
-                                if (loop_count <= 0) { loop_count = -2; }
-                                loop[ch].counter[loop_no] = loop_count;
-                            }
-                        }
-                        break;
-                    case ":": // 最終回ループ脱出
-                        // ***** ループ有無のチェック *****
-                        loop_no = loop[ch].begin.length - 1;
-                        if (loop_no >= 0) {
-                            loop_count = loop[ch].counter[loop_no];
-                            // ***** ループ最終回のとき *****
-                            if (loop_count == -2) {
-                                // ***** ループ終了位置へジャンプ *****
-                                index = loop[ch].end[loop_no];
-                                // ***** ループ情報を破棄 *****
-                                loop[ch].begin.pop();
-                                loop[ch].end.pop();
-                                loop[ch].counter.pop();
-                            }
-                        }
-                        break;
                     }
                     break;
                 }
+                break;
             }
-            return true;
-        };
-        // ***** トークンを数値に変換して取得(内部処理用) *****
-        MMLPlayer.prototype.getTokenValue = function(tok) {
-            if (tok.length < 2) { return 0; }
-            if (tok.charAt(0) == "1") { return parseInt(tok.substring(1), 10); }
-            return 0;
-        };
-        // ***** トークンを数値に変換して取得(エラー時は-1を返す)(内部処理用) *****
-        MMLPlayer.prototype.getTokenValueForErr = function(tok) {
-            if (tok.length < 2) { return -1; }
-            if (tok.charAt(0) == "1") { return parseInt(tok.substring(1), 10); }
-            return -1;
-        };
-        // ***** トークンを文字に変換して取得(内部処理用) *****
-        MMLPlayer.prototype.getTokenChar = function(tok) {
-            if (tok.length < 2) { return 0; }
-            return tok.charAt(1);
-        };
-        // ***** MMLをトークン分割(内部処理用) *****
-        MMLPlayer.prototype.tokenize = function(mml_st) {
-            var mml_str;     // MML文字列
-            var mml_str_len; // MML文字列の長さ
-            var index;       // 検索位置
-            var tokens = []; // トークン(配列)
-            var ch, type, start;
+        }
+        return true;
+    };
+    // ***** トークンを数値に変換して取得(内部処理用) *****
+    MMLPlayer.prototype.getTokenValue = function (tok) {
+        if (tok.length < 2) { return 0; }
+        if (tok.charAt(0) == "1") { return parseInt(tok.substring(1), 10); }
+        return 0;
+    };
+    // ***** トークンを数値に変換して取得(エラー時は-1を返す)(内部処理用) *****
+    MMLPlayer.prototype.getTokenValueForErr = function (tok) {
+        if (tok.length < 2) { return -1; }
+        if (tok.charAt(0) == "1") { return parseInt(tok.substring(1), 10); }
+        return -1;
+    };
+    // ***** トークンを文字に変換して取得(内部処理用) *****
+    MMLPlayer.prototype.getTokenChar = function (tok) {
+        if (tok.length < 2) { return 0; }
+        return tok.charAt(1);
+    };
+    // ***** MMLをトークン分割(内部処理用) *****
+    MMLPlayer.prototype.tokenize = function (mml_st) {
+        var mml_str;     // MML文字列
+        var mml_str_len; // MML文字列の長さ
+        var index;       // 検索位置
+        var tokens = []; // トークン(配列)
+        var ch, type, start;
 
-            // ***** 小文字に変換 *****
-            mml_str = mml_st.toLowerCase();
-            // ***** トークン切り出し *****
-            index = 0;
-            tokens = [];
-            mml_str_len = mml_str.length;
-            while (index < mml_str_len) {
-                // ***** 1文字取り出す *****
-                ch = mml_str.charAt(index);
-                // ***** タイプを取得 *****
-                if (ch == " " || ch == "\n" || ch == "\r" || ch == "\t") {
-                    type = 0;  // 無効
-                } else if ("0123456789".indexOf(ch) >= 0) {
-                    type = 1;  // 数字
-                } else if ("cdefgabr".indexOf(ch) >= 0) {
-                    type = 2;  // 音符と休符
-                } else if (ch == "^"){
-                    type = 10; // 「^」記号
-                } else {
-                    type = 3;  // その他の文字
-                }
-                // ***** 切り出し開始 *****
-                start = index;
-                index++;
-                if (type == 1) { // 数字のときは数字でなくなるまで追加
-                    while (index < mml_str_len) {
-                        ch = mml_str.charAt(index);
-                        if ("0123456789".indexOf(ch) >= 0) {
-                            index++;
-                        } else {
-                            break;
-                        }
+        // ***** 小文字に変換 *****
+        mml_str = mml_st.toLowerCase();
+        // ***** トークン切り出し *****
+        index = 0;
+        tokens = [];
+        mml_str_len = mml_str.length;
+        while (index < mml_str_len) {
+            // ***** 1文字取り出す *****
+            ch = mml_str.charAt(index);
+            // ***** タイプを取得 *****
+            if (ch == " " || ch == "\n" || ch == "\r" || ch == "\t") {
+                type = 0;  // 無効
+            } else if ("0123456789".indexOf(ch) >= 0) {
+                type = 1;  // 数字
+            } else if ("cdefgabr".indexOf(ch) >= 0) {
+                type = 2;  // 音符と休符
+            } else if (ch == "^") {
+                type = 10; // 「^」記号
+            } else {
+                type = 3;  // その他の文字
+            }
+            // ***** 切り出し開始 *****
+            start = index;
+            index++;
+            if (type == 1) { // 数字のときは数字でなくなるまで追加
+                while (index < mml_str_len) {
+                    ch = mml_str.charAt(index);
+                    if ("0123456789".indexOf(ch) >= 0) {
+                        index++;
+                    } else {
+                        break;
                     }
-                    tokens.push(String(type) + mml_str.substring(start, index));
-                } else if (type == 10) { // 「^」記号のときはタイと休符のトークンを追加
-                    tokens.push("3&");
-                    tokens.push("2r");
-                } else if (type > 0) { // 無効文字以外をトークンに追加
-                    tokens.push(String(type) + mml_str.substring(start, index));
                 }
+                tokens.push(String(type) + mml_str.substring(start, index));
+            } else if (type == 10) { // 「^」記号のときはタイと休符のトークンを追加
+                tokens.push("3&");
+                tokens.push("2r");
+            } else if (type > 0) { // 無効文字以外をトークンに追加
+                tokens.push(String(type) + mml_str.substring(start, index));
             }
-            // ***** 末尾に無効なトークンを追加(安全のため) *****
-            tokens.push("3|");
-            tokens.push("3|");
-            tokens.push("3|");
-            tokens.push("3|");
-            // ***** トークンを返す *****
-            return tokens;
-        };
-        return MMLPlayer; // これがないとクラスが動かないので注意
-    })();
-
-
-})(Interpreter || (Interpreter = {}));
+        }
+        // ***** 末尾に無効なトークンを追加(安全のため) *****
+        tokens.push("3|");
+        tokens.push("3|");
+        tokens.push("3|");
+        tokens.push("3|");
+        // ***** トークンを返す *****
+        return tokens;
+    };
+    return MMLPlayer; // これがないとクラスが動かないので注意
+})();
 
 
