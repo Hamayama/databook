@@ -84,7 +84,7 @@ function datechg_click() {
 </tr></table>
 <input type="button" value="セーブ" onclick="submit();">
 </form>
-<form action="{{ runpage_url }}" method="post" target="run_prog">
+<form action="{{ runpage_url }}" method="get" target="run_prog">
 <input type="hidden" name="title" value="{{ article.title }}">
 <input type="hidden" name="db" value="{{ databook_name }}">
 {% if article.bkup_dates %}

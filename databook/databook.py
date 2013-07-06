@@ -12,7 +12,7 @@ from google.appengine.ext import ndb
 from google.appengine.api import search
 
 # databook.py
-# 2013-6-11 v1.20
+# 2013-7-7 v1.21
 
 # Google App Engine / Python による データベース アプリケーション1
 
@@ -244,7 +244,8 @@ class MainPage(webapp2.RequestHandler):
 
 # ***** 実行ページの表示 *****
 class RunPage(webapp2.RequestHandler):
-    def post(self):
+    # def post(self):
+    def get(self):
         # データブックの名前を取得
         databook_name = get_databook_name(self.request.get('db'))
 
@@ -264,10 +265,15 @@ class RunPage(webapp2.RequestHandler):
             else:
                 article = articles[0]
 
-        # 記事が存在しなければダミーの空データを作成
+        # # 記事が存在しなければダミーの空データを作成
+        # if no_article == 1:
+        #     article = Article(parent=databook_key(databook_name))
+        #     article.source = ''
+
+        # 記事が存在しなければ 404 Not Found エラーにする
         if no_article == 1:
-            article = Article(parent=databook_key(databook_name))
-            article.source = ''
+            webapp2.abort(404)
+            return
 
         # 実行ページのテンプレートに記事データを埋め込んで表示
         template = jinja_environment.get_template(runpage_html)

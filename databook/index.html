@@ -135,7 +135,7 @@
     <input type="hidden" name="db" value="{{ databook_name }}">
     <input type="submit" value=" 編集 ">
     </form></td>
-    <td class="nowrap"><form action="{{ runpage_url }}" method="post" target="run_prog">
+    <td class="nowrap"><form action="{{ runpage_url }}" method="get" target="run_prog">
     <input type="hidden" name="title" value="{{ article.title }}">
     <input type="hidden" name="db" value="{{ databook_name }}">
     <input type="submit" value=" 起動 ">
