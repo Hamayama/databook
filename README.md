@@ -13,7 +13,7 @@
     (c) 全文検索実行  
     (d) 管理者用機能実行  
     
-    実行例、ダウンロードは、以下にあります。  
+    実行例とダウンロードは、以下のページにあります。  
     https://sites.google.com/site/hamayama1010/gae_p_database1  
 
 
