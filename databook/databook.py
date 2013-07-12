@@ -12,7 +12,7 @@ from google.appengine.ext import ndb
 from google.appengine.api import search
 
 # databook.py
-# 2013-7-7 v1.21
+# 2013-7-12 v1.22
 
 # Google App Engine / Python による データベース アプリケーション1
 
@@ -152,12 +152,12 @@ class MainPage(webapp2.RequestHandler):
 
         # ログイン/ログアウトURL設定
         if users.get_current_user():
-            url = users.create_logout_url(self.request.uri)
-            url_linktext = '[ログアウト]'
+            login_url = users.create_logout_url(self.request.uri)
+            login_text = '[ログアウト]'
         else:
-            url = users.create_login_url(self.request.uri)
-            # url_linktext = '[ログイン]'
-            url_linktext = '[管理]'
+            login_url = users.create_login_url(self.request.uri)
+            # login_text = '[ログイン]'
+            login_text = '[管理]'
 
 
         # 全文検索の単語をチェック
@@ -222,7 +222,7 @@ class MainPage(webapp2.RequestHandler):
         databook_title = databook_title.decode('utf-8')
         message_data = message_data.decode('utf-8')
         admin_message = admin_message.decode('utf-8')
-        url_linktext = url_linktext.decode('utf-8')
+        login_text = login_text.decode('utf-8')
 
         # メインページのテンプレートに記事データを埋め込んで表示
         template = jinja_environment.get_template(mainpage_html)
@@ -238,8 +238,8 @@ class MainPage(webapp2.RequestHandler):
                                                 search_word=search_word,
                                                 admin_login=admin_login,
                                                 admin_message=admin_message,
-                                                url=url,
-                                                url_linktext=url_linktext))
+                                                login_url=login_url,
+                                                login_text=login_text))
 
 
 # ***** 実行ページの表示 *****
