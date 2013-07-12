@@ -1,7 +1,7 @@
 // This file is encoded with UTF-8 without BOM.
 
 // sp_interpreter.js
-// 2013-7-8 v1.56
+// 2013-7-12 v1.57
 
 
 // SPALM Web Interpreter
@@ -964,7 +964,7 @@ var Interpreter;
             return true;
         };
         // ***** 配列変数の一括コピー *****
-        Vars.prototype.copyVarArray = function (var_name, var_name2) {
+        Vars.prototype.copyArray = function (var_name, var_name2) {
             var glb, loc;
             var var_name_len;
             var var_name_from;
@@ -1044,6 +1044,83 @@ var Interpreter;
                 }
             }
             if (copy_flag) { return true; }
+            // ローカル変数もグローバル変数も存在しない
+            return true;
+        };
+        // ***** 配列変数の一括削除 *****
+        Vars.prototype.deleteArray = function (var_name) {
+            var glb, loc;
+            var var_name_len;
+            var var_name2;
+            var delete_flag;
+            var localvars;
+            var ret_obj = {};
+
+            // ***** 引数のチェック *****
+            if (var_name == "") { return true; }
+
+            // ***** 関数の引数のポインタ対応 *****
+            // ***** ローカル変数のスコープを取得する *****
+            this.getLocalScope(var_name, ret_obj);
+            localvars = ret_obj.localvars;
+            var_name  = ret_obj.var_name;
+
+            // ***** 接頭語のチェック *****
+            glb = false;
+            loc = false;
+            if (var_name.substring(0, 7) == "global ") { glb = true; var_name = var_name.substring(7); }
+            if (var_name.substring(0, 4) == "glb "   ) { glb = true; var_name = var_name.substring(4); }
+            if (var_name.substring(0, 6) == "local " ) { loc = true; var_name = var_name.substring(6); }
+            if (var_name.substring(0, 4) == "loc "   ) { loc = true; var_name = var_name.substring(4); }
+            // ***** 変数に[を付加 *****
+            var_name = var_name + "[";
+            // ***** 変数の長さを取得 *****
+            var_name_len = var_name.length;
+            // ***** グローバル変数のみを使うとき *****
+            if (localvars == null || use_local_vars == false || glb == true) {
+                for (var_name2 in this.globalvars) {
+                    if (this.globalvars.hasOwnProperty(var_name2)) {
+                        if (var_name2.substring(0, var_name_len) == var_name) {
+                            delete this.globalvars[var_name2];
+                        }
+                    }
+                }
+                return true;
+            }
+            // ***** ローカル変数のみを使うとき *****
+            if (loc == true) {
+                for (var_name2 in localvars) {
+                    if (localvars.hasOwnProperty(var_name2)) {
+                        if (var_name2.substring(0, var_name_len) == var_name) {
+                            delete localvars[var_name2];
+                        }
+                    }
+                }
+                return true;
+            }
+            // ***** グローバル変数とローカル変数を両方使うとき *****
+            // ローカル変数が存在する
+            delete_flag = false;
+            for (var_name2 in localvars) {
+                if (localvars.hasOwnProperty(var_name2)) {
+                    if (var_name2.substring(0, var_name_len) == var_name) {
+                        delete localvars[var_name2];
+                        delete_flag = true;
+                    }
+                }
+            }
+            if (delete_flag) { return true; }
+            // グローバル変数が存在する
+            delete_flag = false;
+            for (var_name2 in this.globalvars) {
+                if (this.globalvars.hasOwnProperty(var_name2)) {
+                    if (var_name2.substring(0, var_name_len) == var_name) {
+                        delete this.globalvars[var_name2];
+                        delete_flag = true;
+                    }
+                }
+            }
+            if (delete_flag) { return true; }
             // ローカル変数もグローバル変数も存在しない
             return true;
         };
@@ -1846,12 +1923,46 @@ var Interpreter;
                     a2 = getvarname(2); // ポインタ対応
                     match(")");
                     // ***** 配列変数の一括コピー *****
-                    vars.copyVarArray(a1, a2);
+                    vars.copyArray(a1, a2);
                     return true;
                 }
                 break;
 
             case "d":
+                if (sym == "disarray") {
+                    match("(");
+                    // a1 = getvarname();
+                    a1 = getvarname(2); // ポインタ対応
+                    if (symbol[pc] == ")") {
+                        a2 = null;
+                        a3 = 0;
+                    } else {
+                        match(","); a2 = parseInt(expression(), 10);
+                        if (symbol[pc] == ")") {
+                            a3 = a2;
+                            a2 = 0;
+                        } else {
+                            match(","); a3 = parseInt(expression(), 10);
+                        }
+                    }
+                    match(")");
+
+                    // ***** エラーチェック *****
+                    // if (a2 != null && (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size)) {
+                    if (!(a2 == null || (a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size))) {
+                        throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
+                    }
+
+                    if (a2 == null) {
+                        vars.deleteArray(a1);
+                    } else {
+                        for (i = a2; i <= a3; i++) {
+                            // delete vars[a1 + "[" + i + "]"];
+                            vars.deleteVar(a1 + "[" + i + "]");
+                        }
+                    }
+                    return true;
+                }
                 if (sym == "disimg") {
                     match("(");
                     // a1 = getvarname();
@@ -2438,6 +2549,37 @@ var Interpreter;
                 break;
 
             case "m":
+                if (sym == "makearray") {
+                    match("(");
+                    // a1 = getvarname();
+                    a1 = getvarname(2); // ポインタ対応
+                    match(","); a2 = parseInt(expression(), 10);
+                    if (symbol[pc] == ")") {
+                        a3 = a2;
+                        a2 = 0;
+                        a4 = 0;
+                    } else {
+                        match(","); a3 = parseInt(expression(), 10);
+                        if (symbol[pc] == ")") {
+                            a4 = 0;
+                        } else {
+                            match(","); a4 = expression();
+                        }
+                    }
+                    match(")");
+
+                    // ***** エラーチェック *****
+                    // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
+                    if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
+                        throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
+                    }
+
+                    for (i = a2; i <= a3; i++) {
+                        // vars[a1 + "[" + i + "]"] = a4;
+                        vars.setVarValue(a1 + "[" + i + "]", a4);
+                    }
+                    return true;
+                }
                 if (sym == "makeimg") {
                     match("(");
                     // a1 = getvarname();
