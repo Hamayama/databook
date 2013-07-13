@@ -1,7 +1,7 @@
 // This file is encoded with UTF-8 without BOM.
 
 // sp_interpreter.js
-// 2013-7-12 v1.57
+// 2013-7-13 v1.61
 
 
 // SPALM Web Interpreter
@@ -536,6 +536,7 @@ var Interpreter;
 
     var sleep_flag;             // スリープ用のフラグ
     var sleep_time;             // スリープ時間(msec)
+    var sleep_id = null;        // スリープキャンセル用ID
     var loop_time_max = 3000;   // 最大ループ時間(msec) これ以上時間がかかったらエラーとする
     var loop_time_start;        // ループ開始時間(msec)
     var loop_time_count;        // ループ経過時間(msec)
@@ -654,6 +655,10 @@ var Interpreter;
     // ***** 停止 *****
     function stop() {
         stop_flag = true;
+        if (sleep_id != null) {
+            clearTimeout(sleep_id);
+            run_continuously();
+        }
     }
     Interpreter.stop = stop;
 
@@ -747,18 +752,21 @@ var Interpreter;
         };
         // ***** 変数を削除する *****
         Vars.prototype.deleteVar = function (var_name) {
+            var i;
             var glb, loc;
             var localvars;
-            var ret_obj = {};
 
             // ***** 引数のチェック *****
             if (var_name == "") { return true; }
 
             // ***** 関数の引数のポインタ対応 *****
             // ***** ローカル変数のスコープを取得する *****
-            this.getLocalScope(var_name, ret_obj);
-            localvars = ret_obj.localvars;
-            var_name  = ret_obj.var_name;
+            // (変数名の先頭の「a\」の数だけスコープをさかのぼる)
+            if (var_name.substring(0, 2) == "a\\") {
+                i = 0; do { i++; var_name = var_name.substring(2); } while (var_name.substring(0, 2) == "a\\");
+                if (this.old_vars_stack.length >= i) { localvars = this.old_vars_stack[this.old_vars_stack.length - i]; }
+                else { localvars = null; }
+            } else { localvars = this.localvars; }
 
             // ***** 接頭語のチェック *****
             glb = false;
@@ -795,18 +803,21 @@ var Interpreter;
         };
         // ***** 変数の存在チェック *****
         Vars.prototype.checkVar = function (var_name) {
+            var i;
             var glb, loc;
             var localvars;
-            var ret_obj = {};
 
             // ***** 引数のチェック *****
             if (var_name == "") { return true; }
 
             // ***** 関数の引数のポインタ対応 *****
             // ***** ローカル変数のスコープを取得する *****
-            this.getLocalScope(var_name, ret_obj);
-            localvars = ret_obj.localvars;
-            var_name  = ret_obj.var_name;
+            // (変数名の先頭の「a\」の数だけスコープをさかのぼる)
+            if (var_name.substring(0, 2) == "a\\") {
+                i = 0; do { i++; var_name = var_name.substring(2); } while (var_name.substring(0, 2) == "a\\");
+                if (this.old_vars_stack.length >= i) { localvars = this.old_vars_stack[this.old_vars_stack.length - i]; }
+                else { localvars = null; }
+            } else { localvars = this.localvars; }
 
             // ***** 接頭語のチェック *****
             glb = false;
@@ -844,16 +855,18 @@ var Interpreter;
             var var_name2;
             var glb, loc;
             var localvars;
-            var ret_obj = {};
 
             // ***** 引数のチェック *****
             if (var_name == "") { return true; }
 
             // ***** 関数の引数のポインタ対応 *****
             // ***** ローカル変数のスコープを取得する *****
-            this.getLocalScope(var_name, ret_obj);
-            localvars = ret_obj.localvars;
-            var_name  = ret_obj.var_name;
+            // (変数名の先頭の「a\」の数だけスコープをさかのぼる)
+            if (var_name.substring(0, 2) == "a\\") {
+                i = 0; do { i++; var_name = var_name.substring(2); } while (var_name.substring(0, 2) == "a\\");
+                if (this.old_vars_stack.length >= i) { localvars = this.old_vars_stack[this.old_vars_stack.length - i]; }
+                else { localvars = null; }
+            } else { localvars = this.localvars; }
 
             // ***** 接頭語のチェック *****
             glb = false;
@@ -906,16 +919,18 @@ var Interpreter;
             var var_name2;
             var glb, loc;
             var localvars;
-            var ret_obj = {};
 
             // ***** 引数のチェック *****
             if (var_name == "") { return true; }
 
             // ***** 関数の引数のポインタ対応 *****
             // ***** ローカル変数のスコープを取得する *****
-            this.getLocalScope(var_name, ret_obj);
-            localvars = ret_obj.localvars;
-            var_name  = ret_obj.var_name;
+            // (変数名の先頭の「a\」の数だけスコープをさかのぼる)
+            if (var_name.substring(0, 2) == "a\\") {
+                i = 0; do { i++; var_name = var_name.substring(2); } while (var_name.substring(0, 2) == "a\\");
+                if (this.old_vars_stack.length >= i) { localvars = this.old_vars_stack[this.old_vars_stack.length - i]; }
+                else { localvars = null; }
+            } else { localvars = this.localvars; }
 
             // ***** 接頭語のチェック *****
             glb = false;
@@ -965,13 +980,13 @@ var Interpreter;
         };
         // ***** 配列変数の一括コピー *****
         Vars.prototype.copyArray = function (var_name, var_name2) {
+            var i;
             var glb, loc;
             var var_name_len;
             var var_name_from;
             var var_name_to;
             var copy_flag;
             var localvars;
-            var ret_obj = {};
 
             // ***** 引数のチェック *****
             if (var_name == "") { return true; }
@@ -979,9 +994,12 @@ var Interpreter;
 
             // ***** 関数の引数のポインタ対応 *****
             // ***** ローカル変数のスコープを取得する *****
-            this.getLocalScope(var_name, ret_obj);
-            localvars = ret_obj.localvars;
-            var_name  = ret_obj.var_name;
+            // (変数名の先頭の「a\」の数だけスコープをさかのぼる)
+            if (var_name.substring(0, 2) == "a\\") {
+                i = 0; do { i++; var_name = var_name.substring(2); } while (var_name.substring(0, 2) == "a\\");
+                if (this.old_vars_stack.length >= i) { localvars = this.old_vars_stack[this.old_vars_stack.length - i]; }
+                else { localvars = null; }
+            } else { localvars = this.localvars; }
 
             // ***** 接頭語のチェック *****
             glb = false;
@@ -1049,21 +1067,24 @@ var Interpreter;
         };
         // ***** 配列変数の一括削除 *****
         Vars.prototype.deleteArray = function (var_name) {
+            var i;
             var glb, loc;
             var var_name_len;
             var var_name2;
             var delete_flag;
             var localvars;
-            var ret_obj = {};
 
             // ***** 引数のチェック *****
             if (var_name == "") { return true; }
 
             // ***** 関数の引数のポインタ対応 *****
             // ***** ローカル変数のスコープを取得する *****
-            this.getLocalScope(var_name, ret_obj);
-            localvars = ret_obj.localvars;
-            var_name  = ret_obj.var_name;
+            // (変数名の先頭の「a\」の数だけスコープをさかのぼる)
+            if (var_name.substring(0, 2) == "a\\") {
+                i = 0; do { i++; var_name = var_name.substring(2); } while (var_name.substring(0, 2) == "a\\");
+                if (this.old_vars_stack.length >= i) { localvars = this.old_vars_stack[this.old_vars_stack.length - i]; }
+                else { localvars = null; }
+            } else { localvars = this.localvars; }
 
             // ***** 接頭語のチェック *****
             glb = false;
@@ -1123,35 +1144,6 @@ var Interpreter;
             if (delete_flag) { return true; }
             // ローカル変数もグローバル変数も存在しない
             return true;
-        };
-
-        // ***** 以下は内部処理用 *****
-
-        // ***** 関数の引数のポインタ対応 *****
-        // ***** ローカル変数のスコープを取得する *****
-        // (戻り値は、引数 ret_obj のプロパティにセットして返す
-        //    ret_obj.localvars  取得したローカル変数のスコープ
-        //    ret_obj.var_name   先頭の「a\」を削除した変数名  )
-        Vars.prototype.getLocalScope = function (var_name, ret_obj) {
-            var i;
-
-            // ***** 変数名の先頭の「a\」の数だけスコープをさかのぼる *****
-            i = 0;
-            while (var_name.substring(0, 2) == "a\\") {
-                var_name = var_name.substring(2);
-                i++;
-            }
-            if (i > 0) {
-                if (this.old_vars_stack.length >= i) {
-                    ret_obj.localvars = this.old_vars_stack[this.old_vars_stack.length - i];
-                } else {
-                    ret_obj.localvars = null;
-                }
-            } else {
-                ret_obj.localvars = this.localvars;
-            }
-            // ***** 変数名は先頭の「a\」を削除して返す *****
-            ret_obj.var_name = var_name;
         };
         return Vars; // これがないとクラスが動かないので注意
     })();
@@ -1633,6 +1625,7 @@ var Interpreter;
         ret = false;
         // ***** 継続実行 *****
         // alert(symbol_line[pc] + ":" + symbol[pc]);
+        sleep_id = null;
         try {
             loop_time_start = new Date().getTime();
             while (pc < symbol_len) {
@@ -1657,7 +1650,7 @@ var Interpreter;
                 if (sleep_flag) {
                     sleep_flag = false;
                     // ***** 継続実行(再帰的に実行) *****
-                    setTimeout(run_continuously, sleep_time);
+                    sleep_id = setTimeout(run_continuously, sleep_time);
                     // ***** 戻り値を返す *****
                     ret = true;
                     return ret;
@@ -1939,7 +1932,7 @@ var Interpreter;
                     } else {
                         match(","); a2 = parseInt(expression(), 10);
                         if (symbol[pc] == ")") {
-                            a3 = a2;
+                            a3 = a2 - 1;
                             a2 = 0;
                         } else {
                             match(","); a3 = parseInt(expression(), 10);
@@ -2555,7 +2548,7 @@ var Interpreter;
                     a1 = getvarname(2); // ポインタ対応
                     match(","); a2 = parseInt(expression(), 10);
                     if (symbol[pc] == ")") {
-                        a3 = a2;
+                        a3 = a2 - 1;
                         a2 = 0;
                         a4 = 0;
                     } else {
@@ -3373,6 +3366,46 @@ var Interpreter;
                     num = Math.acos(a1) * 180 / Math.PI;
                     return num;
                 }
+                if (sym == "arraylen") {
+                    match("(");
+                    // a1 = getvarname();
+                    a1 = getvarname(2); // ポインタ対応
+                    if (symbol[pc] == ")") {
+                        a2 = 0;
+                        a3 = null;
+                    } else {
+                        match(","); a2 = parseInt(expression(), 10);
+                        if (symbol[pc] == ")") {
+                            a3 = null;
+                        } else {
+                            match(","); a3 = parseInt(expression(), 10);
+                        }
+                    }
+                    match(")");
+
+                    // ***** NaN対策 *****
+                    a2 = a2 | 0;
+
+                    // ***** エラーチェック *****
+                    // if (a3 != null && (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size)) {
+                    if (!(a3 == null || (a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size))) {
+                        throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
+                    }
+
+                    // ***** カウント処理 *****
+                    num = 0;
+                    i = a2;
+                    do {
+                        // ***** 配列の存在チェック *****
+                        if (vars.checkVar(a1 + "[" + i + "]")) {
+                            num++;
+                        } else if (a3 == null) {
+                            break;
+                        }
+                        i++;
+                    } while (a3 == null || i <= a3);
+                    return num;
+                }
                 if (sym == "asin") {
                     match("(");
                     a1 = parseFloat(expression());
@@ -4167,7 +4200,8 @@ var Interpreter;
                 }
                 // ***** 関数の呼び出し *****
                 if (!func.hasOwnProperty(sym)) {
-                    throw new Error("関数 '" + sym + "' は未定義です。");
+                    // throw new Error("関数 '" + sym + "' は未定義です。");
+                    throw new Error("関数 '" + sym + "' の呼び出しに失敗しました(関数が未定義、もしくは、戻り値のない関数を式の中で呼び出した等)。");
                 }
                 back_pc = pc;
                 pc = func[sym];
@@ -4477,7 +4511,7 @@ var Interpreter;
             var_name = var_name + "[" + array_index + "]";
         }
         // ***** 関数の引数のポインタ対応 *****
-        if (mode == 3 && pointer_flag == true && use_local_vars == true) {
+        if (mode == 3 && pointer_flag == true) {
             var_name = "p\\" + var_name;
         }
         return var_name;
@@ -5587,7 +5621,8 @@ var Interpreter;
                     match("(");
                     a1 = String(expression());
                     match(")");
-                    ch = a1.substring(0, 1); // 1文字だけにする
+                    ch = a1.charAt(0); // 1文字だけにする
+                    if (ch.lenght == 0) { return true; }
                     if (stimg.hasOwnProperty(ch)) {
                         delete stimg[ch];
                     }
@@ -5882,8 +5917,9 @@ var Interpreter;
                     }
                     match(")");
                     // ***** 画像文字割付を格納 *****
+                    ch = a1.charAt(0); // 1文字だけにする
+                    if (ch.lenght == 0) { return true; }
                     if (imgvars.hasOwnProperty(a2)) {
-                        ch = a1.substring(0, 1); // 1文字だけにする
                         stimg[ch] = {};
                         stimg[ch].img = imgvars[a2];
                         stimg[ch].off_x = a3;
