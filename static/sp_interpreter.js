@@ -1,7 +1,7 @@
 // This file is encoded with UTF-8 without BOM.
 
 // sp_interpreter.js
-// 2013-7-13 v1.61
+// 2013-7-15 v1.62
 
 
 // SPALM Web Interpreter
@@ -473,6 +473,7 @@ function stop_button() {
 //     FloodFill   領域塗りつぶし用クラス
 //     Missile     ミサイル用クラス
 //     MMLPlayer   MML音楽演奏用クラス
+//     Profiler    プロファイラ用クラス
 //
 var Interpreter;
 (function (Interpreter) {
@@ -551,6 +552,7 @@ var Interpreter;
     var key_press_code;         // キープレスコード
     var key_down_code;          // キーダウンコード
     var key_down_stat = {};     // キーダウン状態(キーごと)     (連想配列オブジェクト)
+    var key_scan_stat;          // キースキャン状態(携帯互換用)
     var input_buf = [];         // キー入力バッファ1(携帯互換用)(配列)
     var keyinput_buf = [];      // キー入力バッファ2(PC用)      (配列)
     var softkey = [];           // ソフトキー表示               (配列)
@@ -564,15 +566,34 @@ var Interpreter;
     var use_addfunc;            // 追加命令使用有無
     var save_data = {};         // セーブデータ(連想配列オブジェクト)(仮)
     var aud_mode;               // 音楽モード(=0:音楽なし,=1:音楽あり,=2:音楽演奏機能有無による)
+    var prof;                   // プロファイラ実行用(Profilerクラスのインスタンス)
 
-    var constants = { LEFT:4, HCENTER:1, RIGHT:8, TOP:16, VCENTER:2, BASELINE:64, BOTTOM:32,
+    var constants = {           // 定数
+        LEFT:4, HCENTER:1, RIGHT:8, TOP:16, VCENTER:2, BASELINE:64, BOTTOM:32,
         key0:1, key1:2, key2:4, key3:8, key4:16, key5:32, key6:64, key7:128, key8:256, key9:512,
         keystar:1024, keysharp:2048, keyup:4096, keyleft:8192, keyright:16384, keydown:32768,
         keyselect:65536, keysoft1:131072, keysoft2:262144,
         red:0xff0000, green:0x8000, blue:0xff, aqua:0xffff, yellow:0xffff00, gray:0x808080,
         white:0xffffff, black:0, navy:0x80, teal:0x8080, maroon:0x800000, purple:0x800080,
         olive:0x808000, silver:0xc0c0c0, lime:0xff00, fuchsia:0xff00ff };
-                                // 定数
+
+    var phone_key_code = {      // 携帯のキーコードに変換するテーブル
+        // [0]-[9] (テンキーも含める)
+        48:  1      , 49: (1 << 1), 50: (1 << 2), 51: (1 << 3), 52: (1 << 4),
+        53: (1 << 5), 54: (1 << 6), 55: (1 << 7), 56: (1 << 8), 57: (1 << 9),
+        96:  1      , 97: (1 << 1), 98: (1 << 2), 99: (1 << 3), 100:(1 << 4),
+        101:(1 << 5), 102:(1 << 6), 103:(1 << 7), 104:(1 << 8), 105:(1 << 9),
+        // [*][#] は [z][x] にする
+        90:(1 << 10), 88:(1 << 11),
+        // [←][↑][→][↓]
+        37:(1 << 13), // 12でないので注意
+        38:(1 << 12), // 13でないので注意
+        39:(1 << 14),
+        40:(1 << 15),
+        // 決定ボタン は スペースキーとEnterキーにする
+        32:(1 << 16), 13:(1 << 16),
+        // [Soft1][Soft2] は [c][v]にする
+        67:(1 << 17), 86:(1 << 18) };
 
     // ***** 初期化 *****
     function init() {
@@ -580,6 +601,12 @@ var Interpreter;
 
         // ***** 戻り値の初期化 *****
         ret = false;
+
+        // ***** 時間測定高速化用 *****
+        // (new Date().getTime() より Date.now() の方が高速だが、
+        //  存在しないブラウザもあるのでその対策)
+        if (!Date.now) { Date.now = function () { return new Date().getTime(); }; }
+
         // ***** Canvasの初期化 *****
         can1 = document.getElementById("canvas1");
         if (!can1 || !can1.getContext) { Alm2("Interpreter.init:-:描画機能が利用できません。"); return ret; }
@@ -725,11 +752,10 @@ var Interpreter;
         }
         // ***** ローカル変数のスコープを1個生成する *****
         Vars.prototype.makeLocalScope = function () {
-            var localvars = {};
             if (this.localvars != null) {
                 this.old_vars_stack.push(this.localvars);
             }
-            this.localvars = localvars;
+            this.localvars = {};
         };
         // ***** ローカル変数のスコープを1個解放する *****
         Vars.prototype.deleteLocalScope = function () {
@@ -1150,16 +1176,15 @@ var Interpreter;
 
     // ***** キーボード処理 *****
     function keydown(ev) {
+        var key_code;
         var num;
         // ***** IE8対策 *****
         ev = ev || window.event;
-        // ***** キーダウン *****
-        key_down_stat[ev.keyCode] = true;
-        key_down_code = ev.keyCode;
+        key_code = ev.keyCode;
         // ***** プログラムの実行中は ブラウザのスクロール等を抑制する *****
         if (running_flag) {
             // ***** スペース/矢印/PageUp/PageDown/Home/Endキーを無効化 *****
-            if (key_down_code >= 32 && key_down_code <= 40) {
+            if (key_code >= 32 && key_code <= 40) {
                 // ***** IE8対策 *****
                 if (ev.preventDefault) {
                     ev.preventDefault();
@@ -1168,39 +1193,21 @@ var Interpreter;
                 }
             }
         }
-        // ***** キー入力バッファ1に追加 *****
-        num = 0;
-        // [0]-[9] (テンキーも含める)
-        if (key_down_code == 48 || key_down_code == 96 ) { num = 1; }
-        if (key_down_code == 49 || key_down_code == 97 ) { num = (1 << 1); }
-        if (key_down_code == 50 || key_down_code == 98 ) { num = (1 << 2); }
-        if (key_down_code == 51 || key_down_code == 99 ) { num = (1 << 3); }
-        if (key_down_code == 52 || key_down_code == 100) { num = (1 << 4); }
-        if (key_down_code == 53 || key_down_code == 101) { num = (1 << 5); }
-        if (key_down_code == 54 || key_down_code == 102) { num = (1 << 6); }
-        if (key_down_code == 55 || key_down_code == 103) { num = (1 << 7); }
-        if (key_down_code == 56 || key_down_code == 104) { num = (1 << 8); }
-        if (key_down_code == 57 || key_down_code == 105) { num = (1 << 9); }
-        // [*][#] は [z][x] にする
-        if (key_down_code == 90) { num = (1 << 10); }
-        if (key_down_code == 88) { num = (1 << 11); }
-        // [←][↑][→][↓]
-        if (key_down_code == 37) { num = (1 << 13); } // 12でないので注意
-        if (key_down_code == 38) { num = (1 << 12); } // 13でないので注意
-        if (key_down_code == 39) { num = (1 << 14); }
-        if (key_down_code == 40) { num = (1 << 15); }
-        // 決定ボタン は スペースキーとEnterキーにする
-        if (key_down_code == 32 || key_down_code == 13) { num = (1 << 16); }
-        // [Soft1][Soft2] は [c][v]にする
-        if (key_down_code == 67) { num = (1 << 17); }
-        if (key_down_code == 86) { num = (1 << 18); }
-        if (num > 0) {
+        // ***** キーダウン *****
+        key_down_stat[key_code] = true;
+        key_down_code = key_code;
+        // ***** 携帯のキーコードに変換 *****
+        if (phone_key_code.hasOwnProperty(key_code)) {
+            num = phone_key_code[key_code];
+            // ***** キースキャン状態を更新 *****
+            key_scan_stat = key_scan_stat | num; // ビットをON
+            // ***** キー入力バッファ1に追加 *****
             if (input_buf.length >= 40) { input_buf.shift(); }
             input_buf.push(num);
         }
         // ***** スペースキーのとき *****
         // スペースキーを上で無効化したためkeypressが発生しないので、ここで処理する
-        if (key_down_code == 32) {
+        if (key_code == 32) {
             key_press_code = 32;
             // ***** キー入力バッファ2に追加 *****
             if (keyinput_buf.length >= 40) { keyinput_buf.shift(); }
@@ -1208,18 +1215,29 @@ var Interpreter;
         }
     }
     function keyup(ev) {
+        var key_code;
+        var num;
         // ***** IE8対策 *****
         ev = ev || window.event;
+        key_code = ev.keyCode;
         // ***** キーアップ *****
-        key_down_stat[ev.keyCode] = false;
+        key_down_stat[key_code] = false;
         key_down_code = 0;
         key_press_code = 0;
+        // ***** 携帯のキーコードに変換 *****
+        if (phone_key_code.hasOwnProperty(key_code)) {
+            num = phone_key_code[key_code];
+            // ***** キースキャン状態を更新 *****
+            key_scan_stat = key_scan_stat & ~num; // ビットをOFF
+        }
     }
     function keypress(ev) {
+        var key_code;
         // ***** IE8対策 *****
         ev = ev || window.event;
+        key_code = ev.keyCode;
         // ***** キープレス *****
-        key_press_code = ev.keyCode;
+        key_press_code = key_code;
         // ***** キー入力バッファ2に追加 *****
         if (keyinput_buf.length >= 40) { keyinput_buf.shift(); }
         keyinput_buf.push(key_press_code);
@@ -1234,21 +1252,22 @@ var Interpreter;
                 key_down_stat[key_code] = false;
             }
         }
+        key_scan_stat = 0;
         key_down_code = 0;
         key_press_code = 0;
     }
 
     // ***** マウス処理 *****
     function mousedown(ev) {
-        var num;
+        var btn_code;
         // ***** マウスボタン状態を取得 *****
-        num = ev.button;
+        btn_code = ev.button;
         // ***** FlashCanvas用 *****
         if (typeof (FlashCanvas) != "undefined") {
-            if (num == 1) { num =  0; } // 中ボタンは左ボタンに変換
-            if (num == 2) { num = -1; } // 右ボタンは無効化
+            if (btn_code == 1) { btn_code =  0; } // 中ボタンは左ボタンに変換
+            if (btn_code == 2) { btn_code = -1; } // 右ボタンは無効化
         }
-        if (num >= 0) { mouse_btn_stat[num] = true; }
+        if (btn_code >= 0) { mouse_btn_stat[btn_code] = true; }
         // ***** マウス座標を取得 *****
         getmousepos(ev);
     }
@@ -1264,15 +1283,15 @@ var Interpreter;
         }
     }
     function mouseup(ev) {
-        var num;
+        var btn_code;
         // ***** マウスボタン状態を取得 *****
-        num = ev.button;
+        btn_code = ev.button;
         // ***** FlashCanvas用 *****
         if (typeof (FlashCanvas) != "undefined") {
-            if (num == 1) { num =  0; } // 中ボタンは左ボタンに変換
-            if (num == 2) { num = -1; } // 右ボタンは無効化
+            if (btn_code == 1) { btn_code =  0; } // 中ボタンは左ボタンに変換
+            if (btn_code == 2) { btn_code = -1; } // 右ボタンは無効化
         }
-        if (num >= 0) { mouse_btn_stat[num] = false; }
+        if (btn_code >= 0) { mouse_btn_stat[btn_code] = false; }
         // ***** マウス座標を取得 *****
         getmousepos(ev);
     }
@@ -1457,9 +1476,7 @@ var Interpreter;
     // ***** 実行開始 *****
     function run_start() {
         var ret;
-        var i;
         var msg;
-        var msg_count;
 
         // ***** 戻り値の初期化 *****
         ret = false;
@@ -1524,21 +1541,7 @@ var Interpreter;
             msg = symbol.join(" ");
             DebugShow(msg + "\n");
             DebugShow("compile: " + ex2.message + ": debugpc=" + debugpc + "\n");
-            msg = "エラー場所: " + symbol_line[debugpc] + "行: ";
-            msg_count = 0;
-            if (pc <= debugpc) { pc = debugpc + 1; } // エラーが出ない件の対策
-            for (i = debugpc; i < pc; i++) {
-                if ((i >= 0) && (i < symbol_len)) {
-                    msg = msg + symbol[i] + " ";
-                    msg_count++;
-                    if (msg_count >= 100) {
-                        msg += "... ";
-                        break;
-                    }
-                }
-            }
-            if (pc >= symbol_len) { msg += "プログラム最後まで検索したが文が完成せず"; }
-            DebugShow(msg + "\n");
+            show_err_place();
             DebugShow("実行終了\n");
             return ret;
         }
@@ -1554,21 +1557,7 @@ var Interpreter;
             DebugShow("label=" + JSON.stringify(label) + "\n");
             DebugShow("func=" + JSON.stringify(func) + "\n");
             DebugShow("setlabel: " + ex3.message + ": debugpc=" + debugpc + "\n");
-            msg = "エラー場所: " + symbol_line[debugpc] + "行: ";
-            msg_count = 0;
-            if (pc <= debugpc) { pc = debugpc + 1; } // エラーが出ない件の対策
-            for (i = debugpc; i < pc; i++) {
-                if ((i >= 0) && (i < symbol_len)) {
-                    msg = msg + symbol[i] + " ";
-                    msg_count++;
-                    if (msg_count >= 100) {
-                        msg += "... ";
-                        break;
-                    }
-                }
-            }
-            if (pc >= symbol_len) { msg += "プログラム最後まで検索したが文が完成せず"; }
-            DebugShow(msg + "\n");
+            show_err_place();
             DebugShow("実行終了\n");
             return ret;
         }
@@ -1595,6 +1584,7 @@ var Interpreter;
         key_press_code = 0;
         key_down_code = 0;
         key_down_stat = {};
+        key_scan_stat = 0;
         input_buf = [];
         keyinput_buf = [];
         mousex = -10000;
@@ -1605,6 +1595,8 @@ var Interpreter;
         use_addfunc = true;
         save_data = {};
         aud_mode = 1;
+        prof = new Profiler(); 
+        prof.start("result");
 
         // run_continuously(); // 再帰的になるので別関数にした
         setTimeout(run_continuously, 10);
@@ -1617,9 +1609,6 @@ var Interpreter;
     // ***** 継続実行 *****
     function run_continuously() {
         var ret;
-        var i;
-        var msg;
-        var msg_count;
 
         // ***** 戻り値の初期化 *****
         ret = false;
@@ -1627,21 +1616,27 @@ var Interpreter;
         // alert(symbol_line[pc] + ":" + symbol[pc]);
         sleep_id = null;
         try {
-            loop_time_start = new Date().getTime();
+            // loop_time_start = new Date().getTime();
+            loop_time_start = Date.now();
             while (pc < symbol_len) {
+                // prof.start("statement");
                 statement();
+                // prof.stop("statement");
                 // DebugShow(pc + " ");
                 if (dlg_flag) {
                     dlg_flag = false;
                     // ***** ダイアログ表示中は処理時間に含めない *****
-                    loop_time_start = new Date().getTime();
+                    // loop_time_start = new Date().getTime();
+                    loop_time_start = Date.now();
                 }
                 if (audmake_flag) {
                     audmake_flag = false;
                     // ***** 音楽生成中は処理時間に含めない *****
-                    loop_time_start = new Date().getTime();
+                    // loop_time_start = new Date().getTime();
+                    loop_time_start = Date.now();
                 }
-                loop_time_count = new Date().getTime() - loop_time_start;
+                // loop_time_count = new Date().getTime() - loop_time_start;
+                loop_time_count = Date.now() - loop_time_start;
                 if (loop_time_count >= loop_time_max) {
                     throw new Error("処理時間オーバーです(" + loop_time_max + "msec以上ブラウザに制御が返らず)。ループ内でsleep関数の利用を検討ください。");
                 }
@@ -1662,22 +1657,9 @@ var Interpreter;
             }
             // DebugShow(pc + "\n");
         } catch (ex4) {
+            prof.stop("result");
             DebugShow("statement: " + ex4.message + ": debugpc=" + debugpc + "\n");
-            msg = "エラー場所: " + symbol_line[debugpc] + "行: ";
-            msg_count = 0;
-            if (pc <= debugpc) { pc = debugpc + 1; } // エラーが出ない件の対策
-            for (i = debugpc; i < pc; i++) {
-                if ((i >= 0) && (i < symbol_len)) {
-                    msg = msg + symbol[i] + " ";
-                    msg_count++;
-                    if (msg_count >= 100) {
-                        msg += "... ";
-                        break;
-                    }
-                }
-            }
-            if (pc >= symbol_len) { msg += "プログラム最後まで検索したが文が完成せず"; }
-            DebugShow(msg + "\n");
+            show_err_place();
             // ***** 音楽全停止 *****
             if (typeof (audstopall) == "function") { audstopall(); }
             // ***** エラー終了 *****
@@ -1687,8 +1669,10 @@ var Interpreter;
             DebugShow("localvars=" + JSON.stringify(vars.localvars) + "\n");
             DebugShow("label=" + JSON.stringify(label) + "\n");
             DebugShow("func=" + JSON.stringify(func) + "\n");
+            if (Profiler.MicroSecAvailable) { DebugShow(prof.getAllResult()); }
             return ret;
         }
+        prof.stop("result");
         // ***** 音楽全停止 *****
         if (typeof (audstopall) == "function") { audstopall(); }
         // ***** 終了 *****
@@ -1700,9 +1684,33 @@ var Interpreter;
             DebugShow("label=" + JSON.stringify(label) + "\n");
             DebugShow("func=" + JSON.stringify(func) + "\n");
         }
+        if (Profiler.MicroSecAvailable) { DebugShow(prof.getAllResult()); }
         // ***** 戻り値を返す *****
         ret = true;
         return ret;
+    }
+
+    // ***** エラー場所の表示 *****
+    function show_err_place() {
+        var i;
+        var msg;
+        var msg_count;
+
+        msg = "エラー場所: " + symbol_line[debugpc] + "行: ";
+        msg_count = 0;
+        if (pc <= debugpc) { pc = debugpc + 1; } // エラーが出ない件の対策
+        for (i = debugpc; i < pc; i++) {
+            if ((i >= 0) && (i < symbol_len)) {
+                msg = msg + symbol[i] + " ";
+                msg_count++;
+                if (msg_count >= 100) {
+                    msg += "... ";
+                    break;
+                }
+            }
+        }
+        if (pc >= symbol_len) { msg += "プログラム最後まで検索したが文が完成せず"; }
+        DebugShow(msg + "\n");
     }
 
     // ***** 文(ステートメント)の処理 *****
@@ -3874,31 +3882,7 @@ var Interpreter;
 
             case "s":
                 if (sym == "scan") {
-                    num = 0;
-                    // [0]-[9] (テンキーも含める)
-                    if (key_down_stat[48] == true || key_down_stat[96]  == true) { num = num | 1; }
-                    if (key_down_stat[49] == true || key_down_stat[97]  == true) { num = num | (1 << 1); }
-                    if (key_down_stat[50] == true || key_down_stat[98]  == true) { num = num | (1 << 2); }
-                    if (key_down_stat[51] == true || key_down_stat[99]  == true) { num = num | (1 << 3); }
-                    if (key_down_stat[52] == true || key_down_stat[100] == true) { num = num | (1 << 4); }
-                    if (key_down_stat[53] == true || key_down_stat[101] == true) { num = num | (1 << 5); }
-                    if (key_down_stat[54] == true || key_down_stat[102] == true) { num = num | (1 << 6); }
-                    if (key_down_stat[55] == true || key_down_stat[103] == true) { num = num | (1 << 7); }
-                    if (key_down_stat[56] == true || key_down_stat[104] == true) { num = num | (1 << 8); }
-                    if (key_down_stat[57] == true || key_down_stat[105] == true) { num = num | (1 << 9); }
-                    // [*][#] は [z][x] にする
-                    if (key_down_stat[90] == true)  { num = num | (1 << 10); }
-                    if (key_down_stat[88] == true)  { num = num | (1 << 11); }
-                    // [←][↑][→][↓]
-                    if (key_down_stat[37] == true)  { num = num | (1 << 13); } // 12でないので注意
-                    if (key_down_stat[38] == true)  { num = num | (1 << 12); } // 13でないので注意
-                    if (key_down_stat[39] == true)  { num = num | (1 << 14); }
-                    if (key_down_stat[40] == true)  { num = num | (1 << 15); }
-                    // 決定ボタン は スペースキーとEnterキーにする
-                    if (key_down_stat[32] == true || key_down_stat[13] == true)  { num = num | (1 << 16); }
-                    // [Soft1][Soft2] は [c][v]にする
-                    if (key_down_stat[67] == true) { num = num | (1 << 17); }
-                    if (key_down_stat[86] == true) { num = num | (1 << 18); }
+                    num = key_scan_stat;
                     return num;
                 }
                 if (sym == "second") {
@@ -4025,7 +4009,8 @@ var Interpreter;
                     return num;
                 }
                 if (sym == "tick") {
-                    num = new Date().getTime();
+                    // num = new Date().getTime();
+                    num = Date.now();
                     return num;
                 }
                 if (sym == "trim") {
@@ -4265,14 +4250,17 @@ var Interpreter;
                     if (dlg_flag) {
                         dlg_flag = false;
                         // ***** ダイアログ表示中は処理時間に含めない *****
-                        loop_time_start = new Date().getTime();
+                        // loop_time_start = new Date().getTime();
+                        loop_time_start = Date.now();
                     }
                     if (audmake_flag) {
                         audmake_flag = false;
                         // ***** 音楽生成中は処理時間に含めない *****
-                        loop_time_start = new Date().getTime();
+                        // loop_time_start = new Date().getTime();
+                        loop_time_start = Date.now();
                     }
-                    loop_time_count = new Date().getTime() - loop_time_start;
+                    // loop_time_count = new Date().getTime() - loop_time_start;
+                    loop_time_count = Date.now() - loop_time_start;
                     if (loop_time_count >= loop_time_max) {
                         throw new Error("処理時間オーバーです(" + loop_time_max + "msec以上ブラウザに制御が返らず)。func内でタイムアウトしました。");
                     }
@@ -4282,9 +4270,11 @@ var Interpreter;
                         sleep_flag = false;
                         // ***** ループでsleep処理 *****
                         if (sleep_time > loop_time_max) { sleep_time = loop_time_max; }
-                        sleep_time_start = new Date().getTime();
+                        // sleep_time_start = new Date().getTime();
+                        sleep_time_start = Date.now();
                         while (true) {
-                            sleep_time_count = new Date().getTime() - sleep_time_start;
+                            // sleep_time_count = new Date().getTime() - sleep_time_start;
+                            sleep_time_count = Date.now() - sleep_time_start;
                             if (sleep_time_count > sleep_time) { break; }
                         }
                         continue;
@@ -8441,6 +8431,104 @@ var MMLPlayer = (function () {
         return tokens;
     };
     return MMLPlayer; // これがないとクラスが動かないので注意
+})();
+
+
+// ***** プロファイラ用クラス *****
+var Profiler = (function () {
+    // ***** コンストラクタ *****
+    function Profiler() {
+        this.time_obj = {};        // 時間測定オブジェクト(キー名称ごと)
+        this.time_start = {};      // 測定開始時間        (キー名称ごと)
+        this.time_start_flag = {}; // 時間測定開始フラグ  (キー名称ごと)
+        this.records = {};         // 測定結果            (キー名称ごと)
+    }
+    // ***** 定数 *****
+    // (Chrome を --enable-benchmarking オプション付きで起動したときは、
+    //  マイクロ秒まで測定する)
+    if (typeof (chrome) != "undefined" && typeof (chrome.Interval) == "function") {
+        Profiler.MicroSecAvailable = true;
+    } else {
+        Profiler.MicroSecAvailable = false;
+    }
+
+    // ***** 時間測定高速化用 *****
+    // (new Date().getTime() より Date.now() の方が高速だが、
+    //  存在しないブラウザもあるのでその対策)
+    if (!Date.now) { Date.now = function () { return new Date().getTime(); }; }
+
+    // ***** 時間測定開始 *****
+    // (キー名称ごとに測定結果を別にする)
+    Profiler.prototype.start = function (key_name) {
+        if (!this.records.hasOwnProperty(key_name)) { this.records[key_name] = []; }
+        this.time_start_flag[key_name] = true;
+        if (Profiler.MicroSecAvailable) {
+            if (!this.time_obj.hasOwnProperty(key_name)) { this.time_obj[key_name] = new chrome.Interval(); }
+            this.time_obj[key_name].start();
+        } else {
+            // this.time_start[key_name] = new Date().getTime();
+            this.time_start[key_name] = Date.now();
+        }
+    };
+    // ***** 時間測定終了 *****
+    // (キー名称ごとに測定結果を別にする)
+    Profiler.prototype.stop = function (key_name) {
+        if (!this.records.hasOwnProperty(key_name)) { return false; }
+        if (!this.time_start_flag[key_name]) { return false; }
+        if (Profiler.MicroSecAvailable) {
+            this.time_obj[key_name].stop();
+            this.records[key_name].push(this.time_obj[key_name].microseconds() / 1000);
+        } else {
+            // this.records[key_name].push(new Date().getTime() - this.time_start[key_name]);
+            this.records[key_name].push(Date.now() - this.time_start[key_name]);
+        }
+        this.time_start_flag[key_name] = false;
+    };
+    // ***** 結果取得 *****
+    // (キー名称に対応する測定結果を、文字列にして返す)
+    // (測定結果の項目は、実行回数(回)、合計時間(msec)、平均時間(msec)、最大時間(msec)、最小時間(msec))
+    Profiler.prototype.getResult = function (key_name) {
+        var i;
+        var ret;
+        var rec, time_total, time_mean, time_max, time_min;
+        ret = "";
+        if (this.records.hasOwnProperty(key_name)) {
+            rec = this.records[key_name];
+            time_total = 0;
+            time_mean = 0;
+            time_max = 0;
+            time_min = 0;
+            for (i = 0; i < rec.length; i++) {
+                time_total = time_total + rec[i];
+                if (i == 0) { time_max = rec[i]; time_min = rec[i]; }
+                if (time_max < rec[i]) { time_max = rec[i]; }
+                if (time_min > rec[i]) { time_min = rec[i]; }
+            }
+            if (rec.length > 0) { time_mean = time_total / rec.length; }
+            time_total = Math.round(time_total * 1000) / 1000;
+            time_mean = Math.round(time_mean * 1000) / 1000;
+            time_max = Math.round(time_max * 1000) / 1000;
+            time_min = Math.round(time_min * 1000) / 1000;
+            ret = key_name + ": count=" + rec.length +
+                " total="       + time_total + "(msec) mean=" + time_mean +
+                "(msec) max="   + time_max   + "(msec) min="  + time_min  + "(msec)";
+        }
+        return ret;
+    };
+    // ***** 全結果取得 *****
+    // (全キー名称の測定結果を、複数行の文字列にして返す)
+    Profiler.prototype.getAllResult = function () {
+        var ret;
+        var key_name;
+        ret = "";
+        for (key_name in this.records) {
+            if (this.records.hasOwnProperty(key_name)) {
+                ret = ret + this.getResult(key_name) + "\n";
+            }
+        }
+        return ret;
+    };
+    return Profiler; // これがないとクラスが動かないので注意
 })();
 
 
