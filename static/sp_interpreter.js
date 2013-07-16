@@ -1,7 +1,7 @@
 // This file is encoded with UTF-8 without BOM.
 
 // sp_interpreter.js
-// 2013-7-15 v1.62
+// 2013-7-16 v1.63
 
 
 // SPALM Web Interpreter
@@ -2206,6 +2206,10 @@ var Interpreter;
                         pc--;
                         // var_name = getvarname();
                         var_name = getvarname(2); // ポインタ対応
+                        // ***** 変数名の先頭の「a\」をすべて削除 *****
+                        if (var_name.substring(0, 2) == "a\\") {
+                            do { var_name = var_name.substring(2); } while (var_name.substring(0, 2) == "a\\");
+                        }
                         // ***** 変数名を関数名とする *****
                         sym = var_name;
                     }
@@ -4162,6 +4166,10 @@ var Interpreter;
 
                 // ***** ポインタのとき *****
                 if (ch == "*") {
+                    // ***** 変数名の先頭の「a\」をすべて削除 *****
+                    if (var_name.substring(0, 2) == "a\\") {
+                        do { var_name = var_name.substring(2); } while (var_name.substring(0, 2) == "a\\");
+                    }
                     // ***** 変数名を関数名とする *****
                     sym = var_name;
                 }
