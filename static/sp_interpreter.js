@@ -1,7 +1,7 @@
 // This file is encoded with UTF-8 without BOM.
 
 // sp_interpreter.js
-// 2013-7-16 v1.63
+// 2013-7-16 v1.64
 
 
 // SPALM Web Interpreter
@@ -595,18 +595,22 @@ var Interpreter;
         // [Soft1][Soft2] は [c][v]にする
         67:(1 << 17), 86:(1 << 18) };
 
+    // ***** hasOwnPropertyをプロパティ名に使うかもしれない場合の対策 *****
+    // (変数名、関数名、ラベル名、画像変数名について、
+    //  obj.hasOwnProperty(prop) を hasOwn.call(obj, prop) に置換した)
+    var hasOwn = Object.prototype.hasOwnProperty;
+
+    // ***** 時間測定高速化用 *****
+    // (new Date().getTime() より Date.now() の方が高速だが、
+    //  Date.now() が存在しないブラウザもあるのでその対策)
+    if (!Date.now) { Date.now = function () { return new Date().getTime(); }; }
+
     // ***** 初期化 *****
     function init() {
         var ret;
 
         // ***** 戻り値の初期化 *****
         ret = false;
-
-        // ***** 時間測定高速化用 *****
-        // (new Date().getTime() より Date.now() の方が高速だが、
-        //  存在しないブラウザもあるのでその対策)
-        if (!Date.now) { Date.now = function () { return new Date().getTime(); }; }
-
         // ***** Canvasの初期化 *****
         can1 = document.getElementById("canvas1");
         if (!can1 || !can1.getContext) { Alm2("Interpreter.init:-:描画機能が利用できません。"); return ret; }
@@ -803,24 +807,28 @@ var Interpreter;
             if (var_name.substring(0, 4) == "loc "   ) { loc = true; var_name = var_name.substring(4); }
             // ***** グローバル変数のみを使うとき *****
             if (localvars == null || use_local_vars == false || glb == true) {
-                if (!this.globalvars.hasOwnProperty(var_name)) { return true; }
+                // if (!this.globalvars.hasOwnProperty(var_name)) { return true; }
+                if (!hasOwn.call(this.globalvars, var_name)) { return true; }
                 delete this.globalvars[var_name];
                 return true;
             }
             // ***** ローカル変数のみを使うとき *****
             if (loc == true) {
-                if (!localvars.hasOwnProperty(var_name)) { return true; }
+                // if (!localvars.hasOwnProperty(var_name)) { return true; }
+                if (!hasOwn.call(localvars, var_name)) { return true; }
                 delete localvars[var_name];
                 return true;
             }
             // ***** グローバル変数とローカル変数を両方使うとき *****
             // ローカル変数が存在する
-            if (localvars.hasOwnProperty(var_name)) {
+            // if (localvars.hasOwnProperty(var_name)) {
+            if (hasOwn.call(localvars, var_name)) {
                 delete localvars[var_name];
                 return true;
             }
             // グローバル変数が存在する
-            if (this.globalvars.hasOwnProperty(var_name)) {
+            // if (this.globalvars.hasOwnProperty(var_name)) {
+            if (hasOwn.call(this.globalvars, var_name)) {
                 delete this.globalvars[var_name];
                 return true;
             }
@@ -854,21 +862,25 @@ var Interpreter;
             if (var_name.substring(0, 4) == "loc "   ) { loc = true; var_name = var_name.substring(4); }
             // ***** グローバル変数のみを使うとき *****
             if (localvars == null || use_local_vars == false || glb == true) {
-                if (!this.globalvars.hasOwnProperty(var_name)) { return false; }
+                // if (!this.globalvars.hasOwnProperty(var_name)) { return false; }
+                if (!hasOwn.call(this.globalvars, var_name)) { return false; }
                 return true;
             }
             // ***** ローカル変数のみを使うとき *****
             if (loc == true) {
-                if (!localvars.hasOwnProperty(var_name)) { return false; }
+                // if (!localvars.hasOwnProperty(var_name)) { return false; }
+                if (!hasOwn.call(localvars, var_name)) { return false; }
                 return true;
             }
             // ***** グローバル変数とローカル変数を両方使うとき *****
             // ローカル変数が存在する
-            if (localvars.hasOwnProperty(var_name)) {
+            // if (localvars.hasOwnProperty(var_name)) {
+            if (hasOwn.call(localvars, var_name)) {
                 return true;
             }
             // グローバル変数が存在する
-            if (this.globalvars.hasOwnProperty(var_name)) {
+            // if (this.globalvars.hasOwnProperty(var_name)) {
+            if (hasOwn.call(this.globalvars, var_name)) {
                 return true;
             }
             // ローカル変数もグローバル変数も存在しない
@@ -903,21 +915,25 @@ var Interpreter;
             if (var_name.substring(0, 4) == "loc "   ) { loc = true; var_name = var_name.substring(4); }
             // ***** グローバル変数のみを使うとき *****
             if (localvars == null || use_local_vars == false || glb == true) {
-                if (!this.globalvars.hasOwnProperty(var_name)) { this.globalvars[var_name] = 0; }
+                // if (!this.globalvars.hasOwnProperty(var_name)) { this.globalvars[var_name] = 0; }
+                if (!hasOwn.call(this.globalvars, var_name)) { this.globalvars[var_name] = 0; }
                 return this.globalvars[var_name];
             }
             // ***** ローカル変数のみを使うとき *****
             if (loc == true) {
-                if (!localvars.hasOwnProperty(var_name)) { localvars[var_name] = 0; }
+                // if (!localvars.hasOwnProperty(var_name)) { localvars[var_name] = 0; }
+                if (!hasOwn.call(localvars, var_name)) { localvars[var_name] = 0; }
                 return localvars[var_name];
             }
             // ***** グローバル変数とローカル変数を両方使うとき *****
             // ローカル変数が存在する
-            if (localvars.hasOwnProperty(var_name)) {
+            // if (localvars.hasOwnProperty(var_name)) {
+            if (hasOwn.call(localvars, var_name)) {
                 return localvars[var_name];
             }
             // グローバル変数が存在する
-            if (this.globalvars.hasOwnProperty(var_name)) {
+            // if (this.globalvars.hasOwnProperty(var_name)) {
+            if (hasOwn.call(this.globalvars, var_name)) {
                 return this.globalvars[var_name];
             }
             // ローカル変数もグローバル変数も存在しない
@@ -926,7 +942,8 @@ var Interpreter;
             if (i > 0) {
                 array_name = var_name.substring(0, i);
                 for (var_name2 in this.globalvars) {
-                    if (this.globalvars.hasOwnProperty(var_name2)) {
+                    // if (this.globalvars.hasOwnProperty(var_name2)) {
+                    if (hasOwn.call(this.globalvars, var_name2)) {
                         // 配列のグローバル変数が存在する(番号は異なる)
                         if (var_name2.substring(0, i) == array_name) {
                             this.globalvars[var_name] = 0;
@@ -977,12 +994,14 @@ var Interpreter;
             }
             // ***** グローバル変数とローカル変数を両方使うとき *****
             // ローカル変数が存在する
-            if (localvars.hasOwnProperty(var_name)) {
+            // if (localvars.hasOwnProperty(var_name)) {
+            if (hasOwn.call(localvars, var_name)) {
                 localvars[var_name] = var_value;
                 return true;
             }
             // グローバル変数が存在する
-            if (this.globalvars.hasOwnProperty(var_name)) {
+            // if (this.globalvars.hasOwnProperty(var_name)) {
+            if (hasOwn.call(this.globalvars, var_name)) {
                 this.globalvars[var_name] = var_value;
                 return true;
             }
@@ -992,7 +1011,8 @@ var Interpreter;
             if (i > 0) {
                 array_name = var_name.substring(0, i);
                 for (var_name2 in this.globalvars) {
-                    if (this.globalvars.hasOwnProperty(var_name2)) {
+                    // if (this.globalvars.hasOwnProperty(var_name2)) {
+                    if (hasOwn.call(this.globalvars, var_name2)) {
                         // 配列のグローバル変数が存在する(番号は異なる)
                         if (var_name2.substring(0, i) == array_name) {
                             this.globalvars[var_name] = var_value;
@@ -1042,7 +1062,8 @@ var Interpreter;
             // ***** グローバル変数のみを使うとき *****
             if (localvars == null || use_local_vars == false || glb == true) {
                 for (var_name_from in this.globalvars) {
-                    if (this.globalvars.hasOwnProperty(var_name_from)) {
+                    // if (this.globalvars.hasOwnProperty(var_name_from)) {
+                    if (hasOwn.call(this.globalvars, var_name_from)) {
                         if (var_name_from.substring(0, var_name_len) == var_name) {
                             var_name_to = var_name2 + var_name_from.substring(var_name_len);
                             this.setVarValue(var_name_to, this.getVarValue(var_name_from));
@@ -1054,7 +1075,8 @@ var Interpreter;
             // ***** ローカル変数のみを使うとき *****
             if (loc == true) {
                 for (var_name_from in localvars) {
-                    if (localvars.hasOwnProperty(var_name_from)) {
+                    // if (localvars.hasOwnProperty(var_name_from)) {
+                    if (hasOwn.call(localvars, var_name_from)) {
                         if (var_name_from.substring(0, var_name_len) == var_name) {
                             var_name_to = var_name2 + var_name_from.substring(var_name_len);
                             this.setVarValue(var_name_to, this.getVarValue(var_name_from));
@@ -1067,7 +1089,8 @@ var Interpreter;
             // ローカル変数が存在する
             copy_flag = false;
             for (var_name_from in localvars) {
-                if (localvars.hasOwnProperty(var_name_from)) {
+                // if (localvars.hasOwnProperty(var_name_from)) {
+                if (hasOwn.call(localvars, var_name_from)) {
                     if (var_name_from.substring(0, var_name_len) == var_name) {
                         var_name_to = var_name2 + var_name_from.substring(var_name_len);
                         this.setVarValue(var_name_to, this.getVarValue(var_name_from));
@@ -1079,7 +1102,8 @@ var Interpreter;
             // グローバル変数が存在する
             copy_flag = false;
             for (var_name_from in this.globalvars) {
-                if (this.globalvars.hasOwnProperty(var_name_from)) {
+                // if (this.globalvars.hasOwnProperty(var_name_from)) {
+                if (hasOwn.call(this.globalvars, var_name_from)) {
                     if (var_name_from.substring(0, var_name_len) == var_name) {
                         var_name_to = var_name2 + var_name_from.substring(var_name_len);
                         this.setVarValue(var_name_to, this.getVarValue(var_name_from));
@@ -1126,7 +1150,8 @@ var Interpreter;
             // ***** グローバル変数のみを使うとき *****
             if (localvars == null || use_local_vars == false || glb == true) {
                 for (var_name2 in this.globalvars) {
-                    if (this.globalvars.hasOwnProperty(var_name2)) {
+                    // if (this.globalvars.hasOwnProperty(var_name2)) {
+                    if (hasOwn.call(this.globalvars, var_name2)) {
                         if (var_name2.substring(0, var_name_len) == var_name) {
                             delete this.globalvars[var_name2];
                         }
@@ -1137,7 +1162,8 @@ var Interpreter;
             // ***** ローカル変数のみを使うとき *****
             if (loc == true) {
                 for (var_name2 in localvars) {
-                    if (localvars.hasOwnProperty(var_name2)) {
+                    // if (localvars.hasOwnProperty(var_name2)) {
+                    if (hasOwn.call(localvars, var_name2)) {
                         if (var_name2.substring(0, var_name_len) == var_name) {
                             delete localvars[var_name2];
                         }
@@ -1149,7 +1175,8 @@ var Interpreter;
             // ローカル変数が存在する
             delete_flag = false;
             for (var_name2 in localvars) {
-                if (localvars.hasOwnProperty(var_name2)) {
+                // if (localvars.hasOwnProperty(var_name2)) {
+                if (hasOwn.call(localvars, var_name2)) {
                     if (var_name2.substring(0, var_name_len) == var_name) {
                         delete localvars[var_name2];
                         delete_flag = true;
@@ -1160,7 +1187,8 @@ var Interpreter;
             // グローバル変数が存在する
             delete_flag = false;
             for (var_name2 in this.globalvars) {
-                if (this.globalvars.hasOwnProperty(var_name2)) {
+                // if (this.globalvars.hasOwnProperty(var_name2)) {
+                if (hasOwn.call(this.globalvars, var_name2)) {
                     if (var_name2.substring(0, var_name_len) == var_name) {
                         delete this.globalvars[var_name2];
                         delete_flag = true;
@@ -1969,7 +1997,8 @@ var Interpreter;
                     // a1 = getvarname();
                     a1 = getvarname(2); // ポインタ対応
                     match(")");
-                    if (imgvars.hasOwnProperty(a1)) {
+                    // if (imgvars.hasOwnProperty(a1)) {
+                    if (hasOwn.call(imgvars, a1)) {
                         delete imgvars[a1];
                     }
                     // for (var prop_name in imgvars) { DebugShow(prop_name + " "); } DebugShow("\n");
@@ -2006,7 +2035,8 @@ var Interpreter;
                         // ***** 画像を描画(表示画面→ターゲット) *****
                         ctx.drawImage(can1, a4, a5, a6, a7, a2, a3, a6, a7);
                     } else {
-                        if (imgvars.hasOwnProperty(a1)) {
+                        // if (imgvars.hasOwnProperty(a1)) {
+                        if (hasOwn.call(imgvars, a1)) {
                             // ***** 画像を描画(画像変数→ターゲット) *****
                             ctx.drawImage(imgvars[a1].can, a4, a5, a6, a7, a2, a3, a6, a7);
                         } else {
@@ -2037,7 +2067,8 @@ var Interpreter;
                         // ***** 画像を描画(表示画面→ターゲット) *****
                         ctx.drawImage(can1, a2, a3);
                     } else {
-                        if (imgvars.hasOwnProperty(a1)) {
+                        // if (imgvars.hasOwnProperty(a1)) {
+                        if (hasOwn.call(imgvars, a1)) {
                             // ***** 水平方向 *****
                             if (a4 & 4) { }                                             // 左
                             else if (a4 & 8)  { a2 = a2 - imgvars[a1].can.width; }      // 右
@@ -2073,7 +2104,8 @@ var Interpreter;
                         // ***** 画像を描画(表示画面→ターゲット) *****
                         ctx.drawImage(can1, a6, a7, a8, a9, a2, a3, a4, a5);
                     } else {
-                        if (imgvars.hasOwnProperty(a1)) {
+                        // if (imgvars.hasOwnProperty(a1)) {
+                        if (hasOwn.call(imgvars, a1)) {
                             // ***** 画像を描画(画像変数→ターゲット) *****
                             ctx.drawImage(imgvars[a1].can, a6, a7, a8, a9, a2, a3, a4, a5);
                         } else {
@@ -2242,7 +2274,8 @@ var Interpreter;
                     }
                     match(")");
                     // ***** 関数の呼び出し *****
-                    if (!func.hasOwnProperty(sym)) {
+                    // if (!func.hasOwnProperty(sym)) {
+                    if (!hasOwn.call(func, sym)) {
                         throw new Error("関数 '" + sym + "' の呼び出しに失敗しました(funccallはfuncで定義した関数のみ呼び出せます)。");
                     }
                     back_pc = pc;
@@ -2315,7 +2348,8 @@ var Interpreter;
                     }
                     // ***** ラベルへジャンプ *****
                     lbl_name = expression();
-                    if (!label.hasOwnProperty(lbl_name)) {
+                    // if (!label.hasOwnProperty(lbl_name)) {
+                    if (!hasOwn.call(label, lbl_name)) {
                         throw new Error("ラベル '" + lbl_name + "' は未定義です。");
                     }
                     gosub_back.push(pc);
@@ -2325,7 +2359,8 @@ var Interpreter;
                 if (sym == "goto") {
                     // ***** ラベルへジャンプ *****
                     lbl_name = expression();
-                    if (!label.hasOwnProperty(lbl_name)) {
+                    // if (!label.hasOwnProperty(lbl_name)) {
+                    if (!hasOwn.call(label, lbl_name)) {
                         throw new Error("ラベル '" + lbl_name + "' は未定義です。");
                     }
                     goto_pc = label[lbl_name];
@@ -2352,7 +2387,8 @@ var Interpreter;
                     if (a1 != 0) {
                         // ***** ラベルへジャンプ *****
                         lbl_name = expression();
-                        if (!label.hasOwnProperty(lbl_name)) {
+                        // if (!label.hasOwnProperty(lbl_name)) {
+                        if (!hasOwn.call(label, lbl_name)) {
                             throw new Error("ラベル '" + lbl_name + "' は未定義です。");
                         }
                         goto_pc = label[lbl_name];
@@ -2379,7 +2415,8 @@ var Interpreter;
                     if (a1 == 0) {
                         // ***** ラベルへジャンプ *****
                         lbl_name = expression();
-                        if (!label.hasOwnProperty(lbl_name)) {
+                        // if (!label.hasOwnProperty(lbl_name)) {
+                        if (!hasOwn.call(label, lbl_name)) {
                             throw new Error("ラベル '" + lbl_name + "' は未定義です。");
                         }
                         goto_pc = label[lbl_name];
@@ -2977,7 +3014,8 @@ var Interpreter;
                     if (a1 == "off") {
                         can = can1;
                         ctx = ctx1;
-                    } else if (imgvars.hasOwnProperty(a1)) {
+                    // } else if (imgvars.hasOwnProperty(a1)) {
+                    } else if (hasOwn.call(imgvars, a1)) {
                         can = imgvars[a1].can;
                         ctx = imgvars[a1].ctx;
                     } else {
@@ -3737,7 +3775,8 @@ var Interpreter;
                     match(")");
                     // ***** 完了フラグをチェックして返す *****
                     num = 0;
-                    if (imgvars.hasOwnProperty(a1)) {
+                    // if (imgvars.hasOwnProperty(a1)) {
+                    if (hasOwn.call(imgvars, a1)) {
                         if (imgvars[a1].hasOwnProperty("loaded")) {
                             if (imgvars[a1].loaded == false) {
                                 num = 1;
@@ -4192,7 +4231,8 @@ var Interpreter;
                     match(")");
                 }
                 // ***** 関数の呼び出し *****
-                if (!func.hasOwnProperty(sym)) {
+                // if (!func.hasOwnProperty(sym)) {
+                if (!hasOwn.call(func, sym)) {
                     // throw new Error("関数 '" + sym + "' は未定義です。");
                     throw new Error("関数 '" + sym + "' の呼び出しに失敗しました(関数が未定義、もしくは、戻り値のない関数を式の中で呼び出した等)。");
                 }
@@ -4534,7 +4574,8 @@ var Interpreter;
                 if (lbl_name.charAt(0) == '"' && lbl_name.length > 2) {
                     lbl_name = lbl_name.substring(1, lbl_name.length - 1);
                 }
-                if (label.hasOwnProperty(lbl_name)) {
+                // if (label.hasOwnProperty(lbl_name)) {
+                if (hasOwn.call(label, lbl_name)) {
                     debugpc = i - 1;
                     pc = i + 1;
                     throw new Error("ラベル '" + lbl_name + "' の定義が重複しています。"); 
@@ -4550,7 +4591,8 @@ var Interpreter;
                     pc = i + 1;
                     throw new Error("関数名が不正です。");
                 }
-                if (func.hasOwnProperty(func_name)) {
+                // if (func.hasOwnProperty(func_name)) {
+                if (hasOwn.call(func, func_name)) {
                     debugpc = i - 1;
                     pc = i + 1;
                     throw new Error("関数 '" + func_name + "' の定義が重複しています。"); 
@@ -5620,7 +5662,7 @@ var Interpreter;
                     a1 = String(expression());
                     match(")");
                     ch = a1.charAt(0); // 1文字だけにする
-                    if (ch.lenght == 0) { return true; }
+                    if (ch.length == 0) { return true; }
                     if (stimg.hasOwnProperty(ch)) {
                         delete stimg[ch];
                     }
@@ -5916,8 +5958,9 @@ var Interpreter;
                     match(")");
                     // ***** 画像文字割付を格納 *****
                     ch = a1.charAt(0); // 1文字だけにする
-                    if (ch.lenght == 0) { return true; }
-                    if (imgvars.hasOwnProperty(a2)) {
+                    if (ch.length == 0) { return true; }
+                    // if (imgvars.hasOwnProperty(a2)) {
+                    if (hasOwn.call(imgvars, a2)) {
                         stimg[ch] = {};
                         stimg[ch].img = imgvars[a2];
                         stimg[ch].off_x = a3;
@@ -5936,7 +5979,8 @@ var Interpreter;
                     a1 = getvarname(2); // ポインタ対応
                     match(","); a2 = parseInt(expression(), 10); // RGB
                     match(")");
-                    if (imgvars.hasOwnProperty(a1)) {
+                    // if (imgvars.hasOwnProperty(a1)) {
+                    if (hasOwn.call(imgvars, a1)) {
                         col_r = (a2 & 0xff0000) >> 16; // R
                         col_g = (a2 & 0x00ff00) >> 8;  // G
                         col_b = (a2 & 0x0000ff);       // B
@@ -8460,18 +8504,24 @@ var Profiler = (function () {
         Profiler.MicroSecAvailable = false;
     }
 
+    // ***** hasOwnPropertyをプロパティ名に使うかもしれない場合の対策 *****
+    // (obj.hasOwnProperty(prop) を hasOwn.call(obj, prop) に置換した)
+    var hasOwn = Object.prototype.hasOwnProperty;
+
     // ***** 時間測定高速化用 *****
     // (new Date().getTime() より Date.now() の方が高速だが、
-    //  存在しないブラウザもあるのでその対策)
+    //  Date.now() が存在しないブラウザもあるのでその対策)
     if (!Date.now) { Date.now = function () { return new Date().getTime(); }; }
 
     // ***** 時間測定開始 *****
     // (キー名称ごとに測定結果を別にする)
     Profiler.prototype.start = function (key_name) {
-        if (!this.records.hasOwnProperty(key_name)) { this.records[key_name] = []; }
+        // if (!this.records.hasOwnProperty(key_name)) { this.records[key_name] = []; }
+        if (!hasOwn.call(this.records, key_name)) { this.records[key_name] = []; }
         this.time_start_flag[key_name] = true;
         if (Profiler.MicroSecAvailable) {
-            if (!this.time_obj.hasOwnProperty(key_name)) { this.time_obj[key_name] = new chrome.Interval(); }
+            // if (!this.time_obj.hasOwnProperty(key_name)) { this.time_obj[key_name] = new chrome.Interval(); }
+            if (!hasOwn.call(this.time_obj, key_name)) { this.time_obj[key_name] = new chrome.Interval(); }
             this.time_obj[key_name].start();
         } else {
             // this.time_start[key_name] = new Date().getTime();
@@ -8481,7 +8531,8 @@ var Profiler = (function () {
     // ***** 時間測定終了 *****
     // (キー名称ごとに測定結果を別にする)
     Profiler.prototype.stop = function (key_name) {
-        if (!this.records.hasOwnProperty(key_name)) { return false; }
+        // if (!this.records.hasOwnProperty(key_name)) { return false; }
+        if (!hasOwn.call(this.records, key_name)) { return false; }
         if (!this.time_start_flag[key_name]) { return false; }
         if (Profiler.MicroSecAvailable) {
             this.time_obj[key_name].stop();
@@ -8500,7 +8551,8 @@ var Profiler = (function () {
         var ret;
         var rec, time_total, time_mean, time_max, time_min;
         ret = "";
-        if (this.records.hasOwnProperty(key_name)) {
+        // if (this.records.hasOwnProperty(key_name)) {
+        if (hasOwn.call(this.records, key_name)) {
             rec = this.records[key_name];
             time_total = 0;
             time_mean = 0;
@@ -8530,7 +8582,8 @@ var Profiler = (function () {
         var key_name;
         ret = "";
         for (key_name in this.records) {
-            if (this.records.hasOwnProperty(key_name)) {
+            // if (this.records.hasOwnProperty(key_name)) {
+            if (hasOwn.call(this.records, key_name)) {
                 ret = ret + this.getResult(key_name) + "\n";
             }
         }
