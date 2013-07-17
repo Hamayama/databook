@@ -12,7 +12,7 @@ from google.appengine.ext import ndb
 from google.appengine.api import search
 
 # databook.py
-# 2013-7-12 v1.22
+# 2013-7-17 v1.23
 
 # Google App Engine / Python による データベース アプリケーション1
 
@@ -185,15 +185,17 @@ class MainPage(webapp2.RequestHandler):
                 # 単語とクエリーオプションを指定して全文検索実行
                 query_obj = search.Query(query_string=search_word, options=query_opts)
                 search_results = search.Index(name=databook_indexname).search(query=query_obj)
-                # 検索結果から記事を取得する
+                # 検索結果から記事のタイトルを取得する
+                req_titles = []
                 for scored_doc in search_results:
-                    # 記事を検索(タイトルで1件だけ)
-                    req_title = scored_doc.field('title').value
-                    articles_query = Article.query(Article.title == req_title, ancestor=databook_key(databook_name)).order(-Article.date)
-                    articles_temp = articles_query.fetch(1)
-                    if len(articles_temp) >= 1:
-                        if show_all_flag == True or articles_temp[0].show_flag == 1:
-                            articles.append(articles_temp[0])
+                    req_titles.append(scored_doc.field('title').value)
+                if len(req_titles) >= 1:
+                    # 記事を検索(タイトルで50件まで)
+                    if show_all_flag == True:
+                        articles_query = Article.query(Article.title.IN(req_titles), ancestor=databook_key(databook_name)).order(-Article.date)
+                    else:
+                        articles_query = Article.query(Article.title.IN(req_titles), Article.show_flag == 1, ancestor=databook_key(databook_name)).order(-Article.date)
+                    articles = articles_query.fetch(50)
             except (search.QueryError, search.InvalidRequest), e:
                 # クエリーエラーのとき
                 message_data = message_data + '（クエリーエラー:検索文字列に記号が含まれると発生することがあります）'
