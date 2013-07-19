@@ -1,7 +1,7 @@
 // This file is encoded with UTF-8 without BOM.
 
 // sp_interpreter.js
-// 2013-7-16 v1.64
+// 2013-7-19 v1.65
 
 
 // SPALM Web Interpreter
@@ -1995,7 +1995,7 @@ var Interpreter;
                 if (sym == "disimg") {
                     match("(");
                     // a1 = getvarname();
-                    a1 = getvarname(2); // ポインタ対応
+                    a1 = getvarname(4); // 画像変数のポインタ対応
                     match(")");
                     // if (imgvars.hasOwnProperty(a1)) {
                     if (hasOwn.call(imgvars, a1)) {
@@ -2023,7 +2023,7 @@ var Interpreter;
                 if (sym == "drawarea") {
                     match("(");
                     // a1 = getvarname();
-                    a1 = getvarname(2); // ポインタ対応
+                    a1 = getvarname(4); // 画像変数のポインタ対応
                     match(","); a2 = parseInt(expression(), 10); // 先X
                     match(","); a3 = parseInt(expression(), 10); // 先Y
                     match(","); a4 = parseInt(expression(), 10); // 元X
@@ -2048,7 +2048,7 @@ var Interpreter;
                 if (sym == "drawimg") {
                     match("(");
                     // a1 = getvarname();
-                    a1 = getvarname(2); // ポインタ対応
+                    a1 = getvarname(4); // 画像変数のポインタ対応
                     match(","); a2 = parseInt(expression(), 10); // X
                     match(","); a3 = parseInt(expression(), 10); // Y
                     match(","); a4 = parseInt(expression(), 10); // アンカー
@@ -2090,7 +2090,7 @@ var Interpreter;
                 if (sym == "drawscaledimg") {
                     match("(");
                     // a1 = getvarname();
-                    a1 = getvarname(2); // ポインタ対応
+                    a1 = getvarname(4); // 画像変数のポインタ対応
                     match(","); a2 = parseInt(expression(), 10); // 先X
                     match(","); a3 = parseInt(expression(), 10); // 先Y
                     match(","); a4 = parseInt(expression(), 10); // 先W
@@ -2296,13 +2296,16 @@ var Interpreter;
 
                             // ***** 関数の引数のポインタ対応 *****
                             if (var_name.substring(0, 2) == "p\\") {
+                                // (引数名から「p\」を削除)
                                 var_name = var_name.substring(2);
+                                // (引数の内容を取得)
                                 func_params[i] = String(func_params[i]);
                                 // ***** 変数名のチェック *****
                                 if (!(isAlpha(func_params[i].charAt(0)) || func_params[i].charAt(0) == "_")) {
                                     pc = back_pc;
                                     throw new Error("ポインタの指す先が不正です。");
                                 }
+                                // (ローカル変数のスコープをさかのぼれるように引数の内容に「a\」を付加)
                                 func_params[i] = "a\\" + func_params[i];
                             }
 
@@ -2465,7 +2468,7 @@ var Interpreter;
                 if (sym == "loadimg") {
                     match("(");
                     // a1 = getvarname();
-                    a1 = getvarname(2); // ポインタ対応
+                    a1 = getvarname(4); // 画像変数のポインタ対応
                     match(","); a2 = String(expression()); // 画像データ文字列
                     match(")");
                     // ***** FlashCanvas用 *****
@@ -2538,7 +2541,7 @@ var Interpreter;
                 if (sym == "loadimgdata") {
                     match("(");
                     // a1 = getvarname();
-                    a1 = getvarname(2); // ポインタ対応
+                    a1 = getvarname(4); // 画像変数のポインタ対応
                     match(","); a2 = String(expression()); // 画像データ文字列(data URI scheme)
                     match(")");
                     // ***** Canvasの生成 *****
@@ -2625,7 +2628,7 @@ var Interpreter;
                 if (sym == "makeimg") {
                     match("(");
                     // a1 = getvarname();
-                    a1 = getvarname(2); // ポインタ対応
+                    a1 = getvarname(4); // 画像変数のポインタ対応
                     match(","); a2 = parseInt(expression(), 10); // W
                     match(","); a3 = parseInt(expression(), 10); // H
                     match(")");
@@ -3009,7 +3012,7 @@ var Interpreter;
                 if (sym == "trgt") {
                     match("(");
                     // a1 = getvarname();
-                    a1 = getvarname(2); // ポインタ対応
+                    a1 = getvarname(4); // 画像変数のポインタ対応
                     match(")");
                     if (a1 == "off") {
                         can = can1;
@@ -3771,7 +3774,7 @@ var Interpreter;
                 if (sym == "loadimgstat") {
                     match("(");
                     // a1 = getvarname();
-                    a1 = getvarname(2); // ポインタ対応
+                    a1 = getvarname(4); // 画像変数のポインタ対応
                     match(")");
                     // ***** 完了フラグをチェックして返す *****
                     num = 0;
@@ -4189,15 +4192,16 @@ var Interpreter;
             num = +sym; // 数値にする
             return num;
         }
-        // ***** ポインタのとき *****
-        if (ch == "*") {
-            // ***** 変数名取得 *****
-            pc--;
-            // var_name = getvarname();
-            var_name = getvarname(2); // ポインタ対応
-        }
         // ***** アルファベットかアンダースコアかポインタのとき *****
         if (isAlpha(ch) || ch == "_" || ch == "*") {
+
+            // ***** ポインタのとき *****
+            if (ch == "*") {
+                // ***** 変数名取得 *****
+                pc--;
+                // var_name = getvarname();
+                var_name = getvarname(2); // ポインタ対応
+            }
 
             // ***** 関数のとき *****
             if (symbol[pc] == "(") {
@@ -4255,13 +4259,16 @@ var Interpreter;
 
                             // ***** 関数の引数のポインタ対応 *****
                             if (var_name.substring(0, 2) == "p\\") {
+                                // (引数名から「p\」を削除)
                                 var_name = var_name.substring(2);
+                                // (引数の内容を取得)
                                 func_params[i] = String(func_params[i]);
                                 // ***** 変数名のチェック *****
                                 if (!(isAlpha(func_params[i].charAt(0)) || func_params[i].charAt(0) == "_")) {
                                     pc = back_pc;
                                     throw new Error("ポインタの指す先が不正です。");
                                 }
+                                // (ローカル変数のスコープをさかのぼれるように引数の内容に「a\」を付加)
                                 func_params[i] = "a\\" + func_params[i];
                             }
 
@@ -4468,7 +4475,7 @@ var Interpreter;
     }
 
     // ***** 変数名取得 *****
-    // mode  モード(=1:ポインタ非対応, =2:ポインタ対応, =3:関数の引数用)
+    // mode  モード(=1:ポインタ非対応, =2:ポインタ対応, =3:関数の引数用, =4:画像変数のポインタ対応)
     // function getvarname() {
     function getvarname(mode) {
         var var_name;
@@ -4481,19 +4488,21 @@ var Interpreter;
 
         // ***** ポインタ対応のとき *****
         pointer_flag = false;
-        if (mode == 2) {
+        if (mode == 2 || mode == 4) {
             // ***** ポインタ的なもの(文頭の*の前にはセミコロンが必要) *****
             // ***** (変数の内容を変数名にする) *****
             if (var_name == "*") {
                 if (symbol[pc] == "(") {
                     match("(");
-                    var_name = getvarname(2); // ポインタ対応
+                    // var_name = getvarname(2); // ポインタ対応
+                    var_name = getvarname(mode); // ポインタ対応
                     // var_name = String(vars[var_name]);
                     var_name = String(vars.getVarValue(var_name));
                     match(")");
                     pointer_flag = true;
                 } else {
-                    var_name = getvarname(2); // ポインタ対応
+                    // var_name = getvarname(2); // ポインタ対応
+                    var_name = getvarname(mode); // ポインタ対応
                     // var_name = String(vars[var_name]);
                     var_name = String(vars.getVarValue(var_name));
                     pointer_flag = true;
@@ -4522,7 +4531,7 @@ var Interpreter;
 
         // ***** 変数名のチェック *****
         if (!(isAlpha(var_name.charAt(0)) || var_name.charAt(0) == "_")) {
-            if (mode == 2 && pointer_flag == true) {
+            if ((mode == 2 || mode == 4) && pointer_flag == true) {
                 throw new Error("ポインタの指す先が不正です。");
             } else {
                 throw new Error("変数名が不正です。");
@@ -4532,7 +4541,7 @@ var Interpreter;
         if (var_name == "global" || var_name == "glb" || var_name == "local" || var_name == "loc") {
             var_name2 = symbol[pc++];
             if (!(isAlpha(var_name2.charAt(0)) || var_name2.charAt(0) == "_")) {
-                if (mode == 2 && pointer_flag == true) {
+                if ((mode == 2 || mode == 4) && pointer_flag == true) {
                     throw new Error("ポインタの指す先が不正です。");
                 } else {
                     throw new Error("変数名が不正です。");
@@ -4550,7 +4559,15 @@ var Interpreter;
         }
         // ***** 関数の引数のポインタ対応 *****
         if (mode == 3 && pointer_flag == true) {
+            // (ローカル変数のスコープをさかのぼれるように「p\」を付加)
             var_name = "p\\" + var_name;
+        }
+        // ***** 画像変数のポインタ対応 *****
+        if (mode == 4) {
+            // ***** 変数名の先頭の「a\」をすべて削除 *****
+            if (var_name.substring(0, 2) == "a\\") {
+                do { var_name = var_name.substring(2); } while (var_name.substring(0, 2) == "a\\");
+            }
         }
         return var_name;
     }
@@ -5947,7 +5964,7 @@ var Interpreter;
                     match("("); a1 = String(expression());
                     match(",");
                     // a2 = getvarname();
-                    a2 = getvarname(2); // ポインタ対応
+                    a2 = getvarname(4); // 画像変数のポインタ対応
                     if (symbol[pc] == ")") {
                         a3 = 0;
                         a4 = 0;
@@ -5976,7 +5993,7 @@ var Interpreter;
                 if (sym == "transimg") {
                     match("(");
                     // a1 = getvarname();
-                    a1 = getvarname(2); // ポインタ対応
+                    a1 = getvarname(4); // 画像変数のポインタ対応
                     match(","); a2 = parseInt(expression(), 10); // RGB
                     match(")");
                     // if (imgvars.hasOwnProperty(a1)) {
