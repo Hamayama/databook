@@ -1,7 +1,7 @@
 // This file is encoded with UTF-8 without BOM.
 
 // sp_interpreter.js
-// 2013-7-19 v1.65
+// 2013-7-20 v1.66
 
 
 // SPALM Web Interpreter
@@ -2293,27 +2293,34 @@ var Interpreter;
                         while (pc < symbol_len) {
                             // var_name = getvarname(); // これはポインタ対応不可
                             var_name = getvarname(3); // 関数の引数用
-
-                            // ***** 関数の引数のポインタ対応 *****
-                            if (var_name.substring(0, 2) == "p\\") {
-                                // (引数名から「p\」を削除)
-                                var_name = var_name.substring(2);
-                                // (引数の内容を取得)
-                                func_params[i] = String(func_params[i]);
-                                // ***** 変数名のチェック *****
-                                if (!(isAlpha(func_params[i].charAt(0)) || func_params[i].charAt(0) == "_")) {
-                                    pc = back_pc;
-                                    throw new Error("ポインタの指す先が不正です。");
-                                }
-                                // (ローカル変数のスコープをさかのぼれるように引数の内容に「a\」を付加)
-                                func_params[i] = "a\\" + func_params[i];
-                            }
-
                             if (i < func_params.length) {
+
+                                // ***** 関数の引数のポインタ対応 *****
+                                if (var_name.substring(0, 2) == "p\\") {
+                                    // (引数名から「p\」を削除)
+                                    var_name = var_name.substring(2);
+                                    // (引数の内容を取得)
+                                    func_params[i] = String(func_params[i]);
+                                    // ***** 変数名のチェック *****
+                                    if (!(isAlpha(func_params[i].charAt(0)) || func_params[i].charAt(0) == "_")) {
+                                        pc = back_pc;
+                                        throw new Error("ポインタの指す先が不正です。");
+                                    }
+                                    // (ローカル変数のスコープをさかのぼれるように引数の内容に「a\」を付加)
+                                    func_params[i] = "a\\" + func_params[i];
+                                }
+
                                 // vars[var_name] = func_params[i];
                                 vars.setVarValue(var_name, func_params[i]);
                                 i++;
                             } else {
+
+                                // ***** 関数の引数のポインタ対応 *****
+                                if (var_name.substring(0, 2) == "p\\") {
+                                    // (引数名から「p\」を削除)
+                                    var_name = var_name.substring(2);
+                                }
+
                                 // vars[var_name] = 0;
                                 vars.setVarValue(var_name, 0);
                             }
@@ -4276,6 +4283,13 @@ var Interpreter;
                             vars.setVarValue(var_name, func_params[i]);
                             i++;
                         } else {
+
+                            // ***** 関数の引数のポインタ対応 *****
+                            if (var_name.substring(0, 2) == "p\\") {
+                                // (引数名から「p\」を削除)
+                                var_name = var_name.substring(2);
+                            }
+
                             // vars[var_name] = 0;
                             vars.setVarValue(var_name, 0);
                         }
