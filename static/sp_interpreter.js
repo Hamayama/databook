@@ -1,7 +1,7 @@
 // This file is encoded with UTF-8 without BOM.
 
 // sp_interpreter.js
-// 2013-7-20 v1.66
+// 2013-7-25 v1.67
 
 
 // SPALM Web Interpreter
@@ -2040,7 +2040,7 @@ var Interpreter;
                             // ***** 画像を描画(画像変数→ターゲット) *****
                             ctx.drawImage(imgvars[a1].can, a4, a5, a6, a7, a2, a3, a6, a7);
                         } else {
-                            throw new Error("Image「" + a1 + "」がロードされてません。");
+                            throw new Error("Image「" + a1 + "」がロードされていません。");
                         }
                     }
                     return true;
@@ -2082,7 +2082,7 @@ var Interpreter;
                             // ***** 画像を描画(画像変数→ターゲット) *****
                             ctx.drawImage(imgvars[a1].can, a2, a3);
                         } else {
-                            throw new Error("Image「" + a1 + "」がロードされてません。");
+                            throw new Error("Image「" + a1 + "」がロードされていません。");
                         }
                     }
                     return true;
@@ -2109,7 +2109,7 @@ var Interpreter;
                             // ***** 画像を描画(画像変数→ターゲット) *****
                             ctx.drawImage(imgvars[a1].can, a6, a7, a8, a9, a2, a3, a4, a5);
                         } else {
-                            throw new Error("Image「" + a1 + "」がロードされてません。");
+                            throw new Error("Image「" + a1 + "」がロードされていません。");
                         }
                     }
                     return true;
@@ -3029,7 +3029,7 @@ var Interpreter;
                         can = imgvars[a1].can;
                         ctx = imgvars[a1].ctx;
                     } else {
-                        throw new Error("Image「" + a1 + "」がロードされてません。");
+                        throw new Error("Image「" + a1 + "」がロードされていません。");
                     }
                     // ***** Canvasの各設定のリセット *****
                     reset_canvas_setting(ctx);
@@ -3618,6 +3618,28 @@ var Interpreter;
                 break;
 
             case "i":
+                if (sym == "imgheight") {
+                    match("(");
+                    // a1 = getvarname();
+                    a1 = getvarname(4); // 画像変数のポインタ対応
+                    match(")");
+                    // if (imgvars.hasOwnProperty(a1)) {
+                    if (hasOwn.call(imgvars, a1)) {
+                        num = imgvars[a1].can.height;
+                    } else { num = 0; }
+                    return num;
+                }
+                if (sym == "imgwidth") {
+                    match("(");
+                    // a1 = getvarname();
+                    a1 = getvarname(4); // 画像変数のポインタ対応
+                    match(")");
+                    // if (imgvars.hasOwnProperty(a1)) {
+                    if (hasOwn.call(imgvars, a1)) {
+                        num = imgvars[a1].can.width;
+                    } else { num = 0; }
+                    return num;
+                }
                 if (sym == "index") {
                     match("("); a1 = String(expression());
                     match(","); a2 = String(expression());
@@ -5997,7 +6019,7 @@ var Interpreter;
                         stimg[ch].off_x = a3;
                         stimg[ch].off_y = a4;
                     } else {
-                        throw new Error("Image「" + a1 + "」がロードされてません。");
+                        throw new Error("Image「" + a1 + "」がロードされていません。");
                     }
                     return true;
                 }
@@ -6031,7 +6053,7 @@ var Interpreter;
                         // ***** 画像を格納 *****
                         imgvars[a1].ctx.putImageData(img_data, 0, 0);
                     } else {
-                        throw new Error("Image「" + a1 + "」がロードされてません。");
+                        throw new Error("Image「" + a1 + "」がロードされていません。");
                     }
                     return true;
                 }
