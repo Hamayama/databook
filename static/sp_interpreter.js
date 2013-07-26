@@ -1,7 +1,7 @@
 // This file is encoded with UTF-8 without BOM.
 
 // sp_interpreter.js
-// 2013-7-25 v1.67
+// 2013-7-26 v1.68
 
 
 // SPALM Web Interpreter
@@ -474,6 +474,7 @@ function stop_button() {
 //     Missile     ミサイル用クラス
 //     MMLPlayer   MML音楽演奏用クラス
 //     Profiler    プロファイラ用クラス
+//     SandSim     砂シミュレート用クラス
 //
 var Interpreter;
 (function (Interpreter) {
@@ -566,7 +567,8 @@ var Interpreter;
     var use_addfunc;            // 追加命令使用有無
     var save_data = {};         // セーブデータ(連想配列オブジェクト)(仮)
     var aud_mode;               // 音楽モード(=0:音楽なし,=1:音楽あり,=2:音楽演奏機能有無による)
-    var prof;                   // プロファイラ実行用(Profilerクラスのインスタンス)
+    var sand_obj;               // 砂シミュレート用(SandSimクラスのインスタンス)
+    var prof_obj;               // プロファイラ実行用(Profilerクラスのインスタンス)
 
     var constants = {           // 定数
         LEFT:4, HCENTER:1, RIGHT:8, TOP:16, VCENTER:2, BASELINE:64, BOTTOM:32,
@@ -1475,6 +1477,34 @@ var Interpreter;
         ctx.scale(ctx_scalex, ctx_scaley);           // 拡大縮小の倍率を指定
         ctx.translate(-ctx_scaleox, -ctx_scaleoy);   // 拡大縮小の中心座標を移動
     }
+    // ***** Canvasの座標変換 *****
+    // (座標系の変換を適用して、グラフィックスの座標(x,y)から
+    //  実際の画面上の座標(ret_obj.x, ret_obj.y)を取得する。
+    //  戻り値は、引数 ret_obj のプロパティにセットして返す)
+    function conv_axis_point(x, y, ret_obj) {
+        var x1, y1, t1;
+        // ***** 座標系の変換の分を補正 *****
+        x1 = x;
+        y1 = y;
+        x1 = x1 - ctx_scaleox;  // 拡大縮小の中心座標を移動
+        y1 = y1 - ctx_scaleoy;
+        x1 = x1 * ctx_scalex;   // 拡大縮小
+        y1 = y1 * ctx_scaley;
+        x1 = x1 + ctx_scaleox;  // 拡大縮小の中心座標を元に戻す
+        y1 = y1 + ctx_scaleoy;
+        x1 = x1 - ctx_rotateox; // 回転の中心座標を移動
+        y1 = y1 - ctx_rotateoy;
+        // ここでt1を使わないと、計算結果がおかしくなるので注意
+        t1 = x1 * Math.cos(ctx_rotate) - y1 * Math.sin(ctx_rotate); // 回転
+        y1 = x1 * Math.sin(ctx_rotate) + y1 * Math.cos(ctx_rotate);
+        // x1 = t1;
+        x1 = t1 + ctx_rotateox; // 回転の中心座標を元に戻す
+        y1 = y1 + ctx_rotateoy;
+        x1 = x1 + ctx_originx;  // 原点座標を移動
+        y1 = y1 + ctx_originy;
+        ret_obj.x = x1 | 0; // 整数化
+        ret_obj.y = y1 | 0; // 整数化
+    }
 
     // ***** ソフトキー表示 *****
     function disp_softkey() {
@@ -1623,8 +1653,9 @@ var Interpreter;
         use_addfunc = true;
         save_data = {};
         aud_mode = 1;
-        prof = new Profiler(); 
-        prof.start("result");
+        sand_obj = null;
+        prof_obj = new Profiler(); 
+        prof_obj.start("result");
 
         // run_continuously(); // 再帰的になるので別関数にした
         setTimeout(run_continuously, 10);
@@ -1647,9 +1678,9 @@ var Interpreter;
             // loop_time_start = new Date().getTime();
             loop_time_start = Date.now();
             while (pc < symbol_len) {
-                // prof.start("statement");
+                // prof_obj.start("statement");
                 statement();
-                // prof.stop("statement");
+                // prof_obj.stop("statement");
                 // DebugShow(pc + " ");
                 if (dlg_flag) {
                     dlg_flag = false;
@@ -1685,7 +1716,7 @@ var Interpreter;
             }
             // DebugShow(pc + "\n");
         } catch (ex4) {
-            prof.stop("result");
+            prof_obj.stop("result");
             DebugShow("statement: " + ex4.message + ": debugpc=" + debugpc + "\n");
             show_err_place();
             // ***** 音楽全停止 *****
@@ -1697,10 +1728,10 @@ var Interpreter;
             DebugShow("localvars=" + JSON.stringify(vars.localvars) + "\n");
             DebugShow("label=" + JSON.stringify(label) + "\n");
             DebugShow("func=" + JSON.stringify(func) + "\n");
-            if (Profiler.MicroSecAvailable) { DebugShow(prof.getAllResult()); }
+            if (Profiler.MicroSecAvailable) { DebugShow(prof_obj.getAllResult()); }
             return ret;
         }
-        prof.stop("result");
+        prof_obj.stop("result");
         // ***** 音楽全停止 *****
         if (typeof (audstopall) == "function") { audstopall(); }
         // ***** 終了 *****
@@ -1712,7 +1743,7 @@ var Interpreter;
             DebugShow("label=" + JSON.stringify(label) + "\n");
             DebugShow("func=" + JSON.stringify(func) + "\n");
         }
-        if (Profiler.MicroSecAvailable) { DebugShow(prof.getAllResult()); }
+        if (Profiler.MicroSecAvailable) { DebugShow(prof_obj.getAllResult()); }
         // ***** 戻り値を返す *****
         ret = true;
         return ret;
@@ -3392,8 +3423,9 @@ var Interpreter;
         var pre_inc;
         var var_name;
         var a1, a2, a3, a4, a5;
-        var x1, y1, x2, y2;
+        var x1, y1;
         var img_data = {};
+        var ret_obj = {};
 
         var func_params = [];
         var funccall_info = {};
@@ -3576,25 +3608,10 @@ var Interpreter;
                     match(","); a2 = parseFloat(expression()); // Y
                     match(")");
                     // ***** 座標系の変換の分を補正 *****
-                    x1 = a1;
-                    y1 = a2;
-                    x1 = x1 - ctx_scaleox;  // 拡大縮小の中心座標を移動
-                    y1 = y1 - ctx_scaleoy;
-                    x1 = x1 * ctx_scalex;   // 拡大縮小
-                    y1 = y1 * ctx_scaley;
-                    x1 = x1 + ctx_scaleox;  // 拡大縮小の中心座標を元に戻す
-                    y1 = y1 + ctx_scaleoy;
-                    x1 = x1 - ctx_rotateox; // 回転の中心座標を移動
-                    y1 = y1 - ctx_rotateoy;
-                    // ここでx2とy2を使わないと、計算結果がおかしくなるので注意
-                    x2 = x1 * Math.cos(ctx_rotate) - y1 * Math.sin(ctx_rotate); // 回転
-                    y2 = x1 * Math.sin(ctx_rotate) + y1 * Math.cos(ctx_rotate);
-                    x1 = x2 + ctx_rotateox; // 回転の中心座標を元に戻す
-                    y1 = y2 + ctx_rotateoy;
-                    x1 = x1 + ctx_originx;  // 原点座標を移動
-                    y1 = y1 + ctx_originy;
-                    x1 = x1 | 0; // 整数化
-                    y1 = y1 | 0; // 整数化
+                    ret_obj = {};
+                    conv_axis_point(a1, a2, ret_obj);
+                    x1 = ret_obj.x;
+                    y1 = ret_obj.y;
                     // ***** エラーチェック *****
                     // if (x1 < 0 || x1 >= can.width || y1 < 0 || y1 >= can.height) { return 0; }
                     if (!(x1 >= 0 && x1 < can.width && y1 >= 0 && y1 < can.height)) { return 0; }
@@ -5496,9 +5513,10 @@ var Interpreter;
         var w1, h1, dx1, dy1, sx1, sy1, e1;
         var r1, a, b, x_old, y_old, drawflag;
         var img_data;
-        var col_r, col_g, col_b, alpha;
+        var col, col_r, col_g, col_b, alpha, threshold;
         var i_start, i_end, i_plus;
         var paint_mode, ffill_obj;
+        var ret_obj;
 
         var mis, mis_no;
         var no, useflag, x100, y100, degree, speed100;
@@ -5729,42 +5747,27 @@ var Interpreter;
                     match("("); a1 = parseFloat(expression()); // X
                     match(","); a2 = parseFloat(expression()); // Y
                     if (symbol[pc] == ")") {
-                        a3 = 0;
-                        a4 = 0;
+                        threshold = 0;
+                        col = 0;
                         paint_mode = 0;
                     } else {
-                        match(","); a3 = parseInt(expression(), 10); // しきい値
+                        match(","); threshold = parseInt(expression(), 10); // しきい値
                         if (symbol[pc] == ")") {
-                            a4 = 0;
+                            col = 0;
                             paint_mode = 0;
                         } else {
-                            match(","); a4 = parseInt(expression(), 10); // 境界色 RGB
+                            match(","); col = parseInt(expression(), 10); // 境界色 RGB
                             paint_mode = 1;
                         }
                     }
                     match(")");
                     // ***** 座標系の変換の分を補正 *****
-                    x1 = a1;
-                    y1 = a2;
-                    x1 = x1 - ctx_scaleox;  // 拡大縮小の中心座標を移動
-                    y1 = y1 - ctx_scaleoy;
-                    x1 = x1 * ctx_scalex;   // 拡大縮小
-                    y1 = y1 * ctx_scaley;
-                    x1 = x1 + ctx_scaleox;  // 拡大縮小の中心座標を元に戻す
-                    y1 = y1 + ctx_scaleoy;
-                    x1 = x1 - ctx_rotateox; // 回転の中心座標を移動
-                    y1 = y1 - ctx_rotateoy;
-                    // ここでx2とy2を使わないと、計算結果がおかしくなるので注意
-                    x2 = x1 * Math.cos(ctx_rotate) - y1 * Math.sin(ctx_rotate); // 回転
-                    y2 = x1 * Math.sin(ctx_rotate) + y1 * Math.cos(ctx_rotate);
-                    x1 = x2 + ctx_rotateox; // 回転の中心座標を元に戻す
-                    y1 = y2 + ctx_rotateoy;
-                    x1 = x1 + ctx_originx;  // 原点座標を移動
-                    y1 = y1 + ctx_originy;
-                    x1 = x1 | 0; // 整数化
-                    y1 = y1 | 0; // 整数化
+                    ret_obj = {};
+                    conv_axis_point(a1, a2, ret_obj);
+                    x1 = ret_obj.x;
+                    y1 = ret_obj.y;
                     // ***** 領域塗りつぶし *****
-                    ffill_obj = new FloodFill(can, ctx, x1, y1, a3, paint_mode, a4, 255);
+                    ffill_obj = new FloodFill(can, ctx, x1, y1, threshold, paint_mode, col, 255);
                     ctx.setTransform(1, 0, 0, 1, 0, 0);      // 座標系を元に戻す
                     ffill_obj.fill();  // 塗りつぶし処理
                     set_canvas_axis(ctx);                    // 座標系を再設定
@@ -5996,6 +5999,38 @@ var Interpreter;
                 break;
 
             case "s":
+                if (sym == "sandmake") {
+                    match("("); x1 = parseInt(expression(), 10);
+                    match(","); y1 = parseInt(expression(), 10);
+                    match(","); w1 = parseInt(expression(), 10);
+                    match(","); h1 = parseInt(expression(), 10);
+                    match(","); a1 = parseFloat(expression());
+                    match(","); a2 = parseFloat(expression());
+                    match(","); a3 = parseFloat(expression());
+                    match(","); a4 = parseFloat(expression());
+                    match(","); col = parseInt(expression(), 10);
+                    match(","); threshold = parseInt(expression(), 10);
+                    match(")");
+                    sand_obj = new SandSim(can, ctx, x1, y1, w1, h1, a1, a2, a3, a4, col, threshold);
+                    sand_obj.maketable();
+                    return true;
+                }
+                if (sym == "sandmove") {
+                    match("(");
+                    match(")");
+                    if (sand_obj != null) { sand_obj.move(); }
+                    return true;
+                }
+                if (sym == "sanddraw") {
+                    match("(");
+                    match(")");
+                    if (sand_obj != null) {
+                        ctx.setTransform(1, 0, 0, 1, 0, 0);      // 座標系を元に戻す
+                        sand_obj.draw();
+                        set_canvas_axis(ctx);                    // 座標系を再設定
+                    }
+                    return true;
+                }
                 if (sym == "setstrimg") {
                     match("("); a1 = String(expression());
                     match(",");
@@ -8643,6 +8678,185 @@ var Profiler = (function () {
         return ret;
     };
     return Profiler; // これがないとクラスが動かないので注意
+})();
+
+
+// ***** 砂シミュレート用クラス *****
+var SandSim = (function () {
+    // ***** コンストラクタ *****
+    function SandSim(can, ctx, left, top, width, height, r_up, r_down, r_left, r_right, sand_col, threshold) {
+        this.can = can;             // Canvas要素
+        this.ctx = ctx;             // Canvasのコンテキスト
+        this.left = left;           // シミュレート領域の左上X座標(px)
+        this.top = top;             // シミュレート領域の左上Y座標(px)
+        this.width = width;         // シミュレート領域の幅(px)
+        this.height = height;       // シミュレート領域の高さ(px)
+        this.r_up = r_up;           // 上方向の移動確率
+        this.r_down = r_down;       // 下方向の移動確率
+        this.r_left = r_left;       // 左方向の移動確率
+        this.r_right = r_right;     // 右方向の移動確率
+        this.sand_col = {};                            // 砂の色(オブジェクト)
+        this.sand_col.r = (sand_col & 0xff0000) >> 16; // 砂の色 R
+        this.sand_col.g = (sand_col & 0x00ff00) >> 8;  // 砂の色 G
+        this.sand_col.b = (sand_col & 0x0000ff);       // 砂の色 B
+        this.sand_col.a = 0;                           // 砂の色 alpha
+        this.threshold = threshold; // 同色と判定するしきい値(0-255)
+        this.sand_buf = [];         // 砂バッファ(配列)
+        this.img_buf = [];          // 画像バッファ(配列)
+        // ***** 範囲チェック *****
+        if (this.left < 0)   { this.left = 0; }
+        if (this.top < 0)    { this.top = 0; }
+        if (this.width < 0)  { this.width = 0; }
+        if (this.height < 0) { this.height = 0; }
+        if (this.left >= this.can.width) { this.left = this.can.width - 1; }
+        if (this.top >= this.can.height) { this.top = this.can.height - 1; }
+        if (this.left + this.width >= this.can.width)  { this.width = this.can.width - this.left - 1; }
+        if (this.top + this.height >= this.can.height) { this.height = this.can.height - this.top - 1; }
+    }
+    // ***** テーブル生成 *****
+    SandSim.prototype.maketable = function () {
+        var i, j, k;
+        var r, g, b, a, diff2, col2;
+        var img_data;
+        var sand = {};
+        var sand_buf_len;
+
+        // ***** 画像データを取得 *****
+        img_data = this.ctx.getImageData(this.left, this.top, this.width, this.height);
+        // ***** テーブル生成 *****
+        this.sand_buf = [];
+        this.img_buf = [];
+        for (i = 0; i < this.height; i++) {
+            for (j = 0; j < this.width; j++) {
+                // ***** 色を取得 *****
+                r = img_data.data[(j + i * this.width) * 4];
+                g = img_data.data[(j + i * this.width) * 4 + 1];
+                b = img_data.data[(j + i * this.width) * 4 + 2];
+                // a = img_data.data[(j + i * this.width) * 4 + 3];
+                a = 0;
+                // ***** 砂の色ならば砂バッファに登録 *****
+                diff2 = (this.sand_col.r - r) * (this.sand_col.r - r) +
+                        (this.sand_col.g - g) * (this.sand_col.g - g) +
+                        (this.sand_col.b - b) * (this.sand_col.b - b) +
+                        (this.sand_col.a - a) * (this.sand_col.a - a);
+                if (diff2 <= this.threshold * this.threshold * 4) { // 4倍してスケールを合わせる
+                    sand = {};
+                    sand.x = j;
+                    sand.y = i;
+                    this.sand_buf.push(sand);
+                }
+                // ***** 色があれば画像バッファに登録 *****
+                col2 = r * r + g * g + b * b + a * a;
+                if (col2 > this.threshold * this.threshold * 4) {   // 4倍してスケールを合わせる
+                    this.img_buf[j + i * this.width] = 1;
+                } else {
+                    this.img_buf[j + i * this.width] = 0;
+                }
+            }
+        }
+        // ***** テーブルのシャッフル(動きの偏りをなくすため) *****
+        sand_buf_len = this.sand_buf.length;
+        for (i = 0; i < sand_buf_len; i++) {
+            j = Math.random() * sand_buf_len | 0;
+            k = Math.random() * sand_buf_len | 0;
+            sand = this.sand_buf[j];
+            this.sand_buf[j] = this.sand_buf[k];
+            this.sand_buf[k] = sand;
+        }
+    };
+    // ***** 移動 *****
+    SandSim.prototype.move = function () {
+        var i, j;
+        var x, y;
+        var rp = [];
+        var rk = [];
+        var rnum, radd, rnd;
+        var sand_buf_len;
+
+        // ***** 砂をすべて移動 *****
+        sand_buf_len = this.sand_buf.length;
+        for (i = 0; i < sand_buf_len; i++) {
+            rnum = 0;
+            radd = 0;
+            // ***** 上方向のチェック *****
+            x = this.sand_buf[i].x;
+            y = this.sand_buf[i].y - 1;
+            if (y < 0) { y = this.height - 1; }
+            if (this.img_buf[x + y * this.width] == 0) {
+                radd += this.r_up;
+                rp[rnum] = radd;
+                rk[rnum] = 0;
+                rnum++;
+            }
+            // ***** 下方向のチェック *****
+            // x = this.sand_buf[i].x;
+            y = this.sand_buf[i].y + 1;
+            if (y >= this.height) { y = 0; }
+            if (this.img_buf[x + y * this.width] == 0) {
+                radd += this.r_down;
+                rp[rnum] = radd;
+                rk[rnum] = 1;
+                rnum++;
+            }
+            // ***** 左方向のチェック *****
+            x = this.sand_buf[i].x - 1;
+            y = this.sand_buf[i].y;
+            if (x < 0) { x = 0; }
+            if (this.img_buf[x + y * this.width] == 0) {
+                radd += this.r_left;
+                rp[rnum] = radd;
+                rk[rnum] = 2;
+                rnum++;
+            }
+            // ***** 右方向のチェック *****
+            x = this.sand_buf[i].x + 1;
+            // y = this.sand_buf[i].y;
+            if (x >= this.width) { x = this.width - 1; }
+            if (this.img_buf[x + y * this.width] == 0) {
+                radd += this.r_right;
+                rp[rnum] = radd;
+                rk[rnum] = 3;
+                rnum++;
+            }
+            // ***** 確率によって移動 *****
+            rnd = Math.random() * radd;
+            for (j = 0; j < rnum; j++) {
+                if (rnd < rp[j]) {
+                    this.img_buf[this.sand_buf[i].x + this.sand_buf[i].y * this.width] = 0;
+                    if (rk[j] == 0) {
+                        this.sand_buf[i].y--;
+                        if (this.sand_buf[i].y < 0) { this.sand_buf[i].y = this.height - 1; }
+                    }
+                    if (rk[j] == 1) {
+                        this.sand_buf[i].y++;
+                        if (this.sand_buf[i].y >= this.height) { this.sand_buf[i].y = 0; }
+                    }
+                    if (rk[j] == 2) {
+                        this.sand_buf[i].x--;
+                        if (this.sand_buf[i].x < 0) { this.sand_buf[i].x = 0; }
+                    }
+                    if (rk[j] == 3) {
+                        this.sand_buf[i].x++;
+                        if (this.sand_buf[i].x >= this.width) { this.sand_buf[i].x = this.width - 1; }
+                    }
+                    this.img_buf[this.sand_buf[i].x + this.sand_buf[i].y * this.width] = 1;
+                    break;
+                }
+            }
+        }
+    };
+    // ***** 描画 *****
+    SandSim.prototype.draw = function () {
+        var i;
+        var sand_buf_len;
+
+        // ***** 砂をすべて描画 *****
+        sand_buf_len = this.sand_buf.length;
+        for (i = 0; i < sand_buf_len; i++) {
+            this.ctx.fillRect(this.left + this.sand_buf[i].x, this.top + this.sand_buf[i].y, 1, 1);
+        }
+    };
+    return SandSim; // これがないとクラスが動かないので注意
 })();
 
 
