@@ -1,7 +1,7 @@
 // This file is encoded with UTF-8 without BOM.
 
 // sp_interpreter.js
-// 2013-7-26 v1.68
+// 2013-7-28 v1.70
 
 
 // SPALM Web Interpreter
@@ -1796,6 +1796,7 @@ var Interpreter;
         var funccall_info = {};
         var back_pc;
         var goto_pc;
+        var debugpc_old;
 
         var addfunc_ret = {};
         var ret_addfunc;
@@ -2311,6 +2312,8 @@ var Interpreter;
                     }
                     back_pc = pc;
                     pc = func[sym];
+                    debugpc_old = debugpc;
+                    debugpc = pc - 1;
 
                     // ***** ローカル変数を生成 *****
                     vars.makeLocalScope();
@@ -2334,8 +2337,9 @@ var Interpreter;
                                     func_params[i] = String(func_params[i]);
                                     // ***** 変数名のチェック *****
                                     if (!(isAlpha(func_params[i].charAt(0)) || func_params[i].charAt(0) == "_")) {
+                                        debugpc = debugpc_old;
                                         pc = back_pc;
-                                        throw new Error("ポインタの指す先が不正です。");
+                                        throw new Error("ポインタの指す先が不正です。('" + func_params[i] + "')");
                                     }
                                     // (ローカル変数のスコープをさかのぼれるように引数の内容に「a\」を付加)
                                     func_params[i] = "a\\" + func_params[i];
@@ -3430,6 +3434,7 @@ var Interpreter;
         var func_params = [];
         var funccall_info = {};
         var back_pc;
+        var debugpc_old;
 
         var sleep_time_start;
         var sleep_time_count;
@@ -4288,6 +4293,8 @@ var Interpreter;
                 }
                 back_pc = pc;
                 pc = func[sym];
+                debugpc_old = debugpc;
+                debugpc = pc - 1;
 
                 // ***** ローカル変数を生成 *****
                 vars.makeLocalScope();
@@ -4311,8 +4318,9 @@ var Interpreter;
                                 func_params[i] = String(func_params[i]);
                                 // ***** 変数名のチェック *****
                                 if (!(isAlpha(func_params[i].charAt(0)) || func_params[i].charAt(0) == "_")) {
+                                    debugpc = debugpc_old;
                                     pc = back_pc;
-                                    throw new Error("ポインタの指す先が不正です。");
+                                    throw new Error("ポインタの指す先が不正です。('" + func_params[i] + "')");
                                 }
                                 // (ローカル変数のスコープをさかのぼれるように引数の内容に「a\」を付加)
                                 func_params[i] = "a\\" + func_params[i];
@@ -4585,9 +4593,9 @@ var Interpreter;
         // ***** 変数名のチェック *****
         if (!(isAlpha(var_name.charAt(0)) || var_name.charAt(0) == "_")) {
             if ((mode == 2 || mode == 4) && pointer_flag == true) {
-                throw new Error("ポインタの指す先が不正です。");
+                throw new Error("ポインタの指す先が不正です。('" + var_name + "')");
             } else {
-                throw new Error("変数名が不正です。");
+                throw new Error("変数名が不正です。('" + var_name + "')");
             }
         }
         // ***** 接頭語のチェック *****
@@ -4595,9 +4603,9 @@ var Interpreter;
             var_name2 = symbol[pc++];
             if (!(isAlpha(var_name2.charAt(0)) || var_name2.charAt(0) == "_")) {
                 if ((mode == 2 || mode == 4) && pointer_flag == true) {
-                    throw new Error("ポインタの指す先が不正です。");
+                    throw new Error("ポインタの指す先が不正です。('" + var_name2 + "')");
                 } else {
-                    throw new Error("変数名が不正です。");
+                    throw new Error("変数名が不正です。('" + var_name2 + "')");
                 }
             }
             var_name = var_name + " " + var_name2;
@@ -5513,7 +5521,7 @@ var Interpreter;
         var w1, h1, dx1, dy1, sx1, sy1, e1;
         var r1, a, b, x_old, y_old, drawflag;
         var img_data;
-        var col, col_r, col_g, col_b, alpha, threshold;
+        var col, col_r, col_g, col_b, alpha, threshold, border_mode;
         var i_start, i_end, i_plus;
         var paint_mode, ffill_obj;
         var ret_obj;
@@ -6010,8 +6018,13 @@ var Interpreter;
                     match(","); a4 = parseFloat(expression());
                     match(","); col = parseInt(expression(), 10);
                     match(","); threshold = parseInt(expression(), 10);
+                    if (symbol[pc] == ")") {
+                        border_mode = 1;
+                    } else {
+                        match(","); border_mode = parseInt(expression(), 10);
+                    }
                     match(")");
-                    sand_obj = new SandSim(can, ctx, x1, y1, w1, h1, a1, a2, a3, a4, col, threshold);
+                    sand_obj = new SandSim(can, ctx, x1, y1, w1, h1, a1, a2, a3, a4, col, threshold, border_mode);
                     sand_obj.maketable();
                     return true;
                 }
@@ -7748,7 +7761,7 @@ var FloodFill = (function () {
 // ***** ミサイル用クラス *****
 var Missile = (function () {
     // ***** コンストラクタ *****
-    function Missile(no, useflag, x100, y100, degree, speed100, ch, 
+    function Missile(no, useflag, x100, y100, degree, speed100, ch,
         min_x, max_x, min_y, max_y, div_x, div_y,
         useflag_var_name, x100_var_name, y100_var_name,
         degree_var_name, speed100_var_name, ch_var_name) {
@@ -8684,7 +8697,8 @@ var Profiler = (function () {
 // ***** 砂シミュレート用クラス *****
 var SandSim = (function () {
     // ***** コンストラクタ *****
-    function SandSim(can, ctx, left, top, width, height, r_up, r_down, r_left, r_right, sand_col, threshold) {
+    function SandSim(can, ctx, left, top, width, height,
+        r_up, r_down, r_left, r_right, sand_col, threshold, border_mode) {
         this.can = can;             // Canvas要素
         this.ctx = ctx;             // Canvasのコンテキスト
         this.left = left;           // シミュレート領域の左上X座標(px)
@@ -8704,14 +8718,19 @@ var SandSim = (function () {
         this.sand_buf = [];         // 砂バッファ(配列)
         this.img_buf = [];          // 画像バッファ(配列)
         // ***** 範囲チェック *****
-        if (this.left < 0)   { this.left = 0; }
-        if (this.top < 0)    { this.top = 0; }
-        if (this.width < 0)  { this.width = 0; }
-        if (this.height < 0) { this.height = 0; }
+        if (this.left < 0)    { this.left = 0; }
+        if (this.top < 0)     { this.top = 0; }
+        if (this.width <= 0)  { this.width = 1; }
+        if (this.height <= 0) { this.height = 1; }
         if (this.left >= this.can.width) { this.left = this.can.width - 1; }
         if (this.top >= this.can.height) { this.top = this.can.height - 1; }
-        if (this.left + this.width >= this.can.width)  { this.width = this.can.width - this.left - 1; }
-        if (this.top + this.height >= this.can.height) { this.height = this.can.height - this.top - 1; }
+        if (this.left + this.width > this.can.width)  { this.width = this.can.width - this.left; }
+        if (this.top + this.height > this.can.height) { this.height = this.can.height - this.top; }
+        // ***** 端を超えて移動するかの設定 *****
+        this.over_top    = (border_mode & 1)? this.height - 1: 0;
+        this.over_bottom = (border_mode & 1)? 0: this.height - 1;
+        this.over_left   = (border_mode & 2)? this.width - 1: 0;
+        this.over_right  = (border_mode & 2)? 0: this.width - 1;
     }
     // ***** テーブル生成 *****
     SandSim.prototype.maketable = function () {
@@ -8739,7 +8758,8 @@ var SandSim = (function () {
                         (this.sand_col.g - g) * (this.sand_col.g - g) +
                         (this.sand_col.b - b) * (this.sand_col.b - b) +
                         (this.sand_col.a - a) * (this.sand_col.a - a);
-                if (diff2 <= this.threshold * this.threshold * 4) { // 4倍してスケールを合わせる
+                // if (diff2 <= this.threshold * this.threshold * 4) { // 4倍してスケールを合わせる
+                if (diff2 <= this.threshold * this.threshold * 3) { // aは無効なので、3倍してスケールを合わせる
                     sand = {};
                     sand.x = j;
                     sand.y = i;
@@ -8747,7 +8767,8 @@ var SandSim = (function () {
                 }
                 // ***** 色があれば画像バッファに登録 *****
                 col2 = r * r + g * g + b * b + a * a;
-                if (col2 > this.threshold * this.threshold * 4) {   // 4倍してスケールを合わせる
+                // if (col2 > this.threshold * this.threshold * 4) {   // 4倍してスケールを合わせる
+                if (col2 > this.threshold * this.threshold * 3) {   // aは無効なので、3倍してスケールを合わせる
                     this.img_buf[j + i * this.width] = 1;
                 } else {
                     this.img_buf[j + i * this.width] = 0;
@@ -8781,7 +8802,7 @@ var SandSim = (function () {
             // ***** 上方向のチェック *****
             x = this.sand_buf[i].x;
             y = this.sand_buf[i].y - 1;
-            if (y < 0) { y = this.height - 1; }
+            if (y < 0) { y = this.over_top; }
             if (this.img_buf[x + y * this.width] == 0) {
                 radd += this.r_up;
                 rp[rnum] = radd;
@@ -8791,7 +8812,7 @@ var SandSim = (function () {
             // ***** 下方向のチェック *****
             // x = this.sand_buf[i].x;
             y = this.sand_buf[i].y + 1;
-            if (y >= this.height) { y = 0; }
+            if (y >= this.height) { y = this.over_bottom; }
             if (this.img_buf[x + y * this.width] == 0) {
                 radd += this.r_down;
                 rp[rnum] = radd;
@@ -8801,7 +8822,7 @@ var SandSim = (function () {
             // ***** 左方向のチェック *****
             x = this.sand_buf[i].x - 1;
             y = this.sand_buf[i].y;
-            if (x < 0) { x = 0; }
+            if (x < 0) { x = this.over_left; }
             if (this.img_buf[x + y * this.width] == 0) {
                 radd += this.r_left;
                 rp[rnum] = radd;
@@ -8811,7 +8832,7 @@ var SandSim = (function () {
             // ***** 右方向のチェック *****
             x = this.sand_buf[i].x + 1;
             // y = this.sand_buf[i].y;
-            if (x >= this.width) { x = this.width - 1; }
+            if (x >= this.width) { x = this.over_right; }
             if (this.img_buf[x + y * this.width] == 0) {
                 radd += this.r_right;
                 rp[rnum] = radd;
@@ -8825,19 +8846,19 @@ var SandSim = (function () {
                     this.img_buf[this.sand_buf[i].x + this.sand_buf[i].y * this.width] = 0;
                     if (rk[j] == 0) {
                         this.sand_buf[i].y--;
-                        if (this.sand_buf[i].y < 0) { this.sand_buf[i].y = this.height - 1; }
+                        if (this.sand_buf[i].y < 0)            { this.sand_buf[i].y = this.over_top; }
                     }
                     if (rk[j] == 1) {
                         this.sand_buf[i].y++;
-                        if (this.sand_buf[i].y >= this.height) { this.sand_buf[i].y = 0; }
+                        if (this.sand_buf[i].y >= this.height) { this.sand_buf[i].y = this.over_bottom; }
                     }
                     if (rk[j] == 2) {
                         this.sand_buf[i].x--;
-                        if (this.sand_buf[i].x < 0) { this.sand_buf[i].x = 0; }
+                        if (this.sand_buf[i].x < 0)            { this.sand_buf[i].x = this.over_left; }
                     }
                     if (rk[j] == 3) {
                         this.sand_buf[i].x++;
-                        if (this.sand_buf[i].x >= this.width) { this.sand_buf[i].x = this.width - 1; }
+                        if (this.sand_buf[i].x >= this.width)  { this.sand_buf[i].x = this.over_right; }
                     }
                     this.img_buf[this.sand_buf[i].x + this.sand_buf[i].y * this.width] = 1;
                     break;
