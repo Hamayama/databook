@@ -1,7 +1,7 @@
 // This file is encoded with UTF-8 without BOM.
 
 // sp_interpreter.js
-// 2013-7-28 v1.70
+// 2013-8-26 v1.72
 
 
 // SPALM Web Interpreter
@@ -458,6 +458,9 @@ function stop_button() {
 //     can2_forecolor  ソフトキー表示エリアの文字色を文字列で指定する("#ffffff" 等。""なら設定しない)
 //     can2_backcolor  ソフトキー表示エリアの背景色を文字列で指定する("#707070" 等。""なら設定しない)
 //
+//   Interpreter.setoutdata(no, data)  外部データ設定
+//   Interpreter.getoutdata(no)        外部データ取得
+//
 // その他 情報等 :
 //
 //   新しい命令の追加は、
@@ -569,6 +572,7 @@ var Interpreter;
     var aud_mode;               // 音楽モード(=0:音楽なし,=1:音楽あり,=2:音楽演奏機能有無による)
     var sand_obj;               // 砂シミュレート用(SandSimクラスのインスタンス)
     var prof_obj;               // プロファイラ実行用(Profilerクラスのインスタンス)
+    var out_data = {};          // 外部データ(連想配列オブジェクト)
 
     var constants = {           // 定数
         LEFT:4, HCENTER:1, RIGHT:8, TOP:16, VCENTER:2, BASELINE:64, BOTTOM:32,
@@ -743,6 +747,25 @@ var Interpreter;
         if (can2_backcolor != "") { can2_backcolor_init = can2_backcolor; }
     }
     Interpreter.setcolor = setcolor;
+
+    // ***** 外部データ設定 *****
+    function setoutdata(no, data) {
+        if (ParamCheckNG(no)) { Alm("Interpreter.setoutdata:0001"); return false; }
+        if (ParamCheckNG(data)) { Alm("Interpreter.setoutdata:0002"); return false; }
+        no = no | 0;
+        data = String(data);
+        out_data[no] = data;
+    }
+    Interpreter.setoutdata = setoutdata;
+
+    // ***** 外部データ取得 *****
+    function getoutdata(no) {
+        if (ParamCheckNG(no)) { Alm("Interpreter.getoutdata:0001"); return false; }
+        no = no | 0;
+        if (out_data.hasOwnProperty(no)) { return out_data[no]; }
+        return "";
+    }
+    Interpreter.getoutdata = getoutdata;
 
     // ***** 公開I/Fはここまで *****
 
@@ -2045,13 +2068,6 @@ var Interpreter;
                     vars.deleteVar(a1);
                     return true;
                 }
-                if (sym == "download") {
-                    match("(");
-                    a1 = String(expression());
-                    match(")");
-                    window.location.href = "data:application/octet-stream," + encodeURIComponent(a1);
-                    return true;
-                }
                 if (sym == "drawarea") {
                     match("(");
                     // a1 = getvarname();
@@ -2935,6 +2951,13 @@ var Interpreter;
                     ctx.font = font_size + "px " + font_family;
                     return true;
                 }
+                if (sym == "setoutdata") {
+                    match("("); a1 = parseInt(expression(), 10);
+                    match(","); a2 = String(expression());
+                    match(")");
+                    out_data[a1] = a2;
+                    return true;
+                }
                 if (sym == "setpixel") {
                     match("("); a1 = parseFloat(expression());   // X
                     match(","); a2 = parseFloat(expression());   // Y
@@ -3564,6 +3587,38 @@ var Interpreter;
                     num = Math.cos(a1 * Math.PI / 180);
                     return num;
                 }
+                if (sym == "download") {
+                    match("(");
+                    a1 = String(expression());
+                    if (symbol[pc] == ")") {
+                        a2 = 0;
+                    } else {
+                        match(","); a2 = parseInt(expression(), 10);
+                    }
+                    match(")");
+                    num = encodeURIComponent(a1);
+                    if (a2 != 1) {
+                        window.location.href = "data:application/octet-stream," + num;
+                    }
+                    num = "data:text/plain;charset=utf-8," + num;
+                    return num;
+                }
+                if (sym == "downloadimg") {
+                    match("(");
+                    if (symbol[pc] == ")") {
+                        a1 = 0;
+                    } else {
+                        a1 = parseInt(expression(), 10);
+                    }
+                    match(")");
+                    num = can.toDataURL("image/png");
+                    if (a1 != 1) {
+                        // ***** window.open は ユーザ操作時(ボタンクリック時等)しか動作しない *****
+                        // window.open(num);
+                        window.location.href = num.replace("image/png", "image/octet-stream");
+                    }
+                    return num;
+                }
                 if (sym == "dpow") {
                     match("("); a1 = parseFloat(expression());
                     match(","); a2 = parseFloat(expression());
@@ -3608,6 +3663,13 @@ var Interpreter;
                 break;
 
             case "g":
+                if (sym == "getoutdata") {
+                    match("(");
+                    a1 = parseInt(expression(), 10);
+                    match(")");
+                    if (out_data.hasOwnProperty(a1)) { num = out_data[a1]; } else { num = ""; }
+                    return num;
+                }
                 if (sym == "getpixel") {
                     match("("); a1 = parseFloat(expression()); // X
                     match(","); a2 = parseFloat(expression()); // Y
