@@ -1,7 +1,7 @@
 // This file is encoded with UTF-8 without BOM.
 
 // sp_interpreter.js
-// 2013-8-26 v1.72
+// 2013-8-27 v1.73
 
 
 // SPALM Web Interpreter
@@ -472,6 +472,7 @@ function stop_button() {
 //     Var         変数用クラス
 //
 //   外部クラス一覧
+//     Download    ファイルダウンロード用クラス(staticクラス)
 //     ConvZenHan  文字列の全角半角変換用クラス(staticクラス)
 //     FloodFill   領域塗りつぶし用クラス
 //     Missile     ミサイル用クラス
@@ -3591,32 +3592,41 @@ var Interpreter;
                     match("(");
                     a1 = String(expression());
                     if (symbol[pc] == ")") {
-                        a2 = 0;
+                        a2 = "";
+                        a3 = 0;
                     } else {
-                        match(","); a2 = parseInt(expression(), 10);
+                        match(","); a2 = String(expression());
+                        if (symbol[pc] == ")") {
+                            a3 = 0;
+                        } else {
+                            match(","); a3 = parseInt(expression(), 10);
+                        }
                     }
                     match(")");
-                    num = encodeURIComponent(a1);
-                    if (a2 != 1) {
-                        window.location.href = "data:application/octet-stream," + num;
+                    if (a3 != 1) {
+                        Download.download(a1, a2);
                     }
-                    num = "data:text/plain;charset=utf-8," + num;
+                    num = "data:text/plain;charset=utf-8," + encodeURIComponent(a1);
                     return num;
                 }
                 if (sym == "downloadimg") {
                     match("(");
                     if (symbol[pc] == ")") {
-                        a1 = 0;
+                        a1 = "";
+                        a2 = 0;
                     } else {
-                        a1 = parseInt(expression(), 10);
+                        a1 = String(expression());
+                        if (symbol[pc] == ")") {
+                            a2 = 0;
+                        } else {
+                            match(","); a2 = parseInt(expression(), 10);
+                        }
                     }
                     match(")");
-                    num = can.toDataURL("image/png");
-                    if (a1 != 1) {
-                        // ***** window.open は ユーザ操作時(ボタンクリック時等)しか動作しない *****
-                        // window.open(num);
-                        window.location.href = num.replace("image/png", "image/octet-stream");
+                    if (a2 != 1) {
+                        Download.downloadCanvas(can, a1);
                     }
+                    num = can.toDataURL("image/png");
                     return num;
                 }
                 if (sym == "dpow") {
@@ -7270,6 +7280,134 @@ var Interpreter;
 // ***** 以下は外部クラス *****
 
 
+// ***** ファイルダウンロード用クラス(staticクラス) *****
+var Download = (function () {
+    // ***** コンストラクタ *****
+    // ***** (staticなクラスなので未使用) *****
+    function Download() { }
+
+    // ***** Blobオブジェクトの取得 *****
+    var Blob = window.Blob;
+    // ***** Blobセーブ用オブジェクトの取得(IE10用) *****
+    var saveBlob = navigator.saveBlob || navigator.msSaveBlob;
+    // ***** URLオブジェクトの取得 *****
+    var URL = window.URL || window.webkitURL;
+
+    // ***** ファイルをダウンロードする(staticメソッド) *****
+    // ***** (staticなメソッドなのでprototype未使用) *****
+    // Download.prototype.download = function (data, fname) {
+    Download.download = function (data, fname) {
+        var url;
+        var blob;
+        var elm, ev;
+        var link_download_flag;
+
+        // ***** エラーチェック *****
+        if (!data) { return false; }
+        if (!fname || fname == "") { fname = "download"; }
+        // ***** リンク要素の生成 *****
+        elm = document.createElement("a");
+        // ***** リンク要素でダウンロード可能か(Chrome用) *****
+        if ((elm.download || elm.download == "") && document.createEvent && elm.dispatchEvent) {
+            link_download_flag = true;
+        } else {
+            link_download_flag = false;
+        }
+        // ***** Blobの生成 *****
+        if (Blob && (saveBlob || link_download_flag)) {
+            blob = new Blob([data], {type : "data:application/octet-stream,"});
+        } else {
+            blob = null;
+        }
+        // ***** Blobをセーブ(IE10用) *****
+        if (blob && saveBlob) {
+            saveBlob(blob, fname);
+            return true;
+        }
+        // ***** urlの生成 *****
+        if (blob && URL && URL.createObjectURL) {
+            url = URL.createObjectURL(blob);
+        } else {
+            url = "data:application/octet-stream," + encodeURIComponent(data);
+        }
+        // ***** リンク要素でダウンロード(Chrome用) *****
+        if (link_download_flag) {
+            elm.href = url;
+            elm.download = fname;
+            ev = document.createEvent("MouseEvents");
+            ev.initMouseEvent("click", true, true, window, 0, 0, 0, 0, 0, false, false, false, false, 0, null);
+            elm.dispatchEvent(ev);
+            return true;
+        }
+        // ***** それ以外のときはURLにジャンプ(ファイル名は指定不可) *****
+        window.location.href = url;
+        return true;
+    };
+    // ***** Canvasの画像をダウンロードする(staticメソッド) *****
+    // ***** (staticなメソッドなのでprototype未使用) *****
+    Download.downloadCanvas = function (can, fname) {
+        var url;
+        var blob;
+        var elm, ev;
+        var link_download_flag;
+        var i;
+        var data_url;
+        var bin_st;      // バイナリデータ文字列
+        var bin_st_len;  // バイナリデータ文字列の長さ
+        var uint8_arr;   // バイナリデータ(型付配列)
+
+        // ***** エラーチェック *****
+        if (!can) { return false; }
+        if (!fname || fname == "") { fname = "download.png"; }
+        // ***** リンク要素の生成 *****
+        elm = document.createElement("a");
+        // ***** リンク要素でダウンロード可能か(Chrome用) *****
+        if ((elm.download || elm.download == "") && document.createEvent && elm.dispatchEvent) {
+            link_download_flag = true;
+        } else {
+            link_download_flag = false;
+        }
+        // ***** Blobの生成 *****
+        if (Blob && Uint8Array && (saveBlob || link_download_flag)) {
+            data_url = can.toDataURL("image/png");
+            bin_st = atob(data_url.split(",")[1]);
+            bin_st_len = bin_st.length;
+            uint8_arr = new Uint8Array(bin_st_len);
+            for (i = 0; i < bin_st_len; i++) {
+                uint8_arr[i] = bin_st.charCodeAt(i);
+            }
+            blob = new Blob([uint8_arr.buffer], {type : "image/octet-stream"});
+        } else {
+            blob = null;
+        }
+        // ***** Blobをセーブ(IE10用) *****
+        if (blob && saveBlob) {
+            saveBlob(blob, fname);
+            return true;
+        }
+        // ***** urlの生成 *****
+        if (blob && URL && URL.createObjectURL) {
+            url = URL.createObjectURL(blob);
+        } else {
+            url = can.toDataURL("image/png").replace("image/png", "image/octet-stream");
+        }
+        // ***** リンク要素でダウンロード(Chrome用) *****
+        if (link_download_flag) {
+            elm.href = url;
+            elm.download = fname;
+            ev = document.createEvent("MouseEvents");
+            ev.initMouseEvent("click", true, true, window, 0, 0, 0, 0, 0, false, false, false, false, 0, null);
+            elm.dispatchEvent(ev);
+            return true;
+        }
+        // ***** それ以外のときはURLにジャンプ(ファイル名は指定不可) *****
+        window.location.href = url;
+        return true;
+    };
+    return Download; // これがないとクラスが動かないので注意
+})();
+
+
 // ***** 文字列の全角半角変換用クラス(staticクラス) *****
 var ConvZenHan = (function () {
     // ***** コンストラクタ *****
@@ -7380,6 +7518,7 @@ var ConvZenHan = (function () {
         return st2;
     };
     // ***** 半角に変換する(staticメソッド) *****
+    // ***** (staticなメソッドなのでprototype未使用) *****
     ConvZenHan.toHankaku = function (st1, mode1) {
         var st2;
         var mode2;
@@ -7467,6 +7606,7 @@ var ConvZenHan = (function () {
     // ***** 以下は内部処理用 *****
 
     // ***** 変換テーブル生成(内部処理用)(staticメソッド) *****
+    // ***** (staticなメソッドなのでprototype未使用) *****
     ConvZenHan.makeTable = function () {
         var i;
         var han, zen;
@@ -8029,10 +8169,11 @@ var MMLPlayer = (function () {
     //  ので注意)
     MMLPlayer.prototype.setAUDData = function (aud_data_st) {
         var i;
-        var bin_st;    // バイナリデータ文字列
-        var mime_st;   // MIME文字列
-        var uint8_arr; // バイナリデータ(型付配列)
-        var self;      // this保存用
+        var bin_st;      // バイナリデータ文字列
+        var bin_st_len;  // バイナリデータ文字列の長さ
+        // var mime_st;     // MIME文字列
+        var uint8_arr;   // バイナリデータ(型付配列)
+        var self;        // this保存用
 
         // ***** Web Audio APIの存在チェック *****
         if (!MMLPlayer.AudioContext) { return false; }
@@ -8045,10 +8186,11 @@ var MMLPlayer = (function () {
         this.compiled = 1;
         // ***** 音楽データを設定 *****
         // (Base64の文字列をバイナリデータに変換してデコードする)
-        bin_st = atob(aud_data_st.split(',')[1]);
-        mime_st = aud_data_st.split(',')[0].split(':')[1].split(';')[0];
-        uint8_arr = new Uint8Array(bin_st.length);
-        for (i = 0; i < bin_st.length; i++) {
+        bin_st = atob(aud_data_st.split(",")[1]);
+        // mime_st = aud_data_st.split(",")[0].split(":")[1].split(";")[0];
+        bin_st_len = bin_st.length;
+        uint8_arr = new Uint8Array(bin_st_len);
+        for (i = 0; i < bin_st_len; i++) {
             uint8_arr[i] = bin_st.charCodeAt(i);
         }
         self = this;
