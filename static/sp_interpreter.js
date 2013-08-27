@@ -7289,6 +7289,7 @@ var Download = (function () {
     // ***** Blobオブジェクトの取得 *****
     var Blob = window.Blob;
     // ***** Blobセーブ用オブジェクトの取得(IE10用) *****
+    // (window.saveBlobではないので、呼び出し時にはcallが必要)
     var saveBlob = navigator.saveBlob || navigator.msSaveBlob;
     // ***** URLオブジェクトの取得 *****
     var URL = window.URL || window.webkitURL;
@@ -7315,13 +7316,14 @@ var Download = (function () {
         }
         // ***** Blobの生成 *****
         if (Blob && (saveBlob || link_download_flag)) {
-            blob = new Blob([data], {type : "data:application/octet-stream,"});
+            blob = new Blob([data], {type : "application/octet-stream"});
         } else {
             blob = null;
         }
         // ***** Blobをセーブ(IE10用) *****
         if (blob && saveBlob) {
-            saveBlob(blob, fname);
+            // saveBlob(blob, fname);
+            saveBlob.call(navigator, blob, fname); // callでthisにnavigatorを設定しないとエラー
             return true;
         }
         // ***** urlの生成 *****
@@ -7382,7 +7384,8 @@ var Download = (function () {
         }
         // ***** Blobをセーブ(IE10用) *****
         if (blob && saveBlob) {
-            saveBlob(blob, fname);
+            // saveBlob(blob, fname);
+            saveBlob.call(navigator, blob, fname); // callでthisにnavigatorを設定しないとエラー
             return true;
         }
         // ***** urlの生成 *****
