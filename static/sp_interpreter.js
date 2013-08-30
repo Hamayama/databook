@@ -1,7 +1,7 @@
 // This file is encoded with UTF-8 without BOM.
 
 // sp_interpreter.js
-// 2013-8-27 v1.73
+// 2013-8-31 v1.74
 
 
 // SPALM Web Interpreter
@@ -520,10 +520,10 @@ var Interpreter;
     var src;                    // ソース
     var symbol = [];            // シンボル               (配列)
     var symbol_line = [];       // シンボルが何行目か     (配列)
-    var symbol_len = 0;         // シンボル数             (高速化のために導入 → あまり効果なかったが...)
+    var symbol_len = 0;         // シンボル数             (symbol.lengthのキャッシュ用)
     var symbol2 = [];           // コンパイル用シンボル   (配列)
     var symbol2_line = [];      // コンパイル用シンボルが何行目か(配列)
-    var symbol2_len = 0;        // コンパイル用シンボル数 (高速化のために導入 → あまり効果なかったが...)
+    var symbol2_len = 0;        // コンパイル用シンボル数 (symbol2.lengthのキャッシュ用)
     var vars = {};              // 変数用                 (Varsクラスのインスタンス)
     var imgvars = {};           // 画像変数用             (連想配列オブジェクト)
     var stimg = {};             // 画像文字割付用         (連想配列オブジェクト)
@@ -7289,8 +7289,12 @@ var Download = (function () {
     // ***** Blobオブジェクトの取得 *****
     var Blob = window.Blob;
     // ***** Blobセーブ用オブジェクトの取得(IE10用) *****
-    // (window.saveBlobではないので、呼び出し時にはcallが必要)
-    var saveBlob = navigator.saveBlob || navigator.msSaveBlob;
+    // (window.saveBlobではないので、呼び出し時にはcallを用いて、
+    //   saveBlob.call(navigator, blob, fname) とする必要がある)
+    var saveBlob = null;
+    if (window.navigator) {
+        saveBlob = navigator.saveBlob || navigator.msSaveBlob;
+    }
     // ***** URLオブジェクトの取得 *****
     var URL = window.URL || window.webkitURL;
 
@@ -7304,7 +7308,8 @@ var Download = (function () {
         var link_download_flag;
 
         // ***** エラーチェック *****
-        if (!data) { return false; }
+        if (typeof (data) == "undefined") { return false; }
+        if (data == null) { return false; }
         if (!fname || fname == "") { fname = "download"; }
         // ***** リンク要素の生成 *****
         elm = document.createElement("a");
@@ -7323,7 +7328,7 @@ var Download = (function () {
         // ***** Blobをセーブ(IE10用) *****
         if (blob && saveBlob) {
             // saveBlob(blob, fname);
-            saveBlob.call(navigator, blob, fname); // callでthisにnavigatorを設定しないとエラー
+            saveBlob.call(navigator, blob, fname);
             return true;
         }
         // ***** urlの生成 *****
@@ -7385,7 +7390,7 @@ var Download = (function () {
         // ***** Blobをセーブ(IE10用) *****
         if (blob && saveBlob) {
             // saveBlob(blob, fname);
-            saveBlob.call(navigator, blob, fname); // callでthisにnavigatorを設定しないとエラー
+            saveBlob.call(navigator, blob, fname);
             return true;
         }
         // ***** urlの生成 *****
