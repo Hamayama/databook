@@ -1,7 +1,7 @@
 // This file is encoded with UTF-8 without BOM.
 
 // sp_interpreter.js
-// 2013-8-31 v1.74
+// 2013-9-13 v1.75
 
 
 // SPALM Web Interpreter
@@ -1083,6 +1083,16 @@ var Interpreter;
             // ***** 変数に[を付加 *****
             var_name = var_name + "[";
             var_name2 = var_name2 + "[";
+
+            // ***** コピー元とコピー先の変数名が一致するときはエラーにする *****
+            // (例えば、a[]をa[1][]にコピーすると無限ループのおそれがある)
+            i = var_name2.indexOf(var_name);
+            if (i >= 0) {
+                if (i == 0 || var_name2.charAt(i - 1) == " " || var_name2.charAt(i - 1) == "\\") {
+                    throw new Error("コピー元とコピー先の変数名が同一です。");
+                }
+            }
+
             // ***** 変数の長さを取得 *****
             var_name_len = var_name.length;
             // ***** グローバル変数のみを使うとき *****
@@ -8262,7 +8272,7 @@ var MMLPlayer = (function () {
         var nlen1;   // 音長  (単位は実時間(sec)xサンプリングレート(Hz))
         var nlen2;   // 発音長(単位は実時間(sec)xサンプリングレート(Hz))
         var freq;    // 音符の周波数(Hz)
-        // var t;       // 時間(sec)
+        var t;       // 時間(sec)
         var phase;   // 位相(ラジアン)
         var wave;    // 波形(-1～1まで)
         var fade;    // フェードアウト割合(0-1まで)
@@ -8314,8 +8324,12 @@ var MMLPlayer = (function () {
                         wave = Math.random() * 2 - 1;
                         break;
                     case 500: // ピアノ(仮)
-                        // t = i / MMLPlayer.SAMPLE_RATE;
-                        wave = ((Math.sin(phase) > 0) ? 1 : -1) * Math.exp(-5 * (i / MMLPlayer.SAMPLE_RATE));
+                        t = i / MMLPlayer.SAMPLE_RATE;
+                        wave = ((Math.sin(phase) > 0) ? 1 : -1) * Math.exp(-5 * t);
+                        break;
+                    case 501: // オルガン(仮)
+                        t = i / MMLPlayer.SAMPLE_RATE;
+                        wave = ((Math.sin(phase) > 0) ? 1 : -1) * 13 * t * Math.exp(-5 * t);
                         break;
                     default:  // 方形波
                         wave = (Math.sin(phase) > 0) ? 1 : -1;
