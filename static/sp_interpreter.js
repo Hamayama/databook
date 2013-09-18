@@ -1,7 +1,7 @@
 // This file is encoded with UTF-8 without BOM.
 
 // sp_interpreter.js
-// 2013-9-13 v1.75
+// 2013-9-18 v1.76
 
 
 // SPALM Web Interpreter
@@ -47,19 +47,13 @@ function DebugShowClear() {
 }
 
 // ***** 動作開始 *****
-window.xcanvas = function () {
-    DebugShow("uuCanvas mode.\n");
-    init_func();
-};
 window.onload = function () {
-    if (typeof (uu) == "undefined") {
-        if (typeof (FlashCanvas) != "undefined") {
-            DebugShow("FlashCanvas mode.\n");
-        } else {
-            DebugShow("Native canvas mode.\n");
-        }
-        init_func();
+    if (typeof (FlashCanvas) != "undefined") {
+        DebugShow("FlashCanvas mode.\n");
+    } else {
+        DebugShow("Native canvas mode.\n");
     }
+    init_func();
 };
 function init_func() {
     var list_id;
@@ -968,10 +962,10 @@ var Interpreter;
             if (i > 0) {
                 array_name = var_name.substring(0, i);
                 for (var_name2 in this.globalvars) {
-                    // if (this.globalvars.hasOwnProperty(var_name2)) {
-                    if (hasOwn.call(this.globalvars, var_name2)) {
-                        // 配列のグローバル変数が存在する(番号は異なる)
-                        if (var_name2.substring(0, i) == array_name) {
+                    // 配列のグローバル変数が存在する(番号は異なる)
+                    if (var_name2.substring(0, i) == array_name) {
+                        // if (this.globalvars.hasOwnProperty(var_name2)) {
+                        if (hasOwn.call(this.globalvars, var_name2)) {
                             this.globalvars[var_name] = 0;
                             return this.globalvars[var_name];
                         }
@@ -1037,10 +1031,10 @@ var Interpreter;
             if (i > 0) {
                 array_name = var_name.substring(0, i);
                 for (var_name2 in this.globalvars) {
-                    // if (this.globalvars.hasOwnProperty(var_name2)) {
-                    if (hasOwn.call(this.globalvars, var_name2)) {
-                        // 配列のグローバル変数が存在する(番号は異なる)
-                        if (var_name2.substring(0, i) == array_name) {
+                    // 配列のグローバル変数が存在する(番号は異なる)
+                    if (var_name2.substring(0, i) == array_name) {
+                        // if (this.globalvars.hasOwnProperty(var_name2)) {
+                        if (hasOwn.call(this.globalvars, var_name2)) {
                             this.globalvars[var_name] = var_value;
                             return true;
                         }
@@ -1098,9 +1092,9 @@ var Interpreter;
             // ***** グローバル変数のみを使うとき *****
             if (localvars == null || use_local_vars == false || glb == true) {
                 for (var_name_from in this.globalvars) {
-                    // if (this.globalvars.hasOwnProperty(var_name_from)) {
-                    if (hasOwn.call(this.globalvars, var_name_from)) {
-                        if (var_name_from.substring(0, var_name_len) == var_name) {
+                    if (var_name_from.substring(0, var_name_len) == var_name) {
+                        // if (this.globalvars.hasOwnProperty(var_name_from)) {
+                        if (hasOwn.call(this.globalvars, var_name_from)) {
                             var_name_to = var_name2 + var_name_from.substring(var_name_len);
                             this.setVarValue(var_name_to, this.getVarValue(var_name_from));
                         }
@@ -1111,9 +1105,9 @@ var Interpreter;
             // ***** ローカル変数のみを使うとき *****
             if (loc == true) {
                 for (var_name_from in localvars) {
-                    // if (localvars.hasOwnProperty(var_name_from)) {
-                    if (hasOwn.call(localvars, var_name_from)) {
-                        if (var_name_from.substring(0, var_name_len) == var_name) {
+                    if (var_name_from.substring(0, var_name_len) == var_name) {
+                        // if (localvars.hasOwnProperty(var_name_from)) {
+                        if (hasOwn.call(localvars, var_name_from)) {
                             var_name_to = var_name2 + var_name_from.substring(var_name_len);
                             this.setVarValue(var_name_to, this.getVarValue(var_name_from));
                         }
@@ -1125,9 +1119,9 @@ var Interpreter;
             // ローカル変数が存在する
             copy_flag = false;
             for (var_name_from in localvars) {
-                // if (localvars.hasOwnProperty(var_name_from)) {
-                if (hasOwn.call(localvars, var_name_from)) {
-                    if (var_name_from.substring(0, var_name_len) == var_name) {
+                if (var_name_from.substring(0, var_name_len) == var_name) {
+                    // if (localvars.hasOwnProperty(var_name_from)) {
+                    if (hasOwn.call(localvars, var_name_from)) {
                         var_name_to = var_name2 + var_name_from.substring(var_name_len);
                         this.setVarValue(var_name_to, this.getVarValue(var_name_from));
                         copy_flag = true;
@@ -1138,9 +1132,9 @@ var Interpreter;
             // グローバル変数が存在する
             copy_flag = false;
             for (var_name_from in this.globalvars) {
-                // if (this.globalvars.hasOwnProperty(var_name_from)) {
-                if (hasOwn.call(this.globalvars, var_name_from)) {
-                    if (var_name_from.substring(0, var_name_len) == var_name) {
+                if (var_name_from.substring(0, var_name_len) == var_name) {
+                    // if (this.globalvars.hasOwnProperty(var_name_from)) {
+                    if (hasOwn.call(this.globalvars, var_name_from)) {
                         var_name_to = var_name2 + var_name_from.substring(var_name_len);
                         this.setVarValue(var_name_to, this.getVarValue(var_name_from));
                         copy_flag = true;
@@ -1186,9 +1180,9 @@ var Interpreter;
             // ***** グローバル変数のみを使うとき *****
             if (localvars == null || use_local_vars == false || glb == true) {
                 for (var_name2 in this.globalvars) {
-                    // if (this.globalvars.hasOwnProperty(var_name2)) {
-                    if (hasOwn.call(this.globalvars, var_name2)) {
-                        if (var_name2.substring(0, var_name_len) == var_name) {
+                    if (var_name2.substring(0, var_name_len) == var_name) {
+                        // if (this.globalvars.hasOwnProperty(var_name2)) {
+                        if (hasOwn.call(this.globalvars, var_name2)) {
                             delete this.globalvars[var_name2];
                         }
                     }
@@ -1198,9 +1192,9 @@ var Interpreter;
             // ***** ローカル変数のみを使うとき *****
             if (loc == true) {
                 for (var_name2 in localvars) {
-                    // if (localvars.hasOwnProperty(var_name2)) {
-                    if (hasOwn.call(localvars, var_name2)) {
-                        if (var_name2.substring(0, var_name_len) == var_name) {
+                    if (var_name2.substring(0, var_name_len) == var_name) {
+                        // if (localvars.hasOwnProperty(var_name2)) {
+                        if (hasOwn.call(localvars, var_name2)) {
                             delete localvars[var_name2];
                         }
                     }
@@ -1211,9 +1205,9 @@ var Interpreter;
             // ローカル変数が存在する
             delete_flag = false;
             for (var_name2 in localvars) {
-                // if (localvars.hasOwnProperty(var_name2)) {
-                if (hasOwn.call(localvars, var_name2)) {
-                    if (var_name2.substring(0, var_name_len) == var_name) {
+                if (var_name2.substring(0, var_name_len) == var_name) {
+                    // if (localvars.hasOwnProperty(var_name2)) {
+                    if (hasOwn.call(localvars, var_name2)) {
                         delete localvars[var_name2];
                         delete_flag = true;
                     }
@@ -1223,9 +1217,9 @@ var Interpreter;
             // グローバル変数が存在する
             delete_flag = false;
             for (var_name2 in this.globalvars) {
-                // if (this.globalvars.hasOwnProperty(var_name2)) {
-                if (hasOwn.call(this.globalvars, var_name2)) {
-                    if (var_name2.substring(0, var_name_len) == var_name) {
+                if (var_name2.substring(0, var_name_len) == var_name) {
+                    // if (this.globalvars.hasOwnProperty(var_name2)) {
+                    if (hasOwn.call(this.globalvars, var_name2)) {
                         delete this.globalvars[var_name2];
                         delete_flag = true;
                     }
@@ -2586,12 +2580,7 @@ var Interpreter;
                     }
                     // ***** Canvasの生成 *****
                     imgvars[a1] = {};
-                    // ***** uuCanvas用 *****
-                    if (typeof (uu) != "undefined") {
-                        imgvars[a1].can = uu.canvas.create();
-                    } else {
-                        imgvars[a1].can = document.createElement("canvas");
-                    }
+                    imgvars[a1].can = document.createElement("canvas");
                     // ***** FlashCanvas Pro (将来用) で必要 *****
                     if (typeof (FlashCanvas) != "undefined") {
                         imgvars[a1].can.style.backgroundColor = can1_backcolor_init;
@@ -2615,12 +2604,7 @@ var Interpreter;
                     match(")");
                     // ***** Canvasの生成 *****
                     imgvars[a1] = {};
-                    // ***** uuCanvas用 *****
-                    if (typeof (uu) != "undefined") {
-                        imgvars[a1].can = uu.canvas.create();
-                    } else {
-                        imgvars[a1].can = document.createElement("canvas");
-                    }
+                    imgvars[a1].can = document.createElement("canvas");
                     // ***** FlashCanvas Pro (将来用) で必要 *****
                     if (typeof (FlashCanvas) != "undefined") {
                         imgvars[a1].can.style.backgroundColor = can1_backcolor_init;
@@ -2710,12 +2694,7 @@ var Interpreter;
 
                     // ***** Canvasの生成 *****
                     imgvars[a1] = {};
-                    // ***** uuCanvas用 *****
-                    if (typeof (uu) != "undefined") {
-                        imgvars[a1].can = uu.canvas.create();
-                    } else {
-                        imgvars[a1].can = document.createElement("canvas");
-                    }
+                    imgvars[a1].can = document.createElement("canvas");
                     // ***** FlashCanvas Pro (将来用) で必要 *****
                     if (typeof (FlashCanvas) != "undefined") {
                         imgvars[a1].can.style.backgroundColor = can1_backcolor_init;
@@ -3050,17 +3029,12 @@ var Interpreter;
             case "t":
                 if (sym == "text") {
                     match("(");
-                    // ***** uuCanvasでは文字列にしないとエラーになる *****
+                    // ***** 文字列に変換 *****
                     // a1 = expression();
                     a1 = String(expression());
 
                     // ***** Chrome v24 で全角スペースが半角のサイズで表示される件の対策 *****
                     a1 = a1.replace(/　/g, "  "); // 全角スペースを半角スペース2個に変換
-
-                    // ***** uuCanvasで複数空白がうまく表示されない件の対策 *****
-                    if (typeof (uu) != "undefined") {
-                        a1 = a1.replace(/ /g, "\u00A0");
-                    }
 
                     if (symbol[pc] == ")") {
                         a2 = a3 = a4 = 0;
@@ -6238,7 +6212,6 @@ var Interpreter;
                     a2 = a2 | 0;
                     a3 = a3 | 0;
 
-
                     // ***** エラーチェック *****
                     // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
                     if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
@@ -6254,16 +6227,11 @@ var Interpreter;
                         // st1 = vars[a1 + "[" + i + "]"];
                         st1 = vars.getVarValue(a1 + "[" + i + "]");
 
-                        // ***** uuCanvasでは文字列にしないとエラーになる *****
+                        // ***** 文字列に変換 *****
                         st1 = String(st1);
 
                         // ***** Chrome v24 で全角スペースが半角のサイズで表示される件の対策 *****
                         st1 = st1.replace(/　/g, "  "); // 全角スペースを半角スペース2個に変換
-
-                        // ***** uuCanvasで複数空白がうまく表示されない件の対策 *****
-                        if (typeof (uu) != "undefined") {
-                            st1 = st1.replace(/ /g, "\u00A0");
-                        }
 
                         // ***** 文字列表示 *****
                         ctx.textAlign = "left";
