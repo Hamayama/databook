@@ -1,7 +1,7 @@
 // This file is encoded with UTF-8 without BOM.
 
 // sp_interpreter.js
-// 2013-9-18 v1.76
+// 2013-9-20 v1.77
 
 
 // SPALM Web Interpreter
@@ -4769,7 +4769,7 @@ var Interpreter;
         symbol2_line = [];
         symbol2_len = 0;
 
-        compile_stmnt(0, symbol_len, "", ""); // 再帰的になるので別関数にした
+        c_statement(0, symbol_len, "", ""); // 再帰的になるので別関数にした
 
         // ***** 元のシンボルにコピー *****
         symbol = symbol2;
@@ -4778,7 +4778,7 @@ var Interpreter;
     }
 
     // ***** 文(ステートメント)のコンパイル *****
-    function compile_stmnt(sym_start, sym_end, break_lbl, continue_lbl) {
+    function c_statement(sym_start, sym_end, break_lbl, continue_lbl) {
         var i, j, k;
         var k2;
         var sym;
@@ -4954,7 +4954,7 @@ var Interpreter;
                         switch_case_stm_end = switch_end;
                     }
                     // ***** 文(ステートメント)のコンパイル(再帰的に実行) *****
-                    compile_stmnt(switch_case_stm[switch_case_no], switch_case_stm_end - 1, '"switch_end\\' + i + '"', continue_lbl);
+                    c_statement(switch_case_stm[switch_case_no], switch_case_stm_end - 1, '"switch_end\\' + i + '"', continue_lbl);
                 }
                 // 終了
                 symbol2_push("label", sym_line);
@@ -5076,7 +5076,7 @@ var Interpreter;
                 symbol2_push(";", sym_line); // コンパイルエラー対応2
                 // 文
                 // ***** 文(ステートメント)のコンパイル(再帰的に実行) *****
-                compile_stmnt(if_stm, if_stm_end - 1, break_lbl, continue_lbl);
+                c_statement(if_stm, if_stm_end - 1, break_lbl, continue_lbl);
                 if (elsif_exp.length > 0 || else_stm >=0) {
                     symbol2_push("goto", sym_line);
                     symbol2_push('"if_end\\' + i + '"', sym_line);
@@ -5105,7 +5105,7 @@ var Interpreter;
                     symbol2_push(";", sym_line); // コンパイルエラー対応2
                     // 文
                     // ***** 文(ステートメント)のコンパイル(再帰的に実行) *****
-                    compile_stmnt(elsif_stm[elsif_no], elsif_stm_end[elsif_no] - 1, break_lbl, continue_lbl);
+                    c_statement(elsif_stm[elsif_no], elsif_stm_end[elsif_no] - 1, break_lbl, continue_lbl);
                     if (elsif_exp.length > elsif_no + 1 || else_stm >=0) {
                         symbol2_push("goto", sym_line);
                         symbol2_push('"if_end\\' + i + '"', sym_line);
@@ -5119,7 +5119,7 @@ var Interpreter;
                     symbol2_push('"else_stm\\' + i + '"', sym_line);
                     // symbol2_push(";", sym_line); // コンパイルエラー対応2
                     // ***** 文(ステートメント)のコンパイル(再帰的に実行) *****
-                    compile_stmnt(else_stm, if_end - 1, break_lbl, continue_lbl);
+                    c_statement(else_stm, if_end - 1, break_lbl, continue_lbl);
                 }
                 // 終了
                 symbol2_push("label", sym_line);
@@ -5229,7 +5229,7 @@ var Interpreter;
                 symbol2_push(";", sym_line); // コンパイルエラー対応2
                 // 文
                 // ***** 文(ステートメント)のコンパイル(再帰的に実行) *****
-                compile_stmnt(for_stm, for_end - 1, '"for_end\\' + i + '"', '"for_exp3\\' + i + '"');
+                c_statement(for_stm, for_end - 1, '"for_end\\' + i + '"', '"for_exp3\\' + i + '"');
                 // for (j = for_stm; j < for_end - 1; j++) {
                 //     symbol2_push(symbol[j], symbol_line[j]);
                 //     sym_line = symbol_line[j];
@@ -5295,7 +5295,7 @@ var Interpreter;
                 symbol2_push(";", sym_line); // コンパイルエラー対応2
                 // 文
                 // ***** 文(ステートメント)のコンパイル(再帰的に実行) *****
-                compile_stmnt(while_stm, while_end - 1, '"while_end\\' + i + '"', '"while_exp\\' + i + '"');
+                c_statement(while_stm, while_end - 1, '"while_end\\' + i + '"', '"while_exp\\' + i + '"');
                 symbol2_push("goto", sym_line);
                 symbol2_push('"while_exp\\' + i + '"', sym_line);
                 // symbol2_push(";", sym_line); // コンパイルエラー対応2
@@ -5353,7 +5353,7 @@ var Interpreter;
                 symbol2_push('"do_stm\\' + i + '"', sym_line);
                 // symbol2_push(";", sym_line); // コンパイルエラー対応2
                 // ***** 文(ステートメント)のコンパイル(再帰的に実行) *****
-                compile_stmnt(do_stm, do_exp - 3, '"do_end\\' + i + '"', '"do_stm\\' + i + '"');
+                c_statement(do_stm, do_exp - 3, '"do_end\\' + i + '"', '"do_stm\\' + i + '"');
                 // 式
                 symbol2_push("ifgoto\\", sym_line);
                 symbol2_push("(", sym_line);
