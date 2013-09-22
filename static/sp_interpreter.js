@@ -1,7 +1,7 @@
 // This file is encoded with UTF-8 without BOM.
 
 // sp_interpreter.js
-// 2013-9-20 v1.77
+// 2013-9-22 v1.78
 
 
 // SPALM Web Interpreter
@@ -308,7 +308,7 @@ function createXMLHttpObject() {
     // ***** IE8対策 *****
     if (window.ActiveXObject) {
         try {
-            xml_http_obj = new ActiveXObject("Msxml2.XMLHTTP"); 
+            xml_http_obj = new ActiveXObject("Msxml2.XMLHTTP");
             return xml_http_obj;
         } catch (ex1) { }
     }
@@ -458,8 +458,8 @@ function stop_button() {
 // その他 情報等 :
 //
 //   新しい命令の追加は、
-//     statement_addfunc()  (戻り値のない関数のとき)
-//     factor_addfunc()     (戻り値のある関数のとき)
+//     make_addfunc_tbl_A()  (戻り値のない関数のとき)
+//     make_addfunc_tbl_B()  (戻り値のある関数のとき)
 //   の中で行うことを想定しています。
 //
 //   内部クラス一覧
@@ -565,9 +565,14 @@ var Interpreter;
     var use_addfunc;            // 追加命令使用有無
     var save_data = {};         // セーブデータ(連想配列オブジェクト)(仮)
     var aud_mode;               // 音楽モード(=0:音楽なし,=1:音楽あり,=2:音楽演奏機能有無による)
-    var sand_obj;               // 砂シミュレート用(SandSimクラスのインスタンス)
-    var prof_obj;               // プロファイラ実行用(Profilerクラスのインスタンス)
+    var sand_obj = {};          // 砂シミュレート用(SandSimクラスのインスタンス)
+    var prof_obj = {};          // プロファイラ実行用(Profilerクラスのインスタンス)
     var out_data = {};          // 外部データ(連想配列オブジェクト)
+
+    var func_tbl_A = {};        // 命令(戻り値のない関数)の定義情報(連想配列オブジェクト)
+    var func_tbl_B = {};        // 命令(戻り値のある関数)の定義情報(連想配列オブジェクト)
+    var addfunc_tbl_A = {};     // 追加命令(戻り値のない関数)の定義情報(連想配列オブジェクト)
+    var addfunc_tbl_B = {};     // 追加命令(戻り値のある関数)の定義情報(連想配列オブジェクト)
 
     var constants = {           // 定数
         LEFT:4, HCENTER:1, RIGHT:8, TOP:16, VCENTER:2, BASELINE:64, BOTTOM:32,
@@ -659,6 +664,15 @@ var Interpreter;
             can1.attachEvent("oncontextmenu", contextmenu_canvas);
         } else {
             Alm2("Interpreter.init:-:Canvas内のマウスの状態が取得できません。");
+        }
+        // ***** 命令の定義情報の生成 *****
+        make_func_tbl_A();
+        make_func_tbl_B();
+        if (typeof (make_addfunc_tbl_A) == "function") {
+            make_addfunc_tbl_A();
+        }
+        if (typeof (make_addfunc_tbl_B) == "function") {
+            make_addfunc_tbl_B();
         }
         // ***** 戻り値を返す *****
         ret = true;
@@ -802,7 +816,7 @@ var Interpreter;
         };
         // ***** 変数を削除する *****
         Vars.prototype.deleteVar = function (var_name) {
-            var i;
+            var i, j;
             var glb, loc;
             var localvars;
 
@@ -813,7 +827,9 @@ var Interpreter;
             // ***** ローカル変数のスコープを取得する *****
             // (変数名の先頭の「a\」の数だけスコープをさかのぼる)
             if (var_name.substring(0, 2) == "a\\") {
-                i = 0; do { i++; var_name = var_name.substring(2); } while (var_name.substring(0, 2) == "a\\");
+                // i = 0; do { i++; var_name = var_name.substring(2); } while (var_name.substring(0, 2) == "a\\");
+                i = 0; j = 0; do { i++; j = j + 2; j = var_name.indexOf("a\\", j);} while (j >= 0);
+                var_name = var_name.substring(var_name.lastIndexOf("a\\") + 2);
                 if (this.old_vars_stack.length >= i) { localvars = this.old_vars_stack[this.old_vars_stack.length - i]; }
                 else { localvars = null; }
             } else { localvars = this.localvars; }
@@ -857,7 +873,7 @@ var Interpreter;
         };
         // ***** 変数の存在チェック *****
         Vars.prototype.checkVar = function (var_name) {
-            var i;
+            var i, j;
             var glb, loc;
             var localvars;
 
@@ -868,7 +884,9 @@ var Interpreter;
             // ***** ローカル変数のスコープを取得する *****
             // (変数名の先頭の「a\」の数だけスコープをさかのぼる)
             if (var_name.substring(0, 2) == "a\\") {
-                i = 0; do { i++; var_name = var_name.substring(2); } while (var_name.substring(0, 2) == "a\\");
+                // i = 0; do { i++; var_name = var_name.substring(2); } while (var_name.substring(0, 2) == "a\\");
+                i = 0; j = 0; do { i++; j = j + 2; j = var_name.indexOf("a\\", j);} while (j >= 0);
+                var_name = var_name.substring(var_name.lastIndexOf("a\\") + 2);
                 if (this.old_vars_stack.length >= i) { localvars = this.old_vars_stack[this.old_vars_stack.length - i]; }
                 else { localvars = null; }
             } else { localvars = this.localvars; }
@@ -908,7 +926,7 @@ var Interpreter;
         };
         // ***** 変数の値を取得する *****
         Vars.prototype.getVarValue = function (var_name) {
-            var i;
+            var i, j;
             var array_name;
             var var_name2;
             var glb, loc;
@@ -921,7 +939,9 @@ var Interpreter;
             // ***** ローカル変数のスコープを取得する *****
             // (変数名の先頭の「a\」の数だけスコープをさかのぼる)
             if (var_name.substring(0, 2) == "a\\") {
-                i = 0; do { i++; var_name = var_name.substring(2); } while (var_name.substring(0, 2) == "a\\");
+                // i = 0; do { i++; var_name = var_name.substring(2); } while (var_name.substring(0, 2) == "a\\");
+                i = 0; j = 0; do { i++; j = j + 2; j = var_name.indexOf("a\\", j);} while (j >= 0);
+                var_name = var_name.substring(var_name.lastIndexOf("a\\") + 2);
                 if (this.old_vars_stack.length >= i) { localvars = this.old_vars_stack[this.old_vars_stack.length - i]; }
                 else { localvars = null; }
             } else { localvars = this.localvars; }
@@ -977,7 +997,7 @@ var Interpreter;
         };
         // ***** 変数の値を設定する *****
         Vars.prototype.setVarValue = function (var_name, var_value) {
-            var i;
+            var i, j;
             var array_name;
             var var_name2;
             var glb, loc;
@@ -990,7 +1010,9 @@ var Interpreter;
             // ***** ローカル変数のスコープを取得する *****
             // (変数名の先頭の「a\」の数だけスコープをさかのぼる)
             if (var_name.substring(0, 2) == "a\\") {
-                i = 0; do { i++; var_name = var_name.substring(2); } while (var_name.substring(0, 2) == "a\\");
+                // i = 0; do { i++; var_name = var_name.substring(2); } while (var_name.substring(0, 2) == "a\\");
+                i = 0; j = 0; do { i++; j = j + 2; j = var_name.indexOf("a\\", j);} while (j >= 0);
+                var_name = var_name.substring(var_name.lastIndexOf("a\\") + 2);
                 if (this.old_vars_stack.length >= i) { localvars = this.old_vars_stack[this.old_vars_stack.length - i]; }
                 else { localvars = null; }
             } else { localvars = this.localvars; }
@@ -1046,7 +1068,7 @@ var Interpreter;
         };
         // ***** 配列変数の一括コピー *****
         Vars.prototype.copyArray = function (var_name, var_name2) {
-            var i;
+            var i, j;
             var glb, loc;
             var var_name_len;
             var var_name_from;
@@ -1062,7 +1084,9 @@ var Interpreter;
             // ***** ローカル変数のスコープを取得する *****
             // (変数名の先頭の「a\」の数だけスコープをさかのぼる)
             if (var_name.substring(0, 2) == "a\\") {
-                i = 0; do { i++; var_name = var_name.substring(2); } while (var_name.substring(0, 2) == "a\\");
+                // i = 0; do { i++; var_name = var_name.substring(2); } while (var_name.substring(0, 2) == "a\\");
+                i = 0; j = 0; do { i++; j = j + 2; j = var_name.indexOf("a\\", j);} while (j >= 0);
+                var_name = var_name.substring(var_name.lastIndexOf("a\\") + 2);
                 if (this.old_vars_stack.length >= i) { localvars = this.old_vars_stack[this.old_vars_stack.length - i]; }
                 else { localvars = null; }
             } else { localvars = this.localvars; }
@@ -1147,7 +1171,7 @@ var Interpreter;
         };
         // ***** 配列変数の一括削除 *****
         Vars.prototype.deleteArray = function (var_name) {
-            var i;
+            var i, j;
             var glb, loc;
             var var_name_len;
             var var_name2;
@@ -1161,7 +1185,9 @@ var Interpreter;
             // ***** ローカル変数のスコープを取得する *****
             // (変数名の先頭の「a\」の数だけスコープをさかのぼる)
             if (var_name.substring(0, 2) == "a\\") {
-                i = 0; do { i++; var_name = var_name.substring(2); } while (var_name.substring(0, 2) == "a\\");
+                // i = 0; do { i++; var_name = var_name.substring(2); } while (var_name.substring(0, 2) == "a\\");
+                i = 0; j = 0; do { i++; j = j + 2; j = var_name.indexOf("a\\", j);} while (j >= 0);
+                var_name = var_name.substring(var_name.lastIndexOf("a\\") + 2);
                 if (this.old_vars_stack.length >= i) { localvars = this.old_vars_stack[this.old_vars_stack.length - i]; }
                 else { localvars = null; }
             } else { localvars = this.localvars; }
@@ -1405,17 +1431,26 @@ var Interpreter;
     }
     // ***** 数値チェック *****
     function isDigit(ch) {
-        if (ch.match(/^[0-9]+$/)) { return true; }
+        // if (ch.match(/^[0-9]+$/)) { return true; }
+        var c = ch.charCodeAt(0);
+        if (c >= 0x30 && c <= 0x39) { return true; }
         return false;
     }
     // ***** アルファベットチェック *****
     function isAlpha(ch) {
-        if (ch.match(/^[a-zA-Z]+$/)) { return true; }
+        // if (ch.match(/^[a-zA-Z]+$/)) { return true; }
+        var c = ch.charCodeAt(0);
+        if ((c >= 0x41 && c <= 0x5A) ||
+            (c >= 0x61 && c <= 0x7A)) { return true; }
         return false;
     }
     // ***** 16進数チェック *****
     function isHex(ch) {
-        if (ch.match(/^[a-fA-F0-9]+$/)) { return true; }
+        // if (ch.match(/^[a-fA-F0-9]+$/)) { return true; }
+        var c = ch.charCodeAt(0);
+        if ((c >= 0x30 && c <= 0x39) ||
+            (c >= 0x41 && c <= 0x46) ||
+            (c >= 0x61 && c <= 0x66)) { return true; }
         return false;
     }
     // ***** 文字チェック *****
@@ -1682,7 +1717,7 @@ var Interpreter;
         save_data = {};
         aud_mode = 1;
         sand_obj = null;
-        prof_obj = new Profiler(); 
+        prof_obj = new Profiler();
         prof_obj.start("result");
 
         // run_continuously(); // 再帰的になるので別関数にした
@@ -1802,1356 +1837,22 @@ var Interpreter;
 
     // ***** 文(ステートメント)の処理 *****
     function statement() {
-        var i, j, k;
         var sym;
-        var a1, a2, a3, a4, a5, a6, a7, a8, a9;
-        var var_name;
-        var lbl_name;
-        var x0, y0, a, b, rad1, rad2, rx, ry;
-        var col_r, col_g, col_b;
-        var i_start, i_end, i_plus;
-
-        var g_data = [];
-        var col_num;
-        var col_data = [];
-        var trans_col_no;
-        var col_no;
-        var img_w, img_h;
-        var img_data = {};
-        var img_obj = {};
-
-        var func_params = [];
-        var funccall_info = {};
-        var back_pc;
-        var goto_pc;
-        var debugpc_old;
-
-        var addfunc_ret = {};
-        var ret_addfunc;
 
         // ***** シンボル取り出し *****
         debugpc = pc;
         sym = symbol[pc++];
-        // ***** シンボルの場合分け *****
-        switch (sym.charAt(0)) {
-            case "a":
-                if (sym == "addfunc") {
-                    match("(");
-                    a1 = parseInt(expression(), 10);
-                    match(")");
-                    if (a1 == 0) {
-                        use_addfunc = false;
-                    } else {
-                        use_addfunc = true;
-                    }
-                    return true;
-                }
-                if (sym == "arc") {
-                    match("("); a1 = parseFloat(expression()); // X
-                    match(","); a2 = parseFloat(expression()); // Y
-                    match(","); a3 = parseFloat(expression()); // W
-                    if (symbol[pc] == ")") {
-                        a4 = a3;
-                    } else {
-                        match(","); a4 = parseFloat(expression()); // H
-                    }
-                    match(")");
-                    a = a3 / 2;  // X方向の半径
-                    b = a4 / 2;  // Y方向の半径
-                    x0 = a1 + a; // 中心のX座標
-                    y0 = a2 + b; // 中心のY座標
-                    ctx.beginPath();
-                    ctx.moveTo(a + x0, y0);
-                    for (i = 1; i < 100; i++) {
-                        ctx.lineTo(a * Math.cos(2 * Math.PI * i / 100) + x0, b * Math.sin(2 * Math.PI * i / 100) + y0);
-                    }
-                    ctx.closePath();
-                    ctx.stroke();
-                    // 以下は不要になったもよう(Chrome v27)
-                    // // ***** Chrome v23 で円が閉じない件の対策(中心を0.5ずらしたとき) *****
-                    // ctx.fillRect(a + x0, y0, 0.5, 0.5);
-                    return true;
-                }
-                break;
 
-            case "c":
-                if (sym == "clear") {
-                    match("("); a1 = parseInt(expression(), 10); // X
-                    match(","); a2 = parseInt(expression(), 10); // Y
-                    match(","); a3 = parseInt(expression(), 10); // W
-                    match(","); a4 = parseInt(expression(), 10); // H
-                    match(")");
-                    ctx.clearRect(a1, a2, a3, a4);
-                    return true;
-                }
-                if (sym == "clearkey") {
-                    match("(");
-                    match(")");
-                    input_buf = [];
-                    keyinput_buf = [];
-                    return true;
-                }
-                if (sym == "clearvar") {
-                    match("(");
-                    match(")");
-                    // vars = {};
-                    vars.clearVars();
-                    imgvars = {};
-                    stimg = {};
-                    missile = {};
-                    // ***** 音楽全停止 *****
-                    if (typeof (audstopall) == "function") { audstopall(); }
-                    return true;
-                }
-                if (sym == "clip") {
-                    match("("); a1 = parseInt(expression(), 10); // X
-                    match(","); a2 = parseInt(expression(), 10); // Y
-                    match(","); a3 = parseInt(expression(), 10); // W
-                    match(","); a4 = parseInt(expression(), 10); // H
-                    match(")");
-
-                    // ***** Canvasの各設定のリセット2 *****
-                    reset_canvas_setting2(ctx); // clipを解除する方法がrestoreしかない
-
-                    ctx.beginPath();
-                    ctx.rect(a1, a2, a3, a4);
-                    ctx.clip();
-                    return true;
-                }
-                if (sym == "cls") {
-                    match("(");
-                    match(")");
-                    // ***** 画面クリア *****
-                    // ctx.clearRect(-ctx_originx, -ctx_originy, can.width, can.height);
-                    ctx.setTransform(1, 0, 0, 1, 0, 0);      // 座標系を元に戻す
-                    ctx.clearRect(0, 0, can.width, can.height);  // 画面クリア
-                    set_canvas_axis(ctx);                    // 座標系を再設定
-                    return true;
-                }
-                if (sym == "col") {
-                    match("(");
-                    a1 = parseInt(expression(), 10); // RGB
-                    match(")");
-                    col_r = (a1 & 0xff0000) >> 16; // R
-                    col_g = (a1 & 0x00ff00) >> 8;  // G
-                    col_b = (a1 & 0x0000ff);       // B
-                    color_val = "rgb(" + col_r + "," + col_g + "," + col_b + ")";
-                    ctx.strokeStyle = color_val;
-                    ctx.fillStyle = color_val;
-                    return true;
-                }
-                if (sym == "color") {
-                    match("("); a1 = parseInt(expression(), 10); // R
-                    match(","); a2 = parseInt(expression(), 10); // G
-                    match(","); a3 = parseInt(expression(), 10); // B
-                    match(")");
-                    col_r = a1;
-                    col_g = a2;
-                    col_b = a3;
-                    color_val = "rgb(" + col_r + "," + col_g + "," + col_b + ")";
-                    ctx.strokeStyle = color_val;
-                    ctx.fillStyle = color_val;
-                    return true;
-                }
-                if (sym == "copy") {
-                    match("(");
-                    // a1 = getvarname();
-                    a1 = getvarname(2); // ポインタ対応
-                    match(","); a2 = parseInt(expression(), 10);
-                    match(","); 
-                    // a3 = getvarname();
-                    a3 = getvarname(2); // ポインタ対応
-                    match(","); a4 = parseInt(expression(), 10);
-                    match(","); a5 = parseInt(expression(), 10);
-                    match(")");
-
-                    // ***** NaN対策 *****
-                    a2 = a2 | 0;
-                    a4 = a4 | 0;
-                    a5 = a5 | 0;
-
-                    // ***** エラーチェック *****
-                    // if (a5 > max_array_size) {
-                    if (!(a5 <= max_array_size)) {
-                        throw new Error("処理する配列の個数が不正です。" + max_array_size + "以下である必要があります。");
-                    }
-                    if (a5 <= 0) { return true; }
-                    // ***** コピー処理 *****
-                    if (a1 == a3 && a2 > a4) { // 前から処理か後から処理か
-                        i_start = 0;
-                        i_end = a5 - 1;
-                        i_plus = 1;
-                    } else {
-                        i_start = a5 - 1;
-                        i_end = 0;
-                        i_plus = -1;
-                    }
-                    i = i_start;
-                    while (true) {
-
-                        // // ***** 配列の存在チェック *****
-                        // if (!vars.checkVar(a1 + "[" + (a2 + i) + "]")) { break; }
-
-                        // a6 = vars[a1 + "[" + (a2 + i) + "]"];
-                        a6 = vars.getVarValue(a1 + "[" + (a2 + i) + "]");
-                        // vars[a3 + "[" + (a4 + i) + "]"] = a6;
-                        vars.setVarValue(a3 + "[" + (a4 + i) + "]", a6);
-                        i += i_plus;
-                        if (i_plus > 0 && i <= i_end) { continue; }
-                        if (i_plus < 0 && i >= i_end) { continue; }
-                        break;
-                    }
-                    return true;
-                }
-                if (sym == "copyall") {
-                    match("(");
-                    // a1 = getvarname();
-                    a1 = getvarname(2); // ポインタ対応
-                    match(","); 
-                    // a2 = getvarname();
-                    a2 = getvarname(2); // ポインタ対応
-                    match(")");
-                    // ***** 配列変数の一括コピー *****
-                    vars.copyArray(a1, a2);
-                    return true;
-                }
-                break;
-
-            case "d":
-                if (sym == "disarray") {
-                    match("(");
-                    // a1 = getvarname();
-                    a1 = getvarname(2); // ポインタ対応
-                    if (symbol[pc] == ")") {
-                        a2 = null;
-                        a3 = 0;
-                    } else {
-                        match(","); a2 = parseInt(expression(), 10);
-                        if (symbol[pc] == ")") {
-                            a3 = a2 - 1;
-                            a2 = 0;
-                        } else {
-                            match(","); a3 = parseInt(expression(), 10);
-                        }
-                    }
-                    match(")");
-
-                    // ***** エラーチェック *****
-                    // if (a2 != null && (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size)) {
-                    if (!(a2 == null || (a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size))) {
-                        throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
-                    }
-
-                    if (a2 == null) {
-                        vars.deleteArray(a1);
-                    } else {
-                        for (i = a2; i <= a3; i++) {
-                            // delete vars[a1 + "[" + i + "]"];
-                            vars.deleteVar(a1 + "[" + i + "]");
-                        }
-                    }
-                    return true;
-                }
-                if (sym == "disimg") {
-                    match("(");
-                    // a1 = getvarname();
-                    a1 = getvarname(4); // 画像変数のポインタ対応
-                    match(")");
-                    // if (imgvars.hasOwnProperty(a1)) {
-                    if (hasOwn.call(imgvars, a1)) {
-                        delete imgvars[a1];
-                    }
-                    // for (var prop_name in imgvars) { DebugShow(prop_name + " "); } DebugShow("\n");
-                    return true;
-                }
-                if (sym == "disvar") {
-                    match("(");
-                    // a1 = getvarname();
-                    a1 = getvarname(2); // ポインタ対応
-                    match(")");
-                    // delete vars[a1];
-                    vars.deleteVar(a1);
-                    return true;
-                }
-                if (sym == "drawarea") {
-                    match("(");
-                    // a1 = getvarname();
-                    a1 = getvarname(4); // 画像変数のポインタ対応
-                    match(","); a2 = parseInt(expression(), 10); // 先X
-                    match(","); a3 = parseInt(expression(), 10); // 先Y
-                    match(","); a4 = parseInt(expression(), 10); // 元X
-                    match(","); a5 = parseInt(expression(), 10); // 元Y
-                    match(","); a6 = parseInt(expression(), 10); // W
-                    match(","); a7 = parseInt(expression(), 10); // H
-                    match(")");
-                    if (a1 == "screen") {
-                        // ***** 画像を描画(表示画面→ターゲット) *****
-                        ctx.drawImage(can1, a4, a5, a6, a7, a2, a3, a6, a7);
-                    } else {
-                        // if (imgvars.hasOwnProperty(a1)) {
-                        if (hasOwn.call(imgvars, a1)) {
-                            // ***** 画像を描画(画像変数→ターゲット) *****
-                            ctx.drawImage(imgvars[a1].can, a4, a5, a6, a7, a2, a3, a6, a7);
-                        } else {
-                            throw new Error("Image「" + a1 + "」がロードされていません。");
-                        }
-                    }
-                    return true;
-                }
-                if (sym == "drawimg") {
-                    match("(");
-                    // a1 = getvarname();
-                    a1 = getvarname(4); // 画像変数のポインタ対応
-                    match(","); a2 = parseInt(expression(), 10); // X
-                    match(","); a3 = parseInt(expression(), 10); // Y
-                    match(","); a4 = parseInt(expression(), 10); // アンカー
-                    match(")");
-                    if (a1 == "screen") {
-                        // ***** 水平方向 *****
-                        if (a4 & 4) { }                                  // 左
-                        else if (a4 & 8)  { a2 = a2 - can1.width; }      // 右
-                        else if (a4 & 1)  { a2 = a2 - can1.width / 2; }  // 中央
-                        else { }
-                        // ***** 垂直方向 *****
-                        if (a4 & 16) { }                                 // 上
-                        else if (a4 & 32) { a3 = a3 - can1.height; }     // 下
-                        else if (a4 & 2)  { a3 = a3 - can1.height / 2; } // 中央
-                        else { }
-                        // ***** 画像を描画(表示画面→ターゲット) *****
-                        ctx.drawImage(can1, a2, a3);
-                    } else {
-                        // if (imgvars.hasOwnProperty(a1)) {
-                        if (hasOwn.call(imgvars, a1)) {
-                            // ***** 水平方向 *****
-                            if (a4 & 4) { }                                             // 左
-                            else if (a4 & 8)  { a2 = a2 - imgvars[a1].can.width; }      // 右
-                            else if (a4 & 1)  { a2 = a2 - imgvars[a1].can.width / 2; }  // 中央
-                            else { }
-                            // ***** 垂直方向 *****
-                            if (a4 & 16) { }                                            // 上
-                            else if (a4 & 32) { a3 = a3 - imgvars[a1].can.height; }     // 下
-                            else if (a4 & 2)  { a3 = a3 - imgvars[a1].can.height / 2; } // 中央
-                            else { }
-                            // ***** 画像を描画(画像変数→ターゲット) *****
-                            ctx.drawImage(imgvars[a1].can, a2, a3);
-                        } else {
-                            throw new Error("Image「" + a1 + "」がロードされていません。");
-                        }
-                    }
-                    return true;
-                }
-                if (sym == "drawscaledimg") {
-                    match("(");
-                    // a1 = getvarname();
-                    a1 = getvarname(4); // 画像変数のポインタ対応
-                    match(","); a2 = parseInt(expression(), 10); // 先X
-                    match(","); a3 = parseInt(expression(), 10); // 先Y
-                    match(","); a4 = parseInt(expression(), 10); // 先W
-                    match(","); a5 = parseInt(expression(), 10); // 先H
-                    match(","); a6 = parseInt(expression(), 10); // 元X
-                    match(","); a7 = parseInt(expression(), 10); // 元Y
-                    match(","); a8 = parseInt(expression(), 10); // 元W
-                    match(","); a9 = parseInt(expression(), 10); // 元H
-                    match(")");
-                    if (a1 == "screen") {
-                        // ***** 画像を描画(表示画面→ターゲット) *****
-                        ctx.drawImage(can1, a6, a7, a8, a9, a2, a3, a4, a5);
-                    } else {
-                        // if (imgvars.hasOwnProperty(a1)) {
-                        if (hasOwn.call(imgvars, a1)) {
-                            // ***** 画像を描画(画像変数→ターゲット) *****
-                            ctx.drawImage(imgvars[a1].can, a6, a7, a8, a9, a2, a3, a4, a5);
-                        } else {
-                            throw new Error("Image「" + a1 + "」がロードされていません。");
-                        }
-                    }
-                    return true;
-                }
-                break;
-
-            case "e":
-                if (sym == "end") {
-                    end_flag = true;
-                    return true;
-                }
-                break;
-
-            case "f":
-                if (sym == "farc") {
-                    match("("); a1 = parseFloat(expression()); // X
-                    match(","); a2 = parseFloat(expression()); // Y
-                    match(","); a3 = parseFloat(expression()); // W
-                    if (symbol[pc] == ")") {
-                        a4 = a3;
-                    } else {
-                        match(","); a4 = parseFloat(expression()); // H
-                    }
-                    match(")");
-                    a = a3 / 2;  // X方向の半径
-                    b = a4 / 2;  // Y方向の半径
-                    x0 = a1 + a; // 中心のX座標
-                    y0 = a2 + b; // 中心のY座標
-                    ctx.beginPath();
-                    ctx.moveTo(a + x0, y0);
-                    for (i = 1; i < 100; i++) {
-                        ctx.lineTo(a * Math.cos(2 * Math.PI * i / 100) + x0, b * Math.sin(2 * Math.PI * i / 100) + y0);
-                    }
-                    ctx.closePath();
-                    // 以下は不要になったもよう(Chrome v27)
-                    // // ***** Chrome v23 で塗りつぶさない件の対策 *****
-                    // ctx.rect(x0, y0, 1, 1);     // 真ん中に小さな四角を描くと、塗りつぶしエリアが反転するもよう
-                    ctx.fill();
-                    // 以下は不要になったもよう(Chrome v24)
-                    // ctx.fillRect(x0, y0, 1, 1); // 反転して抜けた真ん中の小さな四角をさらに塗りつぶす
-                    return true;
-                }
-                if (sym == "foval") {
-                    match("("); a1 = parseFloat(expression()); // X
-                    match(","); a2 = parseFloat(expression()); // Y
-                    match(","); a3 = parseFloat(expression()); // W
-                    match(","); a4 = parseFloat(expression()); // H
-                    match(","); a5 = parseFloat(expression()); // 開始角
-                    match(","); a6 = parseFloat(expression()); // 描画角
-                    match(")");
-                    a = a3 / 2;  // X方向の半径
-                    b = a4 / 2;  // Y方向の半径
-                    x0 = a1 + a; // 中心のX座標
-                    y0 = a2 + b; // 中心のY座標
-                    rad1 = - a5 * Math.PI / 180; // PC上の角度は逆方向なのでマイナスを付ける
-                    rad2 = - a6 * Math.PI / 180; // PC上の角度は逆方向なのでマイナスを付ける
-                    if (rad2 < 0) { // パスを右巻きに統一する
-                        rad1 = rad1 + rad2;
-                        rad2 = -rad2;
-                    }
-                    ctx.beginPath();
-                    ctx.moveTo(x0, y0);
-                    for (i = 0; i <= 100; i++) {
-                        ctx.lineTo(a * Math.cos(rad1 + rad2 * i / 100) + x0, b * Math.sin(rad1 + rad2 * i / 100) + y0);
-                    }
-                    ctx.closePath();
-                    // 以下は不要になったもよう(Chrome v27)
-                    // // ***** Chrome v23 で塗りつぶさない件の対策 *****
-                    // ctx.rect(x0, y0, 1, 1);     // 真ん中に小さな四角を描くと、塗りつぶしエリアが反転するもよう
-                    ctx.fill();
-                    // 以下は不要になったもよう(Chrome v24)
-                    // ctx.fillRect(x0, y0, 1, 1); // 反転して抜けた真ん中の小さな四角をさらに塗りつぶす
-                    return true;
-                }
-                if (sym == "frect") {
-                    match("("); a1 = parseFloat(expression()); // X
-                    match(","); a2 = parseFloat(expression()); // Y
-                    match(","); a3 = parseFloat(expression()); // W
-                    match(","); a4 = parseFloat(expression()); // H
-                    match(")");
-                    ctx.fillRect(a1, a2, a3, a4);
-                    return true;
-                }
-                if (sym == "fround") {
-                    match("("); a1 = parseFloat(expression()); // X
-                    match(","); a2 = parseFloat(expression()); // Y
-                    match(","); a3 = parseFloat(expression()); // W
-                    match(","); a4 = parseFloat(expression()); // H
-                    match(","); a5 = parseFloat(expression()); // RX
-                    match(","); a6 = parseFloat(expression()); // RY
-                    match(")");
-                    rx = a5;
-                    ry = a6;
-                    ctx.beginPath();
-                    ctx.moveTo(a1 + rx , a2);
-                    ctx.lineTo(a1 + a3 - rx, a2);
-                    ctx.quadraticCurveTo(a1 + a3 , a2, a1 + a3, a2 + ry);
-                    ctx.lineTo(a1 + a3 , a2 + a4 - ry);
-                    ctx.quadraticCurveTo(a1 + a3 , a2 + a4, a1 + a3 - rx, a2 + a4);
-                    ctx.lineTo(a1 + rx , a2 + a4);
-                    ctx.quadraticCurveTo(a1, a2 + a4, a1, a2 + a4 -ry);
-                    ctx.lineTo(a1 , a2 + ry);
-                    ctx.quadraticCurveTo(a1, a2, a1 + rx, a2);
-                    ctx.closePath();
-                    // 以下は不要になったもよう(Chrome v27)
-                    // // ***** Chrome v23 でカーブを描画しない件の対策 *****
-                    // ctx.rotate(45 * Math.PI / 180);          // 回転させるとなぜか描画する
-                    ctx.fill();
-                    // 以下は不要になったもよう(Chrome v27)
-                    // ctx.setTransform(1, 0, 0, 1, 0, 0);      // 座標系を元に戻す
-                    // set_canvas_axis(ctx);                    // 座標系を再設定
-                    return true;
-                }
-                if (sym == "func") {
-                    pc = func[symbol[pc] + "\\end"];
-                    return true;
-                }
-                if (sym == "funccall") {
-                    match("("); 
-                    // ***** 関数名を取得 *****
-                    sym = symbol[pc++];
-
-                    // ***** ポインタのとき *****
-                    if (sym.charAt(0) == "*") {
-                        // ***** 変数名取得 *****
-                        pc--;
-                        // var_name = getvarname();
-                        var_name = getvarname(2); // ポインタ対応
-                        // ***** 変数名の先頭の「a\」をすべて削除 *****
-                        if (var_name.substring(0, 2) == "a\\") {
-                            do { var_name = var_name.substring(2); } while (var_name.substring(0, 2) == "a\\");
-                        }
-                        // ***** 変数名を関数名とする *****
-                        sym = var_name;
-                    }
-
-                    match("(");
-                    // ***** 関数呼び出し情報の生成 *****
-                    funccall_info = {};
-                    // ***** 引数の取得 *****
-                    func_params = [];
-                    if (symbol[pc] == ")") {
-                        pc++;
-                    } else {
-                        while (pc < symbol_len) {
-                            func_params.push(expression());
-                            if (symbol[pc] == ",") { 
-                                pc++;
-                                continue;
-                            }
-                            break;
-                        }
-                        match(")");
-                    }
-                    // ***** 戻り値を格納する変数名の取得 *****
-                    if (symbol[pc] == ")") {
-                        a1 = "";
-                    } else {
-                        match(",");
-                        // a1 = getvarname();
-                        a1 = getvarname(2); // ポインタ対応
-                    }
-                    match(")");
-                    // ***** 関数の呼び出し *****
-                    // if (!func.hasOwnProperty(sym)) {
-                    if (!hasOwn.call(func, sym)) {
-                        throw new Error("関数 '" + sym + "' の呼び出しに失敗しました(funccallはfuncで定義した関数のみ呼び出せます)。");
-                    }
-                    back_pc = pc;
-                    pc = func[sym];
-                    debugpc_old = debugpc;
-                    debugpc = pc - 1;
-
-                    // ***** ローカル変数を生成 *****
-                    vars.makeLocalScope();
-
-                    // ***** 引数のセット *****
-                    match("(");
-                    if (symbol[pc] == ")") {
-                        pc++;
-                    } else {
-                        i = 0;
-                        while (pc < symbol_len) {
-                            // var_name = getvarname(); // これはポインタ対応不可
-                            var_name = getvarname(3); // 関数の引数用
-                            if (i < func_params.length) {
-
-                                // ***** 関数の引数のポインタ対応 *****
-                                if (var_name.substring(0, 2) == "p\\") {
-                                    // (引数名から「p\」を削除)
-                                    var_name = var_name.substring(2);
-                                    // (引数の内容を取得)
-                                    func_params[i] = String(func_params[i]);
-                                    // ***** 変数名のチェック *****
-                                    if (!(isAlpha(func_params[i].charAt(0)) || func_params[i].charAt(0) == "_")) {
-                                        debugpc = debugpc_old;
-                                        pc = back_pc;
-                                        throw new Error("ポインタの指す先が不正です。('" + func_params[i] + "')");
-                                    }
-                                    // (ローカル変数のスコープをさかのぼれるように引数の内容に「a\」を付加)
-                                    func_params[i] = "a\\" + func_params[i];
-                                }
-
-                                // vars[var_name] = func_params[i];
-                                vars.setVarValue(var_name, func_params[i]);
-                                i++;
-                            } else {
-
-                                // ***** 関数の引数のポインタ対応 *****
-                                if (var_name.substring(0, 2) == "p\\") {
-                                    // (引数名から「p\」を削除)
-                                    var_name = var_name.substring(2);
-                                }
-
-                                // vars[var_name] = 0;
-                                vars.setVarValue(var_name, 0);
-                            }
-                            if (symbol[pc] == ",") {
-                                pc++;
-                                continue;
-                            }
-                            break;
-                        }
-                        match(")");
-                    }
-                    // ***** 関数の本体を実行 *****
-                    match("{");
-                    funccall_info.nestcall = false;
-                    funccall_info.retvarname = a1;
-                    funccall_info.func_back = back_pc;
-                    funccall_info.func_start = pc;
-                    funccall_info.func_end = func[sym + "\\end"];
-                    funccall_stack.push(funccall_info);
-                    return true;
-                }
-                break;
-
-            case "g":
-                if (sym == "gc") {
-                    match("(");
-                    match(")");
-                    // ***** NOP *****
-                    return true;
-                }
-                if (sym == "gosub") {
-                    // ***** 関数内のとき *****
-                    if (funccall_stack.length > 0) {
-                        throw new Error("func内では gosub できません。");
-                    }
-                    // ***** ラベルへジャンプ *****
-                    lbl_name = expression();
-                    // if (!label.hasOwnProperty(lbl_name)) {
-                    if (!hasOwn.call(label, lbl_name)) {
-                        throw new Error("ラベル '" + lbl_name + "' は未定義です。");
-                    }
-                    gosub_back.push(pc);
-                    pc = label[lbl_name];
-                    return true;
-                }
-                if (sym == "goto") {
-                    // ***** ラベルへジャンプ *****
-                    lbl_name = expression();
-                    // if (!label.hasOwnProperty(lbl_name)) {
-                    if (!hasOwn.call(label, lbl_name)) {
-                        throw new Error("ラベル '" + lbl_name + "' は未定義です。");
-                    }
-                    goto_pc = label[lbl_name];
-                    // ***** 関数内のとき *****
-                    if (funccall_stack.length > 0) {
-                        // ***** 関数呼び出し情報をチェック *****
-                        funccall_info = funccall_stack[funccall_stack.length - 1];
-                        // ***** ジャンプ先がfunc内のときだけgotoが可能 *****
-                        if ((goto_pc < funccall_info.func_start) || (goto_pc >= funccall_info.func_end)) {
-                            throw new Error("funcの外へは goto できません。");
-                        }
-                    }
-                    pc = goto_pc;
-                    return true;
-                }
-                break;
-
-            case "i":
-                if (sym == "ifgoto\\") {    // 内部命令なので「\」を付けている
-                    match("(");
-                    pc--;
-                    a1 = expression();
-                    // match(")");
-                    if (a1 != 0) {
-                        // ***** ラベルへジャンプ *****
-                        lbl_name = expression();
-                        // if (!label.hasOwnProperty(lbl_name)) {
-                        if (!hasOwn.call(label, lbl_name)) {
-                            throw new Error("ラベル '" + lbl_name + "' は未定義です。");
-                        }
-                        goto_pc = label[lbl_name];
-                        // ***** 関数内のとき *****
-                        if (funccall_stack.length > 0) {
-                            // ***** 関数呼び出し情報をチェック *****
-                            funccall_info = funccall_stack[funccall_stack.length - 1];
-                            // ***** ジャンプ先がfunc内のときだけgotoが可能 *****
-                            if ((goto_pc < funccall_info.func_start) || (goto_pc >= funccall_info.func_end)) {
-                                throw new Error("funcの外へは goto できません。");
-                            }
-                        }
-                        pc = goto_pc;
-                    } else {
-                        pc++;
-                    }
-                    return true;
-                }
-                if (sym == "ifnotgoto\\") { // 内部命令なので「\」を付けている
-                    match("(");
-                    pc--;
-                    a1 = expression();
-                    // match(")");
-                    if (a1 == 0) {
-                        // ***** ラベルへジャンプ *****
-                        lbl_name = expression();
-                        // if (!label.hasOwnProperty(lbl_name)) {
-                        if (!hasOwn.call(label, lbl_name)) {
-                            throw new Error("ラベル '" + lbl_name + "' は未定義です。");
-                        }
-                        goto_pc = label[lbl_name];
-                        // ***** 関数内のとき *****
-                        if (funccall_stack.length > 0) {
-                            // ***** 関数呼び出し情報をチェック *****
-                            funccall_info = funccall_stack[funccall_stack.length - 1];
-                            // ***** ジャンプ先がfunc内のときだけgotoが可能 *****
-                            if ((goto_pc < funccall_info.func_start) || (goto_pc >= funccall_info.func_end)) {
-                                throw new Error("funcの外へは goto できません。");
-                            }
-                        }
-                        pc = goto_pc;
-                    } else {
-                        pc++;
-                    }
-                    return true;
-                }
-                break;
-
-            case "l":
-                if (sym == "label") {
-                    pc++;
-                    return true;
-                }
-                if (sym == "line") {
-                    match("("); a1 = parseFloat(expression()); // X1
-                    match(","); a2 = parseFloat(expression()); // Y1
-                    match(","); a3 = parseFloat(expression()); // X2
-                    match(","); a4 = parseFloat(expression()); // Y2
-                    match(")");
-                    ctx.beginPath();
-                    ctx.moveTo(a1, a2);
-                    ctx.lineTo(a3, a4);
-                    ctx.stroke();
-                    return true;
-                }
-                if (sym == "linewidth") {
-                    match("(");
-                    a1 = parseFloat(expression()); // W
-                    match(")");
-                    line_width = a1;
-                    ctx.lineWidth = line_width;
-                    return true;
-                }
-                if (sym == "loadimg") {
-                    match("(");
-                    // a1 = getvarname();
-                    a1 = getvarname(4); // 画像変数のポインタ対応
-                    match(","); a2 = String(expression()); // 画像データ文字列
-                    match(")");
-                    // ***** FlashCanvas用 *****
-                    if (!ctx.createImageData) { throw new Error("画像生成機能が利用できません。"); }
-                    // ***** 画像データの取得 *****
-                    g_data = a2.split(",");
-                    i = 0;
-                    col_num = parseInt(g_data[i++], 10);
-                    col_data = [];
-                    for (j = 0; j < col_num; j++) {
-                        col_data[j] = {};
-                        col_data[j].r = parseInt(g_data[i++], 10);
-                        col_data[j].g = parseInt(g_data[i++], 10);
-                        col_data[j].b = parseInt(g_data[i++], 10);
-                    }
-                    trans_col_no = parseInt(g_data[i++], 10);
-                    img_w = parseInt(g_data[i++], 10);
-                    img_h = parseInt(g_data[i++], 10);
-
-                    // ***** エラーチェック *****
-                    // if (img_w <= 0 || img_w > max_image_size || img_h <= 0 || img_h > max_image_size) {
-                    if (!(img_w > 0 && img_w <= max_image_size && img_h > 0 && img_h <= max_image_size)) {
-                        throw new Error("画像の縦横のサイズが不正です。1-" + max_image_size + "の間である必要があります。");
-                    }
-
-                    img_data = ctx.createImageData(img_w, img_h);
-                    k = 0;
-                    while (i < g_data.length) {
-                        col_no = parseInt(g_data[i++], 10);
-                        if (col_no == trans_col_no) {
-                            img_data.data[k++] = 0;
-                            img_data.data[k++] = 0;
-                            img_data.data[k++] = 0;
-                            img_data.data[k++] = 0;
-                        } else if (col_no >=0 && col_no < col_num) {
-                            img_data.data[k++] = col_data[col_no].r;
-                            img_data.data[k++] = col_data[col_no].g;
-                            img_data.data[k++] = col_data[col_no].b;
-                            img_data.data[k++] = 255;
-                        } else {
-                            img_data.data[k++] = 0;
-                            img_data.data[k++] = 0;
-                            img_data.data[k++] = 0;
-                            img_data.data[k++] = 0;
-                        }
-                    }
-                    // ***** Canvasの生成 *****
-                    imgvars[a1] = {};
-                    imgvars[a1].can = document.createElement("canvas");
-                    // ***** FlashCanvas Pro (将来用) で必要 *****
-                    if (typeof (FlashCanvas) != "undefined") {
-                        imgvars[a1].can.style.backgroundColor = can1_backcolor_init;
-                        document.getElementById("body1").appendChild(imgvars[a1].can);
-                        FlashCanvas.initElement(imgvars[a1].can);
-                    }
-                    imgvars[a1].can.width = img_w;
-                    imgvars[a1].can.height = img_h;
-                    imgvars[a1].ctx = imgvars[a1].can.getContext("2d");
-                    // ***** Canvasの各設定の初期化 *****
-                    init_canvas_setting(imgvars[a1].ctx);
-                    // ***** 画像を格納 *****
-                    imgvars[a1].ctx.putImageData(img_data, 0, 0);
-                    return true;
-                }
-                if (sym == "loadimgdata") {
-                    match("(");
-                    // a1 = getvarname();
-                    a1 = getvarname(4); // 画像変数のポインタ対応
-                    match(","); a2 = String(expression()); // 画像データ文字列(data URI scheme)
-                    match(")");
-                    // ***** Canvasの生成 *****
-                    imgvars[a1] = {};
-                    imgvars[a1].can = document.createElement("canvas");
-                    // ***** FlashCanvas Pro (将来用) で必要 *****
-                    if (typeof (FlashCanvas) != "undefined") {
-                        imgvars[a1].can.style.backgroundColor = can1_backcolor_init;
-                        document.getElementById("body1").appendChild(imgvars[a1].can);
-                        FlashCanvas.initElement(imgvars[a1].can);
-                    }
-                    imgvars[a1].can.width = 16;
-                    imgvars[a1].can.height = 16;
-                    imgvars[a1].ctx = imgvars[a1].can.getContext("2d");
-                    // ***** Canvasの各設定の初期化 *****
-                    init_canvas_setting(imgvars[a1].ctx);
-                    // ***** デバッグ用 *****
-                    imgvars[a1].ctx.fillRect(0,0,16,16);
-                    // ***** 完了フラグをリセット *****
-                    imgvars[a1].loaded = false;
-                    // ***** 画像データの取得 *****
-                    // (非同期のため完了までに時間がかかるので注意)
-                    img_obj = new Image();
-                    img_obj.onload = function () {
-                        // ***** Canvasのリサイズ *****
-                        imgvars[a1].can.width = img_obj.width;
-                        imgvars[a1].can.height = img_obj.height;
-                        // ***** Canvasの各設定の初期化 *****
-                        init_canvas_setting(imgvars[a1].ctx);
-                        // ***** 画像を描画 *****
-                        imgvars[a1].ctx.drawImage(img_obj, 0, 0);
-                        // alert(img_obj.complete);
-                        // ***** 完了フラグをセット *****
-                        imgvars[a1].loaded = true;
-                    };
-                    img_obj.src = a2; // 常にonloadより後にsrcをセットすること
-                    return true;
-                }
-                if (sym == "lock") {
-                    match("(");
-                    match(")");
-                    // ***** NOP *****
-                    return true;
-                }
-                break;
-
-            case "m":
-                if (sym == "makearray") {
-                    match("(");
-                    // a1 = getvarname();
-                    a1 = getvarname(2); // ポインタ対応
-                    match(","); a2 = parseInt(expression(), 10);
-                    if (symbol[pc] == ")") {
-                        a3 = a2 - 1;
-                        a2 = 0;
-                        a4 = 0;
-                    } else {
-                        match(","); a3 = parseInt(expression(), 10);
-                        if (symbol[pc] == ")") {
-                            a4 = 0;
-                        } else {
-                            match(","); a4 = expression();
-                        }
-                    }
-                    match(")");
-
-                    // ***** エラーチェック *****
-                    // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
-                    if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
-                        throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
-                    }
-
-                    for (i = a2; i <= a3; i++) {
-                        // vars[a1 + "[" + i + "]"] = a4;
-                        vars.setVarValue(a1 + "[" + i + "]", a4);
-                    }
-                    return true;
-                }
-                if (sym == "makeimg") {
-                    match("(");
-                    // a1 = getvarname();
-                    a1 = getvarname(4); // 画像変数のポインタ対応
-                    match(","); a2 = parseInt(expression(), 10); // W
-                    match(","); a3 = parseInt(expression(), 10); // H
-                    match(")");
-
-                    // ***** エラーチェック *****
-                    // if (a2 <= 0 || a2 > max_image_size || a3 <= 0 || a3 > max_image_size) {
-                    if (!(a2 > 0 && a2 <= max_image_size && a3 > 0 && a3 <= max_image_size)) {
-                        throw new Error("画像の縦横のサイズが不正です。1-" + max_image_size + "の範囲で指定してください。");
-                    }
-
-                    // ***** Canvasの生成 *****
-                    imgvars[a1] = {};
-                    imgvars[a1].can = document.createElement("canvas");
-                    // ***** FlashCanvas Pro (将来用) で必要 *****
-                    if (typeof (FlashCanvas) != "undefined") {
-                        imgvars[a1].can.style.backgroundColor = can1_backcolor_init;
-                        document.getElementById("body1").appendChild(imgvars[a1].can);
-                        FlashCanvas.initElement(imgvars[a1].can);
-                    }
-                    imgvars[a1].can.width = a2;
-                    imgvars[a1].can.height = a3;
-                    imgvars[a1].ctx = imgvars[a1].can.getContext("2d");
-                    // ***** Canvasの各設定の初期化 *****
-                    init_canvas_setting(imgvars[a1].ctx);
-                    return true;
-                }
-                if (sym == "msgdlg") {
-                    match("("); a1 = String(expression());
-                    if (symbol[pc] != ")") {
-                        match(","); a1 = String(expression());
-                    }
-                    match(")");
-                    alert(a1);
-                    keyclear();
-                    mousebuttonclear();
-                    dlg_flag = true;
-                    return true;
-                }
-                break;
-
-            case "o":
-                if (sym == "onlocal") {
-                    match("(");
-                    match(")");
-                    use_local_vars = true;
-                    return true;
-                }
-                if (sym == "offlocal") {
-                    match("(");
-                    match(")");
-                    use_local_vars = false;
-                    return true;
-                }
-                if (sym == "origin") {
-                    match("("); a1 = parseInt(expression(), 10); // X
-                    match(","); a2 = parseInt(expression(), 10); // Y
-                    match(")");
-                    // ***** 座標系の原点座標設定 *****
-                    ctx_originx = a1;
-                    ctx_originy = a2;
-                    ctx.setTransform(1, 0, 0, 1, 0, 0);      // 座標系を元に戻す
-                    set_canvas_axis(ctx);                    // 座標系を再設定
-                    return true;
-                }
-                if (sym == "oval") {
-                    match("("); a1 = parseFloat(expression()); // X
-                    match(","); a2 = parseFloat(expression()); // Y
-                    match(","); a3 = parseFloat(expression()); // W
-                    match(","); a4 = parseFloat(expression()); // H
-                    match(","); a5 = parseFloat(expression()); // 開始角
-                    match(","); a6 = parseFloat(expression()); // 描画角
-                    match(")");
-                    a = a3 / 2;  // X方向の半径
-                    b = a4 / 2;  // Y方向の半径
-                    x0 = a1 + a; // 中心のX座標
-                    y0 = a2 + b; // 中心のY座標
-                    rad1 = - a5 * Math.PI / 180; // PC上の角度は逆方向なのでマイナスを付ける
-                    rad2 = - a6 * Math.PI / 180; // PC上の角度は逆方向なのでマイナスを付ける
-                    ctx.beginPath();
-                    ctx.moveTo(a * Math.cos(rad1) + x0, b * Math.sin(rad1) + y0);
-                    for (i = 1; i <= 100; i++) {
-                        ctx.lineTo(a * Math.cos(rad1 + rad2 * i / 100) + x0, b * Math.sin(rad1 + rad2 * i / 100) + y0);
-                    }
-                    ctx.stroke();
-                    // 以下は不要になったもよう(Chrome v27)
-                    // // ***** Chrome v23 で円が閉じない件の対策(中心を0.5ずらしたとき) *****
-                    // ctx.fillRect(a * Math.cos(rad1) + x0, b * Math.sin(rad1) + y0, 0.5, 0.5);
-                    return true;
-                }
-                break;
-
-            case "p":
-                if (sym == "point") {
-                    match("("); a1 = parseFloat(expression()); // X
-                    match(","); a2 = parseFloat(expression()); // Y
-                    match(")");
-                    ctx.fillRect(a1, a2, 1, 1);
-                    return true;
-                }
-                break;
-
-            case "r":
-                if (sym == "rect") {
-                    match("("); a1 = parseFloat(expression()); // X
-                    match(","); a2 = parseFloat(expression()); // Y
-                    match(","); a3 = parseFloat(expression()); // W
-                    match(","); a4 = parseFloat(expression()); // H
-                    match(")");
-                    ctx.beginPath();
-                    ctx.rect(a1, a2, a3, a4);
-                    ctx.stroke();
-                    return true;
-                }
-                if (sym == "return") {
-                    // ***** 関数内のとき *****
-                    if (funccall_stack.length > 0) {
-                        // ***** 戻り値を取得 *****
-                        if (symbol[pc] == ";") {
-                            ret_num = 0;
-                        } else {
-                            ret_num = expression();
-                        }
-                        // ***** 関数呼び出し情報をチェック *****
-                        funccall_info = funccall_stack[funccall_stack.length - 1];
-                        // ***** ネストありのとき(通常の関数呼び出しのとき) *****
-                        if (funccall_info.nestcall) {
-                            // ***** 呼び出し元に復帰 *****
-                            return_flag = true;
-                            return true;
-                        }
-                        // ***** ネストなしのとき(funccall文で呼び出されたとき) *****
-
-                        // ***** ローカル変数を解放 *****
-                        vars.deleteLocalScope();
-
-                        // ***** 戻り値を変数に格納 *****
-                        // vars[funccall_info.retvarname] = ret_num;
-                        vars.setVarValue(funccall_info.retvarname, ret_num);
-                        // ***** 呼び出し元に復帰 *****
-                        funccall_info = funccall_stack.pop();
-                        pc = funccall_info.func_back;
-                        return true;
-                    }
-                    // ***** gosubのとき *****
-                    if (gosub_back.length > 0) {
-                        // ***** 戻り先へ *****
-                        pc = gosub_back.pop();
-                        return true;
-                    }
-                    return_flag = true;
-                    return true;
-                }
-                if (sym == "rotate") {
-                    match("("); a1 = parseFloat(expression()); // 角度
-                    if (symbol[pc] == ")") {
-                        a2 = 0;
-                        a3 = 0;
-                    } else {
-                        match(","); a2 = parseFloat(expression()); // 中心座標X
-                        match(","); a3 = parseFloat(expression()); // 中心座標Y
-                    }
-                    match(")");
-                    // ***** 座標系の角度設定 *****
-                    ctx_rotate = a1 * Math.PI / 180;
-                    ctx_rotateox = a2;
-                    ctx_rotateoy = a3;
-                    ctx.setTransform(1, 0, 0, 1, 0, 0);      // 座標系を元に戻す
-                    set_canvas_axis(ctx);                    // 座標系を再設定
-                    return true;
-                }
-                if (sym == "round") {
-                    match("("); a1 = parseFloat(expression()); // X
-                    match(","); a2 = parseFloat(expression()); // Y
-                    match(","); a3 = parseFloat(expression()); // W
-                    match(","); a4 = parseFloat(expression()); // H
-                    match(","); a5 = parseFloat(expression()); // RX
-                    match(","); a6 = parseFloat(expression()); // RY
-                    match(")");
-                    rx = a5;
-                    ry = a6;
-                    ctx.beginPath();
-                    ctx.moveTo(a1 + rx , a2);
-                    ctx.lineTo(a1 + a3 - rx, a2);
-                    ctx.quadraticCurveTo(a1 + a3 , a2, a1 + a3, a2 + ry);
-                    ctx.lineTo(a1 + a3 , a2 + a4 - ry);
-                    ctx.quadraticCurveTo(a1 + a3 , a2 + a4, a1 + a3 - rx, a2 + a4);
-                    ctx.lineTo(a1 + rx , a2 + a4);
-                    ctx.quadraticCurveTo(a1, a2 + a4, a1, a2 + a4 -ry);
-                    ctx.lineTo(a1 , a2 + ry);
-                    ctx.quadraticCurveTo(a1, a2, a1 + rx, a2);
-                    ctx.closePath();
-                    // 以下は不要になったもよう(Chrome v27)
-                    // // ***** Chrome v23 でカーブを描画しない件の対策 *****
-                    // ctx.rotate(45 * Math.PI / 180);          // 回転させるとなぜか描画する
-                    ctx.stroke();
-                    // 以下は不要になったもよう(Chrome v27)
-                    // ctx.setTransform(1, 0, 0, 1, 0, 0);      // 座標系を元に戻す
-                    // set_canvas_axis(ctx);                    // 座標系を再設定
-                    return true;
-                }
-                break;
-
-            case "s":
-                if (sym == "save") {
-                    match("("); a1 = String(expression());
-                    if (symbol[pc] == ")") {
-                        a2 = 0;
-                    } else {
-                        match(","); a2 = parseInt(expression(), 10);
-                    }
-                    match(")");
-                    save_data[a2] = a1;
-                    return true;
-                }
-                if (sym == "scale") {
-                    match("("); a1 = parseFloat(expression()); // X方向倍率
-                    if (symbol[pc] == ")") {
-                        a2 = a1;
-                        a3 = 0;
-                        a4 = 0;
-                    } else {
-                        match(","); a2 = parseFloat(expression()); // Y方向倍率
-                        if (symbol[pc] == ")") {
-                            a3 = 0;
-                            a4 = 0;
-                        } else {
-                            match(","); a3 = parseFloat(expression()); // 中心座標X
-                            match(","); a4 = parseFloat(expression()); // 中心座標Y
-                        }
-                    }
-                    match(")");
-                    // ***** エラーチェック *****
-                    // if (a1 <= 0 || a1 > max_scale_size || a2 <= 0 || a2 > max_scale_size) {
-                    if (!(a1 > 0 && a1 <= max_scale_size && a2 > 0 && a2 <= max_scale_size)) {
-                        throw new Error("座標系の倍率の値が不正です。0より大きく" + max_scale_size + "以下の数値を指定してください。");
-                    }
-                    // ***** 座標系の倍率設定 *****
-                    ctx_scalex = a1;
-                    ctx_scaley = a2;
-                    ctx_scaleox = a3;
-                    ctx_scaleoy = a4;
-                    ctx.setTransform(1, 0, 0, 1, 0, 0);      // 座標系を元に戻す
-                    set_canvas_axis(ctx);                    // 座標系を再設定
-                    return true;
-                }
-                if (sym == "setfont") {
-                    match("(");
-                    a1 = String(expression()).toUpperCase();
-                    match(")");
-                    switch (a1) {
-                        case "L": font_size = 30; break;
-                        case "M": font_size = 24; break;
-                        case "S": font_size = 16; break;
-                        case "T": font_size = 12; break;
-                        default: font_size = 24; break;
-                    }
-                    ctx.font = font_size + "px " + font_family;
-                    return true;
-                }
-                if (sym == "setoutdata") {
-                    match("("); a1 = parseInt(expression(), 10);
-                    match(","); a2 = String(expression());
-                    match(")");
-                    out_data[a1] = a2;
-                    return true;
-                }
-                if (sym == "setpixel") {
-                    match("("); a1 = parseFloat(expression());   // X
-                    match(","); a2 = parseFloat(expression());   // Y
-                    match(","); a3 = parseInt(expression(), 10); // RGB
-                    match(")");
-                    col_r = (a3 & 0xff0000) >> 16; // R
-                    col_g = (a3 & 0x00ff00) >> 8;  // G
-                    col_b = (a3 & 0x0000ff);       // B
-                    ctx.fillStyle = "rgb(" + col_r + "," + col_g + "," + col_b + ")";
-                    ctx.fillRect(a1, a2, 1, 1);
-                    ctx.fillStyle = color_val;
-                    return true;
-                }
-                if (sym == "setscsize") {
-                    match("("); a1 = parseInt(expression(), 10); // W
-                    match(","); a2 = parseInt(expression(), 10); // H
-                    if (symbol[pc] == ")") {
-                        a3 = a1;
-                        a4 = a2;
-                    } else {
-                        match(","); a3 = parseInt(expression(), 10); // W2
-                        match(","); a4 = parseInt(expression(), 10); // H2
-                    }
-                    match(")");
-                    // ***** エラーチェック *****
-                    // if (a1 <= 0 || a1 >= max_image_size || a2 <= 0 || a2 >= max_image_size ||
-                    //     a3 <= 0 || a3 >= max_image_size || a4 <= 0 || a4 >= max_image_size) {
-                    if (!(a1 > 0 && a1 <= max_image_size && a2 > 0 && a2 <= max_image_size &&
-                          a3 > 0 && a3 <= max_image_size && a4 > 0 && a4 <= max_image_size)) {
-                        throw new Error("縦横のサイズの値が不正です。1-" + max_image_size + "の範囲で指定してください。");
-                    }
-                    // ***** 画面サイズ設定 *****
-                    can1.width = a1;
-                    can1.height = a2;
-                    can1.style.width = a3 + "px";
-                    can1.style.height = a4 + "px";
-                    // ***** Canvasの各設定のリセット *****
-                    reset_canvas_setting(ctx1);
-                    return true;
-                }
-                if (sym == "sleep") {
-                    match("(");
-                    a1 = parseInt(expression(), 10);
-                    match(")");
-                    sleep_flag = true;
-                    sleep_time = a1;
-                    return true;
-                }
-                if (sym == "soft1") {
-                    match("(");
-                    a1 = String(expression());
-                    match(")");
-                    softkey[0] = a1;
-                    disp_softkey();
-                    return true;
-                }
-                if (sym == "soft2") {
-                    match("(");
-                    a1 = String(expression());
-                    match(")");
-                    softkey[1] = a1;
-                    disp_softkey();
-                    return true;
-                }
-                if (sym == "spmode") {
-                    match("(");
-                    a1 = parseInt(expression(), 10);
-                    match(")");
-                    sp_compati_mode = a1;
-                    if (sp_compati_mode == 1) {
-                        font_size = 12;
-                        ctx.font = font_size + "px " + font_family;
-                        use_local_vars = false;
-                    }
-                    return true;
-                }
-                break;
-
-            case "t":
-                if (sym == "text") {
-                    match("(");
-                    // ***** 文字列に変換 *****
-                    // a1 = expression();
-                    a1 = String(expression());
-
-                    // ***** Chrome v24 で全角スペースが半角のサイズで表示される件の対策 *****
-                    a1 = a1.replace(/　/g, "  "); // 全角スペースを半角スペース2個に変換
-
-                    if (symbol[pc] == ")") {
-                        a2 = a3 = a4 = 0;
-                    } else {
-                        match(","); a2 = parseInt(expression(), 10); // X
-                        match(","); a3 = parseInt(expression(), 10); // Y
-                        match(","); a4 = parseInt(expression(), 10); // アンカー
-                    }
-                    match(")");
-                    // ***** 水平方向 *****
-                    if (a4 & 4)       { ctx.textAlign = "left"; }    // 左
-                    else if (a4 & 8)  { ctx.textAlign = "right"; }   // 右
-                    else if (a4 & 1)  { ctx.textAlign = "center"; }  // 中央
-                    else { ctx.textAlign = "left"; }
-                    // ***** 垂直方向 *****
-                    if (a4 & 16)      { ctx.textBaseline = "top"; }        // 上
-                    else if (a4 & 32) { ctx.textBaseline = "bottom"; }     // 下
-                    else if (a4 & 2)  { ctx.textBaseline = "middle"; }     // 中央
-                    else if (a4 & 64) { ctx.textBaseline = "alphabetic"; } // ベースライン
-                    else { ctx.textBaseline = "top"; }
-                    // ***** 文字列表示 *****
-                    ctx.fillText(a1, a2, a3);
-                    return true;
-                }
-                if (sym == "trgt") {
-                    match("(");
-                    // a1 = getvarname();
-                    a1 = getvarname(4); // 画像変数のポインタ対応
-                    match(")");
-                    if (a1 == "off") {
-                        can = can1;
-                        ctx = ctx1;
-                    // } else if (imgvars.hasOwnProperty(a1)) {
-                    } else if (hasOwn.call(imgvars, a1)) {
-                        can = imgvars[a1].can;
-                        ctx = imgvars[a1].ctx;
-                    } else {
-                        throw new Error("Image「" + a1 + "」がロードされていません。");
-                    }
-                    // ***** Canvasの各設定のリセット *****
-                    reset_canvas_setting(ctx);
-                    return true;
-                }
-                break;
-
-            case "u":
-                if (sym == "unlock") {
-                    match("(");
-                    if (symbol[pc] == ")") {
-                        a1 = 0;
-                    } else {
-                        a1 = parseInt(expression(), 10);
-                    }
-                    match(")");
-                    // ***** NOP *****
-                    return true;
-                }
-                break;
-
-            case "}":
-                // ***** 戻り値は0とする *****
-                ret_num = 0;
-                // ***** 関数内のとき *****
-                if (funccall_stack.length > 0) {
-                    // ***** 関数呼び出し情報をチェック *****
-                    funccall_info = funccall_stack[funccall_stack.length - 1];
-                    // ***** ネストありのとき(通常の関数呼び出しのとき) *****
-                    if (funccall_info.nestcall) {
-                        // ***** 呼び出し元に復帰 *****
-                        return_flag = true;
-                        return true;
-                    }
-                    // ***** ネストなしのとき(funccall文で呼び出されたとき) *****
-
-                    // ***** ローカル変数を解放 *****
-                    vars.deleteLocalScope();
-
-                    // ***** 戻り値を変数に格納 *****
-                    // vars[funccall_info.retvarname] = ret_num;
-                    vars.setVarValue(funccall_info.retvarname, ret_num);
-                    // ***** 呼び出し元に復帰 *****
-                    funccall_info = funccall_stack.pop();
-                    pc = funccall_info.func_back;
-                    return true;
-                }
-                return_flag = true;
-                return true;
-                // break;
-
-            case ";":
-                return true;
-                // break;
-
-            case "@":
-                match("(");
-                // a1 = getvarname();
-                a1 = getvarname(2); // ポインタ対応
-                i = 0;
-                while (pc < symbol_len) {
-                    if (symbol[pc] == ")") { break; }
-                    match(",");
-                    a2 = expression();
-                    // vars[a1 + "[" + i + "]"] = a2;
-                    vars.setVarValue(a1 + "[" + i + "]", a2);
-                    i++;
-                }
-                match(")");
-                return true;
-                // break;
-
+        // ***** 命令(戻り値のない関数)の処理 *****
+        if (func_tbl_A.hasOwnProperty(sym)) {
+            func_tbl_A[sym]();
+            return true;
         }
 
         // ***** 追加命令(戻り値のない関数)の処理 *****
-        if (use_addfunc && typeof (statement_addfunc) == "function") {
-            addfunc_ret = {};
-            ret_addfunc = statement_addfunc(sym, addfunc_ret);
-            if (addfunc_ret.ret_flag == true) { return ret_addfunc; }
+        if (use_addfunc && addfunc_tbl_A.hasOwnProperty(sym)) {
+            addfunc_tbl_A[sym]();
+            return true;
         }
 
         // ***** 式の処理 *****
@@ -3429,15 +2130,11 @@ var Interpreter;
     // ***** 因子の処理 *****
     function factor() {
         var num;
-        var i, j, k;
+        var i;
         var ch;
         var sym;
         var pre_inc;
         var var_name;
-        var a1, a2, a3, a4, a5;
-        var x1, y1;
-        var img_data = {};
-        var ret_obj = {};
 
         var func_params = [];
         var funccall_info = {};
@@ -3447,852 +2144,41 @@ var Interpreter;
         var sleep_time_start;
         var sleep_time_count;
 
-        var addfunc_ret = {};
-        var ret_addfunc;
-
-        // ***** 戻り値の初期化 *****
-        num = 0;
         // ***** シンボル取り出し *****
         sym = symbol[pc++];
-        // ***** シンボルの場合分け *****
-        switch (sym.charAt(0)) {
-            case "a":
-                if (sym == "abs") {
-                    match("(");
-                    a1 = parseFloat(expression());
-                    match(")");
-                    num = Math.abs(a1);
-                    return num;
-                }
-                if (sym == "acos") {
-                    match("(");
-                    a1 = parseFloat(expression());
-                    match(")");
-                    num = Math.acos(a1) * 180 / Math.PI;
-                    return num;
-                }
-                if (sym == "arraylen") {
-                    match("(");
-                    // a1 = getvarname();
-                    a1 = getvarname(2); // ポインタ対応
-                    if (symbol[pc] == ")") {
-                        a2 = 0;
-                        a3 = null;
-                    } else {
-                        match(","); a2 = parseInt(expression(), 10);
-                        if (symbol[pc] == ")") {
-                            a3 = null;
-                        } else {
-                            match(","); a3 = parseInt(expression(), 10);
-                        }
-                    }
-                    match(")");
 
-                    // ***** NaN対策 *****
-                    a2 = a2 | 0;
-
-                    // ***** エラーチェック *****
-                    // if (a3 != null && (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size)) {
-                    if (!(a3 == null || (a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size))) {
-                        throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
-                    }
-
-                    // ***** カウント処理 *****
-                    num = 0;
-                    i = a2;
-                    do {
-                        // ***** 配列の存在チェック *****
-                        if (vars.checkVar(a1 + "[" + i + "]")) {
-                            num++;
-                        } else if (a3 == null) {
-                            break;
-                        }
-                        i++;
-                    } while (a3 == null || i <= a3);
-                    return num;
-                }
-                if (sym == "asin") {
-                    match("(");
-                    a1 = parseFloat(expression());
-                    match(")");
-                    num = Math.asin(a1) * 180 / Math.PI;
-                    return num;
-                }
-                if (sym == "atan") {
-                    match("(");
-                    a1 = parseFloat(expression());
-                    match(")");
-                    num = Math.atan(a1) * 180 / Math.PI;
-                    return num;
-                }
-                if (sym == "atan2") {
-                    match("("); a1 = parseFloat(expression());
-                    match(","); a2 = parseFloat(expression());
-                    match(")");
-                    // num = Math.atan2(a2, a1) * 180 / Math.PI;
-                    num = Math.atan2(a1, a2) * 180 / Math.PI;
-                    return num;
-                }
-                break;
-
-            case "c":
-                if (sym == "ceil") {
-                    match("(");
-                    a1 = parseFloat(expression());
-                    match(")");
-                    num = Math.ceil(a1);
-                    return num;
-                }
-                if (sym == "cos") {
-                    match("(");
-                    a1 = parseFloat(expression());
-                    match(")");
-                    if (sp_compati_mode == 1) {
-                        num = parseInt(Math.cos(a1 * Math.PI / 180) * 100, 10);
-                    } else {
-                        num = Math.cos(a1 * Math.PI / 180);
-                    }
-                    return num;
-                }
-                break;
-
-            case "d":
-                if (sym == "day") {
-                    num = new Date().getDate();
-                    return num;
-                }
-                if (sym == "dayofweek") {
-                    num = new Date().getDay(); // =0:日曜日,=1:月曜日 ... =6:土曜日
-                    return num;
-                }
-                if (sym == "dcos") {
-                    match("(");
-                    a1 = parseFloat(expression());
-                    match(")");
-                    num = Math.cos(a1 * Math.PI / 180);
-                    return num;
-                }
-                if (sym == "download") {
-                    match("(");
-                    a1 = String(expression());
-                    if (symbol[pc] == ")") {
-                        a2 = "";
-                        a3 = 0;
-                    } else {
-                        match(","); a2 = String(expression());
-                        if (symbol[pc] == ")") {
-                            a3 = 0;
-                        } else {
-                            match(","); a3 = parseInt(expression(), 10);
-                        }
-                    }
-                    match(")");
-                    if (a3 != 1) {
-                        Download.download(a1, a2);
-                    }
-                    num = "data:text/plain;charset=utf-8," + encodeURIComponent(a1);
-                    return num;
-                }
-                if (sym == "downloadimg") {
-                    match("(");
-                    if (symbol[pc] == ")") {
-                        a1 = "";
-                        a2 = 0;
-                    } else {
-                        a1 = String(expression());
-                        if (symbol[pc] == ")") {
-                            a2 = 0;
-                        } else {
-                            match(","); a2 = parseInt(expression(), 10);
-                        }
-                    }
-                    match(")");
-                    if (a2 != 1) {
-                        Download.downloadCanvas(can, a1);
-                    }
-                    num = can.toDataURL("image/png");
-                    return num;
-                }
-                if (sym == "dpow") {
-                    match("("); a1 = parseFloat(expression());
-                    match(","); a2 = parseFloat(expression());
-                    match(")");
-                    num = Math.pow(a1, a2);
-                    return num;
-                }
-                if (sym == "dsin") {
-                    match("(");
-                    a1 = parseFloat(expression());
-                    match(")");
-                    num = Math.sin(a1 * Math.PI / 180);
-                    return num;
-                }
-                if (sym == "dtan") {
-                    match("(");
-                    a1 = parseFloat(expression());
-                    match(")");
-                    num = Math.tan(a1 * Math.PI / 180);
-                    return num;
-                }
-                break;
-
-            case "e":
-                if (sym == "exp") {
-                    match("(");
-                    a1 = parseFloat(expression());
-                    match(")");
-                    num = Math.exp(a1);
-                    return num;
-                }
-                break;
-
-            case "f":
-                if (sym == "floor") {
-                    match("(");
-                    a1 = parseFloat(expression());
-                    match(")");
-                    num = Math.floor(a1);
-                    return num;
-                }
-                break;
-
-            case "g":
-                if (sym == "getoutdata") {
-                    match("(");
-                    a1 = parseInt(expression(), 10);
-                    match(")");
-                    if (out_data.hasOwnProperty(a1)) { num = out_data[a1]; } else { num = ""; }
-                    return num;
-                }
-                if (sym == "getpixel") {
-                    match("("); a1 = parseFloat(expression()); // X
-                    match(","); a2 = parseFloat(expression()); // Y
-                    match(")");
-                    // ***** 座標系の変換の分を補正 *****
-                    ret_obj = {};
-                    conv_axis_point(a1, a2, ret_obj);
-                    x1 = ret_obj.x;
-                    y1 = ret_obj.y;
-                    // ***** エラーチェック *****
-                    // if (x1 < 0 || x1 >= can.width || y1 < 0 || y1 >= can.height) { return 0; }
-                    if (!(x1 >= 0 && x1 < can.width && y1 >= 0 && y1 < can.height)) { return 0; }
-                    // ***** 画像データを取得 *****
-                    img_data = ctx.getImageData(x1, y1, 1, 1);
-                    // ***** 色情報を取得 *****
-                    num = (img_data.data[0] << 16) | (img_data.data[1] << 8) | img_data.data[2];
-                    return num;
-                }
-                break;
-
-            case "h":
-                if (sym == "height") {
-                    num = can1.height;
-                    return num;
-                }
-                if (sym == "hour") {
-                    num = new Date().getHours();
-                    return num;
-                }
-                break;
-
-            case "i":
-                if (sym == "imgheight") {
-                    match("(");
-                    // a1 = getvarname();
-                    a1 = getvarname(4); // 画像変数のポインタ対応
-                    match(")");
-                    // if (imgvars.hasOwnProperty(a1)) {
-                    if (hasOwn.call(imgvars, a1)) {
-                        num = imgvars[a1].can.height;
-                    } else { num = 0; }
-                    return num;
-                }
-                if (sym == "imgwidth") {
-                    match("(");
-                    // a1 = getvarname();
-                    a1 = getvarname(4); // 画像変数のポインタ対応
-                    match(")");
-                    // if (imgvars.hasOwnProperty(a1)) {
-                    if (hasOwn.call(imgvars, a1)) {
-                        num = imgvars[a1].can.width;
-                    } else { num = 0; }
-                    return num;
-                }
-                if (sym == "index") {
-                    match("("); a1 = String(expression());
-                    match(","); a2 = String(expression());
-                    if (symbol[pc] == ")") {
-                        a3 = 0;
-                    } else {
-                        match(","); a3 = parseInt(expression(), 10);
-                    }
-                    match(")");
-                    num = a1.indexOf(a2, a3);
-                    return num;
-                }
-                if (sym == "input") {
-                    match("(");
-                    if (symbol[pc] == ")") {
-                        a1 = 0;
-                    } else {
-                        a1 = parseInt(expression(), 10);
-                    }
-                    match(")");
-                    // ***** キー入力待ちはしない *****
-                    if (input_buf.length > 0) {
-                        num = input_buf.shift();
-                    } else {
-                        num = 0;
-                    }
-                    return num;
-                }
-                if (sym == "inputdlg") {
-                    match("("); a1 = String(expression());
-                    if (symbol[pc] == ")") {
-                        a2 = "";
-                    } else {
-                        match(","); a2 = String(expression());
-                        if (symbol[pc] == ")") {
-                            a3 = a4 = 0;
-                        } else {
-                            match(","); a3 = parseInt(expression(), 10); // 未使用
-                            match(","); a4 = parseInt(expression(), 10); // 未使用
-                        }
-                    }
-                    match(")");
-                    num = prompt(a1, a2) || ""; // nullのときは空文字列にする
-                    keyclear();
-                    mousebuttonclear();
-                    dlg_flag = true;
-                    return num;
-                }
-                if (sym == "int") {
-                    match("(");
-                    a1 = parseInt(expression(), 10);
-                    match(")");
-                    num = a1;
-                    return num;
-                }
-                break;
-
-            case "j":
-                if (sym == "join") {
-                    match("(");
-                    // a1 = getvarname();
-                    a1 = getvarname(2); // ポインタ対応
-                    match(","); a2 = String(expression());
-                    if (symbol[pc] == ")") {
-                        a3 = 0;
-                        a4 = null;
-                    } else {
-                        match(","); a3 = parseInt(expression(), 10);
-                        if (symbol[pc] == ")") {
-                            a4 = null;
-                        } else {
-                            match(","); a4 = parseInt(expression(), 10);
-                        }
-                    }
-                    match(")");
-
-                    // ***** NaN対策 *****
-                    a3 = a3 | 0;
-
-                    // ***** エラーチェック *****
-                    // if (a4 != null && (a4 - a3 + 1 < 1 || a4 - a3 + 1 > max_array_size)) {
-                    if (!(a4 == null || (a4 - a3 + 1 >= 1 && a4 - a3 + 1 <= max_array_size))) {
-                        throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
-                    }
-
-                    // ***** 連結処理 *****
-                    num = "";
-                    i = a3;
-                    do {
-                        // ***** 配列の存在チェック *****
-                        if (a4 == null && !vars.checkVar(a1 + "[" + i + "]")) { break; }
-
-                        if (num == "") {
-                            // num = num + vars[a1 + "[" + i + "]"];
-                            num = num + vars.getVarValue(a1 + "[" + i + "]");
-                        } else {
-                            // num = num + a2 + vars[a1 + "[" + i + "]"];
-                            num = num + a2 + vars.getVarValue(a1 + "[" + i + "]");
-                        }
-                        i++;
-                    } while (a4 == null || i <= a4);
-                    return num;
-                }
-                break;
-
-            case "k":
-                // if (sym == "keydown") { // 名前がキー定数とかぶったため変更
-                if (sym == "keydowncode") {
-                    num = key_down_code;
-                    return num;
-                }
-                if (sym == "keyinput") {
-                    match("(");
-                    if (symbol[pc] == ")") {
-                        a1 = 0;
-                    } else {
-                        a1 = parseInt(expression(), 10);
-                    }
-                    match(")");
-                    // ***** キー入力待ちはしない *****
-                    if (keyinput_buf.length > 0) {
-                        num = keyinput_buf.shift();
-                    } else {
-                        num = 0;
-                    }
-                    return num;
-                }
-                if (sym == "keyscan") {
-                    match("(");
-                    a1 = parseInt(expression(), 10);
-                    match(")");
-                    if (key_down_stat[a1] == true) { num = 1; } else { num = 0; }
-                    return num;
-                }
-                if (sym == "keypress") {
-                    num = key_press_code;
-                    return num;
-                }
-                break;
-
-            case "l":
-                if (sym == "load") {
-                    match("(");
-                    if (symbol[pc] == ")") {
-                        a1 = 0;
-                    } else {
-                        a1 = parseInt(expression(), 10);
-                    }
-                    match(")");
-                    if (!save_data.hasOwnProperty(a1)) {
-                        num = "0";
-                    } else {
-                        num = save_data[a1];
-                    }
-                    // ***** 正負と小数も含めた数値チェック(-0.123等) *****
-                    if (isFullDigit(num)) {
-                        num = +num; // 数値にする
-                    }
-                    return num;
-                }
-                if (sym == "loadimgstat") {
-                    match("(");
-                    // a1 = getvarname();
-                    a1 = getvarname(4); // 画像変数のポインタ対応
-                    match(")");
-                    // ***** 完了フラグをチェックして返す *****
-                    num = 0;
-                    // if (imgvars.hasOwnProperty(a1)) {
-                    if (hasOwn.call(imgvars, a1)) {
-                        if (imgvars[a1].hasOwnProperty("loaded")) {
-                            if (imgvars[a1].loaded == false) {
-                                num = 1;
-                            }
-                        }
-                    }
-                    return num;
-                }
-                if (sym == "log") {
-                    match("("); a1 = parseFloat(expression());
-                    if (symbol[pc] == ")") {
-                        a2 = 0;
-                    } else {
-                        match(","); a2 = parseFloat(expression());
-                    }
-                    match(")");
-                    if (a2 == 0) {
-                        num = Math.log(a1);
-                    } else {
-                        num = Math.log(a1) / Math.log(a2);
-                    }
-                    return num;
-                }
-                break;
-
-            case "m":
-                if (sym == "max") {
-                    match("("); a1 = parseFloat(expression());
-                    match(","); a2 = parseFloat(expression());
-                    num = Math.max(a1, a2);
-                    while (symbol[pc] == ",") {
-                        pc++;
-                        a3 = parseFloat(expression());
-                        num = Math.max(num, a3);
-                    }
-                    match(")");
-                    return num;
-                }
-                if (sym == "millisecond") {
-                    num = new Date().getMilliseconds();
-                    return num;
-                }
-                if (sym == "min") {
-                    match("("); a1 = parseFloat(expression());
-                    match(","); a2 = parseFloat(expression());
-                    num = Math.min(a1, a2);
-                    while (symbol[pc] == ",") {
-                        pc++;
-                        a3 = parseFloat(expression());
-                        num = Math.min(num, a3);
-                    }
-                    match(")");
-                    return num;
-                }
-                if (sym == "minute") {
-                    num = new Date().getMinutes();
-                    return num;
-                }
-                if (sym == "month") {
-                    num = new Date().getMonth() + 1; // 1から12にするため1を加算
-                    return num;
-                }
-                if (sym == "mousex") {
-                    num = mousex;
-                    return num;
-                }
-                if (sym == "mousey") {
-                    num = mousey;
-                    return num;
-                }
-                if (sym == "mousebtn") {
-                    num = 0;
-                    if (mouse_btn_stat[0] == true) { num = num | 1; }        // 左ボタン
-                    if (mouse_btn_stat[1] == true) { num = num | (1 << 2); } // 中ボタン(シフト値1でないので注意)
-                    if (mouse_btn_stat[2] == true) { num = num | (1 << 1); } // 右ボタン(シフト値2でないので注意)
-                    return num;
-                }
-                break;
-
-            case "p":
-                if (sym == "pow") {
-                    match("("); a1 = parseFloat(expression());
-                    match(","); a2 = parseFloat(expression());
-                    match(")");
-                    num = Math.pow(a1, a2);
-                    return num;
-                }
-                break;
-
-            case "P":
-                if (sym == "PI") {
-                    num = Math.PI;
-                    return num;
-                }
-                break;
-
-            case "r":
-                if (sym == "rand") {
-                    // min から max までの整数の乱数を返す
-                    // (Math.round() を用いると、非一様分布になるのでNG)
-                    // num = Math.floor(Math.random() * (max - min + 1)) + min;
-                    num = Math.floor(Math.random() * (2147483647 - (-2147483648) + 1)) + (-2147483648);
-                    return num;
-                }
-                if (sym == "random") {
-                    num = Math.random();
-                    return num;
-                }
-                if (sym == "replace") {
-                    match("("); a1 = String(expression());
-                    match(","); a2 = String(expression());
-                    match(","); a3 = String(expression());
-                    if (symbol[pc] == ")") {
-                        a4 = 0;
-                        a5 = -1;
-                    } else {
-                        match(","); a4 = parseInt(expression(), 10);
-                        if (symbol[pc] == ")") {
-                            a5 = -1;
-                        } else {
-                            match(","); a5 = parseInt(expression(), 10);
-                        }
-                    }
-                    match(")");
-                    if (a1.length == 0 || a2.length == 0) {
-                        num = a1;
-                    } else {
-                        i = 0;
-                        j = a4;
-                        k = 0;
-                        num = a1.substring(0, j);
-                        while (k >= 0) {
-                            if (a5 >= 0 && i >= a5) { break; }
-                            k = a1.indexOf(a2, j);
-                            if (k >= 0) {
-                                num = num + a1.substring(j, k) + a3;
-                                i++;
-                                j = k + a2.length;
-                            }
-                        }
-                        num = num + a1.substring(j);
-                    }
-                    return num;
-                }
-                break;
-
-            case "s":
-                if (sym == "scan") {
-                    num = key_scan_stat;
-                    return num;
-                }
-                if (sym == "second") {
-                    num = new Date().getSeconds();
-                    return num;
-                }
-                if (sym == "setscl") {
-                    match("("); a1 = parseFloat(expression());
-                    if (symbol[pc] == ")") {
-                        a2 = 0;
-                    } else {
-                        match(","); a2 = parseFloat(expression());
-                    }
-                    match(")");
-                    a3 = Math.pow(10, a2);
-                    num = Math.round(a1 * a3) / a3;
-                    return num;
-                }
-                if (sym == "sin") {
-                    match("(");
-                    a1 = parseFloat(expression());
-                    match(")");
-                    if (sp_compati_mode == 1) {
-                        num = parseInt(Math.sin(a1 * Math.PI / 180) * 100, 10);
-                    } else {
-                        num = Math.sin(a1 * Math.PI / 180);
-                    }
-                    return num;
-                }
-                if (sym == "split") {
-                    match("(");
-                    // a1 = getvarname();
-                    a1 = getvarname(2); // ポインタ対応
-                    match(","); a2 = String(expression());
-                    match(","); a3 = String(expression());
-                    if (symbol[pc] == ")") {
-                        a4 = 0;
-                    } else {
-                        match(","); a4 = parseInt(expression(), 10);
-                    }
-                    match(")");
-                    if (a2.length == 0 || a3.length == 0) {
-                        num = 0;
-                    } else {
-                        i = 0;
-                        j = 0;
-                        k = 0;
-                        while (k >= 0) {
-                            if (a4 > 0 && i >= (a4 - 1)) { break; }
-                            k = a2.indexOf(a3, j);
-                            if (k >= 0) {
-                                // vars[a1 + "[" + i + "]"] = a2.substring(j, k);
-                                vars.setVarValue(a1 + "[" + i + "]", a2.substring(j, k));
-                                i++;
-                                j = k + 1;
-                            }
-                        }
-                        // vars[a1 + "[" + i + "]"] = a2.substring(j);
-                        vars.setVarValue(a1 + "[" + i + "]", a2.substring(j));
-                        num = i + 1;
-                    }
-                    return num;
-                }
-                if (sym == "spweb") {
-                    num = 1;
-                    return num;
-                }
-                if (sym == "sqrt") {
-                    match("(");
-                    a1 = parseFloat(expression());
-                    match(")");
-                    num = Math.sqrt(a1);
-                    return num;
-                }
-                if (sym == "sthigh") {
-                    num = font_size;
-                    return num;
-                }
-                if (sym == "strat") {
-                    match("("); a1 = String(expression());
-                    match(","); a2 = parseInt(expression(), 10);
-                    match(")");
-                    num = a1.charAt(a2);
-                    return num;
-                }
-                if (sym == "strlen") {
-                    match("("); 
-                    a1 = String(expression());
-                    match(")");
-                    num = a1.length;
-                    return num;
-                }
-                if (sym == "stwide") {
-                    match("(");
-                    a1 = String(expression());
-                    match(")");
-                    num = ctx.measureText(a1).width;
-                    return num;
-                }
-                if (sym == "substr") {
-                    match("("); a1 = String(expression());
-                    match(","); a2 = parseInt(expression(), 10);
-                    if (symbol[pc] == ")") {
-                        a3 = a1.length - a2;
-                    } else {
-                        match(","); a3 = parseInt(expression(), 10);
-                    }
-                    match(")");
-                    num = a1.substring(a2, a2 + a3);
-                    return num;
-                }
-                break;
-
-            case "t":
-                if (sym == "tan") {
-                    match("(");
-                    a1 = parseFloat(expression());
-                    match(")");
-                    if (sp_compati_mode == 1) {
-                        num = parseInt(Math.tan(a1 * Math.PI / 180) * 100, 10);
-                    } else {
-                        num = Math.tan(a1 * Math.PI / 180);
-                    }
-                    return num;
-                }
-                if (sym == "tick") {
-                    // num = new Date().getTime();
-                    num = Date.now();
-                    return num;
-                }
-                if (sym == "trim") {
-                    match("(");
-                    a1 = String(expression());
-                    match(")");
-                    num = a1.replace(/^\s+|\s+$/g,"");
-                    return num;
-                }
-                break;
-
-            case "w":
-                if (sym == "width") {
-                    num = can1.width;
-                    return num;
-                }
-                break;
-
-            case "y":
-                if (sym == "year") {
-                    num = new Date().getFullYear();
-                    return num;
-                }
-                if (sym == "yndlg") {
-                    match("("); a1 = String(expression());
-                    if (symbol[pc] != ")") {
-                        match(","); a1 = String(expression());
-                    }
-                    match(")");
-                    if (confirm(a1)) { num = "YES"; } else { num = "NO"; }
-                    keyclear();
-                    mousebuttonclear();
-                    dlg_flag = true;
-                    return num;
-                }
-                break;
-
-            case "!":
-                num = (factor() == 0) ? 1 : 0;
-                return num;
-                // break;
-
-            case "~":
-                num = ~factor();
-                return num;
-                // break;
-
-            case '"':
-                if (sym.length > 2) {
-                    num = sym.substring(1, sym.length - 1);
-                } else {
-                    num = "";
-                }
-                return num;
-                // break;
-
-            case "(":
-                num = expression();
-                while (pc < symbol_len) {
-                    if (symbol[pc] == ",") {
-                        pc++;
-                        num = expression();
-                        continue;
-                    }
-                    break;
-                }
-                match(")");
-                return num;
-                // break;
-
-            case "+":
-                if (sym == "+") {
-                    num = factor();
-                    return num;
-                }
-                break;
-
-            case "-":
-                if (sym == "-") {
-                    num = -factor();
-                    return num;
-                }
-                break;
-
-            case "&":
-                // ***** アドレス的なもの *****
-                // ***** (変数名を取得して返す) *****
-                if (sym == "&") {
-                    if (symbol[pc] == "(") {
-                        match("(");
-                        // var_name = getvarname();
-                        var_name = getvarname(2); // ポインタ対応
-                        match(")");
-                    } else {
-                        // var_name = getvarname();
-                        var_name = getvarname(2); // ポインタ対応
-                    }
-                    // // ***** 変数がなければ作成 *****
-                    // // if (typeof (vars[var_name]) == "undefined") { vars[var_name] = 0; }
-                    // // if (!vars.hasOwnProperty(var_name)) { vars[var_name] = 0; }
-                    // vars.getVarValue(var_name);
-                    return var_name;
-                }
-                break;
-
+        // ***** 命令(戻り値のある関数)の処理 *****
+        if (func_tbl_B.hasOwnProperty(sym)) {
+            num = func_tbl_B[sym]();
+            return num;
         }
 
         // ***** 追加命令(戻り値のある関数)の処理 *****
-        if (use_addfunc && typeof (factor_addfunc) == "function") {
-            addfunc_ret = {};
-            ret_addfunc = factor_addfunc(sym, addfunc_ret);
-            if (addfunc_ret.ret_flag == true) { return ret_addfunc; }
+        if (use_addfunc && addfunc_tbl_B.hasOwnProperty(sym)) {
+            num = addfunc_tbl_B[sym]();
+            return num;
         }
 
-        // ***** 「++」「--」のとき *****
+        // ***** プレインクリメント(「++」「--」)のとき *****
         pre_inc = 0;
-        if (sym == "++") {
-            pre_inc = 1;
-            // ***** シンボル取り出し *****
-            sym = symbol[pc++];
-        }
-        if (sym == "--") {
-            pre_inc = -1;
+        if (sym == "++") { pre_inc = 1; }
+        if (sym == "--") { pre_inc = -1; }
+        if (pre_inc != 0) {
             // ***** シンボル取り出し *****
             sym = symbol[pc++];
         }
 
         // ***** 1文字取り出す *****
         ch = sym.charAt(0);
+        // ***** 文字列のとき *****
+        if (ch == '"') {
+            if (sym.length > 2) {
+                num = sym.substring(1, sym.length - 1);
+            } else {
+                num = "";
+            }
+            return num;
+        }
         // ***** 数値のとき *****
         if (isDigit(ch)) {
             // ***** 数値を返す *****
@@ -4318,7 +2204,7 @@ var Interpreter;
                 if (ch == "*") {
                     // ***** 変数名の先頭の「a\」をすべて削除 *****
                     if (var_name.substring(0, 2) == "a\\") {
-                        do { var_name = var_name.substring(2); } while (var_name.substring(0, 2) == "a\\");
+                       var_name = var_name.substring(var_name.lastIndexOf("a\\") + 2);
                     }
                     // ***** 変数名を関数名とする *****
                     sym = var_name;
@@ -4333,7 +2219,7 @@ var Interpreter;
                 } else {
                     while (pc < symbol_len) {
                         func_params.push(expression());
-                        if (symbol[pc] == ",") { 
+                        if (symbol[pc] == ",") {
                             pc++;
                             continue;
                         }
@@ -4488,7 +2374,7 @@ var Interpreter;
             // // if (typeof (vars[var_name]) == "undefined") { vars[var_name] = 0; }
             // // if (!vars.hasOwnProperty(var_name)) { vars[var_name] = 0; }
             // vars.getVarValue(var_name);
-            // ***** プレ インクリメントのとき *****
+            // ***** プレインクリメント(「++」「--」)のとき *****
             if (pre_inc != 0) {
                 // vars[var_name] += pre_inc;
                 // num = vars[var_name];
@@ -4500,7 +2386,7 @@ var Interpreter;
                 vars.setVarValue(var_name, num);
                 return num;
             }
-            // ***** ポスト インクリメントのとき *****
+            // ***** ポストインクリメント(「++」「--」)のとき *****
             if (symbol[pc] == "++") {
                 pc++;
                 // num = vars[var_name];
@@ -4524,7 +2410,9 @@ var Interpreter;
             if (symbol[pc] == "=") {
                 pc++;
                 // vars[var_name] = expression();
-                vars.setVarValue(var_name, expression());
+                num = expression();
+                vars.setVarValue(var_name, num);
+                return num;
             }
             if (symbol[pc] == "+=") {
                 pc++;
@@ -4534,48 +2422,54 @@ var Interpreter;
                 num = (+vars.getVarValue(var_name)) + (+expression()); // 文字の連結にならないように数値にする
 
                 vars.setVarValue(var_name, num);
+                return num;
             }
             if (symbol[pc] == "-=") {
                 pc++;
                 // vars[var_name] = vars[var_name] - expression();
                 num = vars.getVarValue(var_name) - expression();
                 vars.setVarValue(var_name, num);
+                return num;
             }
             if (symbol[pc] == "*=") {
                 pc++;
                 // vars[var_name] = vars[var_name] * expression();
                 num = vars.getVarValue(var_name) * expression();
                 vars.setVarValue(var_name, num);
+                return num;
             }
             if (symbol[pc] == "/=") {
                 pc++;
                 if (sp_compati_mode == 1) {
                     // vars[var_name] = parseInt(vars[var_name] / expression(), 10);
                     num = parseInt(vars.getVarValue(var_name) / expression(), 10);
-                    vars.setVarValue(var_name, num);
                 } else {
                     // vars[var_name] = vars[var_name] / expression();
                     num = vars.getVarValue(var_name) / expression();
-                    vars.setVarValue(var_name, num);
                 }
+                vars.setVarValue(var_name, num);
+                return num;
             }
             if (symbol[pc] == "%=") {
                 pc++;
                 // vars[var_name] = vars[var_name] % expression();
                 num = vars.getVarValue(var_name) % expression();
                 vars.setVarValue(var_name, num);
+                return num;
             }
             if (symbol[pc] == "\\=") {
                 pc++;
                 // vars[var_name] = parseInt(vars[var_name] / expression(), 10);
                 num = parseInt(vars.getVarValue(var_name) / expression(), 10);
                 vars.setVarValue(var_name, num);
+                return num;
             }
             if (symbol[pc] == ".=") {
                 pc++;
                 // vars[var_name] = String(vars[var_name]) + String(expression());
                 num = String(vars.getVarValue(var_name)) + String(expression());
                 vars.setVarValue(var_name, num);
+                return num;
             }
             // ***** 変数の値を返す *****
             // num = vars[var_name];
@@ -4683,7 +2577,7 @@ var Interpreter;
         if (mode == 4) {
             // ***** 変数名の先頭の「a\」をすべて削除 *****
             if (var_name.substring(0, 2) == "a\\") {
-                do { var_name = var_name.substring(2); } while (var_name.substring(0, 2) == "a\\");
+                var_name = var_name.substring(var_name.lastIndexOf("a\\") + 2);
             }
         }
         return var_name;
@@ -4712,7 +2606,7 @@ var Interpreter;
                 if (hasOwn.call(label, lbl_name)) {
                     debugpc = i - 1;
                     pc = i + 1;
-                    throw new Error("ラベル '" + lbl_name + "' の定義が重複しています。"); 
+                    throw new Error("ラベル '" + lbl_name + "' の定義が重複しています。");
                 }
                 label[lbl_name] = i + 1;
                 continue;
@@ -4729,7 +2623,7 @@ var Interpreter;
                 if (hasOwn.call(func, func_name)) {
                     debugpc = i - 1;
                     pc = i + 1;
-                    throw new Error("関数 '" + func_name + "' の定義が重複しています。"); 
+                    throw new Error("関数 '" + func_name + "' の定義が重複しています。");
                 }
                 func[func_name] = i + 1;
                 j = i;
@@ -4779,8 +2673,7 @@ var Interpreter;
 
     // ***** 文(ステートメント)のコンパイル *****
     function c_statement(sym_start, sym_end, break_lbl, continue_lbl) {
-        var i, j, k;
-        var k2;
+        var i, j, k, k2;
         var sym;
         var sym_line;
 
@@ -5405,7 +3298,7 @@ var Interpreter;
 
         // ***** 終端追加 *****
         src = src + " end end end end";
-        // ***** ソースの解析ループ *****
+        // ***** ソース解析のループ *****
         i = 0;
         line_no = 1;
         symbol = [];
@@ -5563,1547 +3456,4024 @@ var Interpreter;
     }
 
 
-    // ***** 以下は追加命令の処理等 *****
+    // ***** 命令(戻り値のない関数)の定義情報の生成 *****
+    function make_func_tbl_A() {
+        // ***** 命令(戻り値のない関数)の定義情報の初期化 *****
+        func_tbl_A = {};
+        // ***** 命令(戻り値のない関数)の定義情報の生成 *****
+        make_one_func_tbl_A("addfunc", function () {
+            var a1;
 
+            match("(");
+            a1 = parseInt(expression(), 10);
+            match(")");
+            if (a1 == 0) {
+                use_addfunc = false;
+            } else {
+                use_addfunc = true;
+            }
+            return true;
+        });
+        make_one_func_tbl_A("arc", function () {
+            var a1, a2, a3, a4;
+            var i;
+            var a, b, x0, y0;
 
-    // ***** 追加命令(戻り値のない関数)の処理 *****
-    function statement_addfunc(sym, addfunc_ret) {
-        var i, j;
-        var a1, a2, a3, a4, a5;
-        var b1, b2, b3;
-        var ch;
-        var st1, st2;
-        var x0, y0, x1, y1, x2, y2, x3, y3, x4, y4;
-        var w1, h1, dx1, dy1, sx1, sy1, e1;
-        var r1, a, b, x_old, y_old, drawflag;
-        var img_data;
-        var col, col_r, col_g, col_b, alpha, threshold, border_mode;
-        var i_start, i_end, i_plus;
-        var paint_mode, ffill_obj;
-        var ret_obj;
+            match("("); a1 = parseFloat(expression()); // X
+            match(","); a2 = parseFloat(expression()); // Y
+            match(","); a3 = parseFloat(expression()); // W
+            if (symbol[pc] == ")") {
+                a4 = a3;
+            } else {
+                match(","); a4 = parseFloat(expression()); // H
+            }
+            match(")");
+            a = a3 / 2;  // X方向の半径
+            b = a4 / 2;  // Y方向の半径
+            x0 = a1 + a; // 中心のX座標
+            y0 = a2 + b; // 中心のY座標
+            ctx.beginPath();
+            ctx.moveTo(a + x0, y0);
+            for (i = 1; i < 100; i++) {
+                ctx.lineTo(a * Math.cos(2 * Math.PI * i / 100) + x0, b * Math.sin(2 * Math.PI * i / 100) + y0);
+            }
+            ctx.closePath();
+            ctx.stroke();
+            // 以下は不要になったもよう(Chrome v27)
+            // // ***** Chrome v23 で円が閉じない件の対策(中心を0.5ずらしたとき) *****
+            // ctx.fillRect(a + x0, y0, 0.5, 0.5);
+            return true;
+        });
+        make_one_func_tbl_A("clear", function () {
+            var a1, a2, a3, a4;
 
-        var mis, mis_no;
-        var no, useflag, x100, y100, degree, speed100;
-        var useflag_var_name, x100_var_name, y100_var_name;
-        var degree_var_name, speed100_var_name, ch_var_name;
-        var min_x, max_x, min_y, max_y, div_x, div_y;
-        var range_use, min_no, max_no;
+            match("("); a1 = parseInt(expression(), 10); // X
+            match(","); a2 = parseInt(expression(), 10); // Y
+            match(","); a3 = parseInt(expression(), 10); // W
+            match(","); a4 = parseInt(expression(), 10); // H
+            match(")");
+            ctx.clearRect(a1, a2, a3, a4);
+            return true;
+        });
+        make_one_func_tbl_A("clearkey", function () {
+            match("(");
+            match(")");
+            input_buf = [];
+            keyinput_buf = [];
+            return true;
+        });
+        make_one_func_tbl_A("clearvar", function () {
+            match("(");
+            match(")");
+            // vars = {};
+            vars.clearVars();
+            imgvars = {};
+            stimg = {};
+            missile = {};
+            // ***** 音楽全停止 *****
+            if (typeof (audstopall) == "function") { audstopall(); }
+            return true;
+        });
+        make_one_func_tbl_A("clip", function () {
+            var a1, a2, a3, a4;
 
-        // ***** 追加命令処理フラグON *****
-        addfunc_ret.ret_flag = true;
-        // ***** シンボルの場合分け *****
-        switch (sym.charAt(0)) {
+            match("("); a1 = parseInt(expression(), 10); // X
+            match(","); a2 = parseInt(expression(), 10); // Y
+            match(","); a3 = parseInt(expression(), 10); // W
+            match(","); a4 = parseInt(expression(), 10); // H
+            match(")");
 
-            case "a":
-                if (sym == "audmode") {
-                    match("("); 
-                    a1 = parseInt(expression(), 10);
-                    match(")");
-                    aud_mode = a1;
-                    return true;
-                }
-                if (sym == "audmake") {
-                    match("("); a1 = parseInt(expression(), 10);
-                    match(","); a2 = String(expression());
-                    match(")");
+            // ***** Canvasの各設定のリセット2 *****
+            reset_canvas_setting2(ctx); // clipを解除する方法がrestoreしかない
 
-                    // ***** 音楽モードチェック *****
-                    if (aud_mode == 1) {
-                        if (!MMLPlayer.AudioContext) { throw new Error("音楽演奏機能が利用できません。"); }
-                    } else if (aud_mode == 2) {
-                        if (!MMLPlayer.AudioContext) { return true; }
-                    } else {
-                        return true;
-                    }
+            ctx.beginPath();
+            ctx.rect(a1, a2, a3, a4);
+            ctx.clip();
+            return true;
+        });
+        make_one_func_tbl_A("cls", function () {
+            match("(");
+            match(")");
+            // ***** 画面クリア *****
+            // ctx.clearRect(-ctx_originx, -ctx_originy, can.width, can.height);
+            ctx.setTransform(1, 0, 0, 1, 0, 0);      // 座標系を元に戻す
+            ctx.clearRect(0, 0, can.width, can.height);  // 画面クリア
+            set_canvas_axis(ctx);                    // 座標系を再設定
+            return true;
+        });
+        make_one_func_tbl_A("col", function () {
+            var a1;
+            var col_r, col_g, col_b;
 
-                    if (audplayer.hasOwnProperty(a1)) {
-                        audplayer[a1].mmlplayer.stop();
-                        delete audplayer[a1];
-                    }
-                    audplayer[a1] = {};
-                    audplayer[a1].mmlplayer = new MMLPlayer();
-                    audplayer[a1].mmlplayer.setMML(a2);
-                    audmake_flag = true;
-                    return true;
-                }
-                if (sym == "audmakedata") {
-                    match("("); a1 = parseInt(expression(), 10);
-                    match(","); a2 = String(expression()); // 音楽データ(data URI scheme)
-                    match(")");
+            match("(");
+            a1 = parseInt(expression(), 10); // RGB
+            match(")");
+            col_r = (a1 & 0xff0000) >> 16; // R
+            col_g = (a1 & 0x00ff00) >> 8;  // G
+            col_b = (a1 & 0x0000ff);       // B
+            color_val = "rgb(" + col_r + "," + col_g + "," + col_b + ")";
+            ctx.strokeStyle = color_val;
+            ctx.fillStyle = color_val;
+            return true;
+        });
+        make_one_func_tbl_A("color", function () {
+            var a1, a2, a3;
+            var col_r, col_g, col_b;
 
-                    // ***** 音楽モードチェック *****
-                    if (aud_mode == 1) {
-                        if (!MMLPlayer.AudioContext) { throw new Error("音楽演奏機能が利用できません。"); }
-                    } else if (aud_mode == 2) {
-                        if (!MMLPlayer.AudioContext) { return true; }
-                    } else {
-                        return true;
-                    }
+            match("("); a1 = parseInt(expression(), 10); // R
+            match(","); a2 = parseInt(expression(), 10); // G
+            match(","); a3 = parseInt(expression(), 10); // B
+            match(")");
+            col_r = a1;
+            col_g = a2;
+            col_b = a3;
+            color_val = "rgb(" + col_r + "," + col_g + "," + col_b + ")";
+            ctx.strokeStyle = color_val;
+            ctx.fillStyle = color_val;
+            return true;
+        });
+        make_one_func_tbl_A("copy", function () {
+            var a1, a2, a3, a4, a5, a6;
+            var i;
+            var i_start, i_end, i_plus;
 
-                    if (audplayer.hasOwnProperty(a1)) {
-                        audplayer[a1].mmlplayer.stop();
-                        delete audplayer[a1];
-                    }
-                    audplayer[a1] = {};
-                    audplayer[a1].mmlplayer = new MMLPlayer();
-                    audplayer[a1].mmlplayer.setAUDData(a2);
-                    audmake_flag = true;
-                    return true;
-                }
-                if (sym == "audplay") {
-                    match("("); a1 = parseInt(expression(), 10);
-                    if (symbol[pc] == ")") {
-                        a2 = 0;
-                    } else {
-                        match(","); a2 = parseInt(expression(), 10);
-                    }
-                    match(")");
+            match("(");
+            // a1 = getvarname();
+            a1 = getvarname(2); // ポインタ対応
+            match(","); a2 = parseInt(expression(), 10);
+            match(",");
+            // a3 = getvarname();
+            a3 = getvarname(2); // ポインタ対応
+            match(","); a4 = parseInt(expression(), 10);
+            match(","); a5 = parseInt(expression(), 10);
+            match(")");
 
-                    // ***** 音楽モードチェック *****
-                    if (aud_mode == 1) {
-                        if (!MMLPlayer.AudioContext) { throw new Error("音楽演奏機能が利用できません。"); }
-                    } else if (aud_mode == 2) {
-                        if (!MMLPlayer.AudioContext) { return true; }
-                    } else {
-                        return true;
-                    }
+            // ***** NaN対策 *****
+            a2 = a2 | 0;
+            a4 = a4 | 0;
+            a5 = a5 | 0;
 
-                    if (audplayer.hasOwnProperty(a1)) {
-                        audplayer[a1].mmlplayer.play(a2);
-                    } else {
-                        throw new Error("音楽プレイヤー" + a1 + " は作成されていません。");
-                    }
-                    return true;
-                }
-                if (sym == "audspeedrate") {
-                    match("("); a1 = parseInt(expression(), 10);
-                    match(","); a2 = parseFloat(expression());
-                    match(")");
+            // ***** エラーチェック *****
+            // if (a5 > max_array_size) {
+            if (!(a5 <= max_array_size)) {
+                throw new Error("処理する配列の個数が不正です。" + max_array_size + "以下である必要があります。");
+            }
+            if (a5 <= 0) { return true; }
+            // ***** コピー処理 *****
+            if (a1 == a3 && a2 > a4) { // 前から処理か後から処理か
+                i_start = 0;
+                i_end = a5 - 1;
+                i_plus = 1;
+            } else {
+                i_start = a5 - 1;
+                i_end = 0;
+                i_plus = -1;
+            }
+            i = i_start;
+            while (true) {
 
-                    // ***** 音楽モードチェック *****
-                    if (aud_mode == 1) {
-                        if (!MMLPlayer.AudioContext) { throw new Error("音楽演奏機能が利用できません。"); }
-                    } else if (aud_mode == 2) {
-                        if (!MMLPlayer.AudioContext) { return true; }
-                    } else {
-                        return true;
-                    }
+                // // ***** 配列の存在チェック *****
+                // if (!vars.checkVar(a1 + "[" + (a2 + i) + "]")) { break; }
 
-                    if (audplayer.hasOwnProperty(a1)) {
-                        audplayer[a1].mmlplayer.setSpeedRate(a2);
-                    } else {
-                        throw new Error("音楽プレイヤー" + a1 + " は作成されていません。");
-                    }
-                    return true;
-                }
-                if (sym == "audstop") {
-                    match("(");
-                    a1 = parseInt(expression(), 10);
-                    match(")");
-
-                    // ***** 音楽モードチェック *****
-                    if (aud_mode == 1) {
-                        if (!MMLPlayer.AudioContext) { throw new Error("音楽演奏機能が利用できません。"); }
-                    } else if (aud_mode == 2) {
-                        if (!MMLPlayer.AudioContext) { return true; }
-                    } else {
-                        return true;
-                    }
-
-                    if (audplayer.hasOwnProperty(a1)) {
-                        audplayer[a1].mmlplayer.stop();
-                    } else {
-                        throw new Error("音楽プレイヤー" + a1 + " は作成されていません。");
-                    }
-                    return true;
-                }
-                if (sym == "audvolume") {
-                    match("("); a1 = parseInt(expression(), 10);
-                    match(","); a2 = parseInt(expression(), 10);
-                    match(")");
-
-                    // ***** 音楽モードチェック *****
-                    if (aud_mode == 1) {
-                        if (!MMLPlayer.AudioContext) { throw new Error("音楽演奏機能が利用できません。"); }
-                    } else if (aud_mode == 2) {
-                        if (!MMLPlayer.AudioContext) { return true; }
-                    } else {
-                        return true;
-                    }
-
-                    if (audplayer.hasOwnProperty(a1)) {
-                        audplayer[a1].mmlplayer.setVolume(a2);
-                    } else {
-                        throw new Error("音楽プレイヤー" + a1 + " は作成されていません。");
-                    }
-                    return true;
-                }
+                // a6 = vars[a1 + "[" + (a2 + i) + "]"];
+                a6 = vars.getVarValue(a1 + "[" + (a2 + i) + "]");
+                // vars[a3 + "[" + (a4 + i) + "]"] = a6;
+                vars.setVarValue(a3 + "[" + (a4 + i) + "]", a6);
+                i += i_plus;
+                if (i_plus > 0 && i <= i_end) { continue; }
+                if (i_plus < 0 && i >= i_end) { continue; }
                 break;
+            }
+            return true;
+        });
+        make_one_func_tbl_A("copyall", function () {
+            var a1, a2;
 
-            case "c":
-                if (sym == "colalpha") {
-                    match("("); a1 = parseInt(expression(), 10); // RGB
-                    match(","); a2 = parseInt(expression(), 10); // alpha
-                    match(")");
-                    col_r = (a1 & 0xff0000) >> 16; // R
-                    col_g = (a1 & 0x00ff00) >> 8;  // G
-                    col_b = (a1 & 0x0000ff);       // B
-                    alpha = a2 / 255;
-                    color_val = "rgba(" + col_r + "," + col_g + "," + col_b + "," + alpha + ")";
-                    ctx.strokeStyle = color_val;
-                    ctx.fillStyle = color_val;
-                    return true;
-                }
-                if (sym == "coloralpha") {
-                    match("("); a1 = parseInt(expression(), 10); // R
-                    match(","); a2 = parseInt(expression(), 10); // G
-                    match(","); a3 = parseInt(expression(), 10); // B
-                    match(","); a4 = parseInt(expression(), 10); // alpha
-                    match(")");
-                    col_r = a1;
-                    col_g = a2;
-                    col_b = a3;
-                    alpha = a4 / 255;
-                    color_val = "rgba(" + col_r + "," + col_g + "," + col_b + "," + alpha + ")";
-                    ctx.strokeStyle = color_val;
-                    ctx.fillStyle = color_val;
-                    return true;
-                }
-                break;
+            match("(");
+            // a1 = getvarname();
+            a1 = getvarname(2); // ポインタ対応
+            match(",");
+            // a2 = getvarname();
+            a2 = getvarname(2); // ポインタ対応
+            match(")");
+            // ***** 配列変数の一括コピー *****
+            vars.copyArray(a1, a2);
+            return true;
+        });
+        make_one_func_tbl_A("disarray", function () {
+            var a1, a2, a3;
+            var i;
 
-            case "d":
-                if (sym == "disaud") {
-                    match("(");
-                    a1 = parseInt(expression(), 10);
-                    match(")");
-                    if (audplayer.hasOwnProperty(a1)) {
-                        audplayer[a1].mmlplayer.stop();
-                        delete audplayer[a1];
-                    }
-                    return true;
-                }
-                if (sym == "dismis") {
-                    match("(");
-                    a1 = parseInt(expression(), 10);
-                    match(")");
-                    if (missile.hasOwnProperty(a1)) {
-                        delete missile[a1];
-                    }
-                    // for (var prop_name in missile) { DebugShow(prop_name + " "); } DebugShow("\n");
-                    return true;
-                }
-                if (sym == "disstrimg") {
-                    match("(");
-                    a1 = String(expression());
-                    match(")");
-                    ch = a1.charAt(0); // 1文字だけにする
-                    if (ch.length == 0) { return true; }
-                    if (stimg.hasOwnProperty(ch)) {
-                        delete stimg[ch];
-                    }
-                    // for (var prop_name in stimg) { DebugShow(prop_name + " "); } DebugShow("\n");
-                    return true;
-                }
-                break;
-
-            case "f":
-                if (sym == "fillarea") {
-                    match("("); a1 = parseFloat(expression()); // X
-                    match(","); a2 = parseFloat(expression()); // Y
-                    if (symbol[pc] == ")") {
-                        threshold = 0;
-                        col = 0;
-                        paint_mode = 0;
-                    } else {
-                        match(","); threshold = parseInt(expression(), 10); // しきい値
-                        if (symbol[pc] == ")") {
-                            col = 0;
-                            paint_mode = 0;
-                        } else {
-                            match(","); col = parseInt(expression(), 10); // 境界色 RGB
-                            paint_mode = 1;
-                        }
-                    }
-                    match(")");
-                    // ***** 座標系の変換の分を補正 *****
-                    ret_obj = {};
-                    conv_axis_point(a1, a2, ret_obj);
-                    x1 = ret_obj.x;
-                    y1 = ret_obj.y;
-                    // ***** 領域塗りつぶし *****
-                    ffill_obj = new FloodFill(can, ctx, x1, y1, threshold, paint_mode, col, 255);
-                    ctx.setTransform(1, 0, 0, 1, 0, 0);      // 座標系を元に戻す
-                    ffill_obj.fill();  // 塗りつぶし処理
-                    set_canvas_axis(ctx);                    // 座標系を再設定
-                    return true;
-                }
-                if (sym == "fpoly") {
-                    match("(");
-                    // a1 = getvarname();
-                    a1 = getvarname(2); // ポインタ対応
-                    match(",");
-                    // b1 = getvarname();
-                    b1 = getvarname(2); // ポインタ対応
-                    match(","); a2 = parseInt(expression(), 10);
+            match("(");
+            // a1 = getvarname();
+            a1 = getvarname(2); // ポインタ対応
+            if (symbol[pc] == ")") {
+                a2 = null;
+                a3 = 0;
+            } else {
+                match(","); a2 = parseInt(expression(), 10);
+                if (symbol[pc] == ")") {
+                    a3 = a2 - 1;
+                    a2 = 0;
+                } else {
                     match(","); a3 = parseInt(expression(), 10);
-                    match(")");
-
-                    // ***** NaN対策 *****
-                    a2 = a2 | 0;
-                    a3 = a3 | 0;
-
-                    // ***** エラーチェック *****
-                    // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
-                    if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
-                        throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
-                    }
-
-                    // ***** 描画処理 *****
-                    i = a2;
-
-                    // // ***** 配列の存在チェック *****
-                    // if (!vars.checkVar(a1 + "[" + i + "]")) { return true; }
-                    // if (!vars.checkVar(b1 + "[" + i + "]")) { return true; }
-
-                    ctx.beginPath();
-                    // x0 = parseInt(vars[a1 + "[" + i + "]"], 10);
-                    x0 = parseInt(vars.getVarValue(a1 + "[" + i + "]"), 10);
-                    // y0 = parseInt(vars[b1 + "[" + i + "]"], 10);
-                    y0 = parseInt(vars.getVarValue(b1 + "[" + i + "]"), 10);
-                    ctx.moveTo(x0, y0);
-                    for (i = a2 + 1; i <= a3; i++) {
-
-                        // // ***** 配列の存在チェック *****
-                        // if (!vars.checkVar(a1 + "[" + i + "]")) { break; }
-                        // if (!vars.checkVar(b1 + "[" + i + "]")) { break; }
-
-                        // x1 = parseInt(vars[a1 + "[" + i + "]"], 10);
-                        x1 = parseInt(vars.getVarValue(a1 + "[" + i + "]"), 10);
-                        // y1 = parseInt(vars[b1 + "[" + i + "]"], 10);
-                        y1 = parseInt(vars.getVarValue(b1 + "[" + i + "]"), 10);
-                        ctx.lineTo(x1, y1);
-                    }
-                    ctx.closePath();
-                    ctx.fill();
-                    return true;
                 }
-                break;
+            }
+            match(")");
 
-            case "m":
-                if (sym == "mismake") {
-                    match("("); no = parseInt(expression(), 10);
-                    match(","); useflag_var_name = getvarname(2); // ポインタ対応
-                    match(","); x100_var_name = getvarname(2); // ポインタ対応
-                    match(","); y100_var_name = getvarname(2); // ポインタ対応
-                    match(","); degree_var_name = getvarname(2); // ポインタ対応
-                    match(","); speed100_var_name = getvarname(2); // ポインタ対応
-                    match(","); ch_var_name = getvarname(2); // ポインタ対応
-                    match(","); min_x = parseInt(expression(), 10);
-                    match(","); max_x = parseInt(expression(), 10);
-                    match(","); min_y = parseInt(expression(), 10);
-                    match(","); max_y = parseInt(expression(), 10);
-                    match(","); div_x = parseFloat(expression());
-                    match(","); div_y = parseFloat(expression());
-                    match(")");
-                    // ***** ミサイル作成 *****
-                    useflag =  parseInt(vars.getVarValue(useflag_var_name),  10);
-                    x100 =     parseInt(vars.getVarValue(x100_var_name),     10);
-                    y100 =     parseInt(vars.getVarValue(y100_var_name),     10);
-                    degree =   parseFloat(vars.getVarValue(degree_var_name));
-                    speed100 = parseInt(vars.getVarValue(speed100_var_name), 10);
-                    ch =         String(vars.getVarValue(ch_var_name));
-                    missile[no] = new Missile(no, useflag, x100, y100, degree, speed100, ch,
-                        min_x, max_x, min_y, max_y, div_x, div_y,
-                        useflag_var_name, x100_var_name, y100_var_name,
-                        degree_var_name, speed100_var_name, ch_var_name);
-                    return true;
+            // ***** エラーチェック *****
+            // if (a2 != null && (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size)) {
+            if (!(a2 == null || (a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size))) {
+                throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
+            }
+
+            if (a2 == null) {
+                vars.deleteArray(a1);
+            } else {
+                for (i = a2; i <= a3; i++) {
+                    // delete vars[a1 + "[" + i + "]"];
+                    vars.deleteVar(a1 + "[" + i + "]");
                 }
-                if (sym == "mismove") {
-                    match("(");
-                    if (symbol[pc] == ")") {
-                        range_use = false;
-                        min_no = 0;
-                        max_no = 0;
-                    } else {
-                        range_use = true;
-                        min_no = parseInt(expression(), 10);
-                        match(","); max_no = parseInt(expression(), 10);
+            }
+            return true;
+        });
+        make_one_func_tbl_A("disimg", function () {
+            var a1;
+
+            match("(");
+            // a1 = getvarname();
+            a1 = getvarname(4); // 画像変数のポインタ対応
+            match(")");
+            // if (imgvars.hasOwnProperty(a1)) {
+            if (hasOwn.call(imgvars, a1)) {
+                delete imgvars[a1];
+            }
+            // for (var prop_name in imgvars) { DebugShow(prop_name + " "); } DebugShow("\n");
+            return true;
+        });
+        make_one_func_tbl_A("disvar", function () {
+            var a1;
+
+            match("(");
+            // a1 = getvarname();
+            a1 = getvarname(2); // ポインタ対応
+            match(")");
+            // delete vars[a1];
+            vars.deleteVar(a1);
+            return true;
+        });
+        make_one_func_tbl_A("drawarea", function () {
+            var a1, a2, a3, a4, a5, a6, a7;
+
+            match("(");
+            // a1 = getvarname();
+            a1 = getvarname(4); // 画像変数のポインタ対応
+            match(","); a2 = parseInt(expression(), 10); // 先X
+            match(","); a3 = parseInt(expression(), 10); // 先Y
+            match(","); a4 = parseInt(expression(), 10); // 元X
+            match(","); a5 = parseInt(expression(), 10); // 元Y
+            match(","); a6 = parseInt(expression(), 10); // W
+            match(","); a7 = parseInt(expression(), 10); // H
+            match(")");
+            if (a1 == "screen") {
+                // ***** 画像を描画(表示画面→ターゲット) *****
+                ctx.drawImage(can1, a4, a5, a6, a7, a2, a3, a6, a7);
+            } else {
+                // if (imgvars.hasOwnProperty(a1)) {
+                if (hasOwn.call(imgvars, a1)) {
+                    // ***** 画像を描画(画像変数→ターゲット) *****
+                    ctx.drawImage(imgvars[a1].can, a4, a5, a6, a7, a2, a3, a6, a7);
+                } else {
+                    throw new Error("Image「" + a1 + "」がロードされていません。");
+                }
+            }
+            return true;
+        });
+        make_one_func_tbl_A("drawimg", function () {
+            var a1, a2, a3, a4;
+
+            match("(");
+            // a1 = getvarname();
+            a1 = getvarname(4); // 画像変数のポインタ対応
+            match(","); a2 = parseInt(expression(), 10); // X
+            match(","); a3 = parseInt(expression(), 10); // Y
+            match(","); a4 = parseInt(expression(), 10); // アンカー
+            match(")");
+            if (a1 == "screen") {
+                // ***** 水平方向 *****
+                if (a4 & 4) { }                                  // 左
+                else if (a4 & 8)  { a2 = a2 - can1.width; }      // 右
+                else if (a4 & 1)  { a2 = a2 - can1.width / 2; }  // 中央
+                else { }
+                // ***** 垂直方向 *****
+                if (a4 & 16) { }                                 // 上
+                else if (a4 & 32) { a3 = a3 - can1.height; }     // 下
+                else if (a4 & 2)  { a3 = a3 - can1.height / 2; } // 中央
+                else { }
+                // ***** 画像を描画(表示画面→ターゲット) *****
+                ctx.drawImage(can1, a2, a3);
+            } else {
+                // if (imgvars.hasOwnProperty(a1)) {
+                if (hasOwn.call(imgvars, a1)) {
+                    // ***** 水平方向 *****
+                    if (a4 & 4) { }                                             // 左
+                    else if (a4 & 8)  { a2 = a2 - imgvars[a1].can.width; }      // 右
+                    else if (a4 & 1)  { a2 = a2 - imgvars[a1].can.width / 2; }  // 中央
+                    else { }
+                    // ***** 垂直方向 *****
+                    if (a4 & 16) { }                                            // 上
+                    else if (a4 & 32) { a3 = a3 - imgvars[a1].can.height; }     // 下
+                    else if (a4 & 2)  { a3 = a3 - imgvars[a1].can.height / 2; } // 中央
+                    else { }
+                    // ***** 画像を描画(画像変数→ターゲット) *****
+                    ctx.drawImage(imgvars[a1].can, a2, a3);
+                } else {
+                    throw new Error("Image「" + a1 + "」がロードされていません。");
+                }
+            }
+            return true;
+        });
+        make_one_func_tbl_A("drawscaledimg", function () {
+            var a1, a2, a3, a4, a5, a6, a7, a8, a9;
+
+            match("(");
+            // a1 = getvarname();
+            a1 = getvarname(4); // 画像変数のポインタ対応
+            match(","); a2 = parseInt(expression(), 10); // 先X
+            match(","); a3 = parseInt(expression(), 10); // 先Y
+            match(","); a4 = parseInt(expression(), 10); // 先W
+            match(","); a5 = parseInt(expression(), 10); // 先H
+            match(","); a6 = parseInt(expression(), 10); // 元X
+            match(","); a7 = parseInt(expression(), 10); // 元Y
+            match(","); a8 = parseInt(expression(), 10); // 元W
+            match(","); a9 = parseInt(expression(), 10); // 元H
+            match(")");
+            if (a1 == "screen") {
+                // ***** 画像を描画(表示画面→ターゲット) *****
+                ctx.drawImage(can1, a6, a7, a8, a9, a2, a3, a4, a5);
+            } else {
+                // if (imgvars.hasOwnProperty(a1)) {
+                if (hasOwn.call(imgvars, a1)) {
+                    // ***** 画像を描画(画像変数→ターゲット) *****
+                    ctx.drawImage(imgvars[a1].can, a6, a7, a8, a9, a2, a3, a4, a5);
+                } else {
+                    throw new Error("Image「" + a1 + "」がロードされていません。");
+                }
+            }
+            return true;
+        });
+        make_one_func_tbl_A("end", function () {
+            end_flag = true;
+            return true;
+        });
+        make_one_func_tbl_A("farc", function () {
+            var a1, a2, a3, a4;
+            var i;
+            var a, b, x0, y0;
+
+            match("("); a1 = parseFloat(expression()); // X
+            match(","); a2 = parseFloat(expression()); // Y
+            match(","); a3 = parseFloat(expression()); // W
+            if (symbol[pc] == ")") {
+                a4 = a3;
+            } else {
+                match(","); a4 = parseFloat(expression()); // H
+            }
+            match(")");
+            a = a3 / 2;  // X方向の半径
+            b = a4 / 2;  // Y方向の半径
+            x0 = a1 + a; // 中心のX座標
+            y0 = a2 + b; // 中心のY座標
+            ctx.beginPath();
+            ctx.moveTo(a + x0, y0);
+            for (i = 1; i < 100; i++) {
+                ctx.lineTo(a * Math.cos(2 * Math.PI * i / 100) + x0, b * Math.sin(2 * Math.PI * i / 100) + y0);
+            }
+            ctx.closePath();
+            // 以下は不要になったもよう(Chrome v27)
+            // // ***** Chrome v23 で塗りつぶさない件の対策 *****
+            // ctx.rect(x0, y0, 1, 1);     // 真ん中に小さな四角を描くと、塗りつぶしエリアが反転するもよう
+            ctx.fill();
+            // 以下は不要になったもよう(Chrome v24)
+            // ctx.fillRect(x0, y0, 1, 1); // 反転して抜けた真ん中の小さな四角をさらに塗りつぶす
+            return true;
+        });
+        make_one_func_tbl_A("foval", function () {
+            var a1, a2, a3, a4, a5, a6;
+            var i;
+            var a, b, x0, y0;
+            var rad1, rad2;
+
+            match("("); a1 = parseFloat(expression()); // X
+            match(","); a2 = parseFloat(expression()); // Y
+            match(","); a3 = parseFloat(expression()); // W
+            match(","); a4 = parseFloat(expression()); // H
+            match(","); a5 = parseFloat(expression()); // 開始角
+            match(","); a6 = parseFloat(expression()); // 描画角
+            match(")");
+            a = a3 / 2;  // X方向の半径
+            b = a4 / 2;  // Y方向の半径
+            x0 = a1 + a; // 中心のX座標
+            y0 = a2 + b; // 中心のY座標
+            rad1 = - a5 * Math.PI / 180; // PC上の角度は逆方向なのでマイナスを付ける
+            rad2 = - a6 * Math.PI / 180; // PC上の角度は逆方向なのでマイナスを付ける
+            if (rad2 < 0) { // パスを右巻きに統一する
+                rad1 = rad1 + rad2;
+                rad2 = -rad2;
+            }
+            ctx.beginPath();
+            ctx.moveTo(x0, y0);
+            for (i = 0; i <= 100; i++) {
+                ctx.lineTo(a * Math.cos(rad1 + rad2 * i / 100) + x0, b * Math.sin(rad1 + rad2 * i / 100) + y0);
+            }
+            ctx.closePath();
+            // 以下は不要になったもよう(Chrome v27)
+            // // ***** Chrome v23 で塗りつぶさない件の対策 *****
+            // ctx.rect(x0, y0, 1, 1);     // 真ん中に小さな四角を描くと、塗りつぶしエリアが反転するもよう
+            ctx.fill();
+            // 以下は不要になったもよう(Chrome v24)
+            // ctx.fillRect(x0, y0, 1, 1); // 反転して抜けた真ん中の小さな四角をさらに塗りつぶす
+            return true;
+        });
+        make_one_func_tbl_A("frect", function () {
+            var a1, a2, a3, a4;
+
+            match("("); a1 = parseFloat(expression()); // X
+            match(","); a2 = parseFloat(expression()); // Y
+            match(","); a3 = parseFloat(expression()); // W
+            match(","); a4 = parseFloat(expression()); // H
+            match(")");
+            ctx.fillRect(a1, a2, a3, a4);
+            return true;
+        });
+        make_one_func_tbl_A("fround", function () {
+            var a1, a2, a3, a4, a5, a6;
+            var rx, ry;
+
+            match("("); a1 = parseFloat(expression()); // X
+            match(","); a2 = parseFloat(expression()); // Y
+            match(","); a3 = parseFloat(expression()); // W
+            match(","); a4 = parseFloat(expression()); // H
+            match(","); a5 = parseFloat(expression()); // RX
+            match(","); a6 = parseFloat(expression()); // RY
+            match(")");
+            rx = a5;
+            ry = a6;
+            ctx.beginPath();
+            ctx.moveTo(a1 + rx , a2);
+            ctx.lineTo(a1 + a3 - rx, a2);
+            ctx.quadraticCurveTo(a1 + a3 , a2, a1 + a3, a2 + ry);
+            ctx.lineTo(a1 + a3 , a2 + a4 - ry);
+            ctx.quadraticCurveTo(a1 + a3 , a2 + a4, a1 + a3 - rx, a2 + a4);
+            ctx.lineTo(a1 + rx , a2 + a4);
+            ctx.quadraticCurveTo(a1, a2 + a4, a1, a2 + a4 -ry);
+            ctx.lineTo(a1 , a2 + ry);
+            ctx.quadraticCurveTo(a1, a2, a1 + rx, a2);
+            ctx.closePath();
+            // 以下は不要になったもよう(Chrome v27)
+            // // ***** Chrome v23 でカーブを描画しない件の対策 *****
+            // ctx.rotate(45 * Math.PI / 180);          // 回転させるとなぜか描画する
+            ctx.fill();
+            // 以下は不要になったもよう(Chrome v27)
+            // ctx.setTransform(1, 0, 0, 1, 0, 0);      // 座標系を元に戻す
+            // set_canvas_axis(ctx);                    // 座標系を再設定
+            return true;
+        });
+        make_one_func_tbl_A("func", function () {
+            pc = func[symbol[pc] + "\\end"];
+            return true;
+        });
+        make_one_func_tbl_A("funccall", function () {
+            var a1;
+            var i;
+            var sym;
+            var var_name;
+            var func_params = [];
+            var funccall_info = {};
+            var back_pc;
+            var debugpc_old;
+
+            match("(");
+            // ***** 関数名を取得 *****
+            sym = symbol[pc++];
+
+            // ***** ポインタのとき *****
+            if (sym.charAt(0) == "*") {
+                // ***** 変数名取得 *****
+                pc--;
+                // var_name = getvarname();
+                var_name = getvarname(2); // ポインタ対応
+                // ***** 変数名の先頭の「a\」をすべて削除 *****
+                if (var_name.substring(0, 2) == "a\\") {
+                    var_name = var_name.substring(var_name.lastIndexOf("a\\") + 2);
+                }
+                // ***** 変数名を関数名とする *****
+                sym = var_name;
+            }
+
+            match("(");
+            // ***** 関数呼び出し情報の生成 *****
+            funccall_info = {};
+            // ***** 引数の取得 *****
+            func_params = [];
+            if (symbol[pc] == ")") {
+                pc++;
+            } else {
+                while (pc < symbol_len) {
+                    func_params.push(expression());
+                    if (symbol[pc] == ",") {
+                        pc++;
+                        continue;
                     }
-                    match(")");
-                    // ***** 全ミサイルを移動 *****
-                    for (mis_no in missile) {
-                        if (missile.hasOwnProperty(mis_no)) {
-                            mis = missile[mis_no];
-                            if (range_use == false || (mis.no >= min_no && mis.no <= max_no)) {
-                                mis.useflag = parseInt(vars.getVarValue(mis.useflag_var_name), 10);
-                                if (mis.useflag != 0) {
-                                    mis.x100 =     parseInt(vars.getVarValue(mis.x100_var_name),     10);
-                                    mis.y100 =     parseInt(vars.getVarValue(mis.y100_var_name),     10);
-                                    mis.degree =   parseFloat(vars.getVarValue(mis.degree_var_name));
-                                    mis.speed100 = parseInt(vars.getVarValue(mis.speed100_var_name), 10);
-                                    mis.ch =         String(vars.getVarValue(mis.ch_var_name));
-                                    mis.move();
-                                    vars.setVarValue(mis.useflag_var_name,  mis.useflag);
-                                    vars.setVarValue(mis.x100_var_name,     mis.x100);
-                                    vars.setVarValue(mis.y100_var_name,     mis.y100);
-                                    vars.setVarValue(mis.degree_var_name,   mis.degree);
-                                    vars.setVarValue(mis.speed100_var_name, mis.speed100);
-                                    vars.setVarValue(mis.ch_var_name,       mis.ch);
-                                }
+                    break;
+                }
+                match(")");
+            }
+            // ***** 戻り値を格納する変数名の取得 *****
+            if (symbol[pc] == ")") {
+                a1 = "";
+            } else {
+                match(",");
+                // a1 = getvarname();
+                a1 = getvarname(2); // ポインタ対応
+            }
+            match(")");
+            // ***** 関数の呼び出し *****
+            // if (!func.hasOwnProperty(sym)) {
+            if (!hasOwn.call(func, sym)) {
+                throw new Error("関数 '" + sym + "' の呼び出しに失敗しました(funccallはfuncで定義した関数のみ呼び出せます)。");
+            }
+            back_pc = pc;
+            pc = func[sym];
+            debugpc_old = debugpc;
+            debugpc = pc - 1;
+
+            // ***** ローカル変数を生成 *****
+            vars.makeLocalScope();
+
+            // ***** 引数のセット *****
+            match("(");
+            if (symbol[pc] == ")") {
+                pc++;
+            } else {
+                i = 0;
+                while (pc < symbol_len) {
+                    // var_name = getvarname(); // これはポインタ対応不可
+                    var_name = getvarname(3); // 関数の引数用
+                    if (i < func_params.length) {
+
+                        // ***** 関数の引数のポインタ対応 *****
+                        if (var_name.substring(0, 2) == "p\\") {
+                            // (引数名から「p\」を削除)
+                            var_name = var_name.substring(2);
+                            // (引数の内容を取得)
+                            func_params[i] = String(func_params[i]);
+                            // ***** 変数名のチェック *****
+                            if (!(isAlpha(func_params[i].charAt(0)) || func_params[i].charAt(0) == "_")) {
+                                debugpc = debugpc_old;
+                                pc = back_pc;
+                                throw new Error("ポインタの指す先が不正です。('" + func_params[i] + "')");
                             }
+                            // (ローカル変数のスコープをさかのぼれるように引数の内容に「a\」を付加)
+                            func_params[i] = "a\\" + func_params[i];
                         }
-                    }
-                    return true;
-                }
-                if (sym == "mistext") {
-                    match("(");
-                    // a1 = getvarname();
-                    a1 = getvarname(2); // ポインタ対応
-                    match(","); a2 = parseInt(expression(), 10);
-                    match(","); a3 = parseInt(expression(), 10);
-                    if (symbol[pc] == ")") {
-                        range_use = false;
-                        min_no = 0;
-                        max_no = 0;
+
+                        // vars[var_name] = func_params[i];
+                        vars.setVarValue(var_name, func_params[i]);
+                        i++;
                     } else {
-                        range_use = true;
-                        match(","); min_no = parseInt(expression(), 10);
-                        match(","); max_no = parseInt(expression(), 10);
-                    }
-                    match(")");
 
-                    // ***** NaN対策 *****
-                    a2 = a2 | 0;
-                    a3 = a3 | 0;
-
-                    // ***** エラーチェック *****
-                    // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
-                    if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
-                        throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
-                    }
-
-                    // ***** 全ミサイルを描画 *****
-                    for (mis_no in missile) {
-                        if (missile.hasOwnProperty(mis_no)) {
-                            mis = missile[mis_no];
-                            if (range_use == false || (mis.no >= min_no && mis.no <= max_no)) {
-                                mis.useflag = parseInt(vars.getVarValue(mis.useflag_var_name), 10);
-                                if (mis.useflag != 0) {
-                                    mis.x100 = parseInt(vars.getVarValue(mis.x100_var_name), 10);
-                                    mis.y100 = parseInt(vars.getVarValue(mis.y100_var_name), 10);
-                                    mis.ch =     String(vars.getVarValue(mis.ch_var_name));
-                                    x1 = (mis.x100 / 100) | 0; // 整数化
-                                    y1 = (mis.y100 / 100) | 0; // 整数化
-                                    // txtpsetsub(a1, a2, a3, x1, y1, mis.ch);
-                                    txtovrsub(a1, a2, a3, x1, y1, mis.ch);
-                                }
-                            }
+                        // ***** 関数の引数のポインタ対応 *****
+                        if (var_name.substring(0, 2) == "p\\") {
+                            // (引数名から「p\」を削除)
+                            var_name = var_name.substring(2);
                         }
+
+                        // vars[var_name] = 0;
+                        vars.setVarValue(var_name, 0);
                     }
+                    if (symbol[pc] == ",") {
+                        pc++;
+                        continue;
+                    }
+                    break;
+                }
+                match(")");
+            }
+            // ***** 関数の本体を実行 *****
+            match("{");
+            funccall_info.nestcall = false;
+            funccall_info.retvarname = a1;
+            funccall_info.func_back = back_pc;
+            funccall_info.func_start = pc;
+            funccall_info.func_end = func[sym + "\\end"];
+            funccall_stack.push(funccall_info);
+            return true;
+        });
+        make_one_func_tbl_A("gc", function () {
+            match("(");
+            match(")");
+            // ***** NOP *****
+            return true;
+        });
+        make_one_func_tbl_A("gosub", function () {
+            var lbl_name;
+
+            // ***** 関数内のとき *****
+            if (funccall_stack.length > 0) {
+                throw new Error("func内では gosub できません。");
+            }
+            // ***** ラベルへジャンプ *****
+            lbl_name = expression();
+            // if (!label.hasOwnProperty(lbl_name)) {
+            if (!hasOwn.call(label, lbl_name)) {
+                throw new Error("ラベル '" + lbl_name + "' は未定義です。");
+            }
+            gosub_back.push(pc);
+            pc = label[lbl_name];
+            return true;
+        });
+        make_one_func_tbl_A("goto", function () {
+            var lbl_name;
+            var goto_pc;
+            var funccall_info = {};
+
+            // ***** ラベルへジャンプ *****
+            lbl_name = expression();
+            // if (!label.hasOwnProperty(lbl_name)) {
+            if (!hasOwn.call(label, lbl_name)) {
+                throw new Error("ラベル '" + lbl_name + "' は未定義です。");
+            }
+            goto_pc = label[lbl_name];
+            // ***** 関数内のとき *****
+            if (funccall_stack.length > 0) {
+                // ***** 関数呼び出し情報をチェック *****
+                funccall_info = funccall_stack[funccall_stack.length - 1];
+                // ***** ジャンプ先がfunc内のときだけgotoが可能 *****
+                if ((goto_pc < funccall_info.func_start) || (goto_pc >= funccall_info.func_end)) {
+                    throw new Error("funcの外へは goto できません。");
+                }
+            }
+            pc = goto_pc;
+            return true;
+        });
+        make_one_func_tbl_A("ifgoto\\", function () {    // 内部命令なので「\」を付けている
+            var a1;
+            var lbl_name;
+            var goto_pc;
+            var funccall_info = {};
+
+            match("(");
+            pc--;
+            a1 = expression();
+            // match(")");
+            if (a1 != 0) {
+                // ***** ラベルへジャンプ *****
+                lbl_name = expression();
+                // if (!label.hasOwnProperty(lbl_name)) {
+                if (!hasOwn.call(label, lbl_name)) {
+                    throw new Error("ラベル '" + lbl_name + "' は未定義です。");
+                }
+                goto_pc = label[lbl_name];
+                // ***** 関数内のとき *****
+                if (funccall_stack.length > 0) {
+                    // ***** 関数呼び出し情報をチェック *****
+                    funccall_info = funccall_stack[funccall_stack.length - 1];
+                    // ***** ジャンプ先がfunc内のときだけgotoが可能 *****
+                    if ((goto_pc < funccall_info.func_start) || (goto_pc >= funccall_info.func_end)) {
+                        throw new Error("funcの外へは goto できません。");
+                    }
+                }
+                pc = goto_pc;
+            } else {
+                pc++;
+            }
+            return true;
+        });
+        make_one_func_tbl_A("ifnotgoto\\", function () { // 内部命令なので「\」を付けている
+            var a1;
+            var lbl_name;
+            var goto_pc;
+            var funccall_info = {};
+
+            match("(");
+            pc--;
+            a1 = expression();
+            // match(")");
+            if (a1 == 0) {
+                // ***** ラベルへジャンプ *****
+                lbl_name = expression();
+                // if (!label.hasOwnProperty(lbl_name)) {
+                if (!hasOwn.call(label, lbl_name)) {
+                    throw new Error("ラベル '" + lbl_name + "' は未定義です。");
+                }
+                goto_pc = label[lbl_name];
+                // ***** 関数内のとき *****
+                if (funccall_stack.length > 0) {
+                    // ***** 関数呼び出し情報をチェック *****
+                    funccall_info = funccall_stack[funccall_stack.length - 1];
+                    // ***** ジャンプ先がfunc内のときだけgotoが可能 *****
+                    if ((goto_pc < funccall_info.func_start) || (goto_pc >= funccall_info.func_end)) {
+                        throw new Error("funcの外へは goto できません。");
+                    }
+                }
+                pc = goto_pc;
+            } else {
+                pc++;
+            }
+            return true;
+        });
+        make_one_func_tbl_A("label", function () {
+            pc++;
+            return true;
+        });
+        make_one_func_tbl_A("line", function () {
+            var a1, a2, a3, a4;
+
+            match("("); a1 = parseFloat(expression()); // X1
+            match(","); a2 = parseFloat(expression()); // Y1
+            match(","); a3 = parseFloat(expression()); // X2
+            match(","); a4 = parseFloat(expression()); // Y2
+            match(")");
+            ctx.beginPath();
+            ctx.moveTo(a1, a2);
+            ctx.lineTo(a3, a4);
+            ctx.stroke();
+            return true;
+        });
+        make_one_func_tbl_A("linewidth", function () {
+            var a1;
+
+            match("(");
+            a1 = parseFloat(expression()); // W
+            match(")");
+            line_width = a1;
+            ctx.lineWidth = line_width;
+            return true;
+        });
+        make_one_func_tbl_A("loadimg", function () {
+            var a1, a2;
+            var i, j, k;
+            var g_data = [];
+            var col_num;
+            var col_data = [];
+            var trans_col_no;
+            var col_no;
+            var img_w, img_h;
+            var img_data = {};
+
+            match("(");
+            // a1 = getvarname();
+            a1 = getvarname(4); // 画像変数のポインタ対応
+            match(","); a2 = String(expression()); // 画像データ文字列
+            match(")");
+            // ***** FlashCanvas用 *****
+            if (!ctx.createImageData) { throw new Error("画像生成機能が利用できません。"); }
+            // ***** 画像データの取得 *****
+            g_data = a2.split(",");
+            i = 0;
+            col_num = parseInt(g_data[i++], 10);
+            col_data = [];
+            for (j = 0; j < col_num; j++) {
+                col_data[j] = {};
+                col_data[j].r = parseInt(g_data[i++], 10);
+                col_data[j].g = parseInt(g_data[i++], 10);
+                col_data[j].b = parseInt(g_data[i++], 10);
+            }
+            trans_col_no = parseInt(g_data[i++], 10);
+            img_w = parseInt(g_data[i++], 10);
+            img_h = parseInt(g_data[i++], 10);
+
+            // ***** エラーチェック *****
+            // if (img_w <= 0 || img_w > max_image_size || img_h <= 0 || img_h > max_image_size) {
+            if (!(img_w > 0 && img_w <= max_image_size && img_h > 0 && img_h <= max_image_size)) {
+                throw new Error("画像の縦横のサイズが不正です。1-" + max_image_size + "の間である必要があります。");
+            }
+
+            img_data = ctx.createImageData(img_w, img_h);
+            k = 0;
+            while (i < g_data.length) {
+                col_no = parseInt(g_data[i++], 10);
+                if (col_no == trans_col_no) {
+                    img_data.data[k++] = 0;
+                    img_data.data[k++] = 0;
+                    img_data.data[k++] = 0;
+                    img_data.data[k++] = 0;
+                } else if (col_no >=0 && col_no < col_num) {
+                    img_data.data[k++] = col_data[col_no].r;
+                    img_data.data[k++] = col_data[col_no].g;
+                    img_data.data[k++] = col_data[col_no].b;
+                    img_data.data[k++] = 255;
+                } else {
+                    img_data.data[k++] = 0;
+                    img_data.data[k++] = 0;
+                    img_data.data[k++] = 0;
+                    img_data.data[k++] = 0;
+                }
+            }
+            // ***** Canvasの生成 *****
+            imgvars[a1] = {};
+            imgvars[a1].can = document.createElement("canvas");
+            // ***** FlashCanvas Pro (将来用) で必要 *****
+            if (typeof (FlashCanvas) != "undefined") {
+                imgvars[a1].can.style.backgroundColor = can1_backcolor_init;
+                document.getElementById("body1").appendChild(imgvars[a1].can);
+                FlashCanvas.initElement(imgvars[a1].can);
+            }
+            imgvars[a1].can.width = img_w;
+            imgvars[a1].can.height = img_h;
+            imgvars[a1].ctx = imgvars[a1].can.getContext("2d");
+            // ***** Canvasの各設定の初期化 *****
+            init_canvas_setting(imgvars[a1].ctx);
+            // ***** 画像を格納 *****
+            imgvars[a1].ctx.putImageData(img_data, 0, 0);
+            return true;
+        });
+        make_one_func_tbl_A("loadimgdata", function () {
+            var a1, a2;
+            var img_obj = {};
+
+            match("(");
+            // a1 = getvarname();
+            a1 = getvarname(4); // 画像変数のポインタ対応
+            match(","); a2 = String(expression()); // 画像データ文字列(data URI scheme)
+            match(")");
+            // ***** Canvasの生成 *****
+            imgvars[a1] = {};
+            imgvars[a1].can = document.createElement("canvas");
+            // ***** FlashCanvas Pro (将来用) で必要 *****
+            if (typeof (FlashCanvas) != "undefined") {
+                imgvars[a1].can.style.backgroundColor = can1_backcolor_init;
+                document.getElementById("body1").appendChild(imgvars[a1].can);
+                FlashCanvas.initElement(imgvars[a1].can);
+            }
+            imgvars[a1].can.width = 16;
+            imgvars[a1].can.height = 16;
+            imgvars[a1].ctx = imgvars[a1].can.getContext("2d");
+            // ***** Canvasの各設定の初期化 *****
+            init_canvas_setting(imgvars[a1].ctx);
+            // ***** デバッグ用 *****
+            imgvars[a1].ctx.fillRect(0,0,16,16);
+            // ***** 完了フラグをリセット *****
+            imgvars[a1].loaded = false;
+            // ***** 画像データの取得 *****
+            // (非同期のため完了までに時間がかかるので注意)
+            img_obj = new Image();
+            img_obj.onload = function () {
+                // ***** Canvasのリサイズ *****
+                imgvars[a1].can.width = img_obj.width;
+                imgvars[a1].can.height = img_obj.height;
+                // ***** Canvasの各設定の初期化 *****
+                init_canvas_setting(imgvars[a1].ctx);
+                // ***** 画像を描画 *****
+                imgvars[a1].ctx.drawImage(img_obj, 0, 0);
+                // alert(img_obj.complete);
+                // ***** 完了フラグをセット *****
+                imgvars[a1].loaded = true;
+            };
+            img_obj.src = a2; // 常にonloadより後にsrcをセットすること
+            return true;
+        });
+        make_one_func_tbl_A("lock", function () {
+            match("(");
+            match(")");
+            // ***** NOP *****
+            return true;
+        });
+        make_one_func_tbl_A("makearray", function () {
+            var a1, a2, a3, a4;
+            var i;
+
+            match("(");
+            // a1 = getvarname();
+            a1 = getvarname(2); // ポインタ対応
+            match(","); a2 = parseInt(expression(), 10);
+            if (symbol[pc] == ")") {
+                a3 = a2 - 1;
+                a2 = 0;
+                a4 = 0;
+            } else {
+                match(","); a3 = parseInt(expression(), 10);
+                if (symbol[pc] == ")") {
+                    a4 = 0;
+                } else {
+                    match(","); a4 = expression();
+                }
+            }
+            match(")");
+
+            // ***** エラーチェック *****
+            // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
+            if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
+                throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
+            }
+
+            for (i = a2; i <= a3; i++) {
+                // vars[a1 + "[" + i + "]"] = a4;
+                vars.setVarValue(a1 + "[" + i + "]", a4);
+            }
+            return true;
+        });
+        make_one_func_tbl_A("makeimg", function () {
+            var a1, a2, a3;
+
+            match("(");
+            // a1 = getvarname();
+            a1 = getvarname(4); // 画像変数のポインタ対応
+            match(","); a2 = parseInt(expression(), 10); // W
+            match(","); a3 = parseInt(expression(), 10); // H
+            match(")");
+
+            // ***** エラーチェック *****
+            // if (a2 <= 0 || a2 > max_image_size || a3 <= 0 || a3 > max_image_size) {
+            if (!(a2 > 0 && a2 <= max_image_size && a3 > 0 && a3 <= max_image_size)) {
+                throw new Error("画像の縦横のサイズが不正です。1-" + max_image_size + "の範囲で指定してください。");
+            }
+
+            // ***** Canvasの生成 *****
+            imgvars[a1] = {};
+            imgvars[a1].can = document.createElement("canvas");
+            // ***** FlashCanvas Pro (将来用) で必要 *****
+            if (typeof (FlashCanvas) != "undefined") {
+                imgvars[a1].can.style.backgroundColor = can1_backcolor_init;
+                document.getElementById("body1").appendChild(imgvars[a1].can);
+                FlashCanvas.initElement(imgvars[a1].can);
+            }
+            imgvars[a1].can.width = a2;
+            imgvars[a1].can.height = a3;
+            imgvars[a1].ctx = imgvars[a1].can.getContext("2d");
+            // ***** Canvasの各設定の初期化 *****
+            init_canvas_setting(imgvars[a1].ctx);
+            return true;
+        });
+        make_one_func_tbl_A("msgdlg", function () {
+            var a1;
+
+            match("("); a1 = String(expression());
+            if (symbol[pc] != ")") {
+                match(","); a1 = String(expression());
+            }
+            match(")");
+            alert(a1);
+            keyclear();
+            mousebuttonclear();
+            dlg_flag = true;
+            return true;
+        });
+        make_one_func_tbl_A("onlocal", function () {
+            match("(");
+            match(")");
+            use_local_vars = true;
+            return true;
+        });
+        make_one_func_tbl_A("offlocal", function () {
+            match("(");
+            match(")");
+            use_local_vars = false;
+            return true;
+        });
+        make_one_func_tbl_A("origin", function () {
+            var a1, a2;
+
+            match("("); a1 = parseInt(expression(), 10); // X
+            match(","); a2 = parseInt(expression(), 10); // Y
+            match(")");
+            // ***** 座標系の原点座標設定 *****
+            ctx_originx = a1;
+            ctx_originy = a2;
+            ctx.setTransform(1, 0, 0, 1, 0, 0);      // 座標系を元に戻す
+            set_canvas_axis(ctx);                    // 座標系を再設定
+            return true;
+        });
+        make_one_func_tbl_A("oval", function () {
+            var a1, a2, a3, a4, a5, a6;
+            var i;
+            var a, b, x0, y0;
+            var rad1, rad2;
+
+            match("("); a1 = parseFloat(expression()); // X
+            match(","); a2 = parseFloat(expression()); // Y
+            match(","); a3 = parseFloat(expression()); // W
+            match(","); a4 = parseFloat(expression()); // H
+            match(","); a5 = parseFloat(expression()); // 開始角
+            match(","); a6 = parseFloat(expression()); // 描画角
+            match(")");
+            a = a3 / 2;  // X方向の半径
+            b = a4 / 2;  // Y方向の半径
+            x0 = a1 + a; // 中心のX座標
+            y0 = a2 + b; // 中心のY座標
+            rad1 = - a5 * Math.PI / 180; // PC上の角度は逆方向なのでマイナスを付ける
+            rad2 = - a6 * Math.PI / 180; // PC上の角度は逆方向なのでマイナスを付ける
+            ctx.beginPath();
+            ctx.moveTo(a * Math.cos(rad1) + x0, b * Math.sin(rad1) + y0);
+            for (i = 1; i <= 100; i++) {
+                ctx.lineTo(a * Math.cos(rad1 + rad2 * i / 100) + x0, b * Math.sin(rad1 + rad2 * i / 100) + y0);
+            }
+            ctx.stroke();
+            // 以下は不要になったもよう(Chrome v27)
+            // // ***** Chrome v23 で円が閉じない件の対策(中心を0.5ずらしたとき) *****
+            // ctx.fillRect(a * Math.cos(rad1) + x0, b * Math.sin(rad1) + y0, 0.5, 0.5);
+            return true;
+        });
+        make_one_func_tbl_A("point", function () {
+            var a1, a2;
+
+            match("("); a1 = parseFloat(expression()); // X
+            match(","); a2 = parseFloat(expression()); // Y
+            match(")");
+            ctx.fillRect(a1, a2, 1, 1);
+            return true;
+        });
+        make_one_func_tbl_A("rect", function () {
+            var a1, a2, a3, a4;
+
+            match("("); a1 = parseFloat(expression()); // X
+            match(","); a2 = parseFloat(expression()); // Y
+            match(","); a3 = parseFloat(expression()); // W
+            match(","); a4 = parseFloat(expression()); // H
+            match(")");
+            ctx.beginPath();
+            ctx.rect(a1, a2, a3, a4);
+            ctx.stroke();
+            return true;
+        });
+        make_one_func_tbl_A("return", function () {
+            var funccall_info = {};
+
+            // ***** 関数内のとき *****
+            if (funccall_stack.length > 0) {
+                // ***** 戻り値を取得 *****
+                if (symbol[pc] == ";") {
+                    ret_num = 0;
+                } else {
+                    ret_num = expression();
+                }
+                // ***** 関数呼び出し情報をチェック *****
+                funccall_info = funccall_stack[funccall_stack.length - 1];
+                // ***** ネストありのとき(通常の関数呼び出しのとき) *****
+                if (funccall_info.nestcall) {
+                    // ***** 呼び出し元に復帰 *****
+                    return_flag = true;
                     return true;
                 }
-                break;
+                // ***** ネストなしのとき(funccall文で呼び出されたとき) *****
 
-            case "p":
-                if (sym == "poly") {
-                    match("(");
-                    // a1 = getvarname();
-                    a1 = getvarname(2); // ポインタ対応
-                    match(",");
-                    // b1 = getvarname();
-                    b1 = getvarname(2); // ポインタ対応
-                    match(","); a2 = parseInt(expression(), 10);
-                    match(","); a3 = parseInt(expression(), 10);
-                    if (symbol[pc] == ")") {
-                        a4 = 0;
-                    } else {
-                        match(","); a4 = parseInt(expression(), 10);
-                    }
-                    match(")");
+                // ***** ローカル変数を解放 *****
+                vars.deleteLocalScope();
 
-                    // ***** NaN対策 *****
-                    a2 = a2 | 0;
-                    a3 = a3 | 0;
+                // ***** 戻り値を変数に格納 *****
+                // vars[funccall_info.retvarname] = ret_num;
+                vars.setVarValue(funccall_info.retvarname, ret_num);
+                // ***** 呼び出し元に復帰 *****
+                funccall_info = funccall_stack.pop();
+                pc = funccall_info.func_back;
+                return true;
+            }
+            // ***** gosubのとき *****
+            if (gosub_back.length > 0) {
+                // ***** 戻り先へ *****
+                pc = gosub_back.pop();
+                return true;
+            }
+            return_flag = true;
+            return true;
+        });
+        make_one_func_tbl_A("rotate", function () {
+            var a1, a2, a3;
 
-                    // ***** エラーチェック *****
-                    // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
-                    if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
-                        throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
-                    }
+            match("("); a1 = parseFloat(expression()); // 角度
+            if (symbol[pc] == ")") {
+                a2 = 0;
+                a3 = 0;
+            } else {
+                match(","); a2 = parseFloat(expression()); // 中心座標X
+                match(","); a3 = parseFloat(expression()); // 中心座標Y
+            }
+            match(")");
+            // ***** 座標系の角度設定 *****
+            ctx_rotate = a1 * Math.PI / 180;
+            ctx_rotateox = a2;
+            ctx_rotateoy = a3;
+            ctx.setTransform(1, 0, 0, 1, 0, 0);      // 座標系を元に戻す
+            set_canvas_axis(ctx);                    // 座標系を再設定
+            return true;
+        });
+        make_one_func_tbl_A("round", function () {
+            var a1, a2, a3, a4, a5, a6;
+            var rx, ry;
 
-                    // ***** 描画処理 *****
-                    i = a2;
+            match("("); a1 = parseFloat(expression()); // X
+            match(","); a2 = parseFloat(expression()); // Y
+            match(","); a3 = parseFloat(expression()); // W
+            match(","); a4 = parseFloat(expression()); // H
+            match(","); a5 = parseFloat(expression()); // RX
+            match(","); a6 = parseFloat(expression()); // RY
+            match(")");
+            rx = a5;
+            ry = a6;
+            ctx.beginPath();
+            ctx.moveTo(a1 + rx , a2);
+            ctx.lineTo(a1 + a3 - rx, a2);
+            ctx.quadraticCurveTo(a1 + a3 , a2, a1 + a3, a2 + ry);
+            ctx.lineTo(a1 + a3 , a2 + a4 - ry);
+            ctx.quadraticCurveTo(a1 + a3 , a2 + a4, a1 + a3 - rx, a2 + a4);
+            ctx.lineTo(a1 + rx , a2 + a4);
+            ctx.quadraticCurveTo(a1, a2 + a4, a1, a2 + a4 -ry);
+            ctx.lineTo(a1 , a2 + ry);
+            ctx.quadraticCurveTo(a1, a2, a1 + rx, a2);
+            ctx.closePath();
+            // 以下は不要になったもよう(Chrome v27)
+            // // ***** Chrome v23 でカーブを描画しない件の対策 *****
+            // ctx.rotate(45 * Math.PI / 180);          // 回転させるとなぜか描画する
+            ctx.stroke();
+            // 以下は不要になったもよう(Chrome v27)
+            // ctx.setTransform(1, 0, 0, 1, 0, 0);      // 座標系を元に戻す
+            // set_canvas_axis(ctx);                    // 座標系を再設定
+            return true;
+        });
+        make_one_func_tbl_A("save", function () {
+            var a1, a2;
 
-                    // // ***** 配列の存在チェック *****
-                    // if (!vars.checkVar(a1 + "[" + i + "]")) { return true; }
-                    // if (!vars.checkVar(b1 + "[" + i + "]")) { return true; }
+            match("("); a1 = String(expression());
+            if (symbol[pc] == ")") {
+                a2 = 0;
+            } else {
+                match(","); a2 = parseInt(expression(), 10);
+            }
+            match(")");
+            save_data[a2] = a1;
+            return true;
+        });
+        make_one_func_tbl_A("scale", function () {
+            var a1, a2, a3, a4;
 
-                    ctx.beginPath();
-                    // x0 = parseInt(vars[a1 + "[" + i + "]"], 10);
-                    x0 = parseInt(vars.getVarValue(a1 + "[" + i + "]"), 10);
-                    // y0 = parseInt(vars[b1 + "[" + i + "]"], 10);
-                    y0 = parseInt(vars.getVarValue(b1 + "[" + i + "]"), 10);
-                    ctx.moveTo(x0, y0);
-                    for (i = a2 + 1; i <= a3; i++) {
+            match("("); a1 = parseFloat(expression()); // X方向倍率
+            if (symbol[pc] == ")") {
+                a2 = a1;
+                a3 = 0;
+                a4 = 0;
+            } else {
+                match(","); a2 = parseFloat(expression()); // Y方向倍率
+                if (symbol[pc] == ")") {
+                    a3 = 0;
+                    a4 = 0;
+                } else {
+                    match(","); a3 = parseFloat(expression()); // 中心座標X
+                    match(","); a4 = parseFloat(expression()); // 中心座標Y
+                }
+            }
+            match(")");
+            // ***** エラーチェック *****
+            // if (a1 <= 0 || a1 > max_scale_size || a2 <= 0 || a2 > max_scale_size) {
+            if (!(a1 > 0 && a1 <= max_scale_size && a2 > 0 && a2 <= max_scale_size)) {
+                throw new Error("座標系の倍率の値が不正です。0より大きく" + max_scale_size + "以下の数値を指定してください。");
+            }
+            // ***** 座標系の倍率設定 *****
+            ctx_scalex = a1;
+            ctx_scaley = a2;
+            ctx_scaleox = a3;
+            ctx_scaleoy = a4;
+            ctx.setTransform(1, 0, 0, 1, 0, 0);      // 座標系を元に戻す
+            set_canvas_axis(ctx);                    // 座標系を再設定
+            return true;
+        });
+        make_one_func_tbl_A("setfont", function () {
+            var a1;
 
-                        // // ***** 配列の存在チェック *****
-                        // if (!vars.checkVar(a1 + "[" + i + "]")) { break; }
-                        // if (!vars.checkVar(b1 + "[" + i + "]")) { break; }
+            match("(");
+            a1 = String(expression()).toUpperCase();
+            match(")");
+            switch (a1) {
+                case "L": font_size = 30; break;
+                case "M": font_size = 24; break;
+                case "S": font_size = 16; break;
+                case "T": font_size = 12; break;
+                default: font_size = 24; break;
+            }
+            ctx.font = font_size + "px " + font_family;
+            return true;
+        });
+        make_one_func_tbl_A("setoutdata", function () {
+            var a1, a2;
 
-                        // x1 = parseInt(vars[a1 + "[" + i + "]"], 10);
-                        x1 = parseInt(vars.getVarValue(a1 + "[" + i + "]"), 10);
-                        // y1 = parseInt(vars[b1 + "[" + i + "]"], 10);
-                        y1 = parseInt(vars.getVarValue(b1 + "[" + i + "]"), 10);
-                        ctx.lineTo(x1, y1);
-                    }
-                    if (a4 == 0) { ctx.closePath(); }
-                    ctx.stroke();
+            match("("); a1 = parseInt(expression(), 10);
+            match(","); a2 = String(expression());
+            match(")");
+            out_data[a1] = a2;
+            return true;
+        });
+        make_one_func_tbl_A("setpixel", function () {
+            var a1, a2, a3;
+            var col_r, col_g, col_b;
+
+            match("("); a1 = parseFloat(expression());   // X
+            match(","); a2 = parseFloat(expression());   // Y
+            match(","); a3 = parseInt(expression(), 10); // RGB
+            match(")");
+            col_r = (a3 & 0xff0000) >> 16; // R
+            col_g = (a3 & 0x00ff00) >> 8;  // G
+            col_b = (a3 & 0x0000ff);       // B
+            ctx.fillStyle = "rgb(" + col_r + "," + col_g + "," + col_b + ")";
+            ctx.fillRect(a1, a2, 1, 1);
+            ctx.fillStyle = color_val;
+            return true;
+        });
+        make_one_func_tbl_A("setscsize", function () {
+            var a1, a2, a3, a4;
+
+            match("("); a1 = parseInt(expression(), 10); // W
+            match(","); a2 = parseInt(expression(), 10); // H
+            if (symbol[pc] == ")") {
+                a3 = a1;
+                a4 = a2;
+            } else {
+                match(","); a3 = parseInt(expression(), 10); // W2
+                match(","); a4 = parseInt(expression(), 10); // H2
+            }
+            match(")");
+            // ***** エラーチェック *****
+            // if (a1 <= 0 || a1 >= max_image_size || a2 <= 0 || a2 >= max_image_size ||
+            //     a3 <= 0 || a3 >= max_image_size || a4 <= 0 || a4 >= max_image_size) {
+            if (!(a1 > 0 && a1 <= max_image_size && a2 > 0 && a2 <= max_image_size &&
+                  a3 > 0 && a3 <= max_image_size && a4 > 0 && a4 <= max_image_size)) {
+                throw new Error("縦横のサイズの値が不正です。1-" + max_image_size + "の範囲で指定してください。");
+            }
+            // ***** 画面サイズ設定 *****
+            can1.width = a1;
+            can1.height = a2;
+            can1.style.width = a3 + "px";
+            can1.style.height = a4 + "px";
+            // ***** Canvasの各設定のリセット *****
+            reset_canvas_setting(ctx1);
+            return true;
+        });
+        make_one_func_tbl_A("sleep", function () {
+            var a1;
+
+            match("(");
+            a1 = parseInt(expression(), 10);
+            match(")");
+            sleep_flag = true;
+            sleep_time = a1;
+            return true;
+        });
+        make_one_func_tbl_A("soft1", function () {
+            var a1;
+
+            match("(");
+            a1 = String(expression());
+            match(")");
+            softkey[0] = a1;
+            disp_softkey();
+            return true;
+        });
+        make_one_func_tbl_A("soft2", function () {
+            var a1;
+
+            match("(");
+            a1 = String(expression());
+            match(")");
+            softkey[1] = a1;
+            disp_softkey();
+            return true;
+        });
+        make_one_func_tbl_A("spmode", function () {
+            var a1;
+
+            match("(");
+            a1 = parseInt(expression(), 10);
+            match(")");
+            sp_compati_mode = a1;
+            if (sp_compati_mode == 1) {
+                font_size = 12;
+                ctx.font = font_size + "px " + font_family;
+                use_local_vars = false;
+            }
+            return true;
+        });
+        make_one_func_tbl_A("text", function () {
+            var a1, a2, a3, a4;
+
+            match("(");
+            // ***** 文字列に変換 *****
+            // a1 = expression();
+            a1 = String(expression());
+
+            // ***** Chrome v24 で全角スペースが半角のサイズで表示される件の対策 *****
+            a1 = a1.replace(/　/g, "  "); // 全角スペースを半角スペース2個に変換
+
+            if (symbol[pc] == ")") {
+                a2 = a3 = a4 = 0;
+            } else {
+                match(","); a2 = parseInt(expression(), 10); // X
+                match(","); a3 = parseInt(expression(), 10); // Y
+                match(","); a4 = parseInt(expression(), 10); // アンカー
+            }
+            match(")");
+            // ***** 水平方向 *****
+            if (a4 & 4)       { ctx.textAlign = "left"; }    // 左
+            else if (a4 & 8)  { ctx.textAlign = "right"; }   // 右
+            else if (a4 & 1)  { ctx.textAlign = "center"; }  // 中央
+            else { ctx.textAlign = "left"; }
+            // ***** 垂直方向 *****
+            if (a4 & 16)      { ctx.textBaseline = "top"; }        // 上
+            else if (a4 & 32) { ctx.textBaseline = "bottom"; }     // 下
+            else if (a4 & 2)  { ctx.textBaseline = "middle"; }     // 中央
+            else if (a4 & 64) { ctx.textBaseline = "alphabetic"; } // ベースライン
+            else { ctx.textBaseline = "top"; }
+            // ***** 文字列表示 *****
+            ctx.fillText(a1, a2, a3);
+            return true;
+        });
+        make_one_func_tbl_A("trgt", function () {
+            var a1;
+
+            match("(");
+            // a1 = getvarname();
+            a1 = getvarname(4); // 画像変数のポインタ対応
+            match(")");
+            if (a1 == "off") {
+                can = can1;
+                ctx = ctx1;
+            // } else if (imgvars.hasOwnProperty(a1)) {
+            } else if (hasOwn.call(imgvars, a1)) {
+                can = imgvars[a1].can;
+                ctx = imgvars[a1].ctx;
+            } else {
+                throw new Error("Image「" + a1 + "」がロードされていません。");
+            }
+            // ***** Canvasの各設定のリセット *****
+            reset_canvas_setting(ctx);
+            return true;
+        });
+        make_one_func_tbl_A("unlock", function () {
+            var a1;
+
+            match("(");
+            if (symbol[pc] == ")") {
+                a1 = 0;
+            } else {
+                a1 = parseInt(expression(), 10);
+            }
+            match(")");
+            // ***** NOP *****
+            return true;
+        });
+        make_one_func_tbl_A("}", function () {
+            var funccall_info = {};
+
+            // ***** 戻り値は0とする *****
+            ret_num = 0;
+            // ***** 関数内のとき *****
+            if (funccall_stack.length > 0) {
+                // ***** 関数呼び出し情報をチェック *****
+                funccall_info = funccall_stack[funccall_stack.length - 1];
+                // ***** ネストありのとき(通常の関数呼び出しのとき) *****
+                if (funccall_info.nestcall) {
+                    // ***** 呼び出し元に復帰 *****
+                    return_flag = true;
                     return true;
                 }
-                break;
+                // ***** ネストなしのとき(funccall文で呼び出されたとき) *****
 
-            case "s":
-                if (sym == "sandmake") {
-                    match("("); x1 = parseInt(expression(), 10);
-                    match(","); y1 = parseInt(expression(), 10);
-                    match(","); w1 = parseInt(expression(), 10);
-                    match(","); h1 = parseInt(expression(), 10);
-                    match(","); a1 = parseFloat(expression());
-                    match(","); a2 = parseFloat(expression());
-                    match(","); a3 = parseFloat(expression());
-                    match(","); a4 = parseFloat(expression());
-                    match(","); col = parseInt(expression(), 10);
-                    match(","); threshold = parseInt(expression(), 10);
-                    if (symbol[pc] == ")") {
-                        border_mode = 1;
-                    } else {
-                        match(","); border_mode = parseInt(expression(), 10);
-                    }
-                    match(")");
-                    sand_obj = new SandSim(can, ctx, x1, y1, w1, h1, a1, a2, a3, a4, col, threshold, border_mode);
-                    sand_obj.maketable();
-                    return true;
-                }
-                if (sym == "sandmove") {
-                    match("(");
-                    match(")");
-                    if (sand_obj != null) { sand_obj.move(); }
-                    return true;
-                }
-                if (sym == "sanddraw") {
-                    match("(");
-                    match(")");
-                    if (sand_obj != null) {
-                        ctx.setTransform(1, 0, 0, 1, 0, 0);      // 座標系を元に戻す
-                        sand_obj.draw();
-                        set_canvas_axis(ctx);                    // 座標系を再設定
-                    }
-                    return true;
-                }
-                if (sym == "setstrimg") {
-                    match("("); a1 = String(expression());
-                    match(",");
-                    // a2 = getvarname();
-                    a2 = getvarname(4); // 画像変数のポインタ対応
-                    if (symbol[pc] == ")") {
-                        a3 = 0;
-                        a4 = 0;
-                    } else {
-                        match(","); a3 = parseInt(expression(), 10);
-                        match(","); a4 = parseInt(expression(), 10);
-                    }
-                    match(")");
-                    // ***** 画像文字割付を格納 *****
-                    ch = a1.charAt(0); // 1文字だけにする
-                    if (ch.length == 0) { return true; }
-                    // if (imgvars.hasOwnProperty(a2)) {
-                    if (hasOwn.call(imgvars, a2)) {
-                        stimg[ch] = {};
-                        stimg[ch].img = imgvars[a2];
-                        stimg[ch].off_x = a3;
-                        stimg[ch].off_y = a4;
-                    } else {
-                        throw new Error("Image「" + a1 + "」がロードされていません。");
-                    }
-                    return true;
-                }
-                break;
+                // ***** ローカル変数を解放 *****
+                vars.deleteLocalScope();
 
-            case "t":
-                if (sym == "transimg") {
-                    match("(");
-                    // a1 = getvarname();
-                    a1 = getvarname(4); // 画像変数のポインタ対応
-                    match(","); a2 = parseInt(expression(), 10); // RGB
-                    match(")");
-                    // if (imgvars.hasOwnProperty(a1)) {
-                    if (hasOwn.call(imgvars, a1)) {
-                        col_r = (a2 & 0xff0000) >> 16; // R
-                        col_g = (a2 & 0x00ff00) >> 8;  // G
-                        col_b = (a2 & 0x0000ff);       // B
-                        // ***** 画像データを取得 *****
-                        img_data = imgvars[a1].ctx.getImageData(0, 0, imgvars[a1].can.width, imgvars[a1].can.height);
-                        // ***** 透明画像変換 *****
-                        for (i = 0; i < img_data.data.length; i+=4) {
-                            if (img_data.data[i    ] == col_r &&
-                                img_data.data[i + 1] == col_g &&
-                                img_data.data[i + 2] == col_b) {
-                                    img_data.data[i    ] = 0;
-                                    img_data.data[i + 1] = 0;
-                                    img_data.data[i + 2] = 0;
-                                    img_data.data[i + 3] = 0;
-                            }
-                        }
-                        // ***** 画像を格納 *****
-                        imgvars[a1].ctx.putImageData(img_data, 0, 0);
-                    } else {
-                        throw new Error("Image「" + a1 + "」がロードされていません。");
-                    }
-                    return true;
-                }
-                if (sym == "txtmake") {
-                    match("(");
-                    // a1 = getvarname();
-                    a1 = getvarname(2); // ポインタ対応
-                    match(","); a2 = parseInt(expression(), 10);
-                    match(","); a3 = parseInt(expression(), 10);
-                    match(","); a4 = String(expression());
-                    match(","); a5 = parseInt(expression(), 10);
-                    match(")");
+                // ***** 戻り値を変数に格納 *****
+                // vars[funccall_info.retvarname] = ret_num;
+                vars.setVarValue(funccall_info.retvarname, ret_num);
+                // ***** 呼び出し元に復帰 *****
+                funccall_info = funccall_stack.pop();
+                pc = funccall_info.func_back;
+                return true;
+            }
+            return_flag = true;
+            return true;
+        });
+        make_one_func_tbl_A(";", function () {
+            return true;
+        });
+        make_one_func_tbl_A("@", function () {
+            var a1, a2;
+            var i;
 
-                    // ***** NaN対策 *****
-                    a2 = a2 | 0;
-                    a3 = a3 | 0;
-
-                    // ***** エラーチェック *****
-                    // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
-                    if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
-                        throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
-                    }
-                    // if (a5 > max_str_size) {
-                    if (!(a5 <= max_str_size)) {
-                        throw new Error("処理する文字数が不正です。" + max_str_size + "以下である必要があります。");
-                    }
-
-                    // ***** 作成処理 *****
-                    st1 = strrepeatsub(a4, a5);
-                    for (i = a2; i <= a3; i++) {
-                        // vars[a1 + "[" + i + "]"] = st1;
-                        vars.setVarValue(a1 + "[" + i + "]", st1);
-                    }
-                    return true;
-                }
-                if (sym == "txtdraw") {
-                    match("(");
-                    // a1 = getvarname();
-                    a1 = getvarname(2); // ポインタ対応
-                    match(","); a2 = parseInt(expression(), 10);
-                    match(","); a3 = parseInt(expression(), 10);
-                    if (symbol[pc] == ")") {
-                        x1 = 0;
-                        y1 = 0;
-                    } else {
-                        match(","); x1 = parseInt(expression(), 10);
-                        match(","); y1 = parseInt(expression(), 10);
-                    }
-                    match(")");
-
-                    // ***** NaN対策 *****
-                    a2 = a2 | 0;
-                    a3 = a3 | 0;
-
-                    // ***** エラーチェック *****
-                    // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
-                    if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
-                        throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
-                    }
-
-                    // ***** 描画処理 *****
-                    for (i = a2; i <= a3; i++) {
-
-                        // // ***** 配列の存在チェック *****
-                        // if (!vars.checkVar(a1 + "[" + i + "]")) { break; }
-
-                        // st1 = vars[a1 + "[" + i + "]"];
-                        st1 = vars.getVarValue(a1 + "[" + i + "]");
-
-                        // ***** 文字列に変換 *****
-                        st1 = String(st1);
-
-                        // ***** Chrome v24 で全角スペースが半角のサイズで表示される件の対策 *****
-                        st1 = st1.replace(/　/g, "  "); // 全角スペースを半角スペース2個に変換
-
-                        // ***** 文字列表示 *****
-                        ctx.textAlign = "left";
-                        ctx.textBaseline = "top";
-                        ctx.fillText(st1, x1, y1);
-                        y1 += font_size;
-                    }
-                    return true;
-                }
-                if (sym == "txtdrawimg") {
-                    match("(");
-                    // a1 = getvarname();
-                    a1 = getvarname(2); // ポインタ対応
-                    match(","); a2 = parseInt(expression(), 10);
-                    match(","); a3 = parseInt(expression(), 10);
-                    match(","); x1 = parseInt(expression(), 10);
-                    match(","); y1 = parseInt(expression(), 10);
-                    match(","); w1 = parseFloat(expression());
-                    match(","); h1 = parseFloat(expression());
-                    match(")");
-
-                    // ***** NaN対策 *****
-                    a2 = a2 | 0;
-                    a3 = a3 | 0;
-
-                    // ***** エラーチェック *****
-                    // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
-                    if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
-                        throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
-                    }
-
-                    // ***** 描画処理 *****
-                    for (i = a2; i <= a3; i++) {
-
-                        // // ***** 配列の存在チェック *****
-                        // if (!vars.checkVar(a1 + "[" + i + "]")) { break; }
-
-                        // st1 = vars[a1 + "[" + i + "]"];
-                        st1 = vars.getVarValue(a1 + "[" + i + "]");
-                        st1 = String(st1);
-                        for (j = 0; j < st1.length; j++) {
-                            ch = st1.charAt(j);
-                            if (stimg.hasOwnProperty(ch)) {
-                                x2 = (x1 + (j * w1) + stimg[ch].off_x) | 0; // 整数化
-                                y2 = (y1            + stimg[ch].off_y) | 0; // 整数化
-                                ctx.drawImage(stimg[ch].img.can, x2, y2);
-                            }
-                        }
-                        // for (ch in stimg) { // 速度ほとんど変わらず...
-                        //     if (stimg.hasOwnProperty(ch)) {
-                        //         j = 0;
-                        //         while (j >= 0) {
-                        //             j = st1.indexOf(ch, j);
-                        //             if (j >= 0) {
-                        //                 x2 = (x1 + (j * w1) + stimg[ch].off_x) | 0;
-                        //                 y2 = (y1            + stimg[ch].off_y) | 0;
-                        //                 ctx.drawImage(stimg[ch].img.can, x2, y2);
-                        //                 j++;
-                        //             }
-                        //         }
-                        //     }
-                        // }
-                        y1 += h1;
-                    }
-                    return true;
-                }
-                if (sym == "txtovr") {
-                    match("(");
-                    // a1 = getvarname();
-                    a1 = getvarname(2); // ポインタ対応
-                    match(","); a2 = parseInt(expression(), 10);
-                    match(","); a3 = parseInt(expression(), 10);
-                    match(","); x1 = parseInt(expression(), 10);
-                    match(","); y1 = parseInt(expression(), 10);
-                    match(",");
-                    // b1 = getvarname();
-                    b1 = getvarname(2); // ポインタ対応
-                    match(","); b2 = parseInt(expression(), 10);
-                    match(","); b3 = parseInt(expression(), 10);
-                    if (symbol[pc] == ")") {
-                        a4 = 0;
-                    } else {
-                        match(","); a4 = parseInt(expression(), 10);
-                    }
-                    match(")");
-
-                    // ***** NaN対策 *****
-                    a2 = a2 | 0;
-                    a3 = a3 | 0;
-                    b2 = b2 | 0;
-                    b3 = b3 | 0;
-
-                    // ***** エラーチェック *****
-                    // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
-                    if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
-                        throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
-                    }
-                    // if (b3 - b2 + 1 < 1 || b3 - b2 + 1 > max_array_size) {
-                    if (!(b3 - b2 + 1 >= 1 && b3 - b2 + 1 <= max_array_size)) {
-                        throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
-                    }
-
-                    // ***** 描画処理 *****
-                    if (a1 == b1 && y1 < b2) { // 前から処理か後から処理か
-                        i_start = b2;
-                        i_end = b3;
-                        i_plus = 1;
-                    } else {
-                        i_start = b3;
-                        i_end = b2;
-                        i_plus = -1;
-                        y1 = y1 + (b3 - b2);
-                    }
-                    i = i_start;
-                    while (true) {
-                        if (y1 >= a2 && y1 <= a3) {
-
-                            // // ***** 配列の存在チェック *****
-                            // if (!vars.checkVar(a1 + "[" + y1 + "]")) { break; }
-                            // if (!vars.checkVar(b1 + "[" + i + "]")) { break; }
-
-                            // st1 = vars[a1 + "[" + y1 + "]"];
-                            st1 = vars.getVarValue(a1 + "[" + y1 + "]");
-                            st1 = String(st1);
-                            // st2 = vars[b1 + "[" + i + "]"];
-                            st2 = vars.getVarValue(b1 + "[" + i + "]");
-                            st2 = String(st2);
-                            if (a4 == 1) {
-                                st1 = strovrsub2(st1, x1, st2);
-                            } else if (a4 == 2) {
-                                st1 = strovrsub3(st1, x1, st2);
-                            } else {
-                                st1 = strovrsub(st1, x1, st2);
-                            }
-                            // vars[a1 + "[" + y1 + "]"] = st1;
-                            vars.setVarValue(a1 + "[" + y1 + "]", st1);
-                        }
-                        i  += i_plus;
-                        y1 += i_plus;
-                        if (i_plus > 0 && i <= i_end) { continue; }
-                        if (i_plus < 0 && i >= i_end) { continue; }
-                        break;
-                    }
-                    return true;
-                }
-                if (sym == "txtpset") {
-                    match("(");
-                    // a1 = getvarname();
-                    a1 = getvarname(2); // ポインタ対応
-                    match(","); a2 = parseInt(expression(), 10);
-                    match(","); a3 = parseInt(expression(), 10);
-                    match(","); x1 = parseInt(expression(), 10);
-                    match(","); y1 = parseInt(expression(), 10);
-                    match(","); a4 = String(expression());
-                    match(")");
-
-                    // ***** NaN対策 *****
-                    a2 = a2 | 0;
-                    a3 = a3 | 0;
-
-                    // ***** エラーチェック *****
-                    // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
-                    if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
-                        throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
-                    }
-
-                    // ***** 描画処理 *****
-                    // txtpsetsub(a1, a2, a3, x1, y1, a4);
-                    txtovrsub(a1, a2, a3, x1, y1, a4);
-                    return true;
-                }
-                if (sym == "txtline") {
-                    match("(");
-                    // a1 = getvarname();
-                    a1 = getvarname(2); // ポインタ対応
-                    match(","); a2 = parseInt(expression(), 10);
-                    match(","); a3 = parseInt(expression(), 10);
-                    match(","); x1 = parseInt(expression(), 10);
-                    match(","); y1 = parseInt(expression(), 10);
-                    match(","); x2 = parseInt(expression(), 10);
-                    match(","); y2 = parseInt(expression(), 10);
-                    match(","); a4 = String(expression());
-                    match(")");
-
-                    // ***** NaN対策 *****
-                    a2 = a2 | 0;
-                    a3 = a3 | 0;
-
-                    // ***** エラーチェック *****
-                    // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
-                    if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
-                        throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
-                    }
-                    // if (Math.abs(x2 - x1) + 1 > max_str_size) {
-                    if (!(Math.abs(x2 - x1) + 1 <= max_str_size)) {
-                        throw new Error("処理する文字数が不正です。" + max_str_size + "以下である必要があります。");
-                    }
-                    // if (Math.abs(y2 - y1) + 1 > max_str_size) {
-                    if (!(Math.abs(y2 - y1) + 1 <= max_str_size)) {
-                        throw new Error("処理する文字数が不正です。" + max_str_size + "以下である必要があります。");
-                    }
-
-                    // ***** 描画処理 *****
-                    if ((x2 - x1) > 0) {
-                        dx1 = x2 - x1; sx1 =  1;
-                    } else if ((x2 - x1) < 0) {
-                        dx1 = x1 - x2; sx1 = -1;
-                    } else {
-                        dx1 = 0; sx1 = 0;
-                    }
-                    if ((y2 - y1) > 0) {
-                        dy1 = y2 - y1; sy1 =  1;
-                    } else if ((y2 - y1) < 0) {
-                        dy1 = y1 - y2; sy1 = -1;
-                    } else {
-                        dy1 = 0; sy1 = 0;
-                    }
-                    x3 = x1;
-                    y3 = y1;
-                    if (dx1 >= dy1) {
-                        e1 = -dx1;
-                        for (i = 0; i <= dx1; i++) {
-                            ch = a4.substring(i % a4.length, (i % a4.length) + 1);
-                            txtpsetsub(a1, a2, a3, x3, y3, ch);
-                            x3 = x3 + sx1;
-                            e1 = e1 + 2 * dy1;
-                            if (e1 >= 0) {
-                                y3 = y3 + sy1;
-                                e1 = e1 - 2 * dx1;
-                            }
-                        }
-                    } else {
-                        e1 = -dy1;
-                        for (i = 0; i <= dy1; i++) {
-                            ch = a4.substring(i % a4.length, (i % a4.length) + 1);
-                            txtpsetsub(a1, a2, a3, x3, y3, ch);
-                            y3 = y3 + sy1;
-                            e1 = e1 + 2 * dx1;
-                            if (e1 >= 0) {
-                                x3 = x3 + sx1;
-                                e1 = e1 - 2 * dy1;
-                            }
-                        }
-                    }
-                    return true;
-                }
-                if (sym == "txtbox") {
-                    match("(");
-                    // a1 = getvarname();
-                    a1 = getvarname(2); // ポインタ対応
-                    match(","); a2 = parseInt(expression(), 10);
-                    match(","); a3 = parseInt(expression(), 10);
-                    match(","); x1 = parseInt(expression(), 10);
-                    match(","); y1 = parseInt(expression(), 10);
-                    match(","); x2 = parseInt(expression(), 10);
-                    match(","); y2 = parseInt(expression(), 10);
-                    match(","); a4 = String(expression());
-                    match(")");
-
-                    // ***** NaN対策 *****
-                    a2 = a2 | 0;
-                    a3 = a3 | 0;
-
-                    // ***** エラーチェック *****
-                    // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
-                    if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
-                        throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
-                    }
-                    // if (Math.abs(x2 - x1) + 1 > max_str_size) {
-                    if (!(Math.abs(x2 - x1) + 1 <= max_str_size)) {
-                        throw new Error("処理する文字数が不正です。" + max_str_size + "以下である必要があります。");
-                    }
-                    // if (Math.abs(y2 - y1) + 1 > max_str_size) {
-                    if (!(Math.abs(y2 - y1) + 1 <= max_str_size)) {
-                        throw new Error("処理する文字数が不正です。" + max_str_size + "以下である必要があります。");
-                    }
-
-                    // ***** 描画処理 *****
-                    if (x1 > x2) { x3 = x2; x4 = x1; } else { x3 = x1; x4 = x2; }
-                    if (y1 > y2) { y3 = y2; y4 = y1; } else { y3 = y1; y4 = y2; }
-                    a5 = strrepeatsub(a4, x4 - x3 + 1);
-                    txtovrsub(a1, a2, a3, x3, y3, a5);
-                    txtovrsub(a1, a2, a3, x3, y4, a5);
-                    for (i = y3; i <= y4; i++) {
-                        txtpsetsub(a1, a2, a3, x3, i, a4);
-                        txtpsetsub(a1, a2, a3, x4, i, a4);
-                    }
-                    return true;
-                }
-                if (sym == "txtfbox") {
-                    match("(");
-                    // a1 = getvarname();
-                    a1 = getvarname(2); // ポインタ対応
-                    match(","); a2 = parseInt(expression(), 10);
-                    match(","); a3 = parseInt(expression(), 10);
-                    match(","); x1 = parseInt(expression(), 10);
-                    match(","); y1 = parseInt(expression(), 10);
-                    match(","); x2 = parseInt(expression(), 10);
-                    match(","); y2 = parseInt(expression(), 10);
-                    match(","); a4 = String(expression());
-                    match(")");
-
-                    // ***** NaN対策 *****
-                    a2 = a2 | 0;
-                    a3 = a3 | 0;
-
-                    // ***** エラーチェック *****
-                    // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
-                    if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
-                        throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
-                    }
-                    // if (Math.abs(x2 - x1) + 1 > max_str_size) {
-                    if (!(Math.abs(x2 - x1) + 1 <= max_str_size)) {
-                        throw new Error("処理する文字数が不正です。" + max_str_size + "以下である必要があります。");
-                    }
-                    // if (Math.abs(y2 - y1) + 1 > max_str_size) {
-                    if (!(Math.abs(y2 - y1) + 1 <= max_str_size)) {
-                        throw new Error("処理する文字数が不正です。" + max_str_size + "以下である必要があります。");
-                    }
-
-                    // ***** 描画処理 *****
-                    if (x1 > x2) { x3 = x2; x4 = x1; } else { x3 = x1; x4 = x2; }
-                    if (y1 > y2) { y3 = y2; y4 = y1; } else { y3 = y1; y4 = y2; }
-                    a5 = strrepeatsub(a4, x4 - x3 + 1);
-                    for (i = y3; i <= y4; i++) {
-                        txtovrsub(a1, a2, a3, x3, i, a5);
-                    }
-                    return true;
-                }
-                if (sym == "txtcircle") {
-                    match("(");
-                    // a1 = getvarname();
-                    a1 = getvarname(2); // ポインタ対応
-                    match(","); a2 = parseInt(expression(), 10);
-                    match(","); a3 = parseInt(expression(), 10);
-                    match(","); x1 = parseInt(expression(), 10);
-                    match(","); y1 = parseInt(expression(), 10);
-                    match(","); r1 = parseInt(expression(), 10);
-                    match(","); a = parseFloat(expression());
-                    match(","); b = parseFloat(expression());
-                    match(","); a4 = String(expression());
-                    match(")");
-
-                    // ***** NaN対策 *****
-                    a2 = a2 | 0;
-                    a3 = a3 | 0;
-
-                    // ***** エラーチェック *****
-                    // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
-                    if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
-                        throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
-                    }
-                    // if (r1 > max_str_size) {
-                    if (!(r1 <= max_str_size)) {
-                        throw new Error("処理する文字数が不正です。" + max_str_size + "以下である必要があります。");
-                    }
-                    if (r1 < 0) { return true; }
-
-                    // ***** 描画処理 *****
-                    if (a < 1) { a = 1; }
-                    if (b < 1) { b = 1; }
-                    x2 = r1;
-                    drawflag = 0;
-                    x_old = 0;
-                    y_old = 0;
-                    for (y2 = 0; y2 <= r1; y2++) {
-                        // 円の内側になるまでループ
-                        while (((a * a * x2 * x2) + (b * b * y2 * y2)) >= (r1 * r1)) {
-                            x2--;
-                            if (x2 < 0) { break; }
-                        }
-                        if (x2 < 0) {
-                            if (drawflag == 1) {
-                                // 上下の最後の部分を水平線で追加表示
-                                txtovrsub(a1, a2, a3, x1 - x_old, y1 - y_old, strrepeatsub(a4, 2 * x_old + 1));
-                                txtovrsub(a1, a2, a3, x1 - x_old, y1 + y_old, strrepeatsub(a4, 2 * x_old + 1));
-                            }
-                            break;
-                        }
-                        // 両端の点を表示
-                        txtpsetsub(a1, a2, a3, x1 - x2, y1 - y2, a4);
-                        txtpsetsub(a1, a2, a3, x1 + x2, y1 - y2, a4);
-                        txtpsetsub(a1, a2, a3, x1 - x2, y1 + y2, a4);
-                        txtpsetsub(a1, a2, a3, x1 + x2, y1 + y2, a4);
-                        if (drawflag == 1) {
-                            // 前回の足りない部分を水平線で追加表示
-                            txtovrsub(a1, a2, a3, x1 - x_old , y1 - y_old, strrepeatsub(a4, x_old - x2));
-                            txtovrsub(a1, a2, a3, x1 + x2 + 1, y1 - y_old, strrepeatsub(a4, x_old - x2));
-                            txtovrsub(a1, a2, a3, x1 - x_old , y1 + y_old, strrepeatsub(a4, x_old - x2));
-                            txtovrsub(a1, a2, a3, x1 + x2 + 1, y1 + y_old, strrepeatsub(a4, x_old - x2));
-                        }
-                        drawflag = 1;
-                        x_old = x2;
-                        y_old = y2;
-                    }
-                    return true;
-                }
-                if (sym == "txtfcircle") {
-                    match("(");
-                    // a1 = getvarname();
-                    a1 = getvarname(2); // ポインタ対応
-                    match(","); a2 = parseInt(expression(), 10);
-                    match(","); a3 = parseInt(expression(), 10);
-                    match(","); x1 = parseInt(expression(), 10);
-                    match(","); y1 = parseInt(expression(), 10);
-                    match(","); r1 = parseInt(expression(), 10);
-                    match(","); a = parseFloat(expression());
-                    match(","); b = parseFloat(expression());
-                    match(","); a4 = String(expression());
-                    match(")");
-
-                    // ***** NaN対策 *****
-                    a2 = a2 | 0;
-                    a3 = a3 | 0;
-
-                    // ***** エラーチェック *****
-                    // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
-                    if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
-                        throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
-                    }
-                    // if (r1 > max_str_size) {
-                    if (!(r1 <= max_str_size)) {
-                        throw new Error("処理する文字数が不正です。" + max_str_size + "以下である必要があります。");
-                    }
-                    if (r1 < 0) { return true; }
-
-                    // ***** 描画処理 *****
-                    if (a < 1) { a = 1; }
-                    if (b < 1) { b = 1; }
-                    x2 = r1;
-                    for (y2 = 0; y2 <= r1; y2++) {
-                        // 円の内側になるまでループ
-                        while (((a * a * x2 * x2) + (b * b * y2 * y2)) >= (r1 * r1)) {
-                            x2--;
-                            if (x2 < 0) { break; }
-                        }
-                        if (x2 < 0) { break; }
-                        // 両端を結ぶ水平線を表示
-                        txtovrsub(a1, a2, a3, x1 - x2, y1 - y2, strrepeatsub(a4, 2 * x2 + 1));
-                        txtovrsub(a1, a2, a3, x1 - x2, y1 + y2, strrepeatsub(a4, 2 * x2 + 1));
-                    }
-                    return true;
-                }
-                break;
-
-        }
-        // ***** 追加命令処理フラグOFF *****
-        addfunc_ret.ret_flag = false;
-        // ***** 戻り値を返す *****
-        return true;
+            match("(");
+            // a1 = getvarname();
+            a1 = getvarname(2); // ポインタ対応
+            i = 0;
+            while (pc < symbol_len) {
+                if (symbol[pc] == ")") { break; }
+                match(",");
+                a2 = expression();
+                // vars[a1 + "[" + i + "]"] = a2;
+                vars.setVarValue(a1 + "[" + i + "]", a2);
+                i++;
+            }
+            match(")");
+            return true;
+        });
+    }
+    function make_one_func_tbl_A(name, func) {
+        func_tbl_A[name] = func;
     }
 
 
-    // ***** 追加命令(戻り値のある関数)の処理 *****
-    function factor_addfunc(sym, addfunc_ret) {
-        var num;
-        var i, j;
-        var a1, a2, a3, a4;
-        var ch;
-        var st1;
-        var x1, y1, x2, y2, x3, y3, x4, y4;
-        var w1, h1, w2, h2;
-        var dr, di, mr, mi, cr, ci, tr, ti, zr, zi, rep, norm2;
-        var char_flag;
+    // ***** 命令(戻り値のある関数)の定義情報の生成 *****
+    function make_func_tbl_B() {
+        // ***** 命令(戻り値のある関数)の定義情報の初期化 *****
+        func_tbl_B = {};
+        // ***** 命令(戻り値のある関数)の定義情報の生成 *****
+        make_one_func_tbl_B("abs", function () {
+            var num;
+            var a1;
 
-        var mis, mis_no;
-        var min_no, max_no;
+            match("(");
+            a1 = parseFloat(expression());
+            match(")");
+            num = Math.abs(a1);
+            return num;
+        });
+        make_one_func_tbl_B("acos", function () {
+            var num;
+            var a1;
 
-        // ***** 追加命令処理フラグON *****
-        addfunc_ret.ret_flag = true;
-        // ***** シンボルの場合分け *****
-        switch (sym.charAt(0)) {
+            match("(");
+            a1 = parseFloat(expression());
+            match(")");
+            num = Math.acos(a1) * 180 / Math.PI;
+            return num;
+        });
+        make_one_func_tbl_B("arraylen", function () {
+            var num;
+            var a1, a2, a3;
+            var i;
 
-            case "a":
-                if (sym == "audmakestat") {
-                    match("(");
-                    a1 = parseInt(expression(), 10);
-                    match(")");
-
-                    // ***** 音楽モードチェック *****
-                    if (aud_mode == 1 || aud_mode == 2) {
-                        if (!MMLPlayer.AudioContext) { return 0; }
-                    } else {
-                        return 0;
-                    }
-
-                    num = 0;
-                    if (audplayer.hasOwnProperty(a1)) {
-                        if (audplayer[a1].mmlplayer.compiled == 1) {
-                            num = 1;
-                        }
-                    } else {
-                        throw new Error("音楽プレイヤー" + a1 + " は作成されていません。");
-                    }
-                    return num;
+            match("(");
+            // a1 = getvarname();
+            a1 = getvarname(2); // ポインタ対応
+            if (symbol[pc] == ")") {
+                a2 = 0;
+                a3 = null;
+            } else {
+                match(","); a2 = parseInt(expression(), 10);
+                if (symbol[pc] == ")") {
+                    a3 = null;
+                } else {
+                    match(","); a3 = parseInt(expression(), 10);
                 }
-                if (sym == "audstat") {
-                    match("(");
-                    a1 = parseInt(expression(), 10);
-                    match(")");
+            }
+            match(")");
 
-                    // ***** 音楽モードチェック *****
-                    if (aud_mode == 1 || aud_mode == 2) {
-                        if (!MMLPlayer.AudioContext) { return -1; }
-                    } else {
-                        return -1;
-                    }
+            // ***** NaN対策 *****
+            a2 = a2 | 0;
 
-                    num = 0;
-                    if (audplayer.hasOwnProperty(a1)) {
-                        num = audplayer[a1].mmlplayer.getStatus();
-                    } else {
-                        throw new Error("音楽プレイヤー" + a1 + " は作成されていません。");
-                    }
-                    if (num == 1 || num == 2) { num = 1; } else { num = 0; }
-                    return num;
+            // ***** エラーチェック *****
+            // if (a3 != null && (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size)) {
+            if (!(a3 == null || (a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size))) {
+                throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
+            }
+
+            // ***** カウント処理 *****
+            num = 0;
+            i = a2;
+            do {
+                // ***** 配列の存在チェック *****
+                if (vars.checkVar(a1 + "[" + i + "]")) {
+                    num++;
+                } else if (a3 == null) {
+                    break;
                 }
-                break;
+                i++;
+            } while (a3 == null || i <= a3);
+            return num;
+        });
+        make_one_func_tbl_B("asin", function () {
+            var num;
+            var a1;
 
-            case "c":
-                if (sym == "calcfractal") {
-                    match("("); x1 = parseFloat(expression());
-                    match(","); y1 = parseFloat(expression());
-                    match(","); dr = parseFloat(expression());
-                    match(","); di = parseFloat(expression());
-                    match(","); mr = parseFloat(expression());
-                    match(","); mi = parseFloat(expression());
-                    match(","); cr = parseFloat(expression());
-                    match(","); ci = parseFloat(expression());
-                    if (symbol[pc] == ")") {
-                        rep = 50;
-                        norm2 = 4;
-                    } else {
-                        match(","); rep = parseInt(expression(), 10);
-                        if (symbol[pc] == ")") {
-                            norm2 = 4;
-                        } else {
-                            match(","); norm2 = parseFloat(expression());
-                        }
-                    }
-                    match(")");
+            match("(");
+            a1 = parseFloat(expression());
+            match(")");
+            num = Math.asin(a1) * 180 / Math.PI;
+            return num;
+        });
+        make_one_func_tbl_B("atan", function () {
+            var num;
+            var a1;
 
-                    // ***** エラーチェック *****
-                    if (rep > 1000) { rep = 1000; }
+            match("(");
+            a1 = parseFloat(expression());
+            match(")");
+            num = Math.atan(a1) * 180 / Math.PI;
+            return num;
+        });
+        make_one_func_tbl_B("atan2", function () {
+            var num;
+            var a1, a2;
 
-                    tr = x1 * dr + mr;
-                    ti = y1 * di + mi;
-                    for (num = 0; num < rep; num++) {
-                        zr = tr * tr - ti * ti + cr;
-                        zi = 2 * tr * ti       + ci;
-                        if (zr * zr + zi * zi > norm2) { break; }
-                        tr = zr;
-                        ti = zi;
-                    }
-                    return num;
+            match("("); a1 = parseFloat(expression());
+            match(","); a2 = parseFloat(expression());
+            match(")");
+            // num = Math.atan2(a2, a1) * 180 / Math.PI;
+            num = Math.atan2(a1, a2) * 180 / Math.PI;
+            return num;
+        });
+        make_one_func_tbl_B("ceil", function () {
+            var num;
+            var a1;
+
+            match("(");
+            a1 = parseFloat(expression());
+            match(")");
+            num = Math.ceil(a1);
+            return num;
+        });
+        make_one_func_tbl_B("cos", function () {
+            var num;
+            var a1;
+
+            match("(");
+            a1 = parseFloat(expression());
+            match(")");
+            if (sp_compati_mode == 1) {
+                num = parseInt(Math.cos(a1 * Math.PI / 180) * 100, 10);
+            } else {
+                num = Math.cos(a1 * Math.PI / 180);
+            }
+            return num;
+        });
+        make_one_func_tbl_B("day", function () {
+            var num;
+
+            num = new Date().getDate();
+            return num;
+        });
+        make_one_func_tbl_B("dayofweek", function () {
+            var num;
+
+            num = new Date().getDay(); // =0:日曜日,=1:月曜日 ... =6:土曜日
+            return num;
+        });
+        make_one_func_tbl_B("dcos", function () {
+            var num;
+            var a1;
+
+            match("(");
+            a1 = parseFloat(expression());
+            match(")");
+            num = Math.cos(a1 * Math.PI / 180);
+            return num;
+        });
+        make_one_func_tbl_B("download", function () {
+            var num;
+            var a1, a2, a3;
+
+            match("(");
+            a1 = String(expression());
+            if (symbol[pc] == ")") {
+                a2 = "";
+                a3 = 0;
+            } else {
+                match(","); a2 = String(expression());
+                if (symbol[pc] == ")") {
+                    a3 = 0;
+                } else {
+                    match(","); a3 = parseInt(expression(), 10);
                 }
-                if (sym == "charcode") {
-                    match("("); a1 = String(expression());
-                    if (symbol[pc] == ")") {
-                        a2 = 0;
-                    } else {
-                        match(","); a2 = parseInt(expression(), 10);
-                    }
-                    match(")");
-                    num = a1.charCodeAt(a2);
-                    return num;
-                }
-                if (sym == "charfrom") {
-                    match("("); a1 = parseInt(expression(), 10);
-                    if (symbol[pc] == ")") {
-                        a2 = 0;
-                        char_flag = false;
-                    } else {
-                        match(","); a2 = parseInt(expression(), 10);
-                        char_flag = true;
-                    }
-                    match(")");
-                    if (char_flag) {
-                        // ***** サロゲートペア指定のとき *****
-                        num = String.fromCharCode(a1, a2);
-                    } else {
-                        // ***** UTF-16の文字コードを実際のコード(サロゲートペア)に変換 *****
-                        if (a1 > 0xffff) {
-                            a2 = a1 - 0x10000;
-                            a3 = 0xd800 + (a2 >> 10);      // 上位サロゲート
-                            a4 = 0xdc00 + (a2 & 0x3ff);    // 下位サロゲート
-                            num = String.fromCharCode(a3, a4);
-                        } else {
-                            num = String.fromCharCode(a1); // サロゲートペアを使用しない文字のとき
-                        }
-                    }
-                    return num;
-                }
-                break;
+            }
+            match(")");
+            if (a3 != 1) {
+                Download.download(a1, a2);
+            }
+            num = "data:text/plain;charset=utf-8," + encodeURIComponent(a1);
+            return num;
+        });
+        make_one_func_tbl_B("downloadimg", function () {
+            var num;
+            var a1, a2;
 
-            case "f":
-                if (sym == "fboxchk") {
-                    match("("); x1 = parseFloat(expression());
-                    match(","); y1 = parseFloat(expression());
-                    match(","); w1 = parseFloat(expression());
-                    match(","); h1 = parseFloat(expression());
-                    match(","); x2 = parseFloat(expression());
-                    match(","); y2 = parseFloat(expression());
-                    match(","); w2 = parseFloat(expression());
-                    match(","); h2 = parseFloat(expression());
-                    match(")");
-                    if (x1 < x2 + w2 && x2 < x1 + w1 && y1 < y2 + h2 && y2 < y1 + h1) {
+            match("(");
+            if (symbol[pc] == ")") {
+                a1 = "";
+                a2 = 0;
+            } else {
+                a1 = String(expression());
+                if (symbol[pc] == ")") {
+                    a2 = 0;
+                } else {
+                    match(","); a2 = parseInt(expression(), 10);
+                }
+            }
+            match(")");
+            if (a2 != 1) {
+                Download.downloadCanvas(can, a1);
+            }
+            num = can.toDataURL("image/png");
+            return num;
+        });
+        make_one_func_tbl_B("dpow", function () {
+            var num;
+            var a1, a2;
+
+            match("("); a1 = parseFloat(expression());
+            match(","); a2 = parseFloat(expression());
+            match(")");
+            num = Math.pow(a1, a2);
+            return num;
+        });
+        make_one_func_tbl_B("dsin", function () {
+            var num;
+            var a1;
+
+            match("(");
+            a1 = parseFloat(expression());
+            match(")");
+            num = Math.sin(a1 * Math.PI / 180);
+            return num;
+        });
+        make_one_func_tbl_B("dtan", function () {
+            var num;
+            var a1;
+
+            match("(");
+            a1 = parseFloat(expression());
+            match(")");
+            num = Math.tan(a1 * Math.PI / 180);
+            return num;
+        });
+        make_one_func_tbl_B("exp", function () {
+            var num;
+            var a1;
+
+            match("(");
+            a1 = parseFloat(expression());
+            match(")");
+            num = Math.exp(a1);
+            return num;
+        });
+        make_one_func_tbl_B("floor", function () {
+            var num;
+            var a1;
+
+            match("(");
+            a1 = parseFloat(expression());
+            match(")");
+            num = Math.floor(a1);
+            return num;
+        });
+        make_one_func_tbl_B("getoutdata", function () {
+            var num;
+            var a1;
+
+            match("(");
+            a1 = parseInt(expression(), 10);
+            match(")");
+            if (out_data.hasOwnProperty(a1)) { num = out_data[a1]; } else { num = ""; }
+            return num;
+        });
+        make_one_func_tbl_B("getpixel", function () {
+            var num;
+            var a1, a2;
+            var x1, y1;
+            var ret_obj = {};
+            var img_data = {};
+
+            match("("); a1 = parseFloat(expression()); // X
+            match(","); a2 = parseFloat(expression()); // Y
+            match(")");
+            // ***** 座標系の変換の分を補正 *****
+            ret_obj = {};
+            conv_axis_point(a1, a2, ret_obj);
+            x1 = ret_obj.x;
+            y1 = ret_obj.y;
+            // ***** エラーチェック *****
+            // if (x1 < 0 || x1 >= can.width || y1 < 0 || y1 >= can.height) { return 0; }
+            if (!(x1 >= 0 && x1 < can.width && y1 >= 0 && y1 < can.height)) { return 0; }
+            // ***** 画像データを取得 *****
+            img_data = ctx.getImageData(x1, y1, 1, 1);
+            // ***** 色情報を取得 *****
+            num = (img_data.data[0] << 16) | (img_data.data[1] << 8) | img_data.data[2];
+            return num;
+        });
+        make_one_func_tbl_B("height", function () {
+            var num;
+
+            num = can1.height;
+            return num;
+        });
+        make_one_func_tbl_B("hour", function () {
+            var num;
+
+            num = new Date().getHours();
+            return num;
+        });
+        make_one_func_tbl_B("imgheight", function () {
+            var num;
+            var a1;
+
+            match("(");
+            // a1 = getvarname();
+            a1 = getvarname(4); // 画像変数のポインタ対応
+            match(")");
+            // if (imgvars.hasOwnProperty(a1)) {
+            if (hasOwn.call(imgvars, a1)) {
+                num = imgvars[a1].can.height;
+            } else { num = 0; }
+            return num;
+        });
+        make_one_func_tbl_B("imgwidth", function () {
+            var num;
+            var a1;
+
+            match("(");
+            // a1 = getvarname();
+            a1 = getvarname(4); // 画像変数のポインタ対応
+            match(")");
+            // if (imgvars.hasOwnProperty(a1)) {
+            if (hasOwn.call(imgvars, a1)) {
+                num = imgvars[a1].can.width;
+            } else { num = 0; }
+            return num;
+        });
+        make_one_func_tbl_B("index", function () {
+            var num;
+            var a1, a2, a3;
+
+            match("("); a1 = String(expression());
+            match(","); a2 = String(expression());
+            if (symbol[pc] == ")") {
+                a3 = 0;
+            } else {
+                match(","); a3 = parseInt(expression(), 10);
+            }
+            match(")");
+            num = a1.indexOf(a2, a3);
+            return num;
+        });
+        make_one_func_tbl_B("input", function () {
+            var num;
+            var a1;
+
+            match("(");
+            if (symbol[pc] == ")") {
+                a1 = 0;
+            } else {
+                a1 = parseInt(expression(), 10);
+            }
+            match(")");
+            // ***** キー入力待ちはしない *****
+            if (input_buf.length > 0) {
+                num = input_buf.shift();
+            } else {
+                num = 0;
+            }
+            return num;
+        });
+        make_one_func_tbl_B("inputdlg", function () {
+            var num;
+            var a1, a2, a3, a4;
+
+            match("("); a1 = String(expression());
+            if (symbol[pc] == ")") {
+                a2 = "";
+            } else {
+                match(","); a2 = String(expression());
+                if (symbol[pc] == ")") {
+                    a3 = a4 = 0;
+                } else {
+                    match(","); a3 = parseInt(expression(), 10); // 未使用
+                    match(","); a4 = parseInt(expression(), 10); // 未使用
+                }
+            }
+            match(")");
+            num = prompt(a1, a2) || ""; // nullのときは空文字列にする
+            keyclear();
+            mousebuttonclear();
+            dlg_flag = true;
+            return num;
+        });
+        make_one_func_tbl_B("int", function () {
+            var num;
+            var a1;
+
+            match("(");
+            a1 = parseInt(expression(), 10);
+            match(")");
+            num = a1;
+            return num;
+        });
+        make_one_func_tbl_B("join", function () {
+            var num;
+            var a1, a2, a3, a4;
+            var i;
+
+            match("(");
+            // a1 = getvarname();
+            a1 = getvarname(2); // ポインタ対応
+            match(","); a2 = String(expression());
+            if (symbol[pc] == ")") {
+                a3 = 0;
+                a4 = null;
+            } else {
+                match(","); a3 = parseInt(expression(), 10);
+                if (symbol[pc] == ")") {
+                    a4 = null;
+                } else {
+                    match(","); a4 = parseInt(expression(), 10);
+                }
+            }
+            match(")");
+
+            // ***** NaN対策 *****
+            a3 = a3 | 0;
+
+            // ***** エラーチェック *****
+            // if (a4 != null && (a4 - a3 + 1 < 1 || a4 - a3 + 1 > max_array_size)) {
+            if (!(a4 == null || (a4 - a3 + 1 >= 1 && a4 - a3 + 1 <= max_array_size))) {
+                throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
+            }
+
+            // ***** 連結処理 *****
+            num = "";
+            i = a3;
+            do {
+                // ***** 配列の存在チェック *****
+                if (a4 == null && !vars.checkVar(a1 + "[" + i + "]")) { break; }
+
+                if (num == "") {
+                    // num = num + vars[a1 + "[" + i + "]"];
+                    num = num + vars.getVarValue(a1 + "[" + i + "]");
+                } else {
+                    // num = num + a2 + vars[a1 + "[" + i + "]"];
+                    num = num + a2 + vars.getVarValue(a1 + "[" + i + "]");
+                }
+                i++;
+            } while (a4 == null || i <= a4);
+            return num;
+        });
+        // make_one_func_tbl_B("keydown", function () { // 名前がキー定数とかぶったため変更
+        make_one_func_tbl_B("keydowncode", function () {
+            var num;
+
+            num = key_down_code;
+            return num;
+        });
+        make_one_func_tbl_B("keyinput", function () {
+            var num;
+            var a1;
+
+            match("(");
+            if (symbol[pc] == ")") {
+                a1 = 0;
+            } else {
+                a1 = parseInt(expression(), 10);
+            }
+            match(")");
+            // ***** キー入力待ちはしない *****
+            if (keyinput_buf.length > 0) {
+                num = keyinput_buf.shift();
+            } else {
+                num = 0;
+            }
+            return num;
+        });
+        make_one_func_tbl_B("keyscan", function () {
+            var num;
+            var a1;
+
+            match("(");
+            a1 = parseInt(expression(), 10);
+            match(")");
+            if (key_down_stat[a1] == true) { num = 1; } else { num = 0; }
+            return num;
+        });
+        make_one_func_tbl_B("keypress", function () {
+            var num;
+
+            num = key_press_code;
+            return num;
+        });
+        make_one_func_tbl_B("load", function () {
+            var num;
+            var a1;
+
+            match("(");
+            if (symbol[pc] == ")") {
+                a1 = 0;
+            } else {
+                a1 = parseInt(expression(), 10);
+            }
+            match(")");
+            if (!save_data.hasOwnProperty(a1)) {
+                num = "0";
+            } else {
+                num = save_data[a1];
+            }
+            // ***** 正負と小数も含めた数値チェック(-0.123等) *****
+            if (isFullDigit(num)) {
+                num = +num; // 数値にする
+            }
+            return num;
+        });
+        make_one_func_tbl_B("loadimgstat", function () {
+            var num;
+            var a1;
+
+            match("(");
+            // a1 = getvarname();
+            a1 = getvarname(4); // 画像変数のポインタ対応
+            match(")");
+            // ***** 完了フラグをチェックして返す *****
+            num = 0;
+            // if (imgvars.hasOwnProperty(a1)) {
+            if (hasOwn.call(imgvars, a1)) {
+                if (imgvars[a1].hasOwnProperty("loaded")) {
+                    if (imgvars[a1].loaded == false) {
                         num = 1;
-                    } else {
-                        num = 0;
                     }
-                    return num;
                 }
-                if (sym == "frombinstr") {
-                    match("(");
-                    a1 = String(expression());
-                    match(")");
-                    num = parseInt(a1, 2);
-                    return num;
+            }
+            return num;
+        });
+        make_one_func_tbl_B("log", function () {
+            var num;
+            var a1, a2;
+
+            match("("); a1 = parseFloat(expression());
+            if (symbol[pc] == ")") {
+                a2 = 0;
+            } else {
+                match(","); a2 = parseFloat(expression());
+            }
+            match(")");
+            if (a2 == 0) {
+                num = Math.log(a1);
+            } else {
+                num = Math.log(a1) / Math.log(a2);
+            }
+            return num;
+        });
+        make_one_func_tbl_B("max", function () {
+            var num;
+            var a1, a2, a3;
+
+            match("("); a1 = parseFloat(expression());
+            match(","); a2 = parseFloat(expression());
+            num = Math.max(a1, a2);
+            while (symbol[pc] == ",") {
+                pc++;
+                a3 = parseFloat(expression());
+                num = Math.max(num, a3);
+            }
+            match(")");
+            return num;
+        });
+        make_one_func_tbl_B("millisecond", function () {
+            var num;
+
+            num = new Date().getMilliseconds();
+            return num;
+        });
+        make_one_func_tbl_B("min", function () {
+            var num;
+            var a1, a2, a3;
+
+            match("("); a1 = parseFloat(expression());
+            match(","); a2 = parseFloat(expression());
+            num = Math.min(a1, a2);
+            while (symbol[pc] == ",") {
+                pc++;
+                a3 = parseFloat(expression());
+                num = Math.min(num, a3);
+            }
+            match(")");
+            return num;
+        });
+        make_one_func_tbl_B("minute", function () {
+            var num;
+
+            num = new Date().getMinutes();
+            return num;
+        });
+        make_one_func_tbl_B("month", function () {
+            var num;
+
+            num = new Date().getMonth() + 1; // 1から12にするため1を加算
+            return num;
+        });
+        make_one_func_tbl_B("mousex", function () {
+            var num;
+
+            num = mousex;
+            return num;
+        });
+        make_one_func_tbl_B("mousey", function () {
+            var num;
+
+            num = mousey;
+            return num;
+        });
+        make_one_func_tbl_B("mousebtn", function () {
+            var num;
+
+            num = 0;
+            if (mouse_btn_stat[0] == true) { num = num | 1; }        // 左ボタン
+            if (mouse_btn_stat[1] == true) { num = num | (1 << 2); } // 中ボタン(シフト値1でないので注意)
+            if (mouse_btn_stat[2] == true) { num = num | (1 << 1); } // 右ボタン(シフト値2でないので注意)
+            return num;
+        });
+        make_one_func_tbl_B("pow", function () {
+            var num;
+            var a1, a2;
+
+            match("("); a1 = parseFloat(expression());
+            match(","); a2 = parseFloat(expression());
+            match(")");
+            num = Math.pow(a1, a2);
+            return num;
+        });
+        make_one_func_tbl_B("PI", function () {
+            var num;
+
+            num = Math.PI;
+            return num;
+        });
+        make_one_func_tbl_B("rand", function () {
+            var num;
+
+            // min から max までの整数の乱数を返す
+            // (Math.round() を用いると、非一様分布になるのでNG)
+            // num = Math.floor(Math.random() * (max - min + 1)) + min;
+            num = Math.floor(Math.random() * (2147483647 - (-2147483648) + 1)) + (-2147483648);
+            return num;
+        });
+        make_one_func_tbl_B("random", function () {
+            var num;
+
+            num = Math.random();
+            return num;
+        });
+        make_one_func_tbl_B("replace", function () {
+            var num;
+            var a1, a2, a3, a4, a5;
+            var i, j, k;
+
+            match("("); a1 = String(expression());
+            match(","); a2 = String(expression());
+            match(","); a3 = String(expression());
+            if (symbol[pc] == ")") {
+                a4 = 0;
+                a5 = -1;
+            } else {
+                match(","); a4 = parseInt(expression(), 10);
+                if (symbol[pc] == ")") {
+                    a5 = -1;
+                } else {
+                    match(","); a5 = parseInt(expression(), 10);
                 }
-                if (sym == "fromhexstr") {
-                    match("(");
-                    a1 = String(expression());
-                    match(")");
-                    num = parseInt(a1, 16);
-                    return num;
+            }
+            match(")");
+            if (a1.length == 0 || a2.length == 0) {
+                num = a1;
+            } else {
+                i = 0;
+                j = a4;
+                k = 0;
+                num = a1.substring(0, j);
+                while (k >= 0) {
+                    if (a5 >= 0 && i >= a5) { break; }
+                    k = a1.indexOf(a2, j);
+                    if (k >= 0) {
+                        num = num + a1.substring(j, k) + a3;
+                        i++;
+                        j = k + a2.length;
+                    }
+                }
+                num = num + a1.substring(j);
+            }
+            return num;
+        });
+        make_one_func_tbl_B("scan", function () {
+            var num;
+
+            num = key_scan_stat;
+            return num;
+        });
+        make_one_func_tbl_B("second", function () {
+            var num;
+
+            num = new Date().getSeconds();
+            return num;
+        });
+        make_one_func_tbl_B("setscl", function () {
+            var num;
+            var a1, a2, a3;
+
+            match("("); a1 = parseFloat(expression());
+            if (symbol[pc] == ")") {
+                a2 = 0;
+            } else {
+                match(","); a2 = parseFloat(expression());
+            }
+            match(")");
+            a3 = Math.pow(10, a2);
+            num = Math.round(a1 * a3) / a3;
+            return num;
+        });
+        make_one_func_tbl_B("sin", function () {
+            var num;
+            var a1;
+
+            match("(");
+            a1 = parseFloat(expression());
+            match(")");
+            if (sp_compati_mode == 1) {
+                num = parseInt(Math.sin(a1 * Math.PI / 180) * 100, 10);
+            } else {
+                num = Math.sin(a1 * Math.PI / 180);
+            }
+            return num;
+        });
+        make_one_func_tbl_B("split", function () {
+            var num;
+            var a1, a2, a3, a4;
+            var i, j, k;
+
+            match("(");
+            // a1 = getvarname();
+            a1 = getvarname(2); // ポインタ対応
+            match(","); a2 = String(expression());
+            match(","); a3 = String(expression());
+            if (symbol[pc] == ")") {
+                a4 = 0;
+            } else {
+                match(","); a4 = parseInt(expression(), 10);
+            }
+            match(")");
+            if (a2.length == 0 || a3.length == 0) {
+                num = 0;
+            } else {
+                i = 0;
+                j = 0;
+                k = 0;
+                while (k >= 0) {
+                    if (a4 > 0 && i >= (a4 - 1)) { break; }
+                    k = a2.indexOf(a3, j);
+                    if (k >= 0) {
+                        // vars[a1 + "[" + i + "]"] = a2.substring(j, k);
+                        vars.setVarValue(a1 + "[" + i + "]", a2.substring(j, k));
+                        i++;
+                        j = k + 1;
+                    }
+                }
+                // vars[a1 + "[" + i + "]"] = a2.substring(j);
+                vars.setVarValue(a1 + "[" + i + "]", a2.substring(j));
+                num = i + 1;
+            }
+            return num;
+        });
+        make_one_func_tbl_B("spweb", function () {
+            var num;
+
+            num = 1;
+            return num;
+        });
+        make_one_func_tbl_B("sqrt", function () {
+            var num;
+            var a1;
+
+            match("(");
+            a1 = parseFloat(expression());
+            match(")");
+            num = Math.sqrt(a1);
+            return num;
+        });
+        make_one_func_tbl_B("sthigh", function () {
+            var num;
+
+            num = font_size;
+            return num;
+        });
+        make_one_func_tbl_B("strat", function () {
+            var num;
+            var a1, a2;
+
+            match("("); a1 = String(expression());
+            match(","); a2 = parseInt(expression(), 10);
+            match(")");
+            num = a1.charAt(a2);
+            return num;
+        });
+        make_one_func_tbl_B("strlen", function () {
+            var num;
+            var a1;
+
+            match("(");
+            a1 = String(expression());
+            match(")");
+            num = a1.length;
+            return num;
+        });
+        make_one_func_tbl_B("stwide", function () {
+            var num;
+            var a1;
+
+            match("(");
+            a1 = String(expression());
+            match(")");
+            num = ctx.measureText(a1).width;
+            return num;
+        });
+        make_one_func_tbl_B("substr", function () {
+            var num;
+            var a1, a2, a3;
+
+            match("("); a1 = String(expression());
+            match(","); a2 = parseInt(expression(), 10);
+            if (symbol[pc] == ")") {
+                a3 = a1.length - a2;
+            } else {
+                match(","); a3 = parseInt(expression(), 10);
+            }
+            match(")");
+            num = a1.substring(a2, a2 + a3);
+            return num;
+        });
+        make_one_func_tbl_B("tan", function () {
+            var num;
+            var a1;
+
+            match("(");
+            a1 = parseFloat(expression());
+            match(")");
+            if (sp_compati_mode == 1) {
+                num = parseInt(Math.tan(a1 * Math.PI / 180) * 100, 10);
+            } else {
+                num = Math.tan(a1 * Math.PI / 180);
+            }
+            return num;
+        });
+        make_one_func_tbl_B("tick", function () {
+            var num;
+
+            // num = new Date().getTime();
+            num = Date.now();
+            return num;
+        });
+        make_one_func_tbl_B("trim", function () {
+            var num;
+            var a1;
+
+            match("(");
+            a1 = String(expression());
+            match(")");
+            num = a1.replace(/^\s+|\s+$/g,"");
+            return num;
+        });
+        make_one_func_tbl_B("width", function () {
+            var num;
+
+            num = can1.width;
+            return num;
+        });
+        make_one_func_tbl_B("year", function () {
+            var num;
+
+            num = new Date().getFullYear();
+            return num;
+        });
+        make_one_func_tbl_B("yndlg", function () {
+            var num;
+            var a1;
+
+            match("("); a1 = String(expression());
+            if (symbol[pc] != ")") {
+                match(","); a1 = String(expression());
+            }
+            match(")");
+            if (confirm(a1)) { num = "YES"; } else { num = "NO"; }
+            keyclear();
+            mousebuttonclear();
+            dlg_flag = true;
+            return num;
+        });
+        make_one_func_tbl_B("!", function () {
+            var num;
+
+            num = (factor() == 0) ? 1 : 0;
+            return num;
+        });
+        make_one_func_tbl_B("~", function () {
+            var num;
+
+            num = ~factor();
+            return num;
+        });
+        make_one_func_tbl_B("(", function () {
+            var num;
+
+            num = expression();
+            while (pc < symbol_len) {
+                if (symbol[pc] == ",") {
+                    pc++;
+                    num = expression();
+                    continue;
                 }
                 break;
+            }
+            match(")");
+            return num;
+        });
+        make_one_func_tbl_B("+", function () {
+            var num;
 
-            case "m":
-                if (sym == "misfreeno") {
-                    match("("); min_no = parseInt(expression(), 10);
-                    match(","); max_no = parseInt(expression(), 10);
-                    match(")");
-                    // ***** ミサイル空番号を検索 *****
-                    num = -1;
-                    for (mis_no in missile) {
-                        if (missile.hasOwnProperty(mis_no)) {
-                            mis = missile[mis_no];
-                            if (mis.no >= min_no && mis.no <= max_no) {
-                                mis.useflag = parseInt(vars.getVarValue(mis.useflag_var_name), 10);
-                                if (mis.useflag == 0) {
-                                    num = mis.no;
-                                }
-                            }
+            num = factor();
+            return num;
+        });
+        make_one_func_tbl_B("-", function () {
+            var num;
+
+            num = -factor();
+            return num;
+        });
+        // ***** アドレス的なもの *****
+        // ***** (変数名を取得して返す) *****
+        make_one_func_tbl_B("&", function () {
+            var var_name;
+
+            if (symbol[pc] == "(") {
+                match("(");
+                // var_name = getvarname();
+                var_name = getvarname(2); // ポインタ対応
+                match(")");
+            } else {
+                // var_name = getvarname();
+                var_name = getvarname(2); // ポインタ対応
+            }
+            // // ***** 変数がなければ作成 *****
+            // // if (typeof (vars[var_name]) == "undefined") { vars[var_name] = 0; }
+            // // if (!vars.hasOwnProperty(var_name)) { vars[var_name] = 0; }
+            // vars.getVarValue(var_name);
+            return var_name;
+        });
+    }
+    function make_one_func_tbl_B(name, func) {
+        func_tbl_B[name] = func;
+    }
+
+
+    // ***** 以下は追加命令の処理等 *****
+
+
+    // ***** 追加命令(戻り値のない関数)の定義情報の生成 *****
+    function make_addfunc_tbl_A() {
+        // ***** 追加命令(戻り値のない関数)の定義情報の初期化 *****
+        addfunc_tbl_A = {};
+        // ***** 追加命令(戻り値のない関数)の定義情報の生成 *****
+        make_one_addfunc_tbl_A("audmode", function () {
+            var a1;
+
+            match("(");
+            a1 = parseInt(expression(), 10);
+            match(")");
+            aud_mode = a1;
+            return true;
+        });
+        make_one_addfunc_tbl_A("audmake", function () {
+            var a1, a2;
+
+            match("("); a1 = parseInt(expression(), 10);
+            match(","); a2 = String(expression());
+            match(")");
+
+            // ***** 音楽モードチェック *****
+            if (aud_mode == 1) {
+                if (!MMLPlayer.AudioContext) { throw new Error("音楽演奏機能が利用できません。"); }
+            } else if (aud_mode == 2) {
+                if (!MMLPlayer.AudioContext) { return true; }
+            } else {
+                return true;
+            }
+
+            if (audplayer.hasOwnProperty(a1)) {
+                audplayer[a1].mmlplayer.stop();
+                delete audplayer[a1];
+            }
+            audplayer[a1] = {};
+            audplayer[a1].mmlplayer = new MMLPlayer();
+            audplayer[a1].mmlplayer.setMML(a2);
+            audmake_flag = true;
+            return true;
+        });
+        make_one_addfunc_tbl_A("audmakedata", function () {
+            var a1, a2;
+
+            match("("); a1 = parseInt(expression(), 10);
+            match(","); a2 = String(expression()); // 音楽データ(data URI scheme)
+            match(")");
+
+            // ***** 音楽モードチェック *****
+            if (aud_mode == 1) {
+                if (!MMLPlayer.AudioContext) { throw new Error("音楽演奏機能が利用できません。"); }
+            } else if (aud_mode == 2) {
+                if (!MMLPlayer.AudioContext) { return true; }
+            } else {
+                return true;
+            }
+
+            if (audplayer.hasOwnProperty(a1)) {
+                audplayer[a1].mmlplayer.stop();
+                delete audplayer[a1];
+            }
+            audplayer[a1] = {};
+            audplayer[a1].mmlplayer = new MMLPlayer();
+            audplayer[a1].mmlplayer.setAUDData(a2);
+            audmake_flag = true;
+            return true;
+        });
+        make_one_addfunc_tbl_A("audplay", function () {
+            var a1, a2;
+
+            match("("); a1 = parseInt(expression(), 10);
+            if (symbol[pc] == ")") {
+                a2 = 0;
+            } else {
+                match(","); a2 = parseInt(expression(), 10);
+            }
+            match(")");
+
+            // ***** 音楽モードチェック *****
+            if (aud_mode == 1) {
+                if (!MMLPlayer.AudioContext) { throw new Error("音楽演奏機能が利用できません。"); }
+            } else if (aud_mode == 2) {
+                if (!MMLPlayer.AudioContext) { return true; }
+            } else {
+                return true;
+            }
+
+            if (audplayer.hasOwnProperty(a1)) {
+                audplayer[a1].mmlplayer.play(a2);
+            } else {
+                throw new Error("音楽プレイヤー" + a1 + " は作成されていません。");
+            }
+            return true;
+        });
+        make_one_addfunc_tbl_A("audspeedrate", function () {
+            var a1, a2;
+
+            match("("); a1 = parseInt(expression(), 10);
+            match(","); a2 = parseFloat(expression());
+            match(")");
+
+            // ***** 音楽モードチェック *****
+            if (aud_mode == 1) {
+                if (!MMLPlayer.AudioContext) { throw new Error("音楽演奏機能が利用できません。"); }
+            } else if (aud_mode == 2) {
+                if (!MMLPlayer.AudioContext) { return true; }
+            } else {
+                return true;
+            }
+
+            if (audplayer.hasOwnProperty(a1)) {
+                audplayer[a1].mmlplayer.setSpeedRate(a2);
+            } else {
+                throw new Error("音楽プレイヤー" + a1 + " は作成されていません。");
+            }
+            return true;
+        });
+        make_one_addfunc_tbl_A("audstop", function () {
+            var a1;
+
+            match("(");
+            a1 = parseInt(expression(), 10);
+            match(")");
+
+            // ***** 音楽モードチェック *****
+            if (aud_mode == 1) {
+                if (!MMLPlayer.AudioContext) { throw new Error("音楽演奏機能が利用できません。"); }
+            } else if (aud_mode == 2) {
+                if (!MMLPlayer.AudioContext) { return true; }
+            } else {
+                return true;
+            }
+
+            if (audplayer.hasOwnProperty(a1)) {
+                audplayer[a1].mmlplayer.stop();
+            } else {
+                throw new Error("音楽プレイヤー" + a1 + " は作成されていません。");
+            }
+            return true;
+        });
+        make_one_addfunc_tbl_A("audvolume", function () {
+            var a1, a2;
+
+            match("("); a1 = parseInt(expression(), 10);
+            match(","); a2 = parseInt(expression(), 10);
+            match(")");
+
+            // ***** 音楽モードチェック *****
+            if (aud_mode == 1) {
+                if (!MMLPlayer.AudioContext) { throw new Error("音楽演奏機能が利用できません。"); }
+            } else if (aud_mode == 2) {
+                if (!MMLPlayer.AudioContext) { return true; }
+            } else {
+                return true;
+            }
+
+            if (audplayer.hasOwnProperty(a1)) {
+                audplayer[a1].mmlplayer.setVolume(a2);
+            } else {
+                throw new Error("音楽プレイヤー" + a1 + " は作成されていません。");
+            }
+            return true;
+        });
+        make_one_addfunc_tbl_A("colalpha", function () {
+            var a1, a2;
+            var col_r, col_g, col_b, alpha;
+
+            match("("); a1 = parseInt(expression(), 10); // RGB
+            match(","); a2 = parseInt(expression(), 10); // alpha
+            match(")");
+            col_r = (a1 & 0xff0000) >> 16; // R
+            col_g = (a1 & 0x00ff00) >> 8;  // G
+            col_b = (a1 & 0x0000ff);       // B
+            alpha = a2 / 255;
+            color_val = "rgba(" + col_r + "," + col_g + "," + col_b + "," + alpha + ")";
+            ctx.strokeStyle = color_val;
+            ctx.fillStyle = color_val;
+            return true;
+        });
+        make_one_addfunc_tbl_A("coloralpha", function () {
+            var a1, a2, a3 ,a4;
+            var col_r, col_g, col_b, alpha;
+
+            match("("); a1 = parseInt(expression(), 10); // R
+            match(","); a2 = parseInt(expression(), 10); // G
+            match(","); a3 = parseInt(expression(), 10); // B
+            match(","); a4 = parseInt(expression(), 10); // alpha
+            match(")");
+            col_r = a1;
+            col_g = a2;
+            col_b = a3;
+            alpha = a4 / 255;
+            color_val = "rgba(" + col_r + "," + col_g + "," + col_b + "," + alpha + ")";
+            ctx.strokeStyle = color_val;
+            ctx.fillStyle = color_val;
+            return true;
+        });
+        make_one_addfunc_tbl_A("disaud", function () {
+            var a1;
+
+            match("(");
+            a1 = parseInt(expression(), 10);
+            match(")");
+            if (audplayer.hasOwnProperty(a1)) {
+                audplayer[a1].mmlplayer.stop();
+                delete audplayer[a1];
+            }
+            return true;
+        });
+        make_one_addfunc_tbl_A("dismis", function () {
+            var a1;
+
+            match("(");
+            a1 = parseInt(expression(), 10);
+            match(")");
+            if (missile.hasOwnProperty(a1)) {
+                delete missile[a1];
+            }
+            // for (var prop_name in missile) { DebugShow(prop_name + " "); } DebugShow("\n");
+            return true;
+        });
+        make_one_addfunc_tbl_A("disstrimg", function () {
+            var a1;
+            var ch;
+
+            match("(");
+            a1 = String(expression());
+            match(")");
+            ch = a1.charAt(0); // 1文字だけにする
+            if (ch.length == 0) { return true; }
+            if (stimg.hasOwnProperty(ch)) {
+                delete stimg[ch];
+            }
+            // for (var prop_name in stimg) { DebugShow(prop_name + " "); } DebugShow("\n");
+            return true;
+        });
+        make_one_addfunc_tbl_A("fillarea", function () {
+            var a1, a2;
+            var x1, y1;
+            var ret_obj = {};
+            var col, threshold, paint_mode;
+            var ffill_obj = {};
+
+            match("("); a1 = parseFloat(expression()); // X
+            match(","); a2 = parseFloat(expression()); // Y
+            if (symbol[pc] == ")") {
+                threshold = 0;
+                col = 0;
+                paint_mode = 0;
+            } else {
+                match(","); threshold = parseInt(expression(), 10); // しきい値
+                if (symbol[pc] == ")") {
+                    col = 0;
+                    paint_mode = 0;
+                } else {
+                    match(","); col = parseInt(expression(), 10); // 境界色 RGB
+                    paint_mode = 1;
+                }
+            }
+            match(")");
+            // ***** 座標系の変換の分を補正 *****
+            ret_obj = {};
+            conv_axis_point(a1, a2, ret_obj);
+            x1 = ret_obj.x;
+            y1 = ret_obj.y;
+            // ***** 領域塗りつぶし *****
+            ffill_obj = new FloodFill(can, ctx, x1, y1, threshold, paint_mode, col, 255);
+            ctx.setTransform(1, 0, 0, 1, 0, 0);      // 座標系を元に戻す
+            ffill_obj.fill();  // 塗りつぶし処理
+            set_canvas_axis(ctx);                    // 座標系を再設定
+            return true;
+        });
+        make_one_addfunc_tbl_A("fpoly", function () {
+            var a1, a2, a3;
+            var b1;
+            var i;
+            var x0, y0, x1, y1;
+
+            match("(");
+            // a1 = getvarname();
+            a1 = getvarname(2); // ポインタ対応
+            match(",");
+            // b1 = getvarname();
+            b1 = getvarname(2); // ポインタ対応
+            match(","); a2 = parseInt(expression(), 10);
+            match(","); a3 = parseInt(expression(), 10);
+            match(")");
+
+            // ***** NaN対策 *****
+            a2 = a2 | 0;
+            a3 = a3 | 0;
+
+            // ***** エラーチェック *****
+            // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
+            if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
+                throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
+            }
+
+            // ***** 描画処理 *****
+            i = a2;
+
+            // // ***** 配列の存在チェック *****
+            // if (!vars.checkVar(a1 + "[" + i + "]")) { return true; }
+            // if (!vars.checkVar(b1 + "[" + i + "]")) { return true; }
+
+            ctx.beginPath();
+            // x0 = parseInt(vars[a1 + "[" + i + "]"], 10);
+            x0 = parseInt(vars.getVarValue(a1 + "[" + i + "]"), 10);
+            // y0 = parseInt(vars[b1 + "[" + i + "]"], 10);
+            y0 = parseInt(vars.getVarValue(b1 + "[" + i + "]"), 10);
+            ctx.moveTo(x0, y0);
+            for (i = a2 + 1; i <= a3; i++) {
+
+                // // ***** 配列の存在チェック *****
+                // if (!vars.checkVar(a1 + "[" + i + "]")) { break; }
+                // if (!vars.checkVar(b1 + "[" + i + "]")) { break; }
+
+                // x1 = parseInt(vars[a1 + "[" + i + "]"], 10);
+                x1 = parseInt(vars.getVarValue(a1 + "[" + i + "]"), 10);
+                // y1 = parseInt(vars[b1 + "[" + i + "]"], 10);
+                y1 = parseInt(vars.getVarValue(b1 + "[" + i + "]"), 10);
+                ctx.lineTo(x1, y1);
+            }
+            ctx.closePath();
+            ctx.fill();
+            return true;
+        });
+        make_one_addfunc_tbl_A("mismake", function () {
+            var ch;
+            var no, useflag, x100, y100, degree, speed100;
+            var useflag_var_name, x100_var_name, y100_var_name;
+            var degree_var_name, speed100_var_name, ch_var_name;
+            var min_x, max_x, min_y, max_y, div_x, div_y;
+
+            match("("); no = parseInt(expression(), 10);
+            match(","); useflag_var_name = getvarname(2); // ポインタ対応
+            match(","); x100_var_name = getvarname(2); // ポインタ対応
+            match(","); y100_var_name = getvarname(2); // ポインタ対応
+            match(","); degree_var_name = getvarname(2); // ポインタ対応
+            match(","); speed100_var_name = getvarname(2); // ポインタ対応
+            match(","); ch_var_name = getvarname(2); // ポインタ対応
+            match(","); min_x = parseInt(expression(), 10);
+            match(","); max_x = parseInt(expression(), 10);
+            match(","); min_y = parseInt(expression(), 10);
+            match(","); max_y = parseInt(expression(), 10);
+            match(","); div_x = parseFloat(expression());
+            match(","); div_y = parseFloat(expression());
+            match(")");
+            // ***** ミサイル作成 *****
+            useflag =  parseInt(vars.getVarValue(useflag_var_name),  10);
+            x100 =     parseInt(vars.getVarValue(x100_var_name),     10);
+            y100 =     parseInt(vars.getVarValue(y100_var_name),     10);
+            degree =   parseFloat(vars.getVarValue(degree_var_name));
+            speed100 = parseInt(vars.getVarValue(speed100_var_name), 10);
+            ch =         String(vars.getVarValue(ch_var_name));
+            missile[no] = new Missile(no, useflag, x100, y100, degree, speed100, ch,
+                min_x, max_x, min_y, max_y, div_x, div_y,
+                useflag_var_name, x100_var_name, y100_var_name,
+                degree_var_name, speed100_var_name, ch_var_name);
+            return true;
+        });
+        make_one_addfunc_tbl_A("mismove", function () {
+            var mis, mis_no;
+            var range_use, min_no, max_no;
+
+            match("(");
+            if (symbol[pc] == ")") {
+                range_use = false;
+                min_no = 0;
+                max_no = 0;
+            } else {
+                range_use = true;
+                min_no = parseInt(expression(), 10);
+                match(","); max_no = parseInt(expression(), 10);
+            }
+            match(")");
+            // ***** 全ミサイルを移動 *****
+            for (mis_no in missile) {
+                if (missile.hasOwnProperty(mis_no)) {
+                    mis = missile[mis_no];
+                    if (range_use == false || (mis.no >= min_no && mis.no <= max_no)) {
+                        mis.useflag = parseInt(vars.getVarValue(mis.useflag_var_name), 10);
+                        if (mis.useflag != 0) {
+                            mis.x100 =     parseInt(vars.getVarValue(mis.x100_var_name),     10);
+                            mis.y100 =     parseInt(vars.getVarValue(mis.y100_var_name),     10);
+                            mis.degree =   parseFloat(vars.getVarValue(mis.degree_var_name));
+                            mis.speed100 = parseInt(vars.getVarValue(mis.speed100_var_name), 10);
+                            mis.ch =         String(vars.getVarValue(mis.ch_var_name));
+                            mis.move();
+                            vars.setVarValue(mis.useflag_var_name,  mis.useflag);
+                            vars.setVarValue(mis.x100_var_name,     mis.x100);
+                            vars.setVarValue(mis.y100_var_name,     mis.y100);
+                            vars.setVarValue(mis.degree_var_name,   mis.degree);
+                            vars.setVarValue(mis.speed100_var_name, mis.speed100);
+                            vars.setVarValue(mis.ch_var_name,       mis.ch);
                         }
                     }
-                    return num;
                 }
-                break;
+            }
+            return true;
+        });
+        make_one_addfunc_tbl_A("mistext", function () {
+            var a1, a2, a3;
+            var x1, y1;
+            var mis, mis_no;
+            var range_use, min_no, max_no;
 
-            case "r":
-                if (sym == "randint") {
-                    match("("); a1 = parseInt(expression(), 10);
-                    match(","); a2 = parseInt(expression(), 10);
-                    match(")");
-                    if (a1 > a2) { a3 = a2; a2 = a1; a1 = a3; }
-                    // min から max までの整数の乱数を返す
-                    // (Math.round() を用いると、非一様分布になるのでNG)
-                    // num = Math.floor(Math.random() * (max - min + 1)) + min;
-                    num = Math.floor(Math.random() * (a2 - a1 + 1)) + a1;
-                    return num;
-                }
-                break;
+            match("(");
+            // a1 = getvarname();
+            a1 = getvarname(2); // ポインタ対応
+            match(","); a2 = parseInt(expression(), 10);
+            match(","); a3 = parseInt(expression(), 10);
+            if (symbol[pc] == ")") {
+                range_use = false;
+                min_no = 0;
+                max_no = 0;
+            } else {
+                range_use = true;
+                match(","); min_no = parseInt(expression(), 10);
+                match(","); max_no = parseInt(expression(), 10);
+            }
+            match(")");
 
-            case "s":
-                if (sym == "strmake") {
-                    match("("); a1 = String(expression());
-                    match(","); a2 = parseInt(expression(), 10);
-                    match(")");
+            // ***** NaN対策 *****
+            a2 = a2 | 0;
+            a3 = a3 | 0;
 
-                    // ***** エラーチェック *****
-                    // if (a2 > max_str_size) {
-                    if (!(a2 <= max_str_size)) {
-                        throw new Error("処理する文字数が不正です。" + max_str_size + "以下である必要があります。");
+            // ***** エラーチェック *****
+            // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
+            if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
+                throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
+            }
+
+            // ***** 全ミサイルを描画 *****
+            for (mis_no in missile) {
+                if (missile.hasOwnProperty(mis_no)) {
+                    mis = missile[mis_no];
+                    if (range_use == false || (mis.no >= min_no && mis.no <= max_no)) {
+                        mis.useflag = parseInt(vars.getVarValue(mis.useflag_var_name), 10);
+                        if (mis.useflag != 0) {
+                            mis.x100 = parseInt(vars.getVarValue(mis.x100_var_name), 10);
+                            mis.y100 = parseInt(vars.getVarValue(mis.y100_var_name), 10);
+                            mis.ch =     String(vars.getVarValue(mis.ch_var_name));
+                            x1 = (mis.x100 / 100) | 0; // 整数化
+                            y1 = (mis.y100 / 100) | 0; // 整数化
+                            // txtpsetsub(a1, a2, a3, x1, y1, mis.ch);
+                            txtovrsub(a1, a2, a3, x1, y1, mis.ch);
+                        }
                     }
-
-                    num = strrepeatsub(a1, a2);
-                    return num;
                 }
-                if (sym == "strovr") {
-                    match("("); a1 = String(expression());
-                    match(","); a2 = parseInt(expression(), 10);
-                    match(","); a3 = String(expression());
-                    if (symbol[pc] == ")") {
-                        a4 = 0;
-                    } else {
-                        match(","); a4 = parseInt(expression(), 10);
+            }
+            return true;
+        });
+        make_one_addfunc_tbl_A("poly", function () {
+            var a1, a2, a3, a4;
+            var b1;
+            var i;
+            var x0, y0, x1, y1;
+
+            match("(");
+            // a1 = getvarname();
+            a1 = getvarname(2); // ポインタ対応
+            match(",");
+            // b1 = getvarname();
+            b1 = getvarname(2); // ポインタ対応
+            match(","); a2 = parseInt(expression(), 10);
+            match(","); a3 = parseInt(expression(), 10);
+            if (symbol[pc] == ")") {
+                a4 = 0;
+            } else {
+                match(","); a4 = parseInt(expression(), 10);
+            }
+            match(")");
+
+            // ***** NaN対策 *****
+            a2 = a2 | 0;
+            a3 = a3 | 0;
+
+            // ***** エラーチェック *****
+            // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
+            if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
+                throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
+            }
+
+            // ***** 描画処理 *****
+            i = a2;
+
+            // // ***** 配列の存在チェック *****
+            // if (!vars.checkVar(a1 + "[" + i + "]")) { return true; }
+            // if (!vars.checkVar(b1 + "[" + i + "]")) { return true; }
+
+            ctx.beginPath();
+            // x0 = parseInt(vars[a1 + "[" + i + "]"], 10);
+            x0 = parseInt(vars.getVarValue(a1 + "[" + i + "]"), 10);
+            // y0 = parseInt(vars[b1 + "[" + i + "]"], 10);
+            y0 = parseInt(vars.getVarValue(b1 + "[" + i + "]"), 10);
+            ctx.moveTo(x0, y0);
+            for (i = a2 + 1; i <= a3; i++) {
+
+                // // ***** 配列の存在チェック *****
+                // if (!vars.checkVar(a1 + "[" + i + "]")) { break; }
+                // if (!vars.checkVar(b1 + "[" + i + "]")) { break; }
+
+                // x1 = parseInt(vars[a1 + "[" + i + "]"], 10);
+                x1 = parseInt(vars.getVarValue(a1 + "[" + i + "]"), 10);
+                // y1 = parseInt(vars[b1 + "[" + i + "]"], 10);
+                y1 = parseInt(vars.getVarValue(b1 + "[" + i + "]"), 10);
+                ctx.lineTo(x1, y1);
+            }
+            if (a4 == 0) { ctx.closePath(); }
+            ctx.stroke();
+            return true;
+        });
+        make_one_addfunc_tbl_A("sandmake", function () {
+            var a1, a2, a3, a4;
+            var x1, y1;
+            var w1, h1;
+            var col, threshold, border_mode;
+
+            match("("); x1 = parseInt(expression(), 10);
+            match(","); y1 = parseInt(expression(), 10);
+            match(","); w1 = parseInt(expression(), 10);
+            match(","); h1 = parseInt(expression(), 10);
+            match(","); a1 = parseFloat(expression());
+            match(","); a2 = parseFloat(expression());
+            match(","); a3 = parseFloat(expression());
+            match(","); a4 = parseFloat(expression());
+            match(","); col = parseInt(expression(), 10);
+            match(","); threshold = parseInt(expression(), 10);
+            if (symbol[pc] == ")") {
+                border_mode = 1;
+            } else {
+                match(","); border_mode = parseInt(expression(), 10);
+            }
+            match(")");
+            sand_obj = new SandSim(can, ctx, x1, y1, w1, h1, a1, a2, a3, a4, col, threshold, border_mode);
+            sand_obj.maketable();
+            return true;
+        });
+        make_one_addfunc_tbl_A("sandmove", function () {
+            match("(");
+            match(")");
+            if (sand_obj) { sand_obj.move(); }
+            return true;
+        });
+        make_one_addfunc_tbl_A("sanddraw", function () {
+            match("(");
+            match(")");
+            if (sand_obj) {
+                ctx.setTransform(1, 0, 0, 1, 0, 0);      // 座標系を元に戻す
+                sand_obj.draw();
+                set_canvas_axis(ctx);                    // 座標系を再設定
+            }
+            return true;
+        });
+        make_one_addfunc_tbl_A("setstrimg", function () {
+            var a1, a2, a3, a4;
+            var ch;
+
+            match("("); a1 = String(expression());
+            match(",");
+            // a2 = getvarname();
+            a2 = getvarname(4); // 画像変数のポインタ対応
+            if (symbol[pc] == ")") {
+                a3 = 0;
+                a4 = 0;
+            } else {
+                match(","); a3 = parseInt(expression(), 10);
+                match(","); a4 = parseInt(expression(), 10);
+            }
+            match(")");
+            // ***** 画像文字割付を格納 *****
+            ch = a1.charAt(0); // 1文字だけにする
+            if (ch.length == 0) { return true; }
+            // if (imgvars.hasOwnProperty(a2)) {
+            if (hasOwn.call(imgvars, a2)) {
+                stimg[ch] = {};
+                stimg[ch].img = imgvars[a2];
+                stimg[ch].off_x = a3;
+                stimg[ch].off_y = a4;
+            } else {
+                throw new Error("Image「" + a1 + "」がロードされていません。");
+            }
+            return true;
+        });
+        make_one_addfunc_tbl_A("transimg", function () {
+            var a1, a2;
+            var i;
+            var col_r, col_g, col_b;
+            var img_data = {};
+
+            match("(");
+            // a1 = getvarname();
+            a1 = getvarname(4); // 画像変数のポインタ対応
+            match(","); a2 = parseInt(expression(), 10); // RGB
+            match(")");
+            // if (imgvars.hasOwnProperty(a1)) {
+            if (hasOwn.call(imgvars, a1)) {
+                col_r = (a2 & 0xff0000) >> 16; // R
+                col_g = (a2 & 0x00ff00) >> 8;  // G
+                col_b = (a2 & 0x0000ff);       // B
+                // ***** 画像データを取得 *****
+                img_data = imgvars[a1].ctx.getImageData(0, 0, imgvars[a1].can.width, imgvars[a1].can.height);
+                // ***** 透明画像変換 *****
+                for (i = 0; i < img_data.data.length; i += 4) {
+                    if (img_data.data[i    ] == col_r &&
+                        img_data.data[i + 1] == col_g &&
+                        img_data.data[i + 2] == col_b) {
+                            img_data.data[i    ] = 0;
+                            img_data.data[i + 1] = 0;
+                            img_data.data[i + 2] = 0;
+                            img_data.data[i + 3] = 0;
                     }
-                    match(")");
+                }
+                // ***** 画像を格納 *****
+                imgvars[a1].ctx.putImageData(img_data, 0, 0);
+            } else {
+                throw new Error("Image「" + a1 + "」がロードされていません。");
+            }
+            return true;
+        });
+        make_one_addfunc_tbl_A("txtmake", function () {
+            var a1, a2, a3, a4, a5;
+            var i;
+            var st1;
+
+            match("(");
+            // a1 = getvarname();
+            a1 = getvarname(2); // ポインタ対応
+            match(","); a2 = parseInt(expression(), 10);
+            match(","); a3 = parseInt(expression(), 10);
+            match(","); a4 = String(expression());
+            match(","); a5 = parseInt(expression(), 10);
+            match(")");
+
+            // ***** NaN対策 *****
+            a2 = a2 | 0;
+            a3 = a3 | 0;
+
+            // ***** エラーチェック *****
+            // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
+            if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
+                throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
+            }
+            // if (a5 > max_str_size) {
+            if (!(a5 <= max_str_size)) {
+                throw new Error("処理する文字数が不正です。" + max_str_size + "以下である必要があります。");
+            }
+
+            // ***** 作成処理 *****
+            st1 = strrepeatsub(a4, a5);
+            for (i = a2; i <= a3; i++) {
+                // vars[a1 + "[" + i + "]"] = st1;
+                vars.setVarValue(a1 + "[" + i + "]", st1);
+            }
+            return true;
+        });
+        make_one_addfunc_tbl_A("txtdraw", function () {
+            var a1, a2, a3;
+            var x1, y1;
+            var i;
+            var st1;
+
+            match("(");
+            // a1 = getvarname();
+            a1 = getvarname(2); // ポインタ対応
+            match(","); a2 = parseInt(expression(), 10);
+            match(","); a3 = parseInt(expression(), 10);
+            if (symbol[pc] == ")") {
+                x1 = 0;
+                y1 = 0;
+            } else {
+                match(","); x1 = parseInt(expression(), 10);
+                match(","); y1 = parseInt(expression(), 10);
+            }
+            match(")");
+
+            // ***** NaN対策 *****
+            a2 = a2 | 0;
+            a3 = a3 | 0;
+
+            // ***** エラーチェック *****
+            // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
+            if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
+                throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
+            }
+
+            // ***** 描画処理 *****
+            for (i = a2; i <= a3; i++) {
+
+                // // ***** 配列の存在チェック *****
+                // if (!vars.checkVar(a1 + "[" + i + "]")) { break; }
+
+                // st1 = vars[a1 + "[" + i + "]"];
+                st1 = vars.getVarValue(a1 + "[" + i + "]");
+
+                // ***** 文字列に変換 *****
+                st1 = String(st1);
+
+                // ***** Chrome v24 で全角スペースが半角のサイズで表示される件の対策 *****
+                st1 = st1.replace(/　/g, "  "); // 全角スペースを半角スペース2個に変換
+
+                // ***** 文字列表示 *****
+                ctx.textAlign = "left";
+                ctx.textBaseline = "top";
+                ctx.fillText(st1, x1, y1);
+                y1 += font_size;
+            }
+            return true;
+        });
+        make_one_addfunc_tbl_A("txtdrawimg", function () {
+            var a1, a2, a3;
+            var x1, y1, x2, y2;
+            var w1, h1;
+            var i, j;
+            var ch;
+            var st1;
+
+            match("(");
+            // a1 = getvarname();
+            a1 = getvarname(2); // ポインタ対応
+            match(","); a2 = parseInt(expression(), 10);
+            match(","); a3 = parseInt(expression(), 10);
+            match(","); x1 = parseInt(expression(), 10);
+            match(","); y1 = parseInt(expression(), 10);
+            match(","); w1 = parseFloat(expression());
+            match(","); h1 = parseFloat(expression());
+            match(")");
+
+            // ***** NaN対策 *****
+            a2 = a2 | 0;
+            a3 = a3 | 0;
+
+            // ***** エラーチェック *****
+            // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
+            if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
+                throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
+            }
+
+            // ***** 描画処理 *****
+            for (i = a2; i <= a3; i++) {
+
+                // // ***** 配列の存在チェック *****
+                // if (!vars.checkVar(a1 + "[" + i + "]")) { break; }
+
+                // st1 = vars[a1 + "[" + i + "]"];
+                st1 = vars.getVarValue(a1 + "[" + i + "]");
+                st1 = String(st1);
+                for (j = 0; j < st1.length; j++) {
+                    ch = st1.charAt(j);
+                    if (stimg.hasOwnProperty(ch)) {
+                        x2 = (x1 + (j * w1) + stimg[ch].off_x) | 0; // 整数化
+                        y2 = (y1            + stimg[ch].off_y) | 0; // 整数化
+                        ctx.drawImage(stimg[ch].img.can, x2, y2);
+                    }
+                }
+                // for (ch in stimg) { // 速度ほとんど変わらず...
+                //     if (stimg.hasOwnProperty(ch)) {
+                //         j = 0;
+                //         while (j >= 0) {
+                //             j = st1.indexOf(ch, j);
+                //             if (j >= 0) {
+                //                 x2 = (x1 + (j * w1) + stimg[ch].off_x) | 0;
+                //                 y2 = (y1            + stimg[ch].off_y) | 0;
+                //                 ctx.drawImage(stimg[ch].img.can, x2, y2);
+                //                 j++;
+                //             }
+                //         }
+                //     }
+                // }
+                y1 += h1;
+            }
+            return true;
+        });
+        make_one_addfunc_tbl_A("txtovr", function () {
+            var a1, a2, a3, a4;
+            var b1, b2, b3;
+            var x1, y1;
+            var i;
+            var i_start, i_end, i_plus;
+            var st1, st2;
+
+            match("(");
+            // a1 = getvarname();
+            a1 = getvarname(2); // ポインタ対応
+            match(","); a2 = parseInt(expression(), 10);
+            match(","); a3 = parseInt(expression(), 10);
+            match(","); x1 = parseInt(expression(), 10);
+            match(","); y1 = parseInt(expression(), 10);
+            match(",");
+            // b1 = getvarname();
+            b1 = getvarname(2); // ポインタ対応
+            match(","); b2 = parseInt(expression(), 10);
+            match(","); b3 = parseInt(expression(), 10);
+            if (symbol[pc] == ")") {
+                a4 = 0;
+            } else {
+                match(","); a4 = parseInt(expression(), 10);
+            }
+            match(")");
+
+            // ***** NaN対策 *****
+            a2 = a2 | 0;
+            a3 = a3 | 0;
+            b2 = b2 | 0;
+            b3 = b3 | 0;
+
+            // ***** エラーチェック *****
+            // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
+            if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
+                throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
+            }
+            // if (b3 - b2 + 1 < 1 || b3 - b2 + 1 > max_array_size) {
+            if (!(b3 - b2 + 1 >= 1 && b3 - b2 + 1 <= max_array_size)) {
+                throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
+            }
+
+            // ***** 描画処理 *****
+            if (a1 == b1 && y1 < b2) { // 前から処理か後から処理か
+                i_start = b2;
+                i_end = b3;
+                i_plus = 1;
+            } else {
+                i_start = b3;
+                i_end = b2;
+                i_plus = -1;
+                y1 = y1 + (b3 - b2);
+            }
+            i = i_start;
+            while (true) {
+                if (y1 >= a2 && y1 <= a3) {
+
+                    // // ***** 配列の存在チェック *****
+                    // if (!vars.checkVar(a1 + "[" + y1 + "]")) { break; }
+                    // if (!vars.checkVar(b1 + "[" + i + "]")) { break; }
+
+                    // st1 = vars[a1 + "[" + y1 + "]"];
+                    st1 = vars.getVarValue(a1 + "[" + y1 + "]");
+                    st1 = String(st1);
+                    // st2 = vars[b1 + "[" + i + "]"];
+                    st2 = vars.getVarValue(b1 + "[" + i + "]");
+                    st2 = String(st2);
                     if (a4 == 1) {
-                        num = strovrsub2(a1, a2, a3);
+                        st1 = strovrsub2(st1, x1, st2);
                     } else if (a4 == 2) {
-                        num = strovrsub3(a1, a2, a3);
+                        st1 = strovrsub3(st1, x1, st2);
                     } else {
-                        num = strovrsub(a1, a2, a3);
+                        st1 = strovrsub(st1, x1, st2);
                     }
-                    return num;
+                    // vars[a1 + "[" + y1 + "]"] = st1;
+                    vars.setVarValue(a1 + "[" + y1 + "]", st1);
                 }
+                i  += i_plus;
+                y1 += i_plus;
+                if (i_plus > 0 && i <= i_end) { continue; }
+                if (i_plus < 0 && i >= i_end) { continue; }
                 break;
+            }
+            return true;
+        });
+        make_one_addfunc_tbl_A("txtpset", function () {
+            var a1, a2, a3, a4;
+            var x1, y1;
 
-            case "t":
-                if (sym == "tobinstr") {
-                    match("(");
-                    a1 = parseInt(expression(), 10);
-                    match(")");
-                    num = a1.toString(2);
-                    return num;
-                }
-                if (sym == "tofloat") {
-                    match("(");
-                    a1 = parseFloat(expression());
-                    match(")");
-                    num = a1;
-                    return num;
-                }
-                if (sym == "tohankaku") {
-                    match("("); a1 = String(expression());
-                    if (symbol[pc] == ")") {
-                        a2 = "";
-                    } else {
-                        match(","); a2 = String(expression());
+            match("(");
+            // a1 = getvarname();
+            a1 = getvarname(2); // ポインタ対応
+            match(","); a2 = parseInt(expression(), 10);
+            match(","); a3 = parseInt(expression(), 10);
+            match(","); x1 = parseInt(expression(), 10);
+            match(","); y1 = parseInt(expression(), 10);
+            match(","); a4 = String(expression());
+            match(")");
+
+            // ***** NaN対策 *****
+            a2 = a2 | 0;
+            a3 = a3 | 0;
+
+            // ***** エラーチェック *****
+            // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
+            if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
+                throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
+            }
+
+            // ***** 描画処理 *****
+            // txtpsetsub(a1, a2, a3, x1, y1, a4);
+            txtovrsub(a1, a2, a3, x1, y1, a4);
+            return true;
+        });
+        make_one_addfunc_tbl_A("txtline", function () {
+            var a1, a2, a3, a4;
+            var x1, y1, x2, y2, x3, y3;
+            var dx1, dy1, sx1, sy1, e1;
+            var i;
+            var ch;
+
+            match("(");
+            // a1 = getvarname();
+            a1 = getvarname(2); // ポインタ対応
+            match(","); a2 = parseInt(expression(), 10);
+            match(","); a3 = parseInt(expression(), 10);
+            match(","); x1 = parseInt(expression(), 10);
+            match(","); y1 = parseInt(expression(), 10);
+            match(","); x2 = parseInt(expression(), 10);
+            match(","); y2 = parseInt(expression(), 10);
+            match(","); a4 = String(expression());
+            match(")");
+
+            // ***** NaN対策 *****
+            a2 = a2 | 0;
+            a3 = a3 | 0;
+
+            // ***** エラーチェック *****
+            // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
+            if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
+                throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
+            }
+            // if (Math.abs(x2 - x1) + 1 > max_str_size) {
+            if (!(Math.abs(x2 - x1) + 1 <= max_str_size)) {
+                throw new Error("処理する文字数が不正です。" + max_str_size + "以下である必要があります。");
+            }
+            // if (Math.abs(y2 - y1) + 1 > max_str_size) {
+            if (!(Math.abs(y2 - y1) + 1 <= max_str_size)) {
+                throw new Error("処理する文字数が不正です。" + max_str_size + "以下である必要があります。");
+            }
+
+            // ***** 描画処理 *****
+            if ((x2 - x1) > 0) {
+                dx1 = x2 - x1; sx1 =  1;
+            } else if ((x2 - x1) < 0) {
+                dx1 = x1 - x2; sx1 = -1;
+            } else {
+                dx1 = 0; sx1 = 0;
+            }
+            if ((y2 - y1) > 0) {
+                dy1 = y2 - y1; sy1 =  1;
+            } else if ((y2 - y1) < 0) {
+                dy1 = y1 - y2; sy1 = -1;
+            } else {
+                dy1 = 0; sy1 = 0;
+            }
+            x3 = x1;
+            y3 = y1;
+            if (dx1 >= dy1) {
+                e1 = -dx1;
+                for (i = 0; i <= dx1; i++) {
+                    ch = a4.substring(i % a4.length, (i % a4.length) + 1);
+                    txtpsetsub(a1, a2, a3, x3, y3, ch);
+                    x3 = x3 + sx1;
+                    e1 = e1 + 2 * dy1;
+                    if (e1 >= 0) {
+                        y3 = y3 + sy1;
+                        e1 = e1 - 2 * dx1;
                     }
-                    match(")");
-                    num = ConvZenHan.toHankaku(a1, a2);
-                    return num;
                 }
-                if (sym == "tohexstr") {
-                    match("(");
-                    a1 = parseInt(expression(), 10);
-                    match(")");
-                    num = a1.toString(16);
-                    return num;
-                }
-                if (sym == "toint") {
-                    match("(");
-                    a1 = parseInt(expression(), 10);
-                    match(")");
-                    num = a1;
-                    return num;
-                }
-                if (sym == "tolower") {
-                    match("(");
-                    a1 = String(expression());
-                    match(")");
-                    num = a1.toLowerCase();
-                    return num;
-                }
-                if (sym == "tostr") {
-                    match("(");
-                    a1 = String(expression());
-                    match(")");
-                    num = a1;
-                    return num;
-                }
-                if (sym == "toupper") {
-                    match("(");
-                    a1 = String(expression());
-                    match(")");
-                    num = a1.toUpperCase();
-                    return num;
-                }
-                if (sym == "tozenkaku") {
-                    match("("); a1 = String(expression());
-                    if (symbol[pc] == ")") {
-                        a2 = "";
-                    } else {
-                        match(","); a2 = String(expression());
+            } else {
+                e1 = -dy1;
+                for (i = 0; i <= dy1; i++) {
+                    ch = a4.substring(i % a4.length, (i % a4.length) + 1);
+                    txtpsetsub(a1, a2, a3, x3, y3, ch);
+                    y3 = y3 + sy1;
+                    e1 = e1 + 2 * dx1;
+                    if (e1 >= 0) {
+                        x3 = x3 + sx1;
+                        e1 = e1 - 2 * dy1;
                     }
-                    match(")");
-                    num = ConvZenHan.toZenkaku(a1, a2);
-                    return num;
                 }
-                if (sym == "txtbchk") {
-                    match("(");
-                    // a1 = getvarname();
-                    a1 = getvarname(2); // ポインタ対応
-                    match(","); a2 = parseInt(expression(), 10);
-                    match(","); a3 = parseInt(expression(), 10);
-                    match(","); x1 = parseInt(expression(), 10);
-                    match(","); y1 = parseInt(expression(), 10);
-                    match(","); x2 = parseInt(expression(), 10);
-                    match(","); y2 = parseInt(expression(), 10);
-                    match(","); a4 = String(expression());
-                    match(")");
+            }
+            return true;
+        });
+        make_one_addfunc_tbl_A("txtbox", function () {
+            var a1, a2, a3, a4, a5;
+            var x1, y1, x2, y2, x3, y3, x4, y4;
+            var i;
 
-                    // ***** NaN対策 *****
-                    a2 = a2 | 0;
-                    a3 = a3 | 0;
+            match("(");
+            // a1 = getvarname();
+            a1 = getvarname(2); // ポインタ対応
+            match(","); a2 = parseInt(expression(), 10);
+            match(","); a3 = parseInt(expression(), 10);
+            match(","); x1 = parseInt(expression(), 10);
+            match(","); y1 = parseInt(expression(), 10);
+            match(","); x2 = parseInt(expression(), 10);
+            match(","); y2 = parseInt(expression(), 10);
+            match(","); a4 = String(expression());
+            match(")");
 
-                    // ***** エラーチェック *****
-                    // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
-                    if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
-                        throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
+            // ***** NaN対策 *****
+            a2 = a2 | 0;
+            a3 = a3 | 0;
+
+            // ***** エラーチェック *****
+            // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
+            if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
+                throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
+            }
+            // if (Math.abs(x2 - x1) + 1 > max_str_size) {
+            if (!(Math.abs(x2 - x1) + 1 <= max_str_size)) {
+                throw new Error("処理する文字数が不正です。" + max_str_size + "以下である必要があります。");
+            }
+            // if (Math.abs(y2 - y1) + 1 > max_str_size) {
+            if (!(Math.abs(y2 - y1) + 1 <= max_str_size)) {
+                throw new Error("処理する文字数が不正です。" + max_str_size + "以下である必要があります。");
+            }
+
+            // ***** 描画処理 *****
+            if (x1 > x2) { x3 = x2; x4 = x1; } else { x3 = x1; x4 = x2; }
+            if (y1 > y2) { y3 = y2; y4 = y1; } else { y3 = y1; y4 = y2; }
+            a5 = strrepeatsub(a4, x4 - x3 + 1);
+            txtovrsub(a1, a2, a3, x3, y3, a5);
+            txtovrsub(a1, a2, a3, x3, y4, a5);
+            for (i = y3; i <= y4; i++) {
+                txtpsetsub(a1, a2, a3, x3, i, a4);
+                txtpsetsub(a1, a2, a3, x4, i, a4);
+            }
+            return true;
+        });
+        make_one_addfunc_tbl_A("txtfbox", function () {
+            var a1, a2, a3, a4, a5;
+            var x1, y1, x2, y2, x3, y3, x4, y4;
+            var i;
+
+            match("(");
+            // a1 = getvarname();
+            a1 = getvarname(2); // ポインタ対応
+            match(","); a2 = parseInt(expression(), 10);
+            match(","); a3 = parseInt(expression(), 10);
+            match(","); x1 = parseInt(expression(), 10);
+            match(","); y1 = parseInt(expression(), 10);
+            match(","); x2 = parseInt(expression(), 10);
+            match(","); y2 = parseInt(expression(), 10);
+            match(","); a4 = String(expression());
+            match(")");
+
+            // ***** NaN対策 *****
+            a2 = a2 | 0;
+            a3 = a3 | 0;
+
+            // ***** エラーチェック *****
+            // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
+            if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
+                throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
+            }
+            // if (Math.abs(x2 - x1) + 1 > max_str_size) {
+            if (!(Math.abs(x2 - x1) + 1 <= max_str_size)) {
+                throw new Error("処理する文字数が不正です。" + max_str_size + "以下である必要があります。");
+            }
+            // if (Math.abs(y2 - y1) + 1 > max_str_size) {
+            if (!(Math.abs(y2 - y1) + 1 <= max_str_size)) {
+                throw new Error("処理する文字数が不正です。" + max_str_size + "以下である必要があります。");
+            }
+
+            // ***** 描画処理 *****
+            if (x1 > x2) { x3 = x2; x4 = x1; } else { x3 = x1; x4 = x2; }
+            if (y1 > y2) { y3 = y2; y4 = y1; } else { y3 = y1; y4 = y2; }
+            a5 = strrepeatsub(a4, x4 - x3 + 1);
+            for (i = y3; i <= y4; i++) {
+                txtovrsub(a1, a2, a3, x3, i, a5);
+            }
+            return true;
+        });
+        make_one_addfunc_tbl_A("txtcircle", function () {
+            var a1, a2, a3, a4;
+            var x1, y1, x2, y2;
+            var r1, a, b;
+            var drawflag;
+            var x_old, y_old;
+
+            match("(");
+            // a1 = getvarname();
+            a1 = getvarname(2); // ポインタ対応
+            match(","); a2 = parseInt(expression(), 10);
+            match(","); a3 = parseInt(expression(), 10);
+            match(","); x1 = parseInt(expression(), 10);
+            match(","); y1 = parseInt(expression(), 10);
+            match(","); r1 = parseInt(expression(), 10);
+            match(","); a = parseFloat(expression());
+            match(","); b = parseFloat(expression());
+            match(","); a4 = String(expression());
+            match(")");
+
+            // ***** NaN対策 *****
+            a2 = a2 | 0;
+            a3 = a3 | 0;
+
+            // ***** エラーチェック *****
+            // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
+            if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
+                throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
+            }
+            // if (r1 > max_str_size) {
+            if (!(r1 <= max_str_size)) {
+                throw new Error("処理する文字数が不正です。" + max_str_size + "以下である必要があります。");
+            }
+            if (r1 < 0) { return true; }
+
+            // ***** 描画処理 *****
+            if (a < 1) { a = 1; }
+            if (b < 1) { b = 1; }
+            x2 = r1;
+            drawflag = 0;
+            x_old = 0;
+            y_old = 0;
+            for (y2 = 0; y2 <= r1; y2++) {
+                // 円の内側になるまでループ
+                while (((a * a * x2 * x2) + (b * b * y2 * y2)) >= (r1 * r1)) {
+                    x2--;
+                    if (x2 < 0) { break; }
+                }
+                if (x2 < 0) {
+                    if (drawflag == 1) {
+                        // 上下の最後の部分を水平線で追加表示
+                        txtovrsub(a1, a2, a3, x1 - x_old, y1 - y_old, strrepeatsub(a4, 2 * x_old + 1));
+                        txtovrsub(a1, a2, a3, x1 - x_old, y1 + y_old, strrepeatsub(a4, 2 * x_old + 1));
                     }
-                    // if (Math.abs(x2 - x1) + 1 > max_str_size) {
-                    if (!(Math.abs(x2 - x1) + 1 <= max_str_size)) {
-                        throw new Error("処理する文字数が不正です。" + max_str_size + "以下である必要があります。");
-                    }
-                    // if (Math.abs(y2 - y1) + 1 > max_str_size) {
-                    if (!(Math.abs(y2 - y1) + 1 <= max_str_size)) {
-                        throw new Error("処理する文字数が不正です。" + max_str_size + "以下である必要があります。");
-                    }
-                    if (a4.length == 0) { return 0; }
+                    break;
+                }
+                // 両端の点を表示
+                txtpsetsub(a1, a2, a3, x1 - x2, y1 - y2, a4);
+                txtpsetsub(a1, a2, a3, x1 + x2, y1 - y2, a4);
+                txtpsetsub(a1, a2, a3, x1 - x2, y1 + y2, a4);
+                txtpsetsub(a1, a2, a3, x1 + x2, y1 + y2, a4);
+                if (drawflag == 1) {
+                    // 前回の足りない部分を水平線で追加表示
+                    txtovrsub(a1, a2, a3, x1 - x_old , y1 - y_old, strrepeatsub(a4, x_old - x2));
+                    txtovrsub(a1, a2, a3, x1 + x2 + 1, y1 - y_old, strrepeatsub(a4, x_old - x2));
+                    txtovrsub(a1, a2, a3, x1 - x_old , y1 + y_old, strrepeatsub(a4, x_old - x2));
+                    txtovrsub(a1, a2, a3, x1 + x2 + 1, y1 + y_old, strrepeatsub(a4, x_old - x2));
+                }
+                drawflag = 1;
+                x_old = x2;
+                y_old = y2;
+            }
+            return true;
+        });
+        make_one_addfunc_tbl_A("txtfcircle", function () {
+            var a1, a2, a3, a4;
+            var x1, y1, x2, y2;
+            var r1, a, b;
 
-                    // ***** 取得処理 *****
-                    if (x1 > x2) { x3 = x2; x4 = x1; } else { x3 = x1; x4 = x2; }
-                    if (y1 > y2) { y3 = y2; y4 = y1; } else { y3 = y1; y4 = y2; }
-                    num = 0;
-                    for (i = y3; i <= y4; i++) {
-                        if (i >= a2 && i <= a3) {
+            match("(");
+            // a1 = getvarname();
+            a1 = getvarname(2); // ポインタ対応
+            match(","); a2 = parseInt(expression(), 10);
+            match(","); a3 = parseInt(expression(), 10);
+            match(","); x1 = parseInt(expression(), 10);
+            match(","); y1 = parseInt(expression(), 10);
+            match(","); r1 = parseInt(expression(), 10);
+            match(","); a = parseFloat(expression());
+            match(","); b = parseFloat(expression());
+            match(","); a4 = String(expression());
+            match(")");
 
-                            // ***** 配列の存在チェック *****
-                            if (!vars.checkVar(a1 + "[" + i + "]")) { continue; }
+            // ***** NaN対策 *****
+            a2 = a2 | 0;
+            a3 = a3 | 0;
 
-                            // st1 = vars[a1 + "[" + i + "]"];
-                            st1 = vars.getVarValue(a1 + "[" + i + "]");
-                            st1 = String(st1);
-                            for (j = x3; j <= x4; j++) {
-                                if (j >= 0 && j < st1.length) {
-                                    ch = st1.charAt(j);
-                                    if (a4.indexOf(ch) >= 0) { num = 1; }
-                                }
-                            }
+            // ***** エラーチェック *****
+            // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
+            if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
+                throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
+            }
+            // if (r1 > max_str_size) {
+            if (!(r1 <= max_str_size)) {
+                throw new Error("処理する文字数が不正です。" + max_str_size + "以下である必要があります。");
+            }
+            if (r1 < 0) { return true; }
+
+            // ***** 描画処理 *****
+            if (a < 1) { a = 1; }
+            if (b < 1) { b = 1; }
+            x2 = r1;
+            for (y2 = 0; y2 <= r1; y2++) {
+                // 円の内側になるまでループ
+                while (((a * a * x2 * x2) + (b * b * y2 * y2)) >= (r1 * r1)) {
+                    x2--;
+                    if (x2 < 0) { break; }
+                }
+                if (x2 < 0) { break; }
+                // 両端を結ぶ水平線を表示
+                txtovrsub(a1, a2, a3, x1 - x2, y1 - y2, strrepeatsub(a4, 2 * x2 + 1));
+                txtovrsub(a1, a2, a3, x1 - x2, y1 + y2, strrepeatsub(a4, 2 * x2 + 1));
+            }
+            return true;
+        });
+    }
+    function make_one_addfunc_tbl_A(name, func) {
+        addfunc_tbl_A[name] = func;
+    }
+
+
+    // ***** 追加命令(戻り値のある関数)の定義情報の生成 *****
+    function make_addfunc_tbl_B() {
+        // ***** 追加命令(戻り値のある関数)の定義情報の初期化 *****
+        addfunc_tbl_B = {};
+        // ***** 追加命令(戻り値のある関数)の定義情報の生成 *****
+        make_one_addfunc_tbl_B("audmakestat", function () {
+            var num;
+            var a1;
+
+            match("(");
+            a1 = parseInt(expression(), 10);
+            match(")");
+
+            // ***** 音楽モードチェック *****
+            if (aud_mode == 1 || aud_mode == 2) {
+                if (!MMLPlayer.AudioContext) { return 0; }
+            } else {
+                return 0;
+            }
+
+            num = 0;
+            if (audplayer.hasOwnProperty(a1)) {
+                if (audplayer[a1].mmlplayer.compiled == 1) {
+                    num = 1;
+                }
+            } else {
+                throw new Error("音楽プレイヤー" + a1 + " は作成されていません。");
+            }
+            return num;
+        });
+        make_one_addfunc_tbl_B("audstat", function () {
+            var num;
+            var a1;
+
+            match("(");
+            a1 = parseInt(expression(), 10);
+            match(")");
+
+            // ***** 音楽モードチェック *****
+            if (aud_mode == 1 || aud_mode == 2) {
+                if (!MMLPlayer.AudioContext) { return -1; }
+            } else {
+                return -1;
+            }
+
+            num = 0;
+            if (audplayer.hasOwnProperty(a1)) {
+                num = audplayer[a1].mmlplayer.getStatus();
+            } else {
+                throw new Error("音楽プレイヤー" + a1 + " は作成されていません。");
+            }
+            if (num == 1 || num == 2) { num = 1; } else { num = 0; }
+            return num;
+        });
+        make_one_addfunc_tbl_B("calcfractal", function () {
+            var num;
+            var x1, y1;
+            var dr, di, mr, mi, cr, ci, tr, ti, zr, zi, rep, norm2;
+
+            match("("); x1 = parseFloat(expression());
+            match(","); y1 = parseFloat(expression());
+            match(","); dr = parseFloat(expression());
+            match(","); di = parseFloat(expression());
+            match(","); mr = parseFloat(expression());
+            match(","); mi = parseFloat(expression());
+            match(","); cr = parseFloat(expression());
+            match(","); ci = parseFloat(expression());
+            if (symbol[pc] == ")") {
+                rep = 50;
+                norm2 = 4;
+            } else {
+                match(","); rep = parseInt(expression(), 10);
+                if (symbol[pc] == ")") {
+                    norm2 = 4;
+                } else {
+                    match(","); norm2 = parseFloat(expression());
+                }
+            }
+            match(")");
+
+            // ***** エラーチェック *****
+            if (rep > 1000) { rep = 1000; }
+
+            tr = x1 * dr + mr;
+            ti = y1 * di + mi;
+            for (num = 0; num < rep; num++) {
+                zr = tr * tr - ti * ti + cr;
+                zi = 2 * tr * ti       + ci;
+                if (zr * zr + zi * zi > norm2) { break; }
+                tr = zr;
+                ti = zi;
+            }
+            return num;
+        });
+        make_one_addfunc_tbl_B("charcode", function () {
+            var num;
+            var a1, a2;
+
+            match("("); a1 = String(expression());
+            if (symbol[pc] == ")") {
+                a2 = 0;
+            } else {
+                match(","); a2 = parseInt(expression(), 10);
+            }
+            match(")");
+            num = a1.charCodeAt(a2);
+            return num;
+        });
+        make_one_addfunc_tbl_B("charfrom", function () {
+            var num;
+            var a1, a2, a3, a4;
+            var pair_flag;
+
+            match("("); a1 = parseInt(expression(), 10);
+            if (symbol[pc] == ")") {
+                a2 = 0;
+                pair_flag = false;
+            } else {
+                match(","); a2 = parseInt(expression(), 10);
+                pair_flag = true;
+            }
+            match(")");
+            if (pair_flag) {
+                // ***** サロゲートペア指定のとき *****
+                num = String.fromCharCode(a1, a2);
+            } else {
+                // ***** UTF-16の文字コードを実際のコード(サロゲートペア)に変換 *****
+                if (a1 > 0xffff) {
+                    a2 = a1 - 0x10000;
+                    a3 = 0xd800 + (a2 >> 10);      // 上位サロゲート
+                    a4 = 0xdc00 + (a2 & 0x3ff);    // 下位サロゲート
+                    num = String.fromCharCode(a3, a4);
+                } else {
+                    num = String.fromCharCode(a1); // サロゲートペアを使用しない文字のとき
+                }
+            }
+            return num;
+        });
+        make_one_addfunc_tbl_B("fboxchk", function () {
+            var num;
+            var x1, y1, x2, y2;
+            var w1, h1, w2, h2;
+
+            match("("); x1 = parseFloat(expression());
+            match(","); y1 = parseFloat(expression());
+            match(","); w1 = parseFloat(expression());
+            match(","); h1 = parseFloat(expression());
+            match(","); x2 = parseFloat(expression());
+            match(","); y2 = parseFloat(expression());
+            match(","); w2 = parseFloat(expression());
+            match(","); h2 = parseFloat(expression());
+            match(")");
+            if (x1 < x2 + w2 && x2 < x1 + w1 && y1 < y2 + h2 && y2 < y1 + h1) {
+                num = 1;
+            } else {
+                num = 0;
+            }
+            return num;
+        });
+        make_one_addfunc_tbl_B("frombinstr", function () {
+            var num;
+            var a1;
+
+            match("(");
+            a1 = String(expression());
+            match(")");
+            num = parseInt(a1, 2);
+            return num;
+        });
+        make_one_addfunc_tbl_B("fromhexstr", function () {
+            var num;
+            var a1;
+
+            match("(");
+            a1 = String(expression());
+            match(")");
+            num = parseInt(a1, 16);
+            return num;
+        });
+        make_one_addfunc_tbl_B("misfreeno", function () {
+            var num;
+            var mis, mis_no;
+            var min_no, max_no;
+
+            match("("); min_no = parseInt(expression(), 10);
+            match(","); max_no = parseInt(expression(), 10);
+            match(")");
+            // ***** ミサイル空番号を検索 *****
+            num = -1;
+            for (mis_no in missile) {
+                if (missile.hasOwnProperty(mis_no)) {
+                    mis = missile[mis_no];
+                    if (mis.no >= min_no && mis.no <= max_no) {
+                        mis.useflag = parseInt(vars.getVarValue(mis.useflag_var_name), 10);
+                        if (mis.useflag == 0) {
+                            num = mis.no;
                         }
                     }
-                    return num;
                 }
-                if (sym == "txtpget") {
-                    match("(");
-                    // a1 = getvarname();
-                    a1 = getvarname(2); // ポインタ対応
-                    match(","); a2 = parseInt(expression(), 10);
-                    match(","); a3 = parseInt(expression(), 10);
-                    match(","); x1 = parseInt(expression(), 10);
-                    match(","); y1 = parseInt(expression(), 10);
-                    match(")");
+            }
+            return num;
+        });
+        make_one_addfunc_tbl_B("randint", function () {
+            var num;
+            var a1, a2, a3;
 
-                    // ***** NaN対策 *****
-                    a2 = a2 | 0;
-                    a3 = a3 | 0;
+            match("("); a1 = parseInt(expression(), 10);
+            match(","); a2 = parseInt(expression(), 10);
+            match(")");
+            if (a1 > a2) { a3 = a2; a2 = a1; a1 = a3; }
+            // min から max までの整数の乱数を返す
+            // (Math.round() を用いると、非一様分布になるのでNG)
+            // num = Math.floor(Math.random() * (max - min + 1)) + min;
+            num = Math.floor(Math.random() * (a2 - a1 + 1)) + a1;
+            return num;
+        });
+        make_one_addfunc_tbl_B("strmake", function () {
+            var num;
+            var a1, a2;
 
-                    // ***** エラーチェック *****
-                    // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
-                    if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
-                        throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
-                    }
+            match("("); a1 = String(expression());
+            match(","); a2 = parseInt(expression(), 10);
+            match(")");
 
-                    // ***** 取得処理 *****
-                    num = "";
-                    if (y1 >= a2 && y1 <= a3) {
+            // ***** エラーチェック *****
+            // if (a2 > max_str_size) {
+            if (!(a2 <= max_str_size)) {
+                throw new Error("処理する文字数が不正です。" + max_str_size + "以下である必要があります。");
+            }
 
-                        // ***** 配列の存在チェック *****
-                        if (!vars.checkVar(a1 + "[" + y1 + "]")) { return ""; }
+            num = strrepeatsub(a1, a2);
+            return num;
+        });
+        make_one_addfunc_tbl_B("strovr", function () {
+            var num;
+            var a1, a2, a3, a4;
 
-                        // st1 = vars[a1 + "[" + y1 + "]"];
-                        st1 = vars.getVarValue(a1 + "[" + y1 + "]");
-                        st1 = String(st1);
-                        if (x1 >= 0 && x1 < st1.length) {
-                            num = st1.substring(x1, x1 + 1);
+            match("("); a1 = String(expression());
+            match(","); a2 = parseInt(expression(), 10);
+            match(","); a3 = String(expression());
+            if (symbol[pc] == ")") {
+                a4 = 0;
+            } else {
+                match(","); a4 = parseInt(expression(), 10);
+            }
+            match(")");
+            if (a4 == 1) {
+                num = strovrsub2(a1, a2, a3);
+            } else if (a4 == 2) {
+                num = strovrsub3(a1, a2, a3);
+            } else {
+                num = strovrsub(a1, a2, a3);
+            }
+            return num;
+        });
+        make_one_addfunc_tbl_B("tobinstr", function () {
+            var num;
+            var a1;
+
+            match("(");
+            a1 = parseInt(expression(), 10);
+            match(")");
+            num = a1.toString(2);
+            return num;
+        });
+        make_one_addfunc_tbl_B("tofloat", function () {
+            var num;
+            var a1;
+
+            match("(");
+            a1 = parseFloat(expression());
+            match(")");
+            num = a1;
+            return num;
+        });
+        make_one_addfunc_tbl_B("tohankaku", function () {
+            var num;
+            var a1, a2;
+
+            match("("); a1 = String(expression());
+            if (symbol[pc] == ")") {
+                a2 = "";
+            } else {
+                match(","); a2 = String(expression());
+            }
+            match(")");
+            num = ConvZenHan.toHankaku(a1, a2);
+            return num;
+        });
+        make_one_addfunc_tbl_B("tohexstr", function () {
+            var num;
+            var a1;
+
+            match("(");
+            a1 = parseInt(expression(), 10);
+            match(")");
+            num = a1.toString(16);
+            return num;
+        });
+        make_one_addfunc_tbl_B("toint", function () {
+            var num;
+            var a1;
+
+            match("(");
+            a1 = parseInt(expression(), 10);
+            match(")");
+            num = a1;
+            return num;
+        });
+        make_one_addfunc_tbl_B("tolower", function () {
+            var num;
+            var a1;
+
+            match("(");
+            a1 = String(expression());
+            match(")");
+            num = a1.toLowerCase();
+            return num;
+        });
+        make_one_addfunc_tbl_B("tostr", function () {
+            var num;
+            var a1;
+
+            match("(");
+            a1 = String(expression());
+            match(")");
+            num = a1;
+            return num;
+        });
+        make_one_addfunc_tbl_B("toupper", function () {
+            var num;
+            var a1;
+
+            match("(");
+            a1 = String(expression());
+            match(")");
+            num = a1.toUpperCase();
+            return num;
+        });
+        make_one_addfunc_tbl_B("tozenkaku", function () {
+            var num;
+            var a1, a2;
+
+            match("("); a1 = String(expression());
+            if (symbol[pc] == ")") {
+                a2 = "";
+            } else {
+                match(","); a2 = String(expression());
+            }
+            match(")");
+            num = ConvZenHan.toZenkaku(a1, a2);
+            return num;
+        });
+        make_one_addfunc_tbl_B("txtbchk", function () {
+            var num;
+            var a1, a2, a3, a4;
+            var x1, y1, x2, y2, x3, y3, x4, y4;
+            var i, j;
+            var ch;
+            var st1;
+
+            match("(");
+            // a1 = getvarname();
+            a1 = getvarname(2); // ポインタ対応
+            match(","); a2 = parseInt(expression(), 10);
+            match(","); a3 = parseInt(expression(), 10);
+            match(","); x1 = parseInt(expression(), 10);
+            match(","); y1 = parseInt(expression(), 10);
+            match(","); x2 = parseInt(expression(), 10);
+            match(","); y2 = parseInt(expression(), 10);
+            match(","); a4 = String(expression());
+            match(")");
+
+            // ***** NaN対策 *****
+            a2 = a2 | 0;
+            a3 = a3 | 0;
+
+            // ***** エラーチェック *****
+            // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
+            if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
+                throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
+            }
+            // if (Math.abs(x2 - x1) + 1 > max_str_size) {
+            if (!(Math.abs(x2 - x1) + 1 <= max_str_size)) {
+                throw new Error("処理する文字数が不正です。" + max_str_size + "以下である必要があります。");
+            }
+            // if (Math.abs(y2 - y1) + 1 > max_str_size) {
+            if (!(Math.abs(y2 - y1) + 1 <= max_str_size)) {
+                throw new Error("処理する文字数が不正です。" + max_str_size + "以下である必要があります。");
+            }
+            if (a4.length == 0) { return 0; }
+
+            // ***** 取得処理 *****
+            if (x1 > x2) { x3 = x2; x4 = x1; } else { x3 = x1; x4 = x2; }
+            if (y1 > y2) { y3 = y2; y4 = y1; } else { y3 = y1; y4 = y2; }
+            num = 0;
+            for (i = y3; i <= y4; i++) {
+                if (i >= a2 && i <= a3) {
+
+                    // ***** 配列の存在チェック *****
+                    if (!vars.checkVar(a1 + "[" + i + "]")) { continue; }
+
+                    // st1 = vars[a1 + "[" + i + "]"];
+                    st1 = vars.getVarValue(a1 + "[" + i + "]");
+                    st1 = String(st1);
+                    for (j = x3; j <= x4; j++) {
+                        if (j >= 0 && j < st1.length) {
+                            ch = st1.charAt(j);
+                            if (a4.indexOf(ch) >= 0) { num = 1; }
                         }
                     }
-                    return num;
                 }
-                break;
+            }
+            return num;
+        });
+        make_one_addfunc_tbl_B("txtpget", function () {
+            var num;
+            var a1, a2, a3;
+            var x1, y1;
+            var st1;
 
-        }
-        // ***** 追加命令処理フラグOFF *****
-        addfunc_ret.ret_flag = false;
-        // ***** 戻り値を返す *****
-        num = 0;
-        return num;
+            match("(");
+            // a1 = getvarname();
+            a1 = getvarname(2); // ポインタ対応
+            match(","); a2 = parseInt(expression(), 10);
+            match(","); a3 = parseInt(expression(), 10);
+            match(","); x1 = parseInt(expression(), 10);
+            match(","); y1 = parseInt(expression(), 10);
+            match(")");
+
+            // ***** NaN対策 *****
+            a2 = a2 | 0;
+            a3 = a3 | 0;
+
+            // ***** エラーチェック *****
+            // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
+            if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
+                throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
+            }
+
+            // ***** 取得処理 *****
+            num = "";
+            if (y1 >= a2 && y1 <= a3) {
+
+                // ***** 配列の存在チェック *****
+                if (!vars.checkVar(a1 + "[" + y1 + "]")) { return ""; }
+
+                // st1 = vars[a1 + "[" + y1 + "]"];
+                st1 = vars.getVarValue(a1 + "[" + y1 + "]");
+                st1 = String(st1);
+                if (x1 >= 0 && x1 < st1.length) {
+                    num = st1.substring(x1, x1 + 1);
+                }
+            }
+            return num;
+        });
+    }
+    function make_one_addfunc_tbl_B(name, func) {
+        addfunc_tbl_B[name] = func;
     }
 
 
@@ -7917,7 +8287,7 @@ var FloodFill = (function () {
             if (y - 1 >= 0) {
                 if (y - 1 == seed_info.y_from) {
                     if (seed_info.x1 >= 0 && x1 < seed_info.x1) {
-                        this.scanLine(x1, seed_info.x1 - 1, y - 1, y); 
+                        this.scanLine(x1, seed_info.x1 - 1, y - 1, y);
                     }
                     if (seed_info.x2 < this.width && seed_info.x2 < x2) {
                         this.scanLine(seed_info.x2 + 1, x2, y - 1, y);
@@ -7930,7 +8300,7 @@ var FloodFill = (function () {
             if (y + 1 < this.height) {
                 if (y + 1 == seed_info.y_from) {
                     if (seed_info.x1 >= 0 && x1 < seed_info.x1) {
-                        this.scanLine(x1, seed_info.x1 - 1, y + 1, y); 
+                        this.scanLine(x1, seed_info.x1 - 1, y + 1, y);
                     }
                     if (seed_info.x2 < this.width && seed_info.x2 < x2) {
                         this.scanLine(seed_info.x2 + 1, x2, y + 1, y);
@@ -8036,7 +8406,7 @@ var MMLPlayer = (function () {
         // ***** Web Audio APIの存在チェック *****
         if (!MMLPlayer.AudioContext) { return 0; }
         // ***** 未再生のチェック *****
-        if (this.node == null) { return 0; }
+        if (!this.node) { return 0; }
         // ***** 再生状態を返す *****
         return this.node.playbackState;
     };
@@ -8048,7 +8418,7 @@ var MMLPlayer = (function () {
         this.gain = volume / 100;
         if (this.gain < 0) { this.gain = 0; }
         if (this.gain > 1) { this.gain = 1; }
-        if (this.gnode != null) {
+        if (this.gnode) {
             this.gnode.gain.value = this.gain;
         }
         return true;
@@ -8059,7 +8429,7 @@ var MMLPlayer = (function () {
         if (!MMLPlayer.AudioContext) { return false; }
         // ***** 再生速度レート設定 *****
         this.speed_rate = speed_rate;
-        if (this.node != null) {
+        if (this.node) {
             this.node.playbackRate.value = this.speed_rate;
         }
         return true;
@@ -8092,7 +8462,7 @@ var MMLPlayer = (function () {
         // ***** Web Audio APIの存在チェック *****
         if (!MMLPlayer.AudioContext) { return false; }
         // ***** 未再生のチェック *****
-        if (this.node == null) { return false; }
+        if (!this.node) { return false; }
         // ***** 停止 *****
         this.node.noteOff(0);
         this.node.disconnect();
@@ -8180,7 +8550,7 @@ var MMLPlayer = (function () {
             uint8_arr[i] = bin_st.charCodeAt(i);
         }
         self = this;
-        MMLPlayer.adctx.decodeAudioData(uint8_arr.buffer, function (adbuf) { 
+        MMLPlayer.adctx.decodeAudioData(uint8_arr.buffer, function (adbuf) {
             self.adbuf = adbuf;
             // ***** コンパイル完了 *****
             self.compiled = 2;
