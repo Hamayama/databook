@@ -1,7 +1,7 @@
 // This file is encoded with UTF-8 without BOM.
 
 // sp_interpreter.js
-// 2013-9-24 v1.80
+// 2013-9-25 v1.81
 
 
 // SPALM Web Interpreter
@@ -150,14 +150,14 @@ function get_prog_id(list_st) {
         if (ch == " " || ch == "\t") { split_flag = true; }
         // ***** 改行のとき *****
         if (ch == "\r" && ch2 == "\n") { i++; split_flag = true; }
-        if (ch == "\r" || ch == "\n") { split_flag = true; }
+        else if (ch == "\r" || ch == "\n") { split_flag = true; }
         // ***** コメント「;」のとき *****
         if (ch == ";") {
             while (i < list_len) {
                 ch = list_st.charAt(i++);
                 ch2 = list_st.charAt(i);
                 if (ch == "\r" && ch2 == "\n") { i++; break; }
-                if (ch == "\r" || ch == "\n") { break; }
+                else if (ch == "\r" || ch == "\n") { break; }
             }
             split_flag = true;
         }
@@ -185,9 +185,10 @@ function load_listfile(fname, error_show_flag) {
     ret = false;
     // ***** 引数のチェック *****
     if (ParamCheckNG(fname)) { Alm("load_listfile:0001"); return ret; }
-    if (ParamCheckNG(error_show_flag)) { Alm("load_listfile:0002"); return ret; }
+    if (fname == "") { Alm("load_listfile:0002"); return ret; }
+    if (ParamCheckNG(error_show_flag)) { Alm("load_listfile:0003"); return ret; }
     // ***** 要素の存在チェック *****
-    if (!document.getElementById("prog_sel1")) { Alm("load_listfile:0003"); return ret; }
+    if (!document.getElementById("prog_sel1")) { Alm("load_listfile:0004"); return ret; }
     // ***** ファイルの読み込み *****
     http_obj = createXMLHttpObject();
     if (!http_obj) {
@@ -247,9 +248,10 @@ function load_srcfile(fname, auto_run_flag) {
     ret = false;
     // ***** 引数のチェック *****
     if (ParamCheckNG(fname)) { Alm("load_srcfile:0001"); return ret; }
-    if (ParamCheckNG(auto_run_flag)) { Alm("load_srcfile:0002"); return ret; }
+    if (fname == "") { Alm("load_srcfile:0002"); return ret; }
+    if (ParamCheckNG(auto_run_flag)) { Alm("load_srcfile:0003"); return ret; }
     // ***** 要素の存在チェック *****
-    if (!document.getElementById("src_text1")) { Alm("load_srcfile:0003"); return ret; }
+    if (!document.getElementById("src_text1")) { Alm("load_srcfile:0004"); return ret; }
     // ***** ロード中にする *****
     Interpreter.setloadstat(true);
     // ***** ファイルの読み込み *****
@@ -467,11 +469,11 @@ function stop_button() {
 //
 //   外部クラス一覧
 //     Download    ファイルダウンロード用クラス(staticクラス)
+//     Profiler    プロファイラ用クラス
 //     ConvZenHan  文字列の全角半角変換用クラス(staticクラス)
 //     FloodFill   領域塗りつぶし用クラス
 //     Missile     ミサイル用クラス
 //     MMLPlayer   MML音楽演奏用クラス
-//     Profiler    プロファイラ用クラス
 //     SandSim     砂シミュレート用クラス
 //
 var Interpreter;
@@ -691,6 +693,7 @@ var Interpreter;
         ret = false;
         // ***** 引数のチェック *****
         if (ParamCheckNG(src_st)) { Alm2("Interpreter.run:-:ソースがありません。"); return ret; }
+        // if (src_st == "") { Alm("Interpreter.run:+:ソースがありません。"); return ret; }
         // ***** ソース設定 *****
         src = src_st;
         // ***** 実行開始 *****
@@ -831,7 +834,7 @@ var Interpreter;
             // (変数名の先頭の「a\」の数だけスコープをさかのぼる)
             if (var_name.substring(0, 2) == "a\\") {
                 // i = 0; do { i++; var_name = var_name.substring(2); } while (var_name.substring(0, 2) == "a\\");
-                i = 0; j = 0; do { i++; j = j + 2; j = var_name.indexOf("a\\", j);} while (j >= 0);
+                i = 0; j = 0; do { i++; j = j + 2; j = var_name.indexOf("a\\", j); } while (j >= 0);
                 var_name = var_name.substring(var_name.lastIndexOf("a\\") + 2);
                 if (this.old_vars_stack.length >= i) { localvars = this.old_vars_stack[this.old_vars_stack.length - i]; }
                 else { localvars = null; }
@@ -888,7 +891,7 @@ var Interpreter;
             // (変数名の先頭の「a\」の数だけスコープをさかのぼる)
             if (var_name.substring(0, 2) == "a\\") {
                 // i = 0; do { i++; var_name = var_name.substring(2); } while (var_name.substring(0, 2) == "a\\");
-                i = 0; j = 0; do { i++; j = j + 2; j = var_name.indexOf("a\\", j);} while (j >= 0);
+                i = 0; j = 0; do { i++; j = j + 2; j = var_name.indexOf("a\\", j); } while (j >= 0);
                 var_name = var_name.substring(var_name.lastIndexOf("a\\") + 2);
                 if (this.old_vars_stack.length >= i) { localvars = this.old_vars_stack[this.old_vars_stack.length - i]; }
                 else { localvars = null; }
@@ -943,7 +946,7 @@ var Interpreter;
             // (変数名の先頭の「a\」の数だけスコープをさかのぼる)
             if (var_name.substring(0, 2) == "a\\") {
                 // i = 0; do { i++; var_name = var_name.substring(2); } while (var_name.substring(0, 2) == "a\\");
-                i = 0; j = 0; do { i++; j = j + 2; j = var_name.indexOf("a\\", j);} while (j >= 0);
+                i = 0; j = 0; do { i++; j = j + 2; j = var_name.indexOf("a\\", j); } while (j >= 0);
                 var_name = var_name.substring(var_name.lastIndexOf("a\\") + 2);
                 if (this.old_vars_stack.length >= i) { localvars = this.old_vars_stack[this.old_vars_stack.length - i]; }
                 else { localvars = null; }
@@ -1014,7 +1017,7 @@ var Interpreter;
             // (変数名の先頭の「a\」の数だけスコープをさかのぼる)
             if (var_name.substring(0, 2) == "a\\") {
                 // i = 0; do { i++; var_name = var_name.substring(2); } while (var_name.substring(0, 2) == "a\\");
-                i = 0; j = 0; do { i++; j = j + 2; j = var_name.indexOf("a\\", j);} while (j >= 0);
+                i = 0; j = 0; do { i++; j = j + 2; j = var_name.indexOf("a\\", j); } while (j >= 0);
                 var_name = var_name.substring(var_name.lastIndexOf("a\\") + 2);
                 if (this.old_vars_stack.length >= i) { localvars = this.old_vars_stack[this.old_vars_stack.length - i]; }
                 else { localvars = null; }
@@ -1088,7 +1091,7 @@ var Interpreter;
             // (変数名の先頭の「a\」の数だけスコープをさかのぼる)
             if (var_name.substring(0, 2) == "a\\") {
                 // i = 0; do { i++; var_name = var_name.substring(2); } while (var_name.substring(0, 2) == "a\\");
-                i = 0; j = 0; do { i++; j = j + 2; j = var_name.indexOf("a\\", j);} while (j >= 0);
+                i = 0; j = 0; do { i++; j = j + 2; j = var_name.indexOf("a\\", j); } while (j >= 0);
                 var_name = var_name.substring(var_name.lastIndexOf("a\\") + 2);
                 if (this.old_vars_stack.length >= i) { localvars = this.old_vars_stack[this.old_vars_stack.length - i]; }
                 else { localvars = null; }
@@ -1189,7 +1192,7 @@ var Interpreter;
             // (変数名の先頭の「a\」の数だけスコープをさかのぼる)
             if (var_name.substring(0, 2) == "a\\") {
                 // i = 0; do { i++; var_name = var_name.substring(2); } while (var_name.substring(0, 2) == "a\\");
-                i = 0; j = 0; do { i++; j = j + 2; j = var_name.indexOf("a\\", j);} while (j >= 0);
+                i = 0; j = 0; do { i++; j = j + 2; j = var_name.indexOf("a\\", j); } while (j >= 0);
                 var_name = var_name.substring(var_name.lastIndexOf("a\\") + 2);
                 if (this.old_vars_stack.length >= i) { localvars = this.old_vars_stack[this.old_vars_stack.length - i]; }
                 else { localvars = null; }
@@ -1720,8 +1723,9 @@ var Interpreter;
         save_data = {};
         aud_mode = 1;
         sand_obj = null;
-        prof_obj = new Profiler();
-        prof_obj.start("result");
+        prof_obj = null;
+        if (typeof (Profiler) == "function") { prof_obj = new Profiler(); }
+        if (prof_obj) { prof_obj.start("result"); }
 
         // run_continuously(); // 再帰的になるので別関数にした
         setTimeout(run_continuously, 10);
@@ -1744,10 +1748,14 @@ var Interpreter;
             // loop_time_start = new Date().getTime();
             loop_time_start = Date.now();
             while (pc < symbol_len) {
-                // prof_obj.start("statement");
+
+                // ***** 文(ステートメント)の処理 *****
+                // if (prof_obj) { prof_obj.start("statement"); }
                 statement();
-                // prof_obj.stop("statement");
+                // if (prof_obj) { prof_obj.stop("statement"); }
                 // DebugShow(pc + " ");
+
+                // ***** 各種フラグのチェックと処理時間の測定 *****
                 if (dlg_flag) {
                     dlg_flag = false;
                     // ***** ダイアログ表示中は処理時間に含めない *****
@@ -1782,7 +1790,7 @@ var Interpreter;
             }
             // DebugShow(pc + "\n");
         } catch (ex4) {
-            prof_obj.stop("result");
+            if (prof_obj) { prof_obj.stop("result"); }
             DebugShow("statement: " + ex4.message + ": debugpc=" + debugpc + "\n");
             show_err_place();
             // ***** 音楽全停止 *****
@@ -1794,10 +1802,10 @@ var Interpreter;
             DebugShow("localvars=" + JSON.stringify(vars.localvars) + "\n");
             DebugShow("label=" + JSON.stringify(label) + "\n");
             DebugShow("func=" + JSON.stringify(func) + "\n");
-            if (Profiler.MicroSecAvailable) { DebugShow(prof_obj.getAllResult()); }
+            if (prof_obj && Profiler.MicroSecAvailable) { DebugShow(prof_obj.getAllResult()); }
             return ret;
         }
-        prof_obj.stop("result");
+        if (prof_obj) { prof_obj.stop("result"); }
         // ***** 音楽全停止 *****
         if (typeof (audstopall) == "function") { audstopall(); }
         // ***** 終了 *****
@@ -1809,7 +1817,7 @@ var Interpreter;
             DebugShow("label=" + JSON.stringify(label) + "\n");
             DebugShow("func=" + JSON.stringify(func) + "\n");
         }
-        if (Profiler.MicroSecAvailable) { DebugShow(prof_obj.getAllResult()); }
+        if (prof_obj && Profiler.MicroSecAvailable) { DebugShow(prof_obj.getAllResult()); }
         // ***** 戻り値を返す *****
         ret = true;
         return ret;
@@ -1886,7 +1894,7 @@ var Interpreter;
             // ***** シンボル取り出し *****
             sym = symbol[pc];
             // ***** 演算子の処理 *****
-            // (演算子の優先順位もチェックする)
+            // (優先順位の高い演算子を処理する)
             if (operator_tbl.hasOwnProperty(sym) && operator_tbl[sym].priority > priority) {
 
                 // (3項演算子の後には優先順位10の演算子しか続かない(既設の仕様))
@@ -2060,7 +2068,7 @@ var Interpreter;
                     match(")");
                 }
                 // ***** 関数の本体を実行 *****
-                // 文(ステートメント)の実行が再帰的になるので、
+                // 文(ステートメント)の処理が再帰的になるので、
                 // ブラウザに制御を返せないという制約がある
                 match("{");
                 funccall_info.nestcall = true;
@@ -2072,8 +2080,12 @@ var Interpreter;
                 // loop_time_start = new Date().getTime(); // ループ開始時間は呼び出し元でセットする
                 nest++;
                 while (pc < symbol_len) {
+
+                    // ***** 文(ステートメント)の処理 *****
                     statement();
                     // DebugShow(pc + " ");
+
+                    // ***** 各種フラグのチェックと処理時間の測定 *****
                     if (dlg_flag) {
                         dlg_flag = false;
                         // ***** ダイアログ表示中は処理時間に含めない *****
@@ -4969,7 +4981,11 @@ var Interpreter;
             }
             match(")");
             if (a3 != 1) {
-                Download.download(a1, a2);
+                if (typeof (Download) == "function") {
+                    Download.download(a1, a2);
+                } else {
+                    window.location.href = "data:application/octet-stream," + encodeURIComponent(a1);
+                }
             }
             num = "data:text/plain;charset=utf-8," + encodeURIComponent(a1);
             return num;
@@ -4992,7 +5008,11 @@ var Interpreter;
             }
             match(")");
             if (a2 != 1) {
-                Download.downloadCanvas(can, a1);
+                if (typeof (Download) == "function") {
+                    Download.downloadCanvas(can, a1);
+                } else {
+                    window.location.href = can.toDataURL("image/png").replace("image/png", "image/octet-stream");
+                }
             }
             num = can.toDataURL("image/png");
             return num;
@@ -5739,6 +5759,9 @@ var Interpreter;
     function make_one_func_tbl_B(name, func) {
         func_tbl_B[name] = func;
     }
+
+
+// })(Interpreter || (Interpreter = {}));
 
 
     // ***** 以下は追加命令の処理等 *****
@@ -7554,10 +7577,10 @@ var Download = (function () {
         var elm, ev;
         var link_download_flag;
 
-        // ***** エラーチェック *****
+        // ***** 引数のチェック *****
         if (typeof (data) == "undefined") { return false; }
         if (data == null) { return false; }
-        if (!fname || fname == "") { fname = "download"; }
+        if (!fname) { fname = "download"; }
         // ***** リンク要素の生成 *****
         elm = document.createElement("a");
         // ***** リンク要素でダウンロード可能か(Chrome用) *****
@@ -7610,9 +7633,9 @@ var Download = (function () {
         var bin_st_len;  // バイナリデータ文字列の長さ
         var uint8_arr;   // バイナリデータ(型付配列)
 
-        // ***** エラーチェック *****
+        // ***** 引数のチェック *****
         if (!can) { return false; }
-        if (!fname || fname == "") { fname = "download.png"; }
+        if (!fname) { fname = "download.png"; }
         // ***** リンク要素の生成 *****
         elm = document.createElement("a");
         // ***** リンク要素でダウンロード可能か(Chrome用) *****
@@ -7663,6 +7686,113 @@ var Download = (function () {
 })();
 
 
+// ***** プロファイラ用クラス *****
+var Profiler = (function () {
+    // ***** コンストラクタ *****
+    function Profiler() {
+        this.time_obj = {};        // 時間測定オブジェクト(キー名称ごと)
+        this.time_start = {};      // 測定開始時間        (キー名称ごと)
+        this.time_start_flag = {}; // 時間測定開始フラグ  (キー名称ごと)
+        this.records = {};         // 測定結果            (キー名称ごと)
+    }
+    // ***** 定数 *****
+    // (Chrome を --enable-benchmarking オプション付きで起動したときは、
+    //  マイクロ秒まで測定する)
+    if (typeof (chrome) != "undefined" && typeof (chrome.Interval) == "function") {
+        Profiler.MicroSecAvailable = true;
+    } else {
+        Profiler.MicroSecAvailable = false;
+    }
+
+    // ***** hasOwnPropertyをプロパティ名に使うかもしれない場合の対策 *****
+    // (obj.hasOwnProperty(prop) を hasOwn.call(obj, prop) に置換した)
+    var hasOwn = Object.prototype.hasOwnProperty;
+
+    // ***** 時間測定高速化用 *****
+    // (new Date().getTime() より Date.now() の方が高速だが、
+    //  Date.now() が存在しないブラウザもあるのでその対策)
+    if (!Date.now) { Date.now = function () { return new Date().getTime(); }; }
+
+    // ***** 時間測定開始 *****
+    // (キー名称ごとに測定結果を別にする)
+    Profiler.prototype.start = function (key_name) {
+        // if (!this.records.hasOwnProperty(key_name)) { this.records[key_name] = []; }
+        if (!hasOwn.call(this.records, key_name)) { this.records[key_name] = []; }
+        this.time_start_flag[key_name] = true;
+        if (Profiler.MicroSecAvailable) {
+            // if (!this.time_obj.hasOwnProperty(key_name)) { this.time_obj[key_name] = new chrome.Interval(); }
+            if (!hasOwn.call(this.time_obj, key_name)) { this.time_obj[key_name] = new chrome.Interval(); }
+            this.time_obj[key_name].start();
+        } else {
+            // this.time_start[key_name] = new Date().getTime();
+            this.time_start[key_name] = Date.now();
+        }
+    };
+    // ***** 時間測定終了 *****
+    // (キー名称ごとに測定結果を別にする)
+    Profiler.prototype.stop = function (key_name) {
+        // if (!this.records.hasOwnProperty(key_name)) { return false; }
+        if (!hasOwn.call(this.records, key_name)) { return false; }
+        if (!this.time_start_flag[key_name]) { return false; }
+        if (Profiler.MicroSecAvailable) {
+            this.time_obj[key_name].stop();
+            this.records[key_name].push(this.time_obj[key_name].microseconds() / 1000);
+        } else {
+            // this.records[key_name].push(new Date().getTime() - this.time_start[key_name]);
+            this.records[key_name].push(Date.now() - this.time_start[key_name]);
+        }
+        this.time_start_flag[key_name] = false;
+    };
+    // ***** 結果取得 *****
+    // (キー名称に対応する測定結果を、文字列にして返す)
+    // (測定結果の項目は、実行回数(回)、合計時間(msec)、平均時間(msec)、最大時間(msec)、最小時間(msec))
+    Profiler.prototype.getResult = function (key_name) {
+        var i;
+        var ret;
+        var rec, time_total, time_mean, time_max, time_min;
+        ret = "";
+        // if (this.records.hasOwnProperty(key_name)) {
+        if (hasOwn.call(this.records, key_name)) {
+            rec = this.records[key_name];
+            time_total = 0;
+            time_mean = 0;
+            time_max = 0;
+            time_min = 0;
+            for (i = 0; i < rec.length; i++) {
+                time_total = time_total + rec[i];
+                if (i == 0) { time_max = rec[i]; time_min = rec[i]; }
+                if (time_max < rec[i]) { time_max = rec[i]; }
+                if (time_min > rec[i]) { time_min = rec[i]; }
+            }
+            if (rec.length > 0) { time_mean = time_total / rec.length; }
+            time_total = Math.round(time_total * 1000) / 1000;
+            time_mean = Math.round(time_mean * 1000) / 1000;
+            time_max = Math.round(time_max * 1000) / 1000;
+            time_min = Math.round(time_min * 1000) / 1000;
+            ret = key_name + ": count=" + rec.length +
+                " total="       + time_total + "(msec) mean=" + time_mean +
+                "(msec) max="   + time_max   + "(msec) min="  + time_min  + "(msec)";
+        }
+        return ret;
+    };
+    // ***** 全結果取得 *****
+    // (全キー名称の測定結果を、複数行の文字列にして返す)
+    Profiler.prototype.getAllResult = function () {
+        var ret;
+        var key_name;
+        ret = "";
+        for (key_name in this.records) {
+            // if (this.records.hasOwnProperty(key_name)) {
+            if (hasOwn.call(this.records, key_name)) {
+                ret = ret + this.getResult(key_name) + "\n";
+            }
+        }
+        return ret;
+    };
+    return Profiler; // これがないとクラスが動かないので注意
+})();
+
+
 // ***** 文字列の全角半角変換用クラス(staticクラス) *****
 var ConvZenHan = (function () {
     // ***** コンストラクタ *****
@@ -7674,9 +7804,10 @@ var ConvZenHan = (function () {
     ConvZenHan.toZenkaku = function (st1, mode1) {
         var st2;
         var mode2;
-        // ***** 引数をコピー *****
-        st2 = st1;
-        if (mode1 == "") { mode2 = "anpskd"; } else { mode2 = mode1; }
+
+        // ***** 引数のチェック *****
+        if (!st1) { st2 = ""; } else { st2 = st1; }
+        if (!mode1) { mode2 = "anpskd"; } else { mode2 = mode1; }
         // ***** アルファベットを全角に変換 *****
         if (mode2.indexOf("a") >= 0) {
             st2 = st2.replace(/[\u0041-\u005A]|[\u0061-\u007A]/g,
@@ -7777,9 +7908,10 @@ var ConvZenHan = (function () {
     ConvZenHan.toHankaku = function (st1, mode1) {
         var st2;
         var mode2;
-        // ***** 引数をコピー *****
-        st2 = st1;
-        if (mode1 == "") { mode2 = "anpskd"; } else { mode2 = mode1; }
+
+        // ***** 引数のチェック *****
+        if (!st1) { st2 = ""; } else { st2 = st1; }
+        if (!mode1) { mode2 = "anpskd"; } else { mode2 = mode1; }
         // ***** アルファベットを半角に変換 *****
         if (mode2.indexOf("a") >= 0) {
             st2 = st2.replace(/[\uFF21-\uFF3A]|[\uFF41-\uFF5A]/g,
@@ -7866,6 +7998,7 @@ var ConvZenHan = (function () {
         var i;
         var han, zen;
         var ch, cz, cz2;
+
         // alert("ConvZenHan.makeTable:-:実行されました。");
         // ***** アルファベット *****
         ConvZenHan.alphaToZenkaku = {};
@@ -8380,8 +8513,7 @@ var MMLPlayer = (function () {
         // ***** Web Audio APIの存在チェック *****
         if (!MMLPlayer.AudioContext) { return false; }
         // ***** 引数のチェック *****
-        if (typeof (mml_st) == "undefined") { return false; }
-        if (mml_st == null) { return false; }
+        if (!mml_st) { return false; }
         // ***** 停止 *****
         this.stop();
         // ***** コンパイル中にする *****
@@ -8433,8 +8565,7 @@ var MMLPlayer = (function () {
         // ***** Web Audio APIの存在チェック *****
         if (!MMLPlayer.AudioContext) { return false; }
         // ***** 引数のチェック *****
-        if (typeof (aud_data_st) == "undefined") { return false; }
-        if (aud_data_st == null) { return false; }
+        if (!aud_data_st) { return false; }
         // ***** 停止 *****
         this.stop();
         // ***** コンパイル中にする *****
@@ -9047,113 +9178,6 @@ var MMLPlayer = (function () {
         return tokens;
     };
     return MMLPlayer; // これがないとクラスが動かないので注意
-})();
-
-
-// ***** プロファイラ用クラス *****
-var Profiler = (function () {
-    // ***** コンストラクタ *****
-    function Profiler() {
-        this.time_obj = {};        // 時間測定オブジェクト(キー名称ごと)
-        this.time_start = {};      // 測定開始時間        (キー名称ごと)
-        this.time_start_flag = {}; // 時間測定開始フラグ  (キー名称ごと)
-        this.records = {};         // 測定結果            (キー名称ごと)
-    }
-    // ***** 定数 *****
-    // (Chrome を --enable-benchmarking オプション付きで起動したときは、
-    //  マイクロ秒まで測定する)
-    if (typeof (chrome) != "undefined" && typeof (chrome.Interval) == "function") {
-        Profiler.MicroSecAvailable = true;
-    } else {
-        Profiler.MicroSecAvailable = false;
-    }
-
-    // ***** hasOwnPropertyをプロパティ名に使うかもしれない場合の対策 *****
-    // (obj.hasOwnProperty(prop) を hasOwn.call(obj, prop) に置換した)
-    var hasOwn = Object.prototype.hasOwnProperty;
-
-    // ***** 時間測定高速化用 *****
-    // (new Date().getTime() より Date.now() の方が高速だが、
-    //  Date.now() が存在しないブラウザもあるのでその対策)
-    if (!Date.now) { Date.now = function () { return new Date().getTime(); }; }
-
-    // ***** 時間測定開始 *****
-    // (キー名称ごとに測定結果を別にする)
-    Profiler.prototype.start = function (key_name) {
-        // if (!this.records.hasOwnProperty(key_name)) { this.records[key_name] = []; }
-        if (!hasOwn.call(this.records, key_name)) { this.records[key_name] = []; }
-        this.time_start_flag[key_name] = true;
-        if (Profiler.MicroSecAvailable) {
-            // if (!this.time_obj.hasOwnProperty(key_name)) { this.time_obj[key_name] = new chrome.Interval(); }
-            if (!hasOwn.call(this.time_obj, key_name)) { this.time_obj[key_name] = new chrome.Interval(); }
-            this.time_obj[key_name].start();
-        } else {
-            // this.time_start[key_name] = new Date().getTime();
-            this.time_start[key_name] = Date.now();
-        }
-    };
-    // ***** 時間測定終了 *****
-    // (キー名称ごとに測定結果を別にする)
-    Profiler.prototype.stop = function (key_name) {
-        // if (!this.records.hasOwnProperty(key_name)) { return false; }
-        if (!hasOwn.call(this.records, key_name)) { return false; }
-        if (!this.time_start_flag[key_name]) { return false; }
-        if (Profiler.MicroSecAvailable) {
-            this.time_obj[key_name].stop();
-            this.records[key_name].push(this.time_obj[key_name].microseconds() / 1000);
-        } else {
-            // this.records[key_name].push(new Date().getTime() - this.time_start[key_name]);
-            this.records[key_name].push(Date.now() - this.time_start[key_name]);
-        }
-        this.time_start_flag[key_name] = false;
-    };
-    // ***** 結果取得 *****
-    // (キー名称に対応する測定結果を、文字列にして返す)
-    // (測定結果の項目は、実行回数(回)、合計時間(msec)、平均時間(msec)、最大時間(msec)、最小時間(msec))
-    Profiler.prototype.getResult = function (key_name) {
-        var i;
-        var ret;
-        var rec, time_total, time_mean, time_max, time_min;
-        ret = "";
-        // if (this.records.hasOwnProperty(key_name)) {
-        if (hasOwn.call(this.records, key_name)) {
-            rec = this.records[key_name];
-            time_total = 0;
-            time_mean = 0;
-            time_max = 0;
-            time_min = 0;
-            for (i = 0; i < rec.length; i++) {
-                time_total = time_total + rec[i];
-                if (i == 0) { time_max = rec[i]; time_min = rec[i]; }
-                if (time_max < rec[i]) { time_max = rec[i]; }
-                if (time_min > rec[i]) { time_min = rec[i]; }
-            }
-            if (rec.length > 0) { time_mean = time_total / rec.length; }
-            time_total = Math.round(time_total * 1000) / 1000;
-            time_mean = Math.round(time_mean * 1000) / 1000;
-            time_max = Math.round(time_max * 1000) / 1000;
-            time_min = Math.round(time_min * 1000) / 1000;
-            ret = key_name + ": count=" + rec.length +
-                " total="       + time_total + "(msec) mean=" + time_mean +
-                "(msec) max="   + time_max   + "(msec) min="  + time_min  + "(msec)";
-        }
-        return ret;
-    };
-    // ***** 全結果取得 *****
-    // (全キー名称の測定結果を、複数行の文字列にして返す)
-    Profiler.prototype.getAllResult = function () {
-        var ret;
-        var key_name;
-        ret = "";
-        for (key_name in this.records) {
-            // if (this.records.hasOwnProperty(key_name)) {
-            if (hasOwn.call(this.records, key_name)) {
-                ret = ret + this.getResult(key_name) + "\n";
-            }
-        }
-        return ret;
-    };
-    return Profiler; // これがないとクラスが動かないので注意
 })();
 
 
