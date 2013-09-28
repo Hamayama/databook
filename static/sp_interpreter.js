@@ -1,7 +1,7 @@
 // This file is encoded with UTF-8 without BOM.
 
 // sp_interpreter.js
-// 2013-9-25 v1.81
+// 2013-9-28 v1.82
 
 
 // SPALM Web Interpreter
@@ -809,6 +809,10 @@ var Interpreter;
                 this.localvars = null;
             }
         };
+        // ***** ローカル変数のスコープの保存数を返す *****
+        Vars.prototype.getLocalScopeNum = function () {
+            return this.old_vars_stack.length;
+        };
         // ***** 全変数を削除する *****
         Vars.prototype.clearVars = function () {
             var i;
@@ -831,12 +835,12 @@ var Interpreter;
 
             // ***** 関数の引数のポインタ対応 *****
             // ***** ローカル変数のスコープを取得する *****
-            // (変数名の先頭の「a\」の数だけスコープをさかのぼる)
+            // (変数名の「a\」の後の数字により、ローカル変数のスコープをさかのぼる)
             if (var_name.substring(0, 2) == "a\\") {
-                // i = 0; do { i++; var_name = var_name.substring(2); } while (var_name.substring(0, 2) == "a\\");
-                i = 0; j = 0; do { i++; j = j + 2; j = var_name.indexOf("a\\", j); } while (j >= 0);
-                var_name = var_name.substring(var_name.lastIndexOf("a\\") + 2);
-                if (this.old_vars_stack.length >= i) { localvars = this.old_vars_stack[this.old_vars_stack.length - i]; }
+                j = var_name.indexOf("\\", 2) + 1;
+                i = parseInt(var_name.substring(2, j), 10) - 1;
+                var_name = var_name.substring(j);
+                if (i >= 0 && i < this.old_vars_stack.length) { localvars = this.old_vars_stack[i]; }
                 else { localvars = null; }
             } else { localvars = this.localvars; }
 
@@ -888,12 +892,12 @@ var Interpreter;
 
             // ***** 関数の引数のポインタ対応 *****
             // ***** ローカル変数のスコープを取得する *****
-            // (変数名の先頭の「a\」の数だけスコープをさかのぼる)
+            // (変数名の「a\」の後の数字により、ローカル変数のスコープをさかのぼる)
             if (var_name.substring(0, 2) == "a\\") {
-                // i = 0; do { i++; var_name = var_name.substring(2); } while (var_name.substring(0, 2) == "a\\");
-                i = 0; j = 0; do { i++; j = j + 2; j = var_name.indexOf("a\\", j); } while (j >= 0);
-                var_name = var_name.substring(var_name.lastIndexOf("a\\") + 2);
-                if (this.old_vars_stack.length >= i) { localvars = this.old_vars_stack[this.old_vars_stack.length - i]; }
+                j = var_name.indexOf("\\", 2) + 1;
+                i = parseInt(var_name.substring(2, j), 10) - 1;
+                var_name = var_name.substring(j);
+                if (i >= 0 && i < this.old_vars_stack.length) { localvars = this.old_vars_stack[i]; }
                 else { localvars = null; }
             } else { localvars = this.localvars; }
 
@@ -943,12 +947,12 @@ var Interpreter;
 
             // ***** 関数の引数のポインタ対応 *****
             // ***** ローカル変数のスコープを取得する *****
-            // (変数名の先頭の「a\」の数だけスコープをさかのぼる)
+            // (変数名の「a\」の後の数字により、ローカル変数のスコープをさかのぼる)
             if (var_name.substring(0, 2) == "a\\") {
-                // i = 0; do { i++; var_name = var_name.substring(2); } while (var_name.substring(0, 2) == "a\\");
-                i = 0; j = 0; do { i++; j = j + 2; j = var_name.indexOf("a\\", j); } while (j >= 0);
-                var_name = var_name.substring(var_name.lastIndexOf("a\\") + 2);
-                if (this.old_vars_stack.length >= i) { localvars = this.old_vars_stack[this.old_vars_stack.length - i]; }
+                j = var_name.indexOf("\\", 2) + 1;
+                i = parseInt(var_name.substring(2, j), 10) - 1;
+                var_name = var_name.substring(j);
+                if (i >= 0 && i < this.old_vars_stack.length) { localvars = this.old_vars_stack[i]; }
                 else { localvars = null; }
             } else { localvars = this.localvars; }
 
@@ -1014,12 +1018,12 @@ var Interpreter;
 
             // ***** 関数の引数のポインタ対応 *****
             // ***** ローカル変数のスコープを取得する *****
-            // (変数名の先頭の「a\」の数だけスコープをさかのぼる)
+            // (変数名の「a\」の後の数字により、ローカル変数のスコープをさかのぼる)
             if (var_name.substring(0, 2) == "a\\") {
-                // i = 0; do { i++; var_name = var_name.substring(2); } while (var_name.substring(0, 2) == "a\\");
-                i = 0; j = 0; do { i++; j = j + 2; j = var_name.indexOf("a\\", j); } while (j >= 0);
-                var_name = var_name.substring(var_name.lastIndexOf("a\\") + 2);
-                if (this.old_vars_stack.length >= i) { localvars = this.old_vars_stack[this.old_vars_stack.length - i]; }
+                j = var_name.indexOf("\\", 2) + 1;
+                i = parseInt(var_name.substring(2, j), 10) - 1;
+                var_name = var_name.substring(j);
+                if (i >= 0 && i < this.old_vars_stack.length) { localvars = this.old_vars_stack[i]; }
                 else { localvars = null; }
             } else { localvars = this.localvars; }
 
@@ -1088,12 +1092,12 @@ var Interpreter;
 
             // ***** 関数の引数のポインタ対応 *****
             // ***** ローカル変数のスコープを取得する *****
-            // (変数名の先頭の「a\」の数だけスコープをさかのぼる)
+            // (変数名の「a\」の後の数字により、ローカル変数のスコープをさかのぼる)
             if (var_name.substring(0, 2) == "a\\") {
-                // i = 0; do { i++; var_name = var_name.substring(2); } while (var_name.substring(0, 2) == "a\\");
-                i = 0; j = 0; do { i++; j = j + 2; j = var_name.indexOf("a\\", j); } while (j >= 0);
-                var_name = var_name.substring(var_name.lastIndexOf("a\\") + 2);
-                if (this.old_vars_stack.length >= i) { localvars = this.old_vars_stack[this.old_vars_stack.length - i]; }
+                j = var_name.indexOf("\\", 2) + 1;
+                i = parseInt(var_name.substring(2, j), 10) - 1;
+                var_name = var_name.substring(j);
+                if (i >= 0 && i < this.old_vars_stack.length) { localvars = this.old_vars_stack[i]; }
                 else { localvars = null; }
             } else { localvars = this.localvars; }
 
@@ -1189,12 +1193,12 @@ var Interpreter;
 
             // ***** 関数の引数のポインタ対応 *****
             // ***** ローカル変数のスコープを取得する *****
-            // (変数名の先頭の「a\」の数だけスコープをさかのぼる)
+            // (変数名の「a\」の後の数字により、ローカル変数のスコープをさかのぼる)
             if (var_name.substring(0, 2) == "a\\") {
-                // i = 0; do { i++; var_name = var_name.substring(2); } while (var_name.substring(0, 2) == "a\\");
-                i = 0; j = 0; do { i++; j = j + 2; j = var_name.indexOf("a\\", j); } while (j >= 0);
-                var_name = var_name.substring(var_name.lastIndexOf("a\\") + 2);
-                if (this.old_vars_stack.length >= i) { localvars = this.old_vars_stack[this.old_vars_stack.length - i]; }
+                j = var_name.indexOf("\\", 2) + 1;
+                i = parseInt(var_name.substring(2, j), 10) - 1;
+                var_name = var_name.substring(j);
+                if (i >= 0 && i < this.old_vars_stack.length) { localvars = this.old_vars_stack[i]; }
                 else { localvars = null; }
             } else { localvars = this.localvars; }
 
@@ -1876,6 +1880,7 @@ var Interpreter;
     }
 
     // ***** 式の処理 *****
+    // (引数は処理中の演算子の優先順位を表す)
     function expression(priority) {
         var num;
         var sym;
@@ -1894,10 +1899,10 @@ var Interpreter;
             // ***** シンボル取り出し *****
             sym = symbol[pc];
             // ***** 演算子の処理 *****
-            // (優先順位の高い演算子を処理する)
+            // (より高い優先順位の演算子があれば先に処理する)
             if (operator_tbl.hasOwnProperty(sym) && operator_tbl[sym].priority > priority) {
 
-                // (3項演算子の後には優先順位10の演算子しか続かない(既設の仕様))
+                // (3項演算子の処理後は、優先順位10の演算子しか処理しない(既設の仕様))
                 if (old_sym == "?" && operator_tbl[sym].priority != 10) { break; }
 
                 pc++;
@@ -2041,8 +2046,10 @@ var Interpreter;
                                     pc = back_pc;
                                     throw new Error("ポインタの指す先が不正です。('" + func_params[i] + "')");
                                 }
-                                // (ローカル変数のスコープをさかのぼれるように引数の内容に「a\」を付加)
-                                func_params[i] = "a\\" + func_params[i];
+                                // (ローカル変数のスコープをさかのぼれるように、引数の内容に「a\」と数字を付加)
+                                if (func_params[i].substring(0, 2) != "a\\") {
+                                    func_params[i] = "a\\" + vars.getLocalScopeNum() + "\\" + func_params[i];
+                                }
                             }
 
                             // vars[var_name] = func_params[i];
@@ -2142,6 +2149,7 @@ var Interpreter;
 
             // ***** 変数の処理 *****
 
+            // (変数の作成は変数用クラスにまかせるようにした)
             // // ***** 変数がなければ作成 *****
             // // if (!vars[var_name]) { vars[var_name] = 0; } // これは間違い
             // // if (typeof (vars[var_name]) == "undefined") { vars[var_name] = 0; }
@@ -2371,9 +2379,9 @@ var Interpreter;
     // ***** グローバル変数化 *****
     // (画像変数名や関数名に変換するときに使用)
     function toglobal(var_name) {
-        // ***** 変数名の先頭の「a\」をすべて削除 *****
+        // ***** 変数名から「a\」と数字を削除 *****
         if (var_name.substring(0, 2) == "a\\") {
-            var_name = var_name.substring(var_name.lastIndexOf("a\\") + 2);
+            var_name = var_name.substring(var_name.indexOf("\\", 2) + 1);
         }
         // ***** 接頭語の削除 *****
         if (var_name.substring(0, 7) == "global ") { var_name = var_name.substring(7); }
@@ -3261,6 +3269,7 @@ var Interpreter;
         // ***** 演算子の定義情報の初期化 *****
         operator_tbl = {};
         // ***** 演算子の定義情報の生成 *****
+        // (第2引数は演算子の優先順位を表す。大きいほど優先順位が高い)
         make_one_operator_tbl("&", 10, function (num) {
             num = num & expression(10);
             return num;
@@ -3979,8 +3988,10 @@ var Interpreter;
                                 pc = back_pc;
                                 throw new Error("ポインタの指す先が不正です。('" + func_params[i] + "')");
                             }
-                            // (ローカル変数のスコープをさかのぼれるように引数の内容に「a\」を付加)
-                            func_params[i] = "a\\" + func_params[i];
+                            // (ローカル変数のスコープをさかのぼれるように、引数の内容に「a\」と数字を付加)
+                            if (func_params[i].substring(0, 2) != "a\\") {
+                                func_params[i] = "a\\" + vars.getLocalScopeNum() + "\\" + func_params[i];
+                            }
                         }
 
                         // vars[var_name] = func_params[i];
