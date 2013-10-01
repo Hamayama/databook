@@ -12,7 +12,7 @@ from google.appengine.ext import ndb
 from google.appengine.api import search
 
 # databook.py
-# 2013-7-17 v1.23
+# 2013-10-2 v1.24
 
 # Google App Engine / Python による データベース アプリケーション1
 
@@ -42,6 +42,9 @@ class JapanTZ(datetime.tzinfo):
     def dst(self, dt):
         return datetime.timedelta(0)
 
+
+# ***** メインページの表示件数の設定 *****
+mainpage_show_num = 50
 
 # ***** URLの設定 *****
 mainpage_url  = '/databook'
@@ -160,16 +163,43 @@ class MainPage(webapp2.RequestHandler):
             login_text = '[管理]'
 
 
-        # 全文検索の単語をチェック
+        # 全文検索の単語を取得
         search_flag = False
         search_count = 0
         search_word = self.request.get('word').strip()
+        # 全文検索の単語の先頭が「=」のときは特別扱い
         show_all_flag = False
-        # 先頭が =* のときは表示フラグを無視
-        if search_word.startswith('=*') == True:
-            show_all_flag = True
-            search_word = search_word[2:]
-        if search_word:
+        show_offset = 0
+        if search_word.startswith('='):
+            i = 1
+            while i < len(search_word):
+                ch = search_word[i]
+                # 「*」のときは表示フラグを無視して全て表示する
+                if ch == '*':
+                    i += 1
+                    show_all_flag = True
+                    continue
+                # 数字のときは表示件数のオフセットとする
+                if ch.isdigit():
+                    i += 1
+                    j = i - 1
+                    while i < len(search_word):
+                        ch = search_word[i]
+                        if ch.isdigit():
+                            i += 1
+                            continue
+                        break
+                    k = i
+                    if (k - j) > 5: k = j + 5
+                    show_offset = int(search_word[j:k])
+                    continue
+                # その他のときは抜ける
+                break
+            search_word2 = search_word[i:]
+        else:
+            search_word2 = search_word
+        # 全文検索の単語をチェック
+        if search_word2:
             # 全文検索を行うとき
             articles = []
             # 検索結果を日付の降順でソートする指定
@@ -179,23 +209,23 @@ class MainPage(webapp2.RequestHandler):
             # ソートオプションに設定する
             sort_opts = search.SortOptions(expressions=expr_list)
             # クエリーオプションに設定する
-            # (最大50件、ソートオプション指定、検索結果はタイトルのみ取得)
-            query_opts = search.QueryOptions(limit=50, sort_options=sort_opts, returned_fields=['title'])
+            # (表示件数指定、ソートオプション指定、検索結果はタイトルのみ取得)
+            query_opts = search.QueryOptions(limit=mainpage_show_num, offset=show_offset, sort_options=sort_opts, returned_fields=['title'])
             try:
                 # 単語とクエリーオプションを指定して全文検索実行
-                query_obj = search.Query(query_string=search_word, options=query_opts)
+                query_obj = search.Query(query_string=search_word2, options=query_opts)
                 search_results = search.Index(name=databook_indexname).search(query=query_obj)
                 # 検索結果から記事のタイトルを取得する
                 req_titles = []
                 for scored_doc in search_results:
                     req_titles.append(scored_doc.field('title').value)
                 if len(req_titles) >= 1:
-                    # 記事を検索(タイトルで50件まで)
-                    if show_all_flag == True:
+                    # 記事を検索(タイトルで表示件数まで)
+                    if show_all_flag:
                         articles_query = Article.query(Article.title.IN(req_titles), ancestor=databook_key(databook_name)).order(-Article.date)
                     else:
                         articles_query = Article.query(Article.title.IN(req_titles), Article.show_flag == 1, ancestor=databook_key(databook_name)).order(-Article.date)
-                    articles = articles_query.fetch(50)
+                    articles = articles_query.fetch(mainpage_show_num)
             except (search.QueryError, search.InvalidRequest), e:
                 # クエリーエラーのとき
                 message_data = message_data + '（クエリーエラー:検索文字列に記号が含まれると発生することがあります）'
@@ -203,12 +233,12 @@ class MainPage(webapp2.RequestHandler):
             search_count = len(articles)
         else:
             # 全文検索を行わないとき
-            # 記事を取得(日付の新しい順に50件まで)
-            if show_all_flag == True:
+            # 記事を取得(日付の新しい順に表示件数まで)
+            if show_all_flag:
                 articles_query = Article.query(ancestor=databook_key(databook_name)).order(-Article.date)
             else:
                 articles_query = Article.query(Article.show_flag == 1, ancestor=databook_key(databook_name)).order(-Article.date)
-            articles = articles_query.fetch(50)
+            articles = articles_query.fetch(mainpage_show_num, offset=show_offset)
 
 
         # 記事を表示用に整形
@@ -425,13 +455,13 @@ class Databook(webapp2.RequestHandler):
 
 
         # 記事の非表示(保守用)
-        if article.author.startswith('=hide') == True:
+        if article.author.startswith('=hide'):
             article.show_flag = 0
         else:
             article.show_flag = 1
 
         # 記事の削除(保守用)
-        # if article.author.startswith('=delete') == True:
+        # if article.author.startswith('=delete'):
         if self.request.get('delete') == '1':
             if admin_login and article.bkup_dates:
                 # (関連する全文検索用ドキュメントがあればそれも削除)
@@ -442,7 +472,7 @@ class Databook(webapp2.RequestHandler):
             return
 
         # 全文検索用ドキュメントの個別削除(保守用)
-        if article.author.startswith('=index_delete') == True:
+        if article.author.startswith('=index_delete'):
             if admin_login:
                 doc_id = article.content
                 if doc_id:
@@ -451,7 +481,7 @@ class Databook(webapp2.RequestHandler):
             return
 
         # 全文検索用ドキュメントの全削除(保守用)
-        if article.author.startswith('=all_index_delete') == True:
+        if article.author.startswith('=all_index_delete'):
             if admin_login:
                 search_index = search.Index(name=databook_indexname)
                 while True:
