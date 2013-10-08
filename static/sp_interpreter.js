@@ -1,7 +1,7 @@
 // This file is encoded with UTF-8 without BOM.
 
 // sp_interpreter.js
-// 2013-9-28 v1.82
+// 2013-10-8 v1.83
 
 
 // SPALM Web Interpreter
@@ -830,8 +830,8 @@ var Interpreter;
             var glb, loc;
             var localvars;
 
-            // ***** 引数のチェック *****
-            if (var_name == "") { return true; }
+            // // ***** 引数のチェック *****
+            // if (var_name == "") { return true; }
 
             // ***** 関数の引数のポインタ対応 *****
             // ***** ローカル変数のスコープを取得する *****
@@ -887,8 +887,8 @@ var Interpreter;
             var glb, loc;
             var localvars;
 
-            // ***** 引数のチェック *****
-            if (var_name == "") { return true; }
+            // // ***** 引数のチェック *****
+            // if (var_name == "") { return true; }
 
             // ***** 関数の引数のポインタ対応 *****
             // ***** ローカル変数のスコープを取得する *****
@@ -942,8 +942,8 @@ var Interpreter;
             var glb, loc;
             var localvars;
 
-            // ***** 引数のチェック *****
-            if (var_name == "") { return true; }
+            // // ***** 引数のチェック *****
+            // if (var_name == "") { return true; }
 
             // ***** 関数の引数のポインタ対応 *****
             // ***** ローカル変数のスコープを取得する *****
@@ -1013,8 +1013,8 @@ var Interpreter;
             var glb, loc;
             var localvars;
 
-            // ***** 引数のチェック *****
-            if (var_name == "") { return true; }
+            // // ***** 引数のチェック *****
+            // if (var_name == "") { return true; }
 
             // ***** 関数の引数のポインタ対応 *****
             // ***** ローカル変数のスコープを取得する *****
@@ -1086,9 +1086,9 @@ var Interpreter;
             var copy_flag;
             var localvars;
 
-            // ***** 引数のチェック *****
-            if (var_name == "") { return true; }
-            if (var_name2 == "") { return true; }
+            // // ***** 引数のチェック *****
+            // if (var_name == "") { return true; }
+            // if (var_name2 == "") { return true; }
 
             // ***** 関数の引数のポインタ対応 *****
             // ***** ローカル変数のスコープを取得する *****
@@ -1188,8 +1188,8 @@ var Interpreter;
             var delete_flag;
             var localvars;
 
-            // ***** 引数のチェック *****
-            if (var_name == "") { return true; }
+            // // ***** 引数のチェック *****
+            // if (var_name == "") { return true; }
 
             // ***** 関数の引数のポインタ対応 *****
             // ***** ローカル変数のスコープを取得する *****
@@ -3730,30 +3730,30 @@ var Interpreter;
             match(")");
             if (a1 == "screen") {
                 // ***** 水平方向 *****
-                if (a4 & 4) { }                                  // 左
-                else if (a4 & 8)  { a2 = a2 - can1.width; }      // 右
+                // if (a4 & 4) { }                               // 左
+                if (a4 & 8)  { a2 = a2 - can1.width; }           // 右
                 else if (a4 & 1)  { a2 = a2 - can1.width / 2; }  // 中央
-                else { }
+                // else { }                                      // その他
                 // ***** 垂直方向 *****
-                if (a4 & 16) { }                                 // 上
-                else if (a4 & 32) { a3 = a3 - can1.height; }     // 下
+                // if (a4 & 16) { }                              // 上
+                if (a4 & 32) { a3 = a3 - can1.height; }          // 下
                 else if (a4 & 2)  { a3 = a3 - can1.height / 2; } // 中央
-                else { }
+                // else { }                                      // その他
                 // ***** 画像を描画(表示画面→ターゲット) *****
                 ctx.drawImage(can1, a2, a3);
             } else {
                 // if (imgvars.hasOwnProperty(a1)) {
                 if (hasOwn.call(imgvars, a1)) {
                     // ***** 水平方向 *****
-                    if (a4 & 4) { }                                             // 左
-                    else if (a4 & 8)  { a2 = a2 - imgvars[a1].can.width; }      // 右
+                    // if (a4 & 4) { }                                          // 左
+                    if (a4 & 8)  { a2 = a2 - imgvars[a1].can.width; }           // 右
                     else if (a4 & 1)  { a2 = a2 - imgvars[a1].can.width / 2; }  // 中央
-                    else { }
+                    // else { }                                                 // その他
                     // ***** 垂直方向 *****
-                    if (a4 & 16) { }                                            // 上
-                    else if (a4 & 32) { a3 = a3 - imgvars[a1].can.height; }     // 下
+                    // if (a4 & 16) { }                                         // 上
+                    if (a4 & 32) { a3 = a3 - imgvars[a1].can.height; }          // 下
                     else if (a4 & 2)  { a3 = a3 - imgvars[a1].can.height / 2; } // 中央
-                    else { }
+                    // else { }                                                 // その他
                     // ***** 画像を描画(画像変数→ターゲット) *****
                     ctx.drawImage(imgvars[a1].can, a2, a3);
                 } else {
@@ -5721,6 +5721,18 @@ var Interpreter;
             num = ~factor();
             return num;
         });
+        make_one_func_tbl_B("+", function () {
+            var num;
+
+            num = factor();
+            return num;
+        });
+        make_one_func_tbl_B("-", function () {
+            var num;
+
+            num = -factor();
+            return num;
+        });
         make_one_func_tbl_B("(", function () {
             var num;
 
@@ -5734,18 +5746,6 @@ var Interpreter;
                 break;
             }
             match(")");
-            return num;
-        });
-        make_one_func_tbl_B("+", function () {
-            var num;
-
-            num = factor();
-            return num;
-        });
-        make_one_func_tbl_B("-", function () {
-            var num;
-
-            num = -factor();
             return num;
         });
         // ***** アドレス的なもの *****
@@ -5974,6 +5974,15 @@ var Interpreter;
             ctx.fillStyle = color_val;
             return true;
         });
+        make_one_addfunc_tbl_A("devprint", function () {
+            var a1;
+
+            match("(");
+            a1 = String(expression());
+            match(")");
+            DebugShow(a1 + "\n");
+            return true;
+        });
         make_one_addfunc_tbl_A("disaud", function () {
             var a1;
 
@@ -6167,9 +6176,9 @@ var Interpreter;
                             vars.setVarValue(mis.useflag_var_name,  mis.useflag);
                             vars.setVarValue(mis.x100_var_name,     mis.x100);
                             vars.setVarValue(mis.y100_var_name,     mis.y100);
-                            vars.setVarValue(mis.degree_var_name,   mis.degree);
-                            vars.setVarValue(mis.speed100_var_name, mis.speed100);
-                            vars.setVarValue(mis.ch_var_name,       mis.ch);
+                            // vars.setVarValue(mis.degree_var_name,   mis.degree);
+                            // vars.setVarValue(mis.speed100_var_name, mis.speed100);
+                            // vars.setVarValue(mis.ch_var_name,       mis.ch);
                         }
                     }
                 }
@@ -6178,7 +6187,9 @@ var Interpreter;
         });
         make_one_addfunc_tbl_A("mistext", function () {
             var a1, a2, a3;
+            var i;
             var x1, y1;
+            var ch, chs, ovr;
             var mis, mis_no;
             var range_use, min_no, max_no;
 
@@ -6213,14 +6224,35 @@ var Interpreter;
                     mis = missile[mis_no];
                     if (range_use == false || (mis.no >= min_no && mis.no <= max_no)) {
                         mis.useflag = parseInt(vars.getVarValue(mis.useflag_var_name), 10);
-                        if (mis.useflag != 0) {
+                        // (有効フラグが0以外で1000以下のときのみ表示)
+                        // if (mis.useflag != 0) {
+                        if (mis.useflag != 0 && mis.useflag <= 1000) {
                             mis.x100 = parseInt(vars.getVarValue(mis.x100_var_name), 10);
                             mis.y100 = parseInt(vars.getVarValue(mis.y100_var_name), 10);
                             mis.ch =     String(vars.getVarValue(mis.ch_var_name));
                             x1 = (mis.x100 / 100) | 0; // 整数化
                             y1 = (mis.y100 / 100) | 0; // 整数化
-                            // txtpsetsub(a1, a2, a3, x1, y1, mis.ch);
-                            txtovrsub(a1, a2, a3, x1, y1, mis.ch);
+                            ch = mis.ch;
+                            // (複数行文字列指定のとき)
+                            if (ch.length >= 7 && "#$%&".indexOf(ch.charAt(0)) >= 0) {
+                                chs = ch.split(ch.charAt(0));
+                                x1 = x1 + (chs[1] | 0);
+                                y1 = y1 + (chs[2] | 0);
+                                ovr = chs[3] | 0;
+                                for (i = 4; i < chs.length; i++) {
+                                    if (ovr == 1) {
+                                        txtovrsub2(a1, a2, a3, x1, y1, chs[i]);
+                                    } else if (ovr == 2) {
+                                        txtovrsub3(a1, a2, a3, x1, y1, chs[i]);
+                                    } else {
+                                        txtovrsub(a1, a2, a3, x1, y1, chs[i]);
+                                    }
+                                    y1++;
+                                }
+                            } else {
+                                // txtpsetsub(a1, a2, a3, x1, y1, ch);
+                                txtovrsub(a1, a2, a3, x1, y1, ch);
+                            }
                         }
                     }
                 }
@@ -7439,14 +7471,42 @@ var Interpreter;
 
         // ***** 上書き処理 *****
         if (y >= min_y && y <= max_y) {
-
-            // // ***** 配列の存在チェック *****
-            // if (!vars.checkVar(var_name + "[" + y + "]")) { return; }
-
             // st1 = vars[var_name + "[" + y + "]"];
             st1 = vars.getVarValue(var_name + "[" + y + "]");
             st1 = String(st1);
             st1 = strovrsub(st1, x, st2);
+            // vars[var_name + "[" + y + "]"] = st1;
+            vars.setVarValue(var_name + "[" + y + "]", st1);
+        }
+    }
+    // ***** 文字列配列の上書き処理サブ2 *****
+    // (半角/全角スペース以外を上書きする。他は「文字列配列の上書き処理サブ」と同じ)
+    function txtovrsub2(var_name, min_y, max_y, x, y, st2) {
+        var st1;
+
+        // ***** 上書き処理 *****
+        // (半角/全角スペース以外を上書きする)
+        if (y >= min_y && y <= max_y) {
+            // st1 = vars[var_name + "[" + y + "]"];
+            st1 = vars.getVarValue(var_name + "[" + y + "]");
+            st1 = String(st1);
+            st1 = strovrsub2(st1, x, st2);
+            // vars[var_name + "[" + y + "]"] = st1;
+            vars.setVarValue(var_name + "[" + y + "]", st1);
+        }
+    }
+    // ***** 文字列配列の上書き処理サブ3 *****
+    // (半角/全角スペースのみ上書きする。他は「文字列配列の上書き処理サブ」と同じ)
+    function txtovrsub3(var_name, min_y, max_y, x, y, st2) {
+        var st1;
+
+        // ***** 上書き処理 *****
+        // (半角/全角スペースのみ上書きする)
+        if (y >= min_y && y <= max_y) {
+            // st1 = vars[var_name + "[" + y + "]"];
+            st1 = vars.getVarValue(var_name + "[" + y + "]");
+            st1 = String(st1);
+            st1 = strovrsub3(st1, x, st2);
             // vars[var_name + "[" + y + "]"] = st1;
             vars.setVarValue(var_name + "[" + y + "]", st1);
         }
@@ -7476,27 +7536,25 @@ var Interpreter;
     //  位置xは先頭文字を0とする)
     function strovrsub(st1, x, st2) {
         var ret_st;
+        var st1_len, st2_len;
 
         // ***** 戻り値の初期化 *****
         ret_st = st1;
+        // ***** 文字列長の取得(キャッシュ用) *****
+        st1_len = st1.length;
+        st2_len = st2.length;
         // ***** エラーチェック *****
-        if (st1.length == 0 || st2.length == 0) { return ret_st; }
+        if (st1_len == 0 || st2_len == 0) { return ret_st; }
         // ***** 上書き処理 *****
         // (境界の条件によって場合分け)
-        if (x + st2.length <= 0) {
-            // ret_st = st1;
-        } else if (x >= st1.length) {
-            // ret_st = st1;
-        } else if (x < 0  && (x + st2.length) <  st1.length) {
-            ret_st = st2.substring(-x, st2.length) + st1.substring(x + st2.length, st1.length);
-        } else if (x < 0  && (x + st2.length) >= st1.length) {
-            ret_st = st2.substring(-x, -x + st1.length);
-        } else if (x >= 0 && (x + st2.length) <  st1.length) {
-            ret_st = st1.substring(0, x) + st2.substring(0, st2.length) + st1.substring(x + st2.length, st1.length);
-        } else if (x >= 0 && (x + st2.length) >= st1.length) {
-            ret_st = st1.substring(0, x) + st2.substring(0, st1.length - x);
-        } else {
-            // ret_st = st1; // ここには来ないはず
+        if        (x < 0  && (x + st2_len) <  st1_len) {
+            ret_st = st2.substring(-x) + st1.substring(x + st2_len);
+        } else if (x < 0  && (x + st2_len) >= st1_len) {
+            ret_st = st2.substring(-x, -x + st1_len);
+        } else if (x >= 0 && (x + st2_len) <  st1_len) {
+            ret_st = st1.substring(0, x) + st2 + st1.substring(x + st2_len);
+        } else if (x >= 0 && (x + st2_len) >= st1_len) {
+            ret_st = st1.substring(0, x) + st2.substring(0, st1_len - x);
         }
         // ***** 戻り値を返す *****
         return ret_st;
@@ -7507,16 +7565,22 @@ var Interpreter;
         var i;
         var ch;
         var ret_st;
+        var ret_st_len;
 
         // ***** 戻り値の初期化 *****
         ret_st = st1;
         // ***** 上書き処理 *****
         // (半角/全角スペース以外を上書きする)
+        ret_st_len = ret_st.length;
         for (i = 0; i < st2.length; i++) {
             ch = st2.charAt(i);
             if (ch != " " && ch != "　") {
-                ret_st = strovrsub(ret_st, x + i, ch);
+                // ret_st = strovrsub(ret_st, x, ch);
+                if (x >= 0 && x < ret_st_len) {
+                    ret_st = ret_st.substring(0, x) + ch + ret_st.substring(x + 1);
+                }
             }
+            x++;
         }
         // ***** 戻り値を返す *****
         return ret_st;
@@ -7527,16 +7591,22 @@ var Interpreter;
         var i;
         var ch;
         var ret_st;
+        var ret_st_len;
 
         // ***** 戻り値の初期化 *****
         ret_st = st1;
         // ***** 上書き処理 *****
         // (半角/全角スペースのみ上書きする)
+        ret_st_len = ret_st.length;
         for (i = 0; i < st2.length; i++) {
             ch = st2.charAt(i);
             if (ch == " " || ch == "　") {
-                ret_st = strovrsub(ret_st, x + i, ch);
+                // ret_st = strovrsub(ret_st, x, ch);
+                if (x >= 0 && x < ret_st_len) {
+                    ret_st = ret_st.substring(0, x) + ch + ret_st.substring(x + 1);
+                }
             }
+            x++;
         }
         // ***** 戻り値を返す *****
         return ret_st;
