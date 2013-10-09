@@ -1,7 +1,7 @@
 // This file is encoded with UTF-8 without BOM.
 
 // sp_interpreter.js
-// 2013-10-8 v1.83
+// 2013-10-9 v1.84
 
 
 // SPALM Web Interpreter
@@ -2591,11 +2591,11 @@ var Interpreter;
                         }
                         if (symbol[j] == "default") {
                             j++;
-                            switch_case_exp.push(j); // プログラム簡単のためcaseの1個としても登録
+                            switch_case_exp.push(j); // caseの1個としても登録
                             match2(":", j++);
                             // 文
                             switch_default_stm = j;
-                            switch_case_stm.push(j); // プログラム簡単のためcaseの1個としても登録
+                            switch_case_stm.push(j); // caseの1個としても登録
                             continue;
                         }
                     }
@@ -4726,13 +4726,13 @@ var Interpreter;
             if (a4 & 4)       { ctx.textAlign = "left"; }    // 左
             else if (a4 & 8)  { ctx.textAlign = "right"; }   // 右
             else if (a4 & 1)  { ctx.textAlign = "center"; }  // 中央
-            else { ctx.textAlign = "left"; }
+            else { ctx.textAlign = "left"; }                 // その他
             // ***** 垂直方向 *****
             if (a4 & 16)      { ctx.textBaseline = "top"; }        // 上
             else if (a4 & 32) { ctx.textBaseline = "bottom"; }     // 下
             else if (a4 & 2)  { ctx.textBaseline = "middle"; }     // 中央
             else if (a4 & 64) { ctx.textBaseline = "alphabetic"; } // ベースライン
-            else { ctx.textBaseline = "top"; }
+            else { ctx.textBaseline = "top"; }                     // その他
             // ***** 文字列表示 *****
             ctx.fillText(a1, a2, a3);
             return true;
@@ -8456,23 +8456,72 @@ var Missile = (function () {
         this.degree_var_name = degree_var_name;     // 角度(0-360) の変数名
         this.speed100_var_name = speed100_var_name; // 速度の100倍の値 の変数名
         this.ch_var_name = ch_var_name;             // 表示する文字列 の変数名
+
+        this.x100_add = 0;                          // x方向の増分の100倍の値(一時保存用)
+        this.y100_add = 0;                          // y方向の増分の100倍の値(一時保存用)
+
         // ***** 0除算エラー対策 *****
         if (this.div_x == 0) { this.div_x = 1; }
         if (this.div_y == 0) { this.div_y = 1; }
     }
     // ***** 移動 *****
     Missile.prototype.move = function () {
+        var x0, y0;
         var x1, y1;
+        var dx, dy;
+        var tan1;
 
         // ***** 有効チェック *****
         if (this.useflag != 0) {
+            // ***** 移動前の座標 *****
+            x0 = (this.x100 / 100) | 0;
+            y0 = (this.y100 / 100) | 0;
+
             // ***** 次の座標を計算 *****
             this.x100 = this.x100 + this.speed100 * Math.cos(this.degree * Math.PI / 180) / this.div_x;
             this.y100 = this.y100 + this.speed100 * Math.sin(this.degree * Math.PI / 180) / this.div_y;
             this.x100 = this.x100 | 0; // 整数化
             this.y100 = this.y100 | 0; // 整数化
-            x1 = this.x100 / 100;
-            y1 = this.y100 / 100;
+
+            // ***** 移動後の座標 *****
+            x1 = (this.x100 / 100) | 0;
+            y1 = (this.y100 / 100) | 0;
+
+            // ***** 斜め移動を若干なめらかにする処理 *****
+            // (x座標とy座標が交互に変化してカクカクする現象を抑制する)
+            dx = x1 - x0;
+            dy = y1 - y0;
+            tan1 = Math.tan(this.degree * Math.PI / 180) * this.div_x / this.div_y;
+            if (tan1 >= -1 && tan1 <= 1) {
+                // (角度が45度以下のとき、x座標の変化に合わせてy座標を変化させる)
+                this.x100_add = 0;
+                if (dx == 0) {
+                    if (dy >= 1 || dy <= -1) {
+                        this.y100     -= dy * 100;
+                        this.y100_add += dy * 100;
+                    }
+                } else {
+                    if (this.y100_add != 0) {
+                        this.y100 += this.y100_add;
+                        this.y100_add = 0;
+                    }
+                }
+            } else {
+                // (角度が45度より大きいとき、y座標の変化に合わせてx座標を変化させる)
+                this.y100_add = 0;
+                if (dy == 0) {
+                    if (dx >= 1 || dx <= -1) {
+                        this.x100     -= dx * 100;
+                        this.x100_add += dx * 100;
+                    }
+                } else {
+                    if (this.x100_add != 0) {
+                        this.x100 += this.x100_add;
+                        this.x100_add = 0;
+                    }
+                }
+            }
+
             // ***** 座標の範囲チェック *****
             // ***** NaN対策 *****
             // (NaNの!=以外の比較はfalseになるので、そのとき無効になるように 条件を逆にしておく)
