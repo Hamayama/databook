@@ -12,7 +12,7 @@ from google.appengine.ext import ndb
 from google.appengine.api import search
 
 # databook.py
-# 2013-10-2 v1.24
+# 2013-11-28 v1.25
 
 # Google App Engine / Python による データベース アプリケーション1
 
@@ -61,11 +61,11 @@ editpage_html = 'edit.html'
 # ***** データベース関係 *****
 # データブックの名前と表示タイトルの設定
 databook_name_list = {
-    'Databook1':'データベース',
-    'Databook2':'データベース２',
-    'Databook3':'データベース３',
-    'Databook4':'データベース４',
-    'Databook5':'データベース５'}
+    'Databook1':'データベース(S)',
+    'Databook2':'データベース２(S)',
+    'Databook3':'データベース３(S)',
+    'Databook4':'データベース４(S)',
+    'Databook5':'データベース５(S)'}
 
 # データブックの名前を取得する
 def get_databook_name(req_databook_name):
