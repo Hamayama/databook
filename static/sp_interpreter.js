@@ -1,7 +1,7 @@
 // This file is encoded with UTF-8 without BOM.
 
 // sp_interpreter.js
-// 2013-11-25 v1.85
+// 2013-1-21 v1.86
 
 
 // SPALM Web Interpreter
@@ -33,11 +33,6 @@ function Alm(msg) {
 }
 function Alm2(msg) {
     alert(msg);
-}
-function ParamCheckNG(param) {
-    if (typeof (param) == "undefined") { return true; }
-    if (param == null) { return true; }
-    return false;
 }
 function DebugShow(msg) {
     document.getElementById("debug_show1").appendChild(document.createTextNode(msg));
@@ -89,7 +84,7 @@ function get_one_url_para(key) {
     // ***** 戻り値の初期化 *****
     ret = "";
     // ***** 引数のチェック *****
-    if (ParamCheckNG(key)) { Alm("get_one_url_para:0001"); return ret; }
+    if (key == null) { Alm("get_one_url_para:0001"); return ret; }
     if (key == "") { Alm("get_one_url_para:0002"); return ret; }
     // ***** 関数の存在チェック *****
     if (typeof (decodeURIComponent) != "function") { Alm("get_one_url_para:0003"); return ret; }
@@ -114,8 +109,8 @@ function check_id(id, num) {
     // ***** 戻り値の初期化 *****
     ret = false;
     // ***** 引数のチェック *****
-    if (ParamCheckNG(id)) { Alm("check_id:0001"); return ret; }
-    if (ParamCheckNG(num)) { Alm("check_id:0002"); return ret; }
+    if (id == null) { Alm("check_id:0001"); return ret; }
+    if (num == null) { Alm("check_id:0002"); return ret; }
     // ***** IDのチェック *****
     if (id.length <= 0 || id.length > num) { return ret; }
     if (!id.match(/^[0-9]+$/)) { return ret; }
@@ -136,7 +131,7 @@ function get_prog_id(list_st) {
     prog_id_count = 0;
     prog_id[prog_id_count] = "";
     // ***** 引数のチェック *****
-    if (ParamCheckNG(list_st)) { Alm("get_prog_id:0001"); return prog_id; }
+    if (list_st == null) { Alm("get_prog_id:0001"); return prog_id; }
     if (list_st == "") { Alm("get_prog_id:0002"); return prog_id; }
     // ***** テキストの分解 *****
     split_flag = false;
@@ -184,9 +179,9 @@ function load_listfile(fname, error_show_flag) {
     // ***** 戻り値の初期化 *****
     ret = false;
     // ***** 引数のチェック *****
-    if (ParamCheckNG(fname)) { Alm("load_listfile:0001"); return ret; }
+    if (fname == null) { Alm("load_listfile:0001"); return ret; }
     if (fname == "") { Alm("load_listfile:0002"); return ret; }
-    if (ParamCheckNG(error_show_flag)) { Alm("load_listfile:0003"); return ret; }
+    if (error_show_flag == null) { Alm("load_listfile:0003"); return ret; }
     // ***** 要素の存在チェック *****
     if (!document.getElementById("prog_sel1")) { Alm("load_listfile:0004"); return ret; }
     // ***** ファイルの読み込み *****
@@ -247,9 +242,9 @@ function load_srcfile(fname, auto_run_flag) {
     // ***** 戻り値の初期化 *****
     ret = false;
     // ***** 引数のチェック *****
-    if (ParamCheckNG(fname)) { Alm("load_srcfile:0001"); return ret; }
+    if (fname == null) { Alm("load_srcfile:0001"); return ret; }
     if (fname == "") { Alm("load_srcfile:0002"); return ret; }
-    if (ParamCheckNG(auto_run_flag)) { Alm("load_srcfile:0003"); return ret; }
+    if (auto_run_flag == null) { Alm("load_srcfile:0003"); return ret; }
     // ***** 要素の存在チェック *****
     if (!document.getElementById("src_text1")) { Alm("load_srcfile:0004"); return ret; }
     // ***** ロード中にする *****
@@ -692,7 +687,7 @@ var Interpreter;
         // ***** 戻り値の初期化 *****
         ret = false;
         // ***** 引数のチェック *****
-        if (ParamCheckNG(src_st)) { Alm2("Interpreter.run:-:ソースがありません。"); return ret; }
+        if (src_st == null) { Alm2("Interpreter.run:-:ソースがありません。"); return ret; }
         // if (src_st == "") { Alm("Interpreter.run:+:ソースがありません。"); return ret; }
         // ***** ソース設定 *****
         src = src_st;
@@ -723,14 +718,14 @@ var Interpreter;
     // ***** 実行状態通知 *****
     var runstatchanged = function () { };
     function setrunstatcallback(cb_func) {
-        if (ParamCheckNG(cb_func)) { Alm("Interpreter.setrunstatcallback:0001"); return false; }
+        if (cb_func == null) { Alm("Interpreter.setrunstatcallback:0001"); return false; }
         if (typeof (cb_func) == "function") { runstatchanged = cb_func; }
     }
     Interpreter.setrunstatcallback = setrunstatcallback;
 
     // ***** ロード中状態設定 *****
     function setloadstat(load_stat) {
-        if (ParamCheckNG(load_stat)) { Alm("Interpreter.setloadstat:0001"); return false; }
+        if (load_stat == null) { Alm("Interpreter.setloadstat:0001"); return false; }
         loading_flag = load_stat;
         runstatchanged();
         if (loading_flag == 2) { loading_flag = false; }
@@ -745,17 +740,17 @@ var Interpreter;
 
     // ***** デバッグ用 *****
     function setdebug(dbg_mode) {
-        if (ParamCheckNG(dbg_mode)) { Alm("Interpreter.setdebug:0001"); return false; }
+        if (dbg_mode == null) { Alm("Interpreter.setdebug:0001"); return false; }
         debug_mode = dbg_mode;
     }
     Interpreter.setdebug = setdebug;
 
     // ***** 色設定 *****
     function setcolor(can1_forecolor, can1_backcolor, can2_forecolor, can2_backcolor) {
-        if (ParamCheckNG(can1_forecolor)) { Alm("Interpreter.setcolor:0001"); return false; }
-        if (ParamCheckNG(can1_backcolor)) { Alm("Interpreter.setcolor:0002"); return false; }
-        if (ParamCheckNG(can2_forecolor)) { Alm("Interpreter.setcolor:0003"); return false; }
-        if (ParamCheckNG(can2_backcolor)) { Alm("Interpreter.setcolor:0004"); return false; }
+        if (can1_forecolor == null) { Alm("Interpreter.setcolor:0001"); return false; }
+        if (can1_backcolor == null) { Alm("Interpreter.setcolor:0002"); return false; }
+        if (can2_forecolor == null) { Alm("Interpreter.setcolor:0003"); return false; }
+        if (can2_backcolor == null) { Alm("Interpreter.setcolor:0004"); return false; }
         if (can1_forecolor != "") { can1_forecolor_init = can1_forecolor; }
         if (can1_backcolor != "") { can1_backcolor_init = can1_backcolor; }
         if (can2_forecolor != "") { can2_forecolor_init = can2_forecolor; }
@@ -765,8 +760,8 @@ var Interpreter;
 
     // ***** 外部データ設定 *****
     function setoutdata(no, data) {
-        if (ParamCheckNG(no)) { Alm("Interpreter.setoutdata:0001"); return false; }
-        if (ParamCheckNG(data)) { Alm("Interpreter.setoutdata:0002"); return false; }
+        if (no == null) { Alm("Interpreter.setoutdata:0001"); return false; }
+        if (data == null) { Alm("Interpreter.setoutdata:0002"); return false; }
         no = no | 0;
         data = String(data);
         out_data[no] = data;
@@ -775,7 +770,7 @@ var Interpreter;
 
     // ***** 外部データ取得 *****
     function getoutdata(no) {
-        if (ParamCheckNG(no)) { Alm("Interpreter.getoutdata:0001"); return false; }
+        if (no == null) { Alm("Interpreter.getoutdata:0001"); return false; }
         no = no | 0;
         if (out_data.hasOwnProperty(no)) { return out_data[no]; }
         return "";
@@ -847,10 +842,8 @@ var Interpreter;
             // ***** 接頭語のチェック *****
             glb = false;
             loc = false;
-            if (var_name.substring(0, 7) == "global ") { glb = true; var_name = var_name.substring(7); }
-            if (var_name.substring(0, 4) == "glb "   ) { glb = true; var_name = var_name.substring(4); }
-            if (var_name.substring(0, 6) == "local " ) { loc = true; var_name = var_name.substring(6); }
-            if (var_name.substring(0, 4) == "loc "   ) { loc = true; var_name = var_name.substring(4); }
+            if (var_name.substring(0, 2) == "g\\") { glb = true; var_name = var_name.substring(2); }
+            if (var_name.substring(0, 2) == "l\\") { loc = true; var_name = var_name.substring(2); }
             // ***** グローバル変数のみを使うとき *****
             if (localvars == null || use_local_vars == false || glb == true) {
                 // if (!this.globalvars.hasOwnProperty(var_name)) { return true; }
@@ -904,10 +897,8 @@ var Interpreter;
             // ***** 接頭語のチェック *****
             glb = false;
             loc = false;
-            if (var_name.substring(0, 7) == "global ") { glb = true; var_name = var_name.substring(7); }
-            if (var_name.substring(0, 4) == "glb "   ) { glb = true; var_name = var_name.substring(4); }
-            if (var_name.substring(0, 6) == "local " ) { loc = true; var_name = var_name.substring(6); }
-            if (var_name.substring(0, 4) == "loc "   ) { loc = true; var_name = var_name.substring(4); }
+            if (var_name.substring(0, 2) == "g\\") { glb = true; var_name = var_name.substring(2); }
+            if (var_name.substring(0, 2) == "l\\") { loc = true; var_name = var_name.substring(2); }
             // ***** グローバル変数のみを使うとき *****
             if (localvars == null || use_local_vars == false || glb == true) {
                 // if (!this.globalvars.hasOwnProperty(var_name)) { return false; }
@@ -959,10 +950,8 @@ var Interpreter;
             // ***** 接頭語のチェック *****
             glb = false;
             loc = false;
-            if (var_name.substring(0, 7) == "global ") { glb = true; var_name = var_name.substring(7); }
-            if (var_name.substring(0, 4) == "glb "   ) { glb = true; var_name = var_name.substring(4); }
-            if (var_name.substring(0, 6) == "local " ) { loc = true; var_name = var_name.substring(6); }
-            if (var_name.substring(0, 4) == "loc "   ) { loc = true; var_name = var_name.substring(4); }
+            if (var_name.substring(0, 2) == "g\\") { glb = true; var_name = var_name.substring(2); }
+            if (var_name.substring(0, 2) == "l\\") { loc = true; var_name = var_name.substring(2); }
             // ***** グローバル変数のみを使うとき *****
             if (localvars == null || use_local_vars == false || glb == true) {
                 // if (!this.globalvars.hasOwnProperty(var_name)) { this.globalvars[var_name] = 0; }
@@ -1030,10 +1019,8 @@ var Interpreter;
             // ***** 接頭語のチェック *****
             glb = false;
             loc = false;
-            if (var_name.substring(0, 7) == "global ") { glb = true; var_name = var_name.substring(7); }
-            if (var_name.substring(0, 4) == "glb "   ) { glb = true; var_name = var_name.substring(4); }
-            if (var_name.substring(0, 6) == "local " ) { loc = true; var_name = var_name.substring(6); }
-            if (var_name.substring(0, 4) == "loc "   ) { loc = true; var_name = var_name.substring(4); }
+            if (var_name.substring(0, 2) == "g\\") { glb = true; var_name = var_name.substring(2); }
+            if (var_name.substring(0, 2) == "l\\") { loc = true; var_name = var_name.substring(2); }
             // ***** グローバル変数のみを使うとき *****
             if (localvars == null || use_local_vars == false || glb == true) {
                 this.globalvars[var_name] = var_value;
@@ -1104,10 +1091,8 @@ var Interpreter;
             // ***** 接頭語のチェック *****
             glb = false;
             loc = false;
-            if (var_name.substring(0, 7) == "global ") { glb = true; var_name = var_name.substring(7); }
-            if (var_name.substring(0, 4) == "glb "   ) { glb = true; var_name = var_name.substring(4); }
-            if (var_name.substring(0, 6) == "local " ) { loc = true; var_name = var_name.substring(6); }
-            if (var_name.substring(0, 4) == "loc "   ) { loc = true; var_name = var_name.substring(4); }
+            if (var_name.substring(0, 2) == "g\\") { glb = true; var_name = var_name.substring(2); }
+            if (var_name.substring(0, 2) == "l\\") { loc = true; var_name = var_name.substring(2); }
             // ***** 変数に[を付加 *****
             var_name = var_name + "[";
             var_name2 = var_name2 + "[";
@@ -1205,10 +1190,8 @@ var Interpreter;
             // ***** 接頭語のチェック *****
             glb = false;
             loc = false;
-            if (var_name.substring(0, 7) == "global ") { glb = true; var_name = var_name.substring(7); }
-            if (var_name.substring(0, 4) == "glb "   ) { glb = true; var_name = var_name.substring(4); }
-            if (var_name.substring(0, 6) == "local " ) { loc = true; var_name = var_name.substring(6); }
-            if (var_name.substring(0, 4) == "loc "   ) { loc = true; var_name = var_name.substring(4); }
+            if (var_name.substring(0, 2) == "g\\") { glb = true; var_name = var_name.substring(2); }
+            if (var_name.substring(0, 2) == "l\\") { loc = true; var_name = var_name.substring(2); }
             // ***** 変数に[を付加 *****
             var_name = var_name + "[";
             // ***** 変数の長さを取得 *****
@@ -1887,7 +1870,6 @@ var Interpreter;
         var old_sym;
 
         // ***** 引数のチェック *****
-        if (typeof (priority) == "undefined") { priority = 0; }
         if (priority == null) { priority = 0; }
 
         // ***** 因子の処理 *****
@@ -2151,7 +2133,6 @@ var Interpreter;
 
             // (変数の作成は変数用クラスにまかせるようにした)
             // // ***** 変数がなければ作成 *****
-            // // if (!vars[var_name]) { vars[var_name] = 0; } // これは間違い
             // // if (typeof (vars[var_name]) == "undefined") { vars[var_name] = 0; }
             // // if (!vars.hasOwnProperty(var_name)) { vars[var_name] = 0; }
             // vars.getVarValue(var_name);
@@ -2316,7 +2297,7 @@ var Interpreter;
                     throw new Error("変数名が不正です。('" + var_name2 + "')");
                 }
             }
-            var_name = var_name + " " + var_name2;
+            var_name = var_name.charAt(0) + "\\" + var_name2;
         }
         // ***** 配列変数のとき *****
         while (symbol[pc] == "[") {
@@ -2364,7 +2345,7 @@ var Interpreter;
             if (!(isAlpha(var_name2.charAt(0)) || var_name2.charAt(0) == "_")) {
                 throw new Error("変数名が不正です。('" + var_name2 + "')");
             }
-            var_name = var_name + " " + var_name2;
+            var_name = var_name.charAt(0) + "\\" + var_name2;
         }
         // ***** 配列変数のとき *****
         while (symbol[pc] == "[") {
@@ -2384,10 +2365,8 @@ var Interpreter;
             var_name = var_name.substring(var_name.indexOf("\\", 2) + 1);
         }
         // ***** 接頭語の削除 *****
-        if (var_name.substring(0, 7) == "global ") { var_name = var_name.substring(7); }
-        if (var_name.substring(0, 4) == "glb "   ) { var_name = var_name.substring(4); }
-        if (var_name.substring(0, 6) == "local " ) { var_name = var_name.substring(6); }
-        if (var_name.substring(0, 4) == "loc "   ) { var_name = var_name.substring(4); }
+        if (var_name.substring(0, 2) == "g\\") { var_name = var_name.substring(2); }
+        if (var_name.substring(0, 2) == "l\\") { var_name = var_name.substring(2); }
         return var_name;
     }
 
@@ -5760,6 +5739,7 @@ var Interpreter;
             } else {
                 var_name = getvarname();
             }
+            // (変数の作成はしない)
             // // ***** 変数がなければ作成 *****
             // // if (typeof (vars[var_name]) == "undefined") { vars[var_name] = 0; }
             // // if (!vars.hasOwnProperty(var_name)) { vars[var_name] = 0; }
@@ -7659,7 +7639,6 @@ var Download = (function () {
         var link_download_flag;
 
         // ***** 引数のチェック *****
-        if (typeof (data) == "undefined") { return false; }
         if (data == null) { return false; }
         if (!fname) { fname = "download"; }
         // ***** リンク要素の生成 *****
@@ -7883,15 +7862,16 @@ var ConvZenHan = (function () {
     // ***** (staticなメソッドなのでprototype未使用) *****
     // ConvZenHan.prototype.toZenkaku = function (st1, mode1) {
     ConvZenHan.toZenkaku = function (st1, mode1) {
-        var st2;
-        var mode2;
+        var ret_st;
 
         // ***** 引数のチェック *****
-        if (!st1) { st2 = ""; } else { st2 = st1; }
-        if (!mode1) { mode2 = "anpskd"; } else { mode2 = mode1; }
+        if (!st1) { st1 = ""; }
+        if (!mode1) { mode1 = "anpskd"; }
+        // ***** 戻り値の初期化 *****
+        ret_st = st1;
         // ***** アルファベットを全角に変換 *****
-        if (mode2.indexOf("a") >= 0) {
-            st2 = st2.replace(/[\u0041-\u005A]|[\u0061-\u007A]/g,
+        if (mode1.indexOf("a") >= 0) {
+            ret_st = ret_st.replace(/[\u0041-\u005A]|[\u0061-\u007A]/g,
                 function (c) {
                     if (!ConvZenHan.alphaToZenkaku.hasOwnProperty(c)) { return c; }
                     return ConvZenHan.alphaToZenkaku[c];
@@ -7899,8 +7879,8 @@ var ConvZenHan = (function () {
             );
         }
         // ***** 数字を全角に変換 *****
-        if (mode2.indexOf("n") >= 0) {
-            st2 = st2.replace(/[\u0030-\u0039]/g,
+        if (mode1.indexOf("n") >= 0) {
+            ret_st = ret_st.replace(/[\u0030-\u0039]/g,
                 function (c) {
                     if (!ConvZenHan.numberToZenkaku.hasOwnProperty(c)) { return c; }
                     return ConvZenHan.numberToZenkaku[c];
@@ -7908,8 +7888,8 @@ var ConvZenHan = (function () {
             );
         }
         // ***** 記号を全角に変換 *****
-        if (mode2.indexOf("p") >= 0) {
-            st2 = st2.replace(/[\u0021-\u007E]|[\uFF61-\uFF64]|[\u00A2-\u00A5]/g,
+        if (mode1.indexOf("p") >= 0) {
+            ret_st = ret_st.replace(/[\u0021-\u007E]|[\uFF61-\uFF64]|[\u00A2-\u00A5]/g,
                 function (c) {
                     if (!ConvZenHan.punctuationToZenkaku.hasOwnProperty(c)) { return c; }
                     return ConvZenHan.punctuationToZenkaku[c];
@@ -7917,8 +7897,8 @@ var ConvZenHan = (function () {
             );
         }
         // ***** スペースを全角に変換 *****
-        if (mode2.indexOf("s") >= 0) {
-            st2 = st2.replace(/ /g,
+        if (mode1.indexOf("s") >= 0) {
+            ret_st = ret_st.replace(/ /g,
                 function (c) {
                     if (!ConvZenHan.spaceToZenkaku.hasOwnProperty(c)) { return c; }
                     return ConvZenHan.spaceToZenkaku[c];
@@ -7927,8 +7907,8 @@ var ConvZenHan = (function () {
         }
 
         // ***** カタカナを全角に変換 *****
-        if (mode2.indexOf("k") >= 0 || mode2.indexOf("h") >= 0) {
-            st2 = st2.replace(/[\uFF65-\uFF9D][ﾞﾟ]?/g,
+        if (mode1.indexOf("k") >= 0 || mode1.indexOf("h") >= 0) {
+            ret_st = ret_st.replace(/[\uFF65-\uFF9D][ﾞﾟ]?/g,
                 function (c) {
                     if (!ConvZenHan.katakanaToZenkaku.hasOwnProperty(c)) { return c; }
                     return ConvZenHan.katakanaToZenkaku[c];
@@ -7936,8 +7916,8 @@ var ConvZenHan = (function () {
             );
         }
         // ***** カタカナ(全角)をひらがなに変換 *****
-        if (mode2.indexOf("h") >= 0) {
-            st2 = st2.replace(/[\u30A1-\u30FC]/g,
+        if (mode1.indexOf("h") >= 0) {
+            ret_st = ret_st.replace(/[\u30A1-\u30FC]/g,
                 function (c) {
                     if (!ConvZenHan.KatakanaToHiragana.hasOwnProperty(c)) { return c; }
                     return ConvZenHan.KatakanaToHiragana[c];
@@ -7945,8 +7925,8 @@ var ConvZenHan = (function () {
             );
         }
         // ***** ひらがなをカタカナ(全角)に変換 *****
-        if (mode2.indexOf("t") >= 0) {
-            st2 = st2.replace(/[\u3041-\u3094]/g,
+        if (mode1.indexOf("t") >= 0) {
+            ret_st = ret_st.replace(/[\u3041-\u3094]/g,
                 function (c) {
                     if (!ConvZenHan.HiraganaToKatakana.hasOwnProperty(c)) { return c; }
                     return ConvZenHan.HiraganaToKatakana[c];
@@ -7955,8 +7935,8 @@ var ConvZenHan = (function () {
         }
 
         // ***** 濁点を結合 *****
-        if (mode2.indexOf("m") >= 0) {
-            st2 = st2.replace(/[\u30A1-\u30FC][ﾞﾟ゛゜]?|[\u3041-\u3094][ﾞﾟ゛゜]?/g,
+        if (mode1.indexOf("m") >= 0) {
+            ret_st = ret_st.replace(/[\u30A1-\u30FC][ﾞﾟ゛゜]?|[\u3041-\u3094][ﾞﾟ゛゜]?/g,
                 function (c) {
                     if (!ConvZenHan.DakutenMarge.hasOwnProperty(c)) { return c; }
                     return ConvZenHan.DakutenMarge[c];
@@ -7964,8 +7944,8 @@ var ConvZenHan = (function () {
             );
         }
         // ***** 濁点を分離 *****
-        if (mode2.indexOf("v") >= 0) {
-            st2 = st2.replace(/[\u30A1-\u30FC]|[\u3041-\u3094]/g,
+        if (mode1.indexOf("v") >= 0) {
+            ret_st = ret_st.replace(/[\u30A1-\u30FC]|[\u3041-\u3094]/g,
                 function (c) {
                     if (!ConvZenHan.DakutenSplit.hasOwnProperty(c)) { return c; }
                     return ConvZenHan.DakutenSplit[c];
@@ -7973,8 +7953,8 @@ var ConvZenHan = (function () {
             );
         }
         // ***** 濁点を全角に変換 *****
-        if (mode2.indexOf("d") >= 0) {
-            st2 = st2.replace(/[ﾞﾟ]/g,
+        if (mode1.indexOf("d") >= 0) {
+            ret_st = ret_st.replace(/[ﾞﾟ]/g,
                 function (c) {
                     if (!ConvZenHan.DakutenToZenkaku.hasOwnProperty(c)) { return c; }
                     return ConvZenHan.DakutenToZenkaku[c];
@@ -7982,20 +7962,21 @@ var ConvZenHan = (function () {
             );
         }
         // ***** 戻り値を返す *****
-        return st2;
+        return ret_st;
     };
     // ***** 半角に変換する(staticメソッド) *****
     // ***** (staticなメソッドなのでprototype未使用) *****
     ConvZenHan.toHankaku = function (st1, mode1) {
-        var st2;
-        var mode2;
+        var ret_st;
 
         // ***** 引数のチェック *****
-        if (!st1) { st2 = ""; } else { st2 = st1; }
-        if (!mode1) { mode2 = "anpskd"; } else { mode2 = mode1; }
+        if (!st1) { st1 = ""; }
+        if (!mode1) { mode1 = "anpskd"; }
+        // ***** 戻り値の初期化 *****
+        ret_st = st1;
         // ***** アルファベットを半角に変換 *****
-        if (mode2.indexOf("a") >= 0) {
-            st2 = st2.replace(/[\uFF21-\uFF3A]|[\uFF41-\uFF5A]/g,
+        if (mode1.indexOf("a") >= 0) {
+            ret_st = ret_st.replace(/[\uFF21-\uFF3A]|[\uFF41-\uFF5A]/g,
                 function (c) {
                     if (!ConvZenHan.alphaToHankaku.hasOwnProperty(c)) { return c; }
                     return ConvZenHan.alphaToHankaku[c];
@@ -8003,8 +7984,8 @@ var ConvZenHan = (function () {
             );
         }
         // ***** 数字を半角に変換 *****
-        if (mode2.indexOf("n") >= 0) {
-            st2 = st2.replace(/[\uFF10-\uFF19]/g,
+        if (mode1.indexOf("n") >= 0) {
+            ret_st = ret_st.replace(/[\uFF10-\uFF19]/g,
                 function (c) {
                     if (!ConvZenHan.numberToHankaku.hasOwnProperty(c)) { return c; }
                     return ConvZenHan.numberToHankaku[c];
@@ -8012,8 +7993,8 @@ var ConvZenHan = (function () {
             );
         }
         // ***** 記号を半角に変換 *****
-        if (mode2.indexOf("p") >= 0) {
-            st2 = st2.replace(/[\uFF01-\uFF5E]|[\u3001-\u300D]|[\uFFE0-\uFFE5]/g,
+        if (mode1.indexOf("p") >= 0) {
+            ret_st = ret_st.replace(/[\uFF01-\uFF5E]|[\u3001-\u300D]|[\uFFE0-\uFFE5]/g,
                 function (c) {
                     if (!ConvZenHan.punctuationToHankaku.hasOwnProperty(c)) { return c; }
                     return ConvZenHan.punctuationToHankaku[c];
@@ -8021,8 +8002,8 @@ var ConvZenHan = (function () {
             );
         }
         // ***** スペースを半角に変換 *****
-        if (mode2.indexOf("s") >= 0) {
-            st2 = st2.replace(/[\u3000]/g,
+        if (mode1.indexOf("s") >= 0) {
+            ret_st = ret_st.replace(/[\u3000]/g,
                 function (c) {
                     if (!ConvZenHan.spaceToHankaku.hasOwnProperty(c)) { return c; }
                     return ConvZenHan.spaceToHankaku[c];
@@ -8031,8 +8012,8 @@ var ConvZenHan = (function () {
         }
 
         // ***** ひらがなをカタカナ(全角)に変換 *****
-        if (mode2.indexOf("t") >= 0) {
-            st2 = st2.replace(/[\u3041-\u3094]/g,
+        if (mode1.indexOf("t") >= 0) {
+            ret_st = ret_st.replace(/[\u3041-\u3094]/g,
                 function (c) {
                     if (!ConvZenHan.HiraganaToKatakana.hasOwnProperty(c)) { return c; }
                     return ConvZenHan.HiraganaToKatakana[c];
@@ -8040,8 +8021,8 @@ var ConvZenHan = (function () {
             );
         }
         // ***** カタカナを半角に変換 *****
-        if (mode2.indexOf("k") >= 0 || mode2.indexOf("t") >= 0) {
-            st2 = st2.replace(/[\u30A1-\u30FC]/g,
+        if (mode1.indexOf("k") >= 0 || mode1.indexOf("t") >= 0) {
+            ret_st = ret_st.replace(/[\u30A1-\u30FC]/g,
                 function (c) {
                     if (!ConvZenHan.katakanaToHankaku.hasOwnProperty(c)) { return c; }
                     return ConvZenHan.katakanaToHankaku[c];
@@ -8050,8 +8031,8 @@ var ConvZenHan = (function () {
         }
 
         // ***** 濁点を分離 *****
-        if (mode2.indexOf("v") >= 0) {
-            st2 = st2.replace(/[\u30A1-\u30FC]|[\u3041-\u3094]/g,
+        if (mode1.indexOf("v") >= 0) {
+            ret_st = ret_st.replace(/[\u30A1-\u30FC]|[\u3041-\u3094]/g,
                 function (c) {
                     if (!ConvZenHan.DakutenSplit.hasOwnProperty(c)) { return c; }
                     return ConvZenHan.DakutenSplit[c];
@@ -8059,8 +8040,8 @@ var ConvZenHan = (function () {
             );
         }
         // ***** 濁点を半角に変換 *****
-        if (mode2.indexOf("d") >= 0) {
-            st2 = st2.replace(/[゛゜]/g,
+        if (mode1.indexOf("d") >= 0) {
+            ret_st = ret_st.replace(/[゛゜]/g,
                 function (c) {
                     if (!ConvZenHan.DakutenToHankaku.hasOwnProperty(c)) { return c; }
                     return ConvZenHan.DakutenToHankaku[c];
@@ -8068,7 +8049,7 @@ var ConvZenHan = (function () {
             );
         }
         // ***** 戻り値を返す *****
-        return st2;
+        return ret_st;
     };
 
     // ***** 以下は内部処理用 *****
@@ -8529,6 +8510,8 @@ var Missile = (function () {
             if (!(x1 >= this.min_x && x1 <= this.max_x && y1 >= this.min_y && y1 <= this.max_y)) {
                 // ***** 範囲外なら無効にする *****
                 this.useflag = 0;
+                this.x100_add = 0;
+                this.y100_add = 0;
             }
         }
     };
@@ -8544,7 +8527,7 @@ var MMLPlayer = (function () {
         this.node = null;    // 音声バッファソースノード(操作用オブジェクト)
         this.gnode = null;   // ゲインノード  (音量調整用オブジェクト)
         this.gain = 1;       // ゲイン        (音量)(0-1)
-        this.speedrate = 1;  // 再生速度レート(=1:等倍)
+        this.speed_rate = 1; // 再生速度レート(=1:等倍)
         this.adbuf = null;   // 音声バッファ  (管理用オブジェクト)
         this.addata = [];    // 音声データ    (配列)(Float32Arrayで各要素は-1～1までの値)
         this.pos = [];       // 音声データ位置(配列)(チャンネルごと)(単位は絶対音長(4分音符が48になる))
@@ -9252,21 +9235,20 @@ var MMLPlayer = (function () {
     };
     // ***** MMLをトークン分割(内部処理用) *****
     MMLPlayer.prototype.tokenize = function (mml_st) {
-        var mml_str;     // MML文字列
-        var mml_str_len; // MML文字列の長さ
+        var mml_st_len;  // MML文字列の長さ
         var index;       // 検索位置
         var tokens = []; // トークン(配列)
         var ch, type, start;
 
         // ***** 小文字に変換 *****
-        mml_str = mml_st.toLowerCase();
+        mml_st = mml_st.toLowerCase();
         // ***** トークン切り出し *****
         index = 0;
         tokens = [];
-        mml_str_len = mml_str.length;
-        while (index < mml_str_len) {
+        mml_st_len = mml_st.length;
+        while (index < mml_st_len) {
             // ***** 1文字取り出す *****
-            ch = mml_str.charAt(index);
+            ch = mml_st.charAt(index);
             // ***** タイプを取得 *****
             if (ch == " " || ch == "\n" || ch == "\r" || ch == "\t") {
                 type = 0;  // 無効
@@ -9283,20 +9265,20 @@ var MMLPlayer = (function () {
             start = index;
             index++;
             if (type == 1) { // 数字のときは数字でなくなるまで追加
-                while (index < mml_str_len) {
-                    ch = mml_str.charAt(index);
+                while (index < mml_st_len) {
+                    ch = mml_st.charAt(index);
                     if ("0123456789".indexOf(ch) >= 0) {
                         index++;
                     } else {
                         break;
                     }
                 }
-                tokens.push(String(type) + mml_str.substring(start, index));
+                tokens.push(String(type) + mml_st.substring(start, index));
             } else if (type == 10) { // 「^」記号のときはタイと休符のトークンを追加
                 tokens.push("3&");
                 tokens.push("2r");
             } else if (type > 0) { // 無効文字以外をトークンに追加
-                tokens.push(String(type) + mml_str.substring(start, index));
+                tokens.push(String(type) + mml_st.substring(start, index));
             }
         }
         // ***** 末尾に無効なトークンを追加(安全のため) *****
