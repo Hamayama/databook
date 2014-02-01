@@ -1,7 +1,7 @@
 // This file is encoded with UTF-8 without BOM.
 
 // sp_interpreter.js
-// 2013-1-21 v1.86
+// 2013-2-1 v1.87
 
 
 // SPALM Web Interpreter
@@ -328,6 +328,7 @@ function show_runstat() {
     if (!document.getElementById("load_button1")) { Alm("show_runstat:0003"); return ret; }
     if (!document.getElementById("prog_sel1")) { Alm("show_runstat:0004"); return ret; }
     if (!document.getElementById("src_text1")) { Alm("show_runstat:0005"); return ret; }
+    if (!document.getElementById("stop_button1")) { Alm("show_runstat:0006"); return ret; }
     // ***** プログラム実行状態の表示 *****
     if (Interpreter.getloadstat() == true) {
         document.getElementById("runstat_show1").innerHTML = "ロード中";
@@ -346,6 +347,8 @@ function show_runstat() {
         document.getElementById("load_button1").disabled = true;
         document.getElementById("prog_sel1").disabled = true;
         document.getElementById("src_text1").disabled = true;
+        // ***** FireFox v26 対策 *****
+        document.getElementById("stop_button1").focus();
     } else {
         document.getElementById("run_button1").disabled = false;
         document.getElementById("load_button1").disabled = false;
@@ -8528,6 +8531,7 @@ var MMLPlayer = (function () {
         this.gnode = null;   // ゲインノード  (音量調整用オブジェクト)
         this.gain = 1;       // ゲイン        (音量)(0-1)
         this.speed_rate = 1; // 再生速度レート(=1:等倍)
+        this.play_state = 0; // 再生状態(=0:停止, =1:演奏開始中, =2:演奏中, =3:演奏終了)
         this.adbuf = null;   // 音声バッファ  (管理用オブジェクト)
         this.addata = [];    // 音声データ    (配列)(Float32Arrayで各要素は-1～1までの値)
         this.pos = [];       // 音声データ位置(配列)(チャンネルごと)(単位は絶対音長(4分音符が48になる))
@@ -8553,7 +8557,11 @@ var MMLPlayer = (function () {
         // ***** 未再生のチェック *****
         if (!this.node) { return 0; }
         // ***** 再生状態を返す *****
-        return this.node.playbackState;
+        if (typeof (this.node.playbackState) != "undefined") {
+            return this.node.playbackState;
+        } else {
+            return this.play_state;
+        }
     };
     // ***** 音量設定 *****
     MMLPlayer.prototype.setVolume = function (volume) {
@@ -8582,6 +8590,8 @@ var MMLPlayer = (function () {
     // ***** 再生 *****
     // (引数を非0にするとループ再生)
     MMLPlayer.prototype.play = function (repeat_flag) {
+        var self;        // this保存用
+
         // ***** Web Audio APIの存在チェック *****
         if (!MMLPlayer.AudioContext) { return false; }
         // ***** 停止 *****
@@ -8595,11 +8605,23 @@ var MMLPlayer = (function () {
         this.node.buffer = this.adbuf;
         if (repeat_flag) { this.node.loop = true; } else { this.node.loop = false; }
         this.node.playbackRate.value = this.speed_rate;
-        this.gnode = MMLPlayer.adctx.createGainNode();
+        if (MMLPlayer.adctx.createGainNode) {
+            this.gnode = MMLPlayer.adctx.createGainNode();
+        } else {
+            this.gnode = MMLPlayer.adctx.createGain();
+        }
         this.gnode.gain.value = this.gain;
         this.node.connect(this.gnode);
         this.gnode.connect(MMLPlayer.adctx.destination);
-        this.node.noteOn(0);
+        if (this.node.noteOn) {
+            this.node.noteOn(0);
+        } else {
+            this.node.start(0);
+        }
+        // ***** 再生状態変更 *****
+        self = this;
+        this.node.onended = function () { self.play_state = 3; }
+        this.play_state = 2;
         return true;
     };
     // ***** 停止 *****
@@ -8609,11 +8631,17 @@ var MMLPlayer = (function () {
         // ***** 未再生のチェック *****
         if (!this.node) { return false; }
         // ***** 停止 *****
-        this.node.noteOff(0);
+        if (this.node.noteOff) {
+            this.node.noteOff(0);
+        } else {
+            this.node.stop(0);
+        }
         this.node.disconnect();
         this.node = null;
         this.gnode.disconnect();
         this.gnode = null;
+        // ***** 再生状態変更 *****
+        this.play_state = 0;
         return true;
     };
     // ***** MMLを設定してコンパイルする *****
