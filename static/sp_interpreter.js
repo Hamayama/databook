@@ -8615,6 +8615,8 @@ var MMLPlayer = (function () {
         this.node.buffer = this.adbuf;
         if (repeat_flag) { this.node.loop = true; } else { this.node.loop = false; }
         this.node.playbackRate.value = this.speed_rate;
+        self = this;
+        this.node.onended = function () { self.play_state = 3; };
         if (MMLPlayer.adctx.createGainNode) {
             this.gnode = MMLPlayer.adctx.createGainNode();
         } else {
@@ -8629,8 +8631,6 @@ var MMLPlayer = (function () {
             this.node.start(0);
         }
         // ***** 再生状態変更 *****
-        self = this;
-        this.node.onended = function () { self.play_state = 3; };
         this.play_state = 2;
         return true;
     };
