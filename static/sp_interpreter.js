@@ -1,7 +1,7 @@
 // This file is encoded with UTF-8 without BOM.
 
 // sp_interpreter.js
-// 2013-2-1 v1.87
+// 2013-2-1 v1.88
 
 
 // SPALM Web Interpreter
@@ -39,6 +39,15 @@ function DebugShow(msg) {
 }
 function DebugShowClear() {
     document.getElementById("debug_show1").innerHTML = "";
+}
+function BrowserType() {
+    var user_agent = window.navigator.userAgent;
+    if (user_agent.indexOf("Opera") > 0)  { return "Opera"; }
+    if (user_agent.indexOf("MSIE") > 0)   { return "MSIE"; }
+    if (user_agent.indexOf("Chrome") > 0) { return "Chrome"; }
+    if (user_agent.indexOf("Safari") > 0) { return "Safari"; }
+    if (user_agent.indexOf("Gecko") > 0)  { return "Gecko"; }
+    return "";
 }
 
 // ***** 動作開始 *****
@@ -328,7 +337,7 @@ function show_runstat() {
     if (!document.getElementById("load_button1")) { Alm("show_runstat:0003"); return ret; }
     if (!document.getElementById("prog_sel1")) { Alm("show_runstat:0004"); return ret; }
     if (!document.getElementById("src_text1")) { Alm("show_runstat:0005"); return ret; }
-    if (!document.getElementById("stop_button1")) { Alm("show_runstat:0006"); return ret; }
+    if (!document.getElementById("dummy_button1")) { Alm("show_runstat:0006"); return ret; }
     // ***** プログラム実行状態の表示 *****
     if (Interpreter.getloadstat() == true) {
         document.getElementById("runstat_show1").innerHTML = "ロード中";
@@ -348,7 +357,9 @@ function show_runstat() {
         document.getElementById("prog_sel1").disabled = true;
         document.getElementById("src_text1").disabled = true;
         // ***** FireFox v26 対策 *****
-        document.getElementById("stop_button1").focus();
+        if (BrowserType() == "Gecko") {
+            document.getElementById("dummy_button1").focus();
+        }
     } else {
         document.getElementById("run_button1").disabled = false;
         document.getElementById("load_button1").disabled = false;
