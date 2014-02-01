@@ -8570,9 +8570,8 @@ var MMLPlayer = (function () {
         // ***** 再生状態を返す *****
         if (typeof (this.node.playbackState) != "undefined") {
             return this.node.playbackState;
-        } else {
-            return this.play_state;
         }
+        return this.play_state;
     };
     // ***** 音量設定 *****
     MMLPlayer.prototype.setVolume = function (volume) {
@@ -8631,7 +8630,7 @@ var MMLPlayer = (function () {
         }
         // ***** 再生状態変更 *****
         self = this;
-        this.node.onended = function () { self.play_state = 3; }
+        this.node.onended = function () { self.play_state = 3; };
         this.play_state = 2;
         return true;
     };
