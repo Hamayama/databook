@@ -1,7 +1,7 @@
 // This file is encoded with UTF-8 without BOM.
 
 // sp_interpreter.js
-// 2013-2-1 v1.88
+// 2013-2-4 v1.89
 
 
 // SPALM Web Interpreter
@@ -52,16 +52,14 @@ function BrowserType() {
 
 // ***** 動作開始 *****
 window.onload = function () {
+    var list_id;
+
+    // ***** FlashCanvas用 *****
     if (typeof (FlashCanvas) != "undefined") {
         DebugShow("FlashCanvas mode.\n");
     } else {
         DebugShow("Native canvas mode.\n");
     }
-    init_func();
-};
-function init_func() {
-    var list_id;
-
     // ***** インタープリターの初期化 *****
     Interpreter.init();
     Interpreter.setrunstatcallback(show_runstat);
@@ -73,7 +71,7 @@ function init_func() {
         if (check_id(list_id, 8)) {
             load_listfile("list" + list_id + ".txt", true);
         } else {
-            Alm2("init_func:-:リストファイル指定エラー");
+            Alm2("window.onload:-:リストファイル指定エラー");
         }
     }
     // ***** デバッグモードの初期選択 *****
@@ -81,8 +79,8 @@ function init_func() {
         document.getElementById("debug_chk1").checked = true;
     }
     // ***** 他の初期化があれば実行 *****
-    if (typeof (init_func2) == "function") { init_func2(); }
-}
+    if (typeof (init_func) == "function") { init_func(); }
+};
 
 // ***** URLパラメータ1個の取得 *****
 function get_one_url_para(key) {
@@ -1854,24 +1852,20 @@ var Interpreter;
         // ***** シンボル取り出し *****
         debugpc = pc;
         sym = symbol[pc];
-
         // ***** 命令(戻り値のない関数)の処理 *****
         if (func_tbl_A.hasOwnProperty(sym)) {
             pc++;
             func_tbl_A[sym]();
             return true;
         }
-
         // ***** 追加命令(戻り値のない関数)の処理 *****
         if (use_addfunc && addfunc_tbl_A.hasOwnProperty(sym)) {
             pc++;
             addfunc_tbl_A[sym]();
             return true;
         }
-
         // ***** 式の処理 *****
         expression();
-
         // ***** 戻り値を返す *****
         return true;
     }
@@ -1885,10 +1879,8 @@ var Interpreter;
 
         // ***** 引数のチェック *****
         if (priority == null) { priority = 0; }
-
         // ***** 因子の処理 *****
         num = factor();
-
         // ***** 演算子処理のループ *****
         old_sym = "";
         while (pc < symbol_len) {
@@ -1909,7 +1901,6 @@ var Interpreter;
             // ***** 演算子処理のループを抜ける *****
             break;
         }
-
         // ***** 戻り値を返す *****
         return num;
     }
@@ -1933,19 +1924,16 @@ var Interpreter;
 
         // ***** シンボル取り出し *****
         sym = symbol[pc++];
-
         // ***** 命令(戻り値のある関数)の処理 *****
         if (func_tbl_B.hasOwnProperty(sym)) {
             num = func_tbl_B[sym]();
             return num;
         }
-
         // ***** 追加命令(戻り値のある関数)の処理 *****
         if (use_addfunc && addfunc_tbl_B.hasOwnProperty(sym)) {
             num = addfunc_tbl_B[sym]();
             return num;
         }
-
         // ***** プレインクリメント(「++」「--」)のとき *****
         if (sym == "++") {
             pre_inc = 1;
