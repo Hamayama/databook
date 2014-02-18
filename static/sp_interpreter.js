@@ -1,7 +1,7 @@
 // This file is encoded with UTF-8 without BOM.
 
 // sp_interpreter.js
-// 2013-2-4 v1.89
+// 2013-2-18 v1.90
 
 
 // SPALM Web Interpreter
@@ -24,7 +24,7 @@
 
 
 // ****************************************
-//            環境依存の処理等
+//            ブラウザ関連処理等
 // ****************************************
 
 // ***** 汎用 *****
@@ -41,12 +41,13 @@ function DebugShowClear() {
     document.getElementById("debug_show1").innerHTML = "";
 }
 function BrowserType() {
-    var user_agent = window.navigator.userAgent;
-    if (user_agent.indexOf("Opera") > 0)  { return "Opera"; }
-    if (user_agent.indexOf("MSIE") > 0)   { return "MSIE"; }
-    if (user_agent.indexOf("Chrome") > 0) { return "Chrome"; }
-    if (user_agent.indexOf("Safari") > 0) { return "Safari"; }
-    if (user_agent.indexOf("Gecko") > 0)  { return "Gecko"; }
+    var ua = window.navigator.userAgent;
+    if (ua.indexOf("Opera") >= 0)   { return "Opera"; }   // MSIEより前にチェックが必要
+    if (ua.indexOf("MSIE") >= 0)    { return "MSIE"; }
+    if (ua.indexOf("Trident") >= 0) { return "MSIE"; }    // IE11対策
+    if (ua.indexOf("Chrome") >= 0)  { return "Chrome"; }  // Safariより前にチェックが必要
+    if (ua.indexOf("Safari") >= 0)  { return "Safari"; }
+    if (ua.indexOf("Firefox") >= 0) { return "Firefox"; }
     return "";
 }
 
@@ -354,8 +355,8 @@ function show_runstat() {
         document.getElementById("load_button1").disabled = true;
         document.getElementById("prog_sel1").disabled = true;
         document.getElementById("src_text1").disabled = true;
-        // ***** FireFox v26 対策 *****
-        if (BrowserType() == "Gecko") {
+        // ***** Firefox v26 対策 *****
+        if (BrowserType() == "Firefox") {
             document.getElementById("dummy_button1").focus();
         }
     } else {
@@ -426,10 +427,10 @@ function stop_button() {
 
 
 // ****************************************
-//          インタープリター部分
+//             インタープリター
 // ****************************************
 
-// ***** インタープリター(名前空間) *****
+// ***** Interpreter(名前空間) *****
 //
 // 公開I/F :
 //
@@ -470,6 +471,7 @@ function stop_button() {
 //     make_addfunc_tbl_A()  (戻り値のない関数のとき)
 //     make_addfunc_tbl_B()  (戻り値のある関数のとき)
 //   の中で行うことを想定しています。
+//   また、別ファイルのプラグインで命令を追加することもできます(実験中)。
 //
 //   内部クラス一覧
 //     Var         変数用クラス
@@ -481,7 +483,6 @@ function stop_button() {
 //     FloodFill   領域塗りつぶし用クラス
 //     Missile     ミサイル用クラス
 //     MMLPlayer   MML音楽演奏用クラス
-//     SandSim     砂シミュレート用クラス
 //
 var Interpreter;
 (function (Interpreter) {
@@ -537,7 +538,6 @@ var Interpreter;
 
     var pc;                     // プログラムカウンタ
     var debugpc;                // エラーの場所
-    var stop_flag;              // 停止フラグ
     var end_flag;               // 終了フラグ
     var running_flag = false;   // 実行中フラグ
     var loading_flag = false;   // ロード中フラグ
@@ -549,8 +549,7 @@ var Interpreter;
     var loop_time_max = 3000;   // 最大ループ時間(msec) これ以上時間がかかったらエラーとする
     var loop_time_start;        // ループ開始時間(msec)
     var loop_time_count;        // ループ経過時間(msec)
-    var dlg_flag;               // ダイアログ用のフラグ
-    var audmake_flag;           // 音楽生成用フラグ
+    var loop_nocount_flag;      // ループ時間ノーカウントフラグ
     var return_flag;            // return用のフラグ
     var ret_num;                // returnの戻り値
     var nest;                   // ネストのカウント
@@ -574,7 +573,6 @@ var Interpreter;
     var use_addfunc;            // 追加命令使用有無
     var save_data = {};         // セーブデータ(連想配列オブジェクト)(仮)
     var aud_mode;               // 音楽モード(=0:音楽なし,=1:音楽あり,=2:音楽演奏機能有無による)
-    var sand_obj = {};          // 砂シミュレート用(SandSimクラスのインスタンス)
     var prof_obj = {};          // プロファイラ実行用(Profilerクラスのインスタンス)
     var out_data = {};          // 外部データ(連想配列オブジェクト)
 
@@ -583,6 +581,10 @@ var Interpreter;
     var addfunc_tbl_A = {};     // 追加命令(戻り値のない関数)の定義情報(連想配列オブジェクト)
     var addfunc_tbl_B = {};     // 追加命令(戻り値のある関数)の定義情報(連想配列オブジェクト)
     var operator_tbl = {};      // 演算子の定義情報(連想配列オブジェクト)
+
+    var before_run_funcs = {};  // プラグイン用の実行前処理(連想配列オブジェクト)
+    var after_run_funcs = {};   // プラグイン用の実行後処理(連想配列オブジェクト)
+    var clear_var_funcs = {};   // プラグイン用の全変数クリア後処理(連想配列オブジェクト)
 
     var constants = {           // 定数
         LEFT:4, HCENTER:1, RIGHT:8, TOP:16, VCENTER:2, BASELINE:64, BOTTOM:32,
@@ -713,7 +715,7 @@ var Interpreter;
 
     // ***** 停止 *****
     function stop() {
-        stop_flag = true;
+        end_flag = true;
         if (sleep_id != null) {
             clearTimeout(sleep_id);
             run_continuously();
@@ -1603,6 +1605,7 @@ var Interpreter;
     function run_start() {
         var ret;
         var msg;
+        var name;
 
         // ***** 戻り値の初期化 *****
         ret = false;
@@ -1696,12 +1699,10 @@ var Interpreter;
         audplayer = {};
         pc = 0;
         debugpc = 0;
-        stop_flag = false;
         end_flag = false;
         running_flag = true; runstatchanged();
         sleep_flag = false;
-        dlg_flag = false;
-        audmake_flag = false;
+        loop_nocount_flag = false;
         return_flag = false;
         ret_num = 0;
         nest = 0;
@@ -1721,10 +1722,15 @@ var Interpreter;
         use_addfunc = true;
         save_data = {};
         aud_mode = 1;
-        sand_obj = null;
         prof_obj = null;
         if (typeof (Profiler) == "function") { prof_obj = new Profiler(); }
         if (prof_obj) { prof_obj.start("result"); }
+        // ***** プラグイン用の実行前処理 *****
+        for (name in before_run_funcs) {
+            if (before_run_funcs.hasOwnProperty(name)) {
+                before_run_funcs[name]();
+            }
+        }
 
         // run_continuously(); // 再帰的になるので別関数にした
         setTimeout(run_continuously, 10);
@@ -1737,6 +1743,7 @@ var Interpreter;
     // ***** 継続実行 *****
     function run_continuously() {
         var ret;
+        var name;
 
         // ***** 戻り値の初期化 *****
         ret = false;
@@ -1755,15 +1762,9 @@ var Interpreter;
                 // DebugShow(pc + " ");
 
                 // ***** 各種フラグのチェックと処理時間の測定 *****
-                if (dlg_flag) {
-                    dlg_flag = false;
-                    // ***** ダイアログ表示中は処理時間に含めない *****
-                    // loop_time_start = new Date().getTime();
-                    loop_time_start = Date.now();
-                }
-                if (audmake_flag) {
-                    audmake_flag = false;
-                    // ***** 音楽生成中は処理時間に含めない *****
+                if (loop_nocount_flag) {
+                    loop_nocount_flag = false;
+                    // ***** ループ時間ノーカウントフラグがONのときは処理時間に含めない *****
                     // loop_time_start = new Date().getTime();
                     loop_time_start = Date.now();
                 }
@@ -1772,7 +1773,6 @@ var Interpreter;
                 if (loop_time_count >= loop_time_max) {
                     throw new Error("処理時間オーバーです(" + loop_time_max + "msec以上ブラウザに制御が返らず)。ループ内でsleep関数の利用を検討ください。");
                 }
-                if (stop_flag) { break; }
                 if (end_flag) { break; }
                 if (sleep_flag) {
                     sleep_flag = false;
@@ -1794,6 +1794,12 @@ var Interpreter;
             show_err_place();
             // ***** 音楽全停止 *****
             if (typeof (audstopall) == "function") { audstopall(); }
+            // ***** プラグイン用の実行後処理 *****
+            for (name in after_run_funcs) {
+                if (after_run_funcs.hasOwnProperty(name)) {
+                    after_run_funcs[name]();
+                }
+            }
             // ***** エラー終了 *****
             running_flag = false; runstatchanged();
             DebugShow("実行終了\n");
@@ -1807,6 +1813,12 @@ var Interpreter;
         if (prof_obj) { prof_obj.stop("result"); }
         // ***** 音楽全停止 *****
         if (typeof (audstopall) == "function") { audstopall(); }
+        // ***** プラグイン用の実行後処理 *****
+        for (name in after_run_funcs) {
+            if (after_run_funcs.hasOwnProperty(name)) {
+                after_run_funcs[name]();
+            }
+        }
         // ***** 終了 *****
         running_flag = false; runstatchanged();
         DebugShow("実行終了\n");
@@ -1923,32 +1935,37 @@ var Interpreter;
         var sleep_time_count;
 
         // ***** シンボル取り出し *****
-        sym = symbol[pc++];
+        sym = symbol[pc];
         // ***** 命令(戻り値のある関数)の処理 *****
         if (func_tbl_B.hasOwnProperty(sym)) {
+            pc++;
             num = func_tbl_B[sym]();
             return num;
         }
         // ***** 追加命令(戻り値のある関数)の処理 *****
         if (use_addfunc && addfunc_tbl_B.hasOwnProperty(sym)) {
+            pc++;
             num = addfunc_tbl_B[sym]();
             return num;
         }
         // ***** プレインクリメント(「++」「--」)のとき *****
         if (sym == "++") {
+            pc++;
             pre_inc = 1;
             // ***** シンボル取り出し *****
-            sym = symbol[pc++];
+            sym = symbol[pc];
         } else if (sym == "--") {
+            pc++;
             pre_inc = -1;
             // ***** シンボル取り出し *****
-            sym = symbol[pc++];
+            sym = symbol[pc];
         } else { pre_inc = 0; }
 
         // ***** 1文字取り出す *****
         ch = sym.charAt(0);
         // ***** 文字列のとき *****
         if (ch == '"') {
+            pc++;
             if (sym.length > 2) {
                 num = sym.substring(1, sym.length - 1);
             } else {
@@ -1958,6 +1975,7 @@ var Interpreter;
         }
         // ***** 数値のとき *****
         if (isDigit(ch)) {
+            pc++;
             // ***** 数値を返す *****
             num = +sym; // 数値にする
             return num;
@@ -1966,7 +1984,6 @@ var Interpreter;
         if (isAlpha(ch) || ch == "_" || ch == "*") {
 
             // ***** 変数名取得 *****
-            pc--;
             var_name = getvarname();
 
             // ***** 関数のとき *****
@@ -2077,15 +2094,9 @@ var Interpreter;
                     // DebugShow(pc + " ");
 
                     // ***** 各種フラグのチェックと処理時間の測定 *****
-                    if (dlg_flag) {
-                        dlg_flag = false;
-                        // ***** ダイアログ表示中は処理時間に含めない *****
-                        // loop_time_start = new Date().getTime();
-                        loop_time_start = Date.now();
-                    }
-                    if (audmake_flag) {
-                        audmake_flag = false;
-                        // ***** 音楽生成中は処理時間に含めない *****
+                    if (loop_nocount_flag) {
+                        loop_nocount_flag = false;
+                        // ***** ループ時間ノーカウントフラグがONのときは処理時間に含めない *****
                         // loop_time_start = new Date().getTime();
                         loop_time_start = Date.now();
                     }
@@ -2094,7 +2105,6 @@ var Interpreter;
                     if (loop_time_count >= loop_time_max) {
                         throw new Error("処理時間オーバーです(" + loop_time_max + "msec以上ブラウザに制御が返らず)。func内でタイムアウトしました。");
                     }
-                    if (stop_flag) { break; }
                     if (end_flag) { break; }
                     if (sleep_flag) {
                         sleep_flag = false;
@@ -2123,8 +2133,7 @@ var Interpreter;
                 // ***** 戻り値がないときは0をセット *****
                 if (return_flag == false) { ret_num = 0; }
                 // ***** フラグの復帰処理 *****
-                dlg_flag = false;
-                audmake_flag = false;
+                loop_nocount_flag = false;
                 sleep_flag = false;
                 return_flag = false;
                 // ***** 戻り値を返す *****
@@ -2247,8 +2256,9 @@ var Interpreter;
         }
         // ***** 構文エラー *****
         if (sp_compati_mode != 1) {
-            throw new Error("構文エラー 予期しない '" + symbol[pc - 1] + "' が見つかりました。");
+            throw new Error("構文エラー 予期しない '" + symbol[pc] + "' が見つかりました。");
         }
+        pc++;
         // ***** 戻り値を返す *****
         num = 0;
         return num;
@@ -3247,8 +3257,8 @@ var Interpreter;
 
     // ***** 演算子の定義情報の生成 *****
     function make_operator_tbl() {
-        // ***** 演算子の定義情報の初期化 *****
-        operator_tbl = {};
+        // // ***** 演算子の定義情報の初期化 *****
+        // operator_tbl = {};
         // ***** 演算子の定義情報の生成 *****
         // (第2引数は演算子の優先順位を表す。大きいほど優先順位が高い)
         make_one_operator_tbl("&", 10, function (num) {
@@ -3417,8 +3427,8 @@ var Interpreter;
 
     // ***** 命令(戻り値のない関数)の定義情報の生成 *****
     function make_func_tbl_A() {
-        // ***** 命令(戻り値のない関数)の定義情報の初期化 *****
-        func_tbl_A = {};
+        // // ***** 命令(戻り値のない関数)の定義情報の初期化 *****
+        // func_tbl_A = {};
         // ***** 命令(戻り値のない関数)の定義情報の生成 *****
         make_one_func_tbl_A("addfunc", function () {
             var a1;
@@ -3482,6 +3492,8 @@ var Interpreter;
             return true;
         });
         make_one_func_tbl_A("clearvar", function () {
+            var name;
+
             match("(");
             match(")");
             // vars = {};
@@ -3491,6 +3503,12 @@ var Interpreter;
             missile = {};
             // ***** 音楽全停止 *****
             if (typeof (audstopall) == "function") { audstopall(); }
+            // ***** プラグイン用の全変数クリア後処理 *****
+            for (name in clear_var_funcs) {
+                if (clear_var_funcs.hasOwnProperty(name)) {
+                    clear_var_funcs[name]();
+                }
+            }
             return true;
         });
         make_one_func_tbl_A("clip", function () {
@@ -4350,7 +4368,7 @@ var Interpreter;
             alert(a1);
             keyclear();
             mousebuttonclear();
-            dlg_flag = true;
+            loop_nocount_flag = true;
             return true;
         });
         make_one_func_tbl_A("onlocal", function () {
@@ -4811,8 +4829,8 @@ var Interpreter;
 
     // ***** 命令(戻り値のある関数)の定義情報の生成 *****
     function make_func_tbl_B() {
-        // ***** 命令(戻り値のある関数)の定義情報の初期化 *****
-        func_tbl_B = {};
+        // // ***** 命令(戻り値のある関数)の定義情報の初期化 *****
+        // func_tbl_B = {};
         // ***** 命令(戻り値のある関数)の定義情報の生成 *****
         make_one_func_tbl_B("abs", function () {
             var num;
@@ -5185,7 +5203,7 @@ var Interpreter;
             num = prompt(a1, a2) || ""; // nullのときは空文字列にする
             keyclear();
             mousebuttonclear();
-            dlg_flag = true;
+            loop_nocount_flag = true;
             return num;
         });
         make_one_func_tbl_B("int", function () {
@@ -5687,7 +5705,7 @@ var Interpreter;
             if (confirm(a1)) { num = "YES"; } else { num = "NO"; }
             keyclear();
             mousebuttonclear();
-            dlg_flag = true;
+            loop_nocount_flag = true;
             return num;
         });
         make_one_func_tbl_B("!", function () {
@@ -5762,8 +5780,8 @@ var Interpreter;
 
     // ***** 追加命令(戻り値のない関数)の定義情報の生成 *****
     function make_addfunc_tbl_A() {
-        // ***** 追加命令(戻り値のない関数)の定義情報の初期化 *****
-        addfunc_tbl_A = {};
+        // // ***** 追加命令(戻り値のない関数)の定義情報の初期化 *****
+        // addfunc_tbl_A = {};
         // ***** 追加命令(戻り値のない関数)の定義情報の生成 *****
         make_one_addfunc_tbl_A("audmode", function () {
             var a1;
@@ -5797,7 +5815,7 @@ var Interpreter;
             audplayer[a1] = {};
             audplayer[a1].mmlplayer = new MMLPlayer();
             audplayer[a1].mmlplayer.setMML(a2);
-            audmake_flag = true;
+            loop_nocount_flag = true;
             return true;
         });
         make_one_addfunc_tbl_A("audmakedata", function () {
@@ -5823,7 +5841,7 @@ var Interpreter;
             audplayer[a1] = {};
             audplayer[a1].mmlplayer = new MMLPlayer();
             audplayer[a1].mmlplayer.setAUDData(a2);
-            audmake_flag = true;
+            loop_nocount_flag = true;
             return true;
         });
         make_one_addfunc_tbl_A("audplay", function () {
@@ -6299,48 +6317,6 @@ var Interpreter;
             ctx.stroke();
             return true;
         });
-        make_one_addfunc_tbl_A("sandmake", function () {
-            var a1, a2, a3, a4;
-            var x1, y1;
-            var w1, h1;
-            var col, threshold, border_mode;
-
-            match("("); x1 = parseInt(expression(), 10);
-            match(","); y1 = parseInt(expression(), 10);
-            match(","); w1 = parseInt(expression(), 10);
-            match(","); h1 = parseInt(expression(), 10);
-            match(","); a1 = parseFloat(expression());
-            match(","); a2 = parseFloat(expression());
-            match(","); a3 = parseFloat(expression());
-            match(","); a4 = parseFloat(expression());
-            match(","); col = parseInt(expression(), 10);
-            match(","); threshold = parseInt(expression(), 10);
-            if (symbol[pc] == ")") {
-                border_mode = 1;
-            } else {
-                match(","); border_mode = parseInt(expression(), 10);
-            }
-            match(")");
-            sand_obj = new SandSim(can, ctx, x1, y1, w1, h1, a1, a2, a3, a4, col, threshold, border_mode);
-            sand_obj.maketable();
-            return true;
-        });
-        make_one_addfunc_tbl_A("sandmove", function () {
-            match("(");
-            match(")");
-            if (sand_obj) { sand_obj.move(); }
-            return true;
-        });
-        make_one_addfunc_tbl_A("sanddraw", function () {
-            match("(");
-            match(")");
-            if (sand_obj) {
-                ctx.setTransform(1, 0, 0, 1, 0, 0);      // 座標系を元に戻す
-                sand_obj.draw();
-                set_canvas_axis(ctx);                    // 座標系を再設定
-            }
-            return true;
-        });
         make_one_addfunc_tbl_A("setstrimg", function () {
             var a1, a2, a3, a4;
             var ch;
@@ -6636,6 +6612,50 @@ var Interpreter;
                 if (i_plus > 0 && i <= i_end) { continue; }
                 if (i_plus < 0 && i >= i_end) { continue; }
                 break;
+            }
+            return true;
+        });
+        make_one_addfunc_tbl_A("txtreplace", function () {
+            var a1, a2, a3, a4, a5;
+            var i;
+            var st1, st2;
+            var reg_exp;
+
+            match("(");
+            a1 = getvarname();
+            match(","); a2 = parseInt(expression(), 10);
+            match(","); a3 = parseInt(expression(), 10);
+            match(","); a4 = String(expression());
+            match(","); a5 = String(expression());
+            match(")");
+
+            // ***** NaN対策 *****
+            a2 = a2 | 0;
+            a3 = a3 | 0;
+
+            // ***** エラーチェック *****
+            // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
+            if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
+                throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
+            }
+            if (a4.length == 0) { return true; }
+            if (a5.length > a4.length){
+                a5 = a5.substring(0, a4.length);
+            } else if (a5.length < a4.length) {
+                for (i = a5.length; i < a4.length; i++) {
+                    a5 = a5 + " ";
+                }
+            }
+
+            // ***** 置換処理 *****
+            // reg_exp = new RegExp(a4.replace(/([.*+?^=!:${}()|[\]\/\\])/g, "\\$1"), "g");
+            reg_exp = new RegExp(a4.replace(/([.*+?\^=!:${}()|\[\]\/\\])/g, "\\$1"), "g");
+            for (i = a2; i <= a3; i++) {
+                // st1 = vars[a1 + "[" + i + "]"];
+                st1 = vars.getVarValue(a1 + "[" + i + "]");
+                st2 = st1.replace(reg_exp, a5);
+                // vars[a1 + "[" + i + "]"] = st2;
+                vars.setVarValue(a1 + "[" + i + "]", st2);
             }
             return true;
         });
@@ -6966,8 +6986,8 @@ var Interpreter;
 
     // ***** 追加命令(戻り値のある関数)の定義情報の生成 *****
     function make_addfunc_tbl_B() {
-        // ***** 追加命令(戻り値のある関数)の定義情報の初期化 *****
-        addfunc_tbl_B = {};
+        // // ***** 追加命令(戻り値のある関数)の定義情報の初期化 *****
+        // addfunc_tbl_B = {};
         // ***** 追加命令(戻り値のある関数)の定義情報の生成 *****
         make_one_addfunc_tbl_B("audmakestat", function () {
             var num;
@@ -7016,46 +7036,6 @@ var Interpreter;
                 throw new Error("音楽プレイヤー" + a1 + " は作成されていません。");
             }
             if (num == 1 || num == 2) { num = 1; } else { num = 0; }
-            return num;
-        });
-        make_one_addfunc_tbl_B("calcfractal", function () {
-            var num;
-            var x1, y1;
-            var dr, di, mr, mi, cr, ci, tr, ti, zr, zi, rep, norm2;
-
-            match("("); x1 = parseFloat(expression());
-            match(","); y1 = parseFloat(expression());
-            match(","); dr = parseFloat(expression());
-            match(","); di = parseFloat(expression());
-            match(","); mr = parseFloat(expression());
-            match(","); mi = parseFloat(expression());
-            match(","); cr = parseFloat(expression());
-            match(","); ci = parseFloat(expression());
-            if (symbol[pc] == ")") {
-                rep = 50;
-                norm2 = 4;
-            } else {
-                match(","); rep = parseInt(expression(), 10);
-                if (symbol[pc] == ")") {
-                    norm2 = 4;
-                } else {
-                    match(","); norm2 = parseFloat(expression());
-                }
-            }
-            match(")");
-
-            // ***** エラーチェック *****
-            if (rep > 1000) { rep = 1000; }
-
-            tr = x1 * dr + mr;
-            ti = y1 * di + mi;
-            for (num = 0; num < rep; num++) {
-                zr = tr * tr - ti * ti + cr;
-                zi = 2 * tr * ti       + ci;
-                if (zr * zr + zi * zi > norm2) { break; }
-                tr = zr;
-                ti = zi;
-            }
             return num;
         });
         make_one_addfunc_tbl_B("charcode", function () {
@@ -7605,6 +7585,33 @@ var Interpreter;
             }
         }
     }
+
+
+    // ***** プラグイン用 *****
+    // (必要に応じてインタープリターの内部情報を公開する)
+    function add_before_run_funcs(name, func) {
+        before_run_funcs[name] = func;
+    }
+    Interpreter.add_before_run_funcs = add_before_run_funcs;
+    function add_after_run_funcs(name, func) {
+        after_run_funcs[name] = func;
+    }
+    Interpreter.add_after_run_funcs = add_after_run_funcs;
+    function add_clear_var_funcs(name, func) {
+        clear_var_funcs[name] = func;
+    }
+    Interpreter.add_clear_var_funcs = add_clear_var_funcs;
+    Interpreter.make_one_addfunc_tbl_A = make_one_addfunc_tbl_A;
+    Interpreter.make_one_addfunc_tbl_B = make_one_addfunc_tbl_B;
+    Interpreter.match = match;
+    Interpreter.expression = expression;
+    Interpreter.getvarname = getvarname;
+    Interpreter.get_symbol = function () { return symbol[pc]; };
+    Interpreter.get_vars = function () { return vars; };
+    Interpreter.get_ctx = function () { return ctx; };
+    Interpreter.get_can = function () { return can; };
+    Interpreter.set_canvas_axis = set_canvas_axis;
+    Interpreter.set_loop_nocount_flag = function () { loop_nocount_flag = true; };
 
 
 })(Interpreter || (Interpreter = {}));
@@ -9316,193 +9323,6 @@ var MMLPlayer = (function () {
         return tokens;
     };
     return MMLPlayer; // これがないとクラスが動かないので注意
-})();
-
-
-// ***** 砂シミュレート用クラス *****
-var SandSim = (function () {
-    // ***** コンストラクタ *****
-    function SandSim(can, ctx, left, top, width, height,
-        r_up, r_down, r_left, r_right, sand_col, threshold, border_mode) {
-        this.can = can;             // Canvas要素
-        this.ctx = ctx;             // Canvasのコンテキスト
-        this.left = left;           // シミュレート領域の左上X座標(px)
-        this.top = top;             // シミュレート領域の左上Y座標(px)
-        this.width = width;         // シミュレート領域の幅(px)
-        this.height = height;       // シミュレート領域の高さ(px)
-        this.r_up = r_up;           // 上方向の移動確率
-        this.r_down = r_down;       // 下方向の移動確率
-        this.r_left = r_left;       // 左方向の移動確率
-        this.r_right = r_right;     // 右方向の移動確率
-        this.sand_col = {};                            // 砂の色(オブジェクト)
-        this.sand_col.r = (sand_col & 0xff0000) >> 16; // 砂の色 R
-        this.sand_col.g = (sand_col & 0x00ff00) >> 8;  // 砂の色 G
-        this.sand_col.b = (sand_col & 0x0000ff);       // 砂の色 B
-        this.sand_col.a = 0;                           // 砂の色 alpha
-        this.threshold = threshold; // 同色と判定するしきい値(0-255)
-        this.sand_buf = [];         // 砂バッファ(配列)
-        this.img_buf = [];          // 画像バッファ(配列)
-        // ***** 範囲チェック *****
-        if (this.left < 0)    { this.left = 0; }
-        if (this.top < 0)     { this.top = 0; }
-        if (this.width <= 0)  { this.width = 1; }
-        if (this.height <= 0) { this.height = 1; }
-        if (this.left >= this.can.width) { this.left = this.can.width - 1; }
-        if (this.top >= this.can.height) { this.top = this.can.height - 1; }
-        if (this.left + this.width > this.can.width)  { this.width = this.can.width - this.left; }
-        if (this.top + this.height > this.can.height) { this.height = this.can.height - this.top; }
-        // ***** 端を超えて移動するかの設定 *****
-        this.over_top    = (border_mode & 1)? this.height - 1: 0;
-        this.over_bottom = (border_mode & 1)? 0: this.height - 1;
-        this.over_left   = (border_mode & 2)? this.width - 1: 0;
-        this.over_right  = (border_mode & 2)? 0: this.width - 1;
-    }
-    // ***** テーブル生成 *****
-    SandSim.prototype.maketable = function () {
-        var i, j, k;
-        var r, g, b, a, diff2, col2;
-        var img_data;
-        var sand = {};
-        var sand_buf_len;
-
-        // ***** 画像データを取得 *****
-        img_data = this.ctx.getImageData(this.left, this.top, this.width, this.height);
-        // ***** テーブル生成 *****
-        this.sand_buf = [];
-        this.img_buf = [];
-        for (i = 0; i < this.height; i++) {
-            for (j = 0; j < this.width; j++) {
-                // ***** 色を取得 *****
-                r = img_data.data[(j + i * this.width) * 4];
-                g = img_data.data[(j + i * this.width) * 4 + 1];
-                b = img_data.data[(j + i * this.width) * 4 + 2];
-                // a = img_data.data[(j + i * this.width) * 4 + 3];
-                a = 0;
-                // ***** 砂の色ならば砂バッファに登録 *****
-                diff2 = (this.sand_col.r - r) * (this.sand_col.r - r) +
-                        (this.sand_col.g - g) * (this.sand_col.g - g) +
-                        (this.sand_col.b - b) * (this.sand_col.b - b) +
-                        (this.sand_col.a - a) * (this.sand_col.a - a);
-                // if (diff2 <= this.threshold * this.threshold * 4) { // 4倍してスケールを合わせる
-                if (diff2 <= this.threshold * this.threshold * 3) { // aは無効なので、3倍してスケールを合わせる
-                    sand = {};
-                    sand.x = j;
-                    sand.y = i;
-                    this.sand_buf.push(sand);
-                }
-                // ***** 色があれば画像バッファに登録 *****
-                col2 = r * r + g * g + b * b + a * a;
-                // if (col2 > this.threshold * this.threshold * 4) {   // 4倍してスケールを合わせる
-                if (col2 > this.threshold * this.threshold * 3) {   // aは無効なので、3倍してスケールを合わせる
-                    this.img_buf[j + i * this.width] = 1;
-                } else {
-                    this.img_buf[j + i * this.width] = 0;
-                }
-            }
-        }
-        // ***** テーブルのシャッフル(動きの偏りをなくすため) *****
-        sand_buf_len = this.sand_buf.length;
-        for (i = 0; i < sand_buf_len; i++) {
-            j = Math.random() * sand_buf_len | 0;
-            k = Math.random() * sand_buf_len | 0;
-            sand = this.sand_buf[j];
-            this.sand_buf[j] = this.sand_buf[k];
-            this.sand_buf[k] = sand;
-        }
-    };
-    // ***** 移動 *****
-    SandSim.prototype.move = function () {
-        var i, j;
-        var x, y;
-        var rp = [];
-        var rk = [];
-        var rnum, radd, rnd;
-        var sand_buf_len;
-
-        // ***** 砂をすべて移動 *****
-        sand_buf_len = this.sand_buf.length;
-        for (i = 0; i < sand_buf_len; i++) {
-            rnum = 0;
-            radd = 0;
-            // ***** 上方向のチェック *****
-            x = this.sand_buf[i].x;
-            y = this.sand_buf[i].y - 1;
-            if (y < 0) { y = this.over_top; }
-            if (this.img_buf[x + y * this.width] == 0) {
-                radd += this.r_up;
-                rp[rnum] = radd;
-                rk[rnum] = 0;
-                rnum++;
-            }
-            // ***** 下方向のチェック *****
-            // x = this.sand_buf[i].x;
-            y = this.sand_buf[i].y + 1;
-            if (y >= this.height) { y = this.over_bottom; }
-            if (this.img_buf[x + y * this.width] == 0) {
-                radd += this.r_down;
-                rp[rnum] = radd;
-                rk[rnum] = 1;
-                rnum++;
-            }
-            // ***** 左方向のチェック *****
-            x = this.sand_buf[i].x - 1;
-            y = this.sand_buf[i].y;
-            if (x < 0) { x = this.over_left; }
-            if (this.img_buf[x + y * this.width] == 0) {
-                radd += this.r_left;
-                rp[rnum] = radd;
-                rk[rnum] = 2;
-                rnum++;
-            }
-            // ***** 右方向のチェック *****
-            x = this.sand_buf[i].x + 1;
-            // y = this.sand_buf[i].y;
-            if (x >= this.width) { x = this.over_right; }
-            if (this.img_buf[x + y * this.width] == 0) {
-                radd += this.r_right;
-                rp[rnum] = radd;
-                rk[rnum] = 3;
-                rnum++;
-            }
-            // ***** 確率によって移動 *****
-            rnd = Math.random() * radd;
-            for (j = 0; j < rnum; j++) {
-                if (rnd < rp[j]) {
-                    this.img_buf[this.sand_buf[i].x + this.sand_buf[i].y * this.width] = 0;
-                    if (rk[j] == 0) {
-                        this.sand_buf[i].y--;
-                        if (this.sand_buf[i].y < 0)            { this.sand_buf[i].y = this.over_top; }
-                    }
-                    if (rk[j] == 1) {
-                        this.sand_buf[i].y++;
-                        if (this.sand_buf[i].y >= this.height) { this.sand_buf[i].y = this.over_bottom; }
-                    }
-                    if (rk[j] == 2) {
-                        this.sand_buf[i].x--;
-                        if (this.sand_buf[i].x < 0)            { this.sand_buf[i].x = this.over_left; }
-                    }
-                    if (rk[j] == 3) {
-                        this.sand_buf[i].x++;
-                        if (this.sand_buf[i].x >= this.width)  { this.sand_buf[i].x = this.over_right; }
-                    }
-                    this.img_buf[this.sand_buf[i].x + this.sand_buf[i].y * this.width] = 1;
-                    break;
-                }
-            }
-        }
-    };
-    // ***** 描画 *****
-    SandSim.prototype.draw = function () {
-        var i;
-        var sand_buf_len;
-
-        // ***** 砂をすべて描画 *****
-        sand_buf_len = this.sand_buf.length;
-        for (i = 0; i < sand_buf_len; i++) {
-            this.ctx.fillRect(this.left + this.sand_buf[i].x, this.top + this.sand_buf[i].y, 1, 1);
-        }
-    };
-    return SandSim; // これがないとクラスが動かないので注意
 })();
 
 
