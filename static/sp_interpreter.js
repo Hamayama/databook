@@ -584,7 +584,7 @@ var Interpreter;
 
     var before_run_funcs = {};  // プラグイン用の実行前処理(連想配列オブジェクト)
     var after_run_funcs = {};   // プラグイン用の実行後処理(連想配列オブジェクト)
-    var clear_var_funcs = {};   // プラグイン用の全変数クリア後処理(連想配列オブジェクト)
+    var clear_var_funcs = {};   // プラグイン用の全変数クリア時処理(連想配列オブジェクト)
 
     var constants = {           // 定数
         LEFT:4, HCENTER:1, RIGHT:8, TOP:16, VCENTER:2, BASELINE:64, BOTTOM:32,
@@ -3503,7 +3503,7 @@ var Interpreter;
             missile = {};
             // ***** 音楽全停止 *****
             if (typeof (audstopall) == "function") { audstopall(); }
-            // ***** プラグイン用の全変数クリア後処理 *****
+            // ***** プラグイン用の全変数クリア時処理 *****
             for (name in clear_var_funcs) {
                 if (clear_var_funcs.hasOwnProperty(name)) {
                     clear_var_funcs[name]();

@@ -44,7 +44,7 @@ var Plugin0001;
         // ***** 実行後処理を登録 *****
         add_after_run_funcs("plugin0001", function () {
         });
-        // ***** 全変数クリア後処理を登録 *****
+        // ***** 全変数クリア時処理を登録 *****
         add_clear_var_funcs("plugin0001", function () {
         });
 
