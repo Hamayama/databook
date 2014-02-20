@@ -1,7 +1,7 @@
 // This file is encoded with UTF-8 without BOM.
 
 // sp_interpreter.js
-// 2013-2-18 v1.90
+// 2013-2-20 v1.91
 
 
 // SPALM Web Interpreter
@@ -6615,50 +6615,6 @@ var Interpreter;
             }
             return true;
         });
-        make_one_addfunc_tbl_A("txtreplace", function () {
-            var a1, a2, a3, a4, a5;
-            var i;
-            var st1, st2;
-            var reg_exp;
-
-            match("(");
-            a1 = getvarname();
-            match(","); a2 = parseInt(expression(), 10);
-            match(","); a3 = parseInt(expression(), 10);
-            match(","); a4 = String(expression());
-            match(","); a5 = String(expression());
-            match(")");
-
-            // ***** NaN対策 *****
-            a2 = a2 | 0;
-            a3 = a3 | 0;
-
-            // ***** エラーチェック *****
-            // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
-            if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
-                throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
-            }
-            if (a4.length == 0) { return true; }
-            if (a5.length > a4.length){
-                a5 = a5.substring(0, a4.length);
-            } else if (a5.length < a4.length) {
-                for (i = a5.length; i < a4.length; i++) {
-                    a5 = a5 + " ";
-                }
-            }
-
-            // ***** 置換処理 *****
-            // reg_exp = new RegExp(a4.replace(/([.*+?^=!:${}()|[\]\/\\])/g, "\\$1"), "g");
-            reg_exp = new RegExp(a4.replace(/([.*+?\^=!:${}()|\[\]\/\\])/g, "\\$1"), "g");
-            for (i = a2; i <= a3; i++) {
-                // st1 = vars[a1 + "[" + i + "]"];
-                st1 = vars.getVarValue(a1 + "[" + i + "]");
-                st2 = st1.replace(reg_exp, a5);
-                // vars[a1 + "[" + i + "]"] = st2;
-                vars.setVarValue(a1 + "[" + i + "]", st2);
-            }
-            return true;
-        });
         make_one_addfunc_tbl_A("txtpset", function () {
             var a1, a2, a3, a4;
             var x1, y1;
@@ -7612,6 +7568,7 @@ var Interpreter;
     Interpreter.get_can = function () { return can; };
     Interpreter.set_canvas_axis = set_canvas_axis;
     Interpreter.set_loop_nocount_flag = function () { loop_nocount_flag = true; };
+    Interpreter.get_max_array_size = function () { return max_array_size; };
 
 
 })(Interpreter || (Interpreter = {}));

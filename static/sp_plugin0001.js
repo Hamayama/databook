@@ -13,6 +13,11 @@
 //   インタープリターに命令を追加するプラグインです。
 //   Interpreter(名前空間)が先に初期化されている必要があります。
 //
+//   新しい命令の追加は、
+//     make_addfunc_tbl_A()  (戻り値のない関数のとき)
+//     make_addfunc_tbl_B()  (戻り値のある関数のとき)
+//   の中で行うことを想定しています。
+//
 //   外部クラス一覧
 //     SandSim          砂シミュレート用クラス
 //
@@ -29,11 +34,14 @@ var Plugin0001;
     var make_one_addfunc_tbl_B = Interpreter.make_one_addfunc_tbl_B;
     var match = Interpreter.match;
     var expression = Interpreter.expression;
+    var getvarname = Interpreter.getvarname;
     var get_symbol = Interpreter.get_symbol;
+    var get_vars = Interpreter.get_vars;
     var get_ctx = Interpreter.get_ctx;
     var get_can = Interpreter.get_can;
     var set_canvas_axis = Interpreter.set_canvas_axis;
     var set_loop_nocount_flag = Interpreter.set_loop_nocount_flag;
+    var get_max_array_size = Interpreter.get_max_array_size;
 
     // ***** 初期化 *****
     function init() {
@@ -47,7 +55,15 @@ var Plugin0001;
         // ***** 全変数クリア時処理を登録 *****
         add_clear_var_funcs("plugin0001", function () {
         });
+        // ***** 追加命令の定義情報の生成 *****
+        make_addfunc_tbl_A();
+        make_addfunc_tbl_B();
+    }
+    Plugin0001.init = init;
 
+
+    // ***** 追加命令(戻り値のない関数)の定義情報の生成 *****
+    function make_addfunc_tbl_A() {
         // ***** 砂シミュレート用命令の追加 *****
         make_one_addfunc_tbl_A("sandmake", function () {
             var a1, a2, a3, a4;
@@ -97,49 +113,6 @@ var Plugin0001;
                 set_canvas_axis(ctx);                    // 座標系を再設定
             }
             return true;
-        });
-        // ***** フラクタル計算用命令の追加 *****
-        make_one_addfunc_tbl_B("calcfractal", function () {
-            var num;
-            var x1, y1;
-            var dr, di, mr, mi, cr, ci, tr, ti, zr, zi, rep, norm2;
-
-            match("("); x1 = parseFloat(expression());
-            match(","); y1 = parseFloat(expression());
-            match(","); dr = parseFloat(expression());
-            match(","); di = parseFloat(expression());
-            match(","); mr = parseFloat(expression());
-            match(","); mi = parseFloat(expression());
-            match(","); cr = parseFloat(expression());
-            match(","); ci = parseFloat(expression());
-            // if (symbol[pc] == ")") {
-            if (get_symbol() == ")") {
-                rep = 50;
-                norm2 = 4;
-            } else {
-                match(","); rep = parseInt(expression(), 10);
-                // if (symbol[pc] == ")") {
-                if (get_symbol() == ")") {
-                    norm2 = 4;
-                } else {
-                    match(","); norm2 = parseFloat(expression());
-                }
-            }
-            match(")");
-
-            // ***** エラーチェック *****
-            if (rep > 1000) { rep = 1000; }
-
-            tr = x1 * dr + mr;
-            ti = y1 * di + mi;
-            for (num = 0; num < rep; num++) {
-                zr = tr * tr - ti * ti + cr;
-                zi = 2 * tr * ti       + ci;
-                if (zr * zr + zi * zi > norm2) { break; }
-                tr = zr;
-                ti = zi;
-            }
-            return num;
         });
         // ***** 上から見たピラミッド(四角すい)を表示する命令の追加 *****
         make_one_addfunc_tbl_A("drawpyramid", function () {
@@ -193,6 +166,159 @@ var Plugin0001;
             ctx.fill();
             ctx.globalAlpha = alpha_old;
             return true;
+        });
+        // ***** 文字列配列の内容を一括置換する命令の追加 *****
+        make_one_addfunc_tbl_A("txtreplace", function () {
+            var a1, a2, a3, a4, a5;
+            var i;
+            var st1, st2;
+            var src_str;
+            var rep_str;
+            var reg_exp;
+            var vars = get_vars();
+            var max_array_size = get_max_array_size();
+
+            match("(");
+            a1 = getvarname();
+            match(","); a2 = parseInt(expression(), 10);
+            match(","); a3 = parseInt(expression(), 10);
+            match(","); a4 = String(expression());
+            match(","); a5 = String(expression());
+            match(")");
+
+            // ***** NaN対策 *****
+            a2 = a2 | 0;
+            a3 = a3 | 0;
+
+            // ***** エラーチェック *****
+            // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
+            if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
+                throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
+            }
+            if (a4.length == 0) { return true; }
+            if (a5.length > a4.length){
+                a5 = a5.substring(0, a4.length);
+            } else if (a5.length < a4.length) {
+                for (i = a5.length; i < a4.length; i++) {
+                    a5 = a5 + " ";
+                }
+            }
+
+            // ***** 置換処理 *****
+            // src_str = a4.replace(/([.*+?^=!:${}()|[\]\/\\])/g, "\\$1"); // 特殊文字の無効化
+            src_str = a4.replace(/([.*+?\^=!:${}()|\[\]\/\\])/g, "\\$1"); // 特殊文字の無効化
+            rep_str = a5.replace(/\$/g, "$$$$"); // 特殊文字の無効化2
+            reg_exp = new RegExp(src_str, "g");
+            for (i = a2; i <= a3; i++) {
+                // st1 = vars[a1 + "[" + i + "]"];
+                st1 = vars.getVarValue(a1 + "[" + i + "]");
+                st2 = st1.replace(reg_exp, rep_str);
+                // vars[a1 + "[" + i + "]"] = st2;
+                vars.setVarValue(a1 + "[" + i + "]", st2);
+            }
+            return true;
+        });
+        // ***** 文字列配列の内容を一括置換する命令の追加2 *****
+        make_one_addfunc_tbl_A("txtreplace2", function () {
+            var a1, a2, a3, a4, a5;
+            var i;
+            var st1, st2;
+            var src_str;
+            var reg_exp;
+            var ch_tbl;
+            var vars = get_vars();
+            var max_array_size = get_max_array_size();
+
+            match("(");
+            a1 = getvarname();
+            match(","); a2 = parseInt(expression(), 10);
+            match(","); a3 = parseInt(expression(), 10);
+            match(","); a4 = String(expression());
+            match(","); a5 = String(expression());
+            match(")");
+
+            // ***** NaN対策 *****
+            a2 = a2 | 0;
+            a3 = a3 | 0;
+
+            // ***** エラーチェック *****
+            // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
+            if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
+                throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
+            }
+            if (a4.length == 0) { return true; }
+            if (a5.length > a4.length){
+                a5 = a5.substring(0, a4.length);
+            } else if (a5.length < a4.length) {
+                for (i = a5.length; i < a4.length; i++) {
+                    a5 = a5 + " ";
+                }
+            }
+
+            // ***** 置換処理 *****
+            // src_str = a4.replace(/([.*+?^=!:${}()|[\]\/\\])/g, "\\$1"); // 特殊文字の無効化
+            src_str = a4.replace(/([.*+?\^=!:${}()|\[\]\/\\])/g, "\\$1"); // 特殊文字の無効化
+            reg_exp = new RegExp("[" + src_str + "]", "g");
+            ch_tbl = {};
+            for (i = 0; i < a4.length; i++) {
+                ch_tbl[a4.charAt(i)] = a5.charAt(i);
+            }
+            for (i = a2; i <= a3; i++) {
+                // st1 = vars[a1 + "[" + i + "]"];
+                st1 = vars.getVarValue(a1 + "[" + i + "]");
+                st2 = st1.replace(reg_exp, function (c) { return ch_tbl[c]; });
+                // vars[a1 + "[" + i + "]"] = st2;
+                vars.setVarValue(a1 + "[" + i + "]", st2);
+            }
+            return true;
+        });
+    }
+
+
+    // ***** 追加命令(戻り値のある関数)の定義情報の生成 *****
+    function make_addfunc_tbl_B() {
+        // ***** フラクタル計算用命令の追加 *****
+        make_one_addfunc_tbl_B("calcfractal", function () {
+            var num;
+            var x1, y1;
+            var dr, di, mr, mi, cr, ci, tr, ti, zr, zi, rep, norm2;
+
+            match("("); x1 = parseFloat(expression());
+            match(","); y1 = parseFloat(expression());
+            match(","); dr = parseFloat(expression());
+            match(","); di = parseFloat(expression());
+            match(","); mr = parseFloat(expression());
+            match(","); mi = parseFloat(expression());
+            match(","); cr = parseFloat(expression());
+            match(","); ci = parseFloat(expression());
+            // if (symbol[pc] == ")") {
+            if (get_symbol() == ")") {
+                rep = 50;
+                norm2 = 4;
+            } else {
+                match(","); rep = parseInt(expression(), 10);
+                // if (symbol[pc] == ")") {
+                if (get_symbol() == ")") {
+                    norm2 = 4;
+                } else {
+                    match(","); norm2 = parseFloat(expression());
+                }
+            }
+            match(")");
+
+            // ***** エラーチェック *****
+            if (rep > 1000) { rep = 1000; }
+
+            tr = x1 * dr + mr;
+            ti = y1 * di + mi;
+            for (num = 0; num < rep; num++) {
+                zr = tr * tr - ti * ti + cr;
+                zi = 2 * tr * ti       + ci;
+                if (zr * zr + zi * zi > norm2) { break; }
+                tr = zr;
+                ti = zi;
+            }
+            return num;
         });
         // ***** 数値の文字列を加算して文字列で返す命令の追加 *****
         // (例. y=intstradd("100","200")  を実行すると y="300"  となる)
@@ -296,7 +422,6 @@ var Plugin0001;
             return num;
         });
     }
-    Plugin0001.init = init;
 
 
 })(Plugin0001 || (Plugin0001 = {}));
