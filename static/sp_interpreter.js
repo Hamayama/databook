@@ -1,7 +1,7 @@
 // This file is encoded with UTF-8 without BOM.
 
 // sp_interpreter.js
-// 2013-2-20 v1.91
+// 2014-2-22 v1.92
 
 
 // SPALM Web Interpreter
@@ -860,32 +860,26 @@ var Interpreter;
             if (var_name.substring(0, 2) == "l\\") { loc = true; var_name = var_name.substring(2); }
             // ***** グローバル変数のみを使うとき *****
             if (localvars == null || use_local_vars == false || glb == true) {
-                // if (!this.globalvars.hasOwnProperty(var_name)) { return true; }
-                if (!hasOwn.call(this.globalvars, var_name)) { return true; }
-                delete this.globalvars[var_name];
+                // ***** グローバル変数の存在チェック *****
+                // if (this.globalvars.hasOwnProperty(var_name)) {
+                if (hasOwn.call(this.globalvars, var_name)) {
+                    delete this.globalvars[var_name];
+                }
                 return true;
             }
-            // ***** ローカル変数のみを使うとき *****
-            if (loc == true) {
-                // if (!localvars.hasOwnProperty(var_name)) { return true; }
-                if (!hasOwn.call(localvars, var_name)) { return true; }
-                delete localvars[var_name];
-                return true;
-            }
-            // ***** グローバル変数とローカル変数を両方使うとき *****
-            // ローカル変数が存在する
+            // ***** ローカル変数の存在チェック *****
             // if (localvars.hasOwnProperty(var_name)) {
             if (hasOwn.call(localvars, var_name)) {
                 delete localvars[var_name];
                 return true;
             }
-            // グローバル変数が存在する
+            // ***** ローカル変数のみを使うとき *****
+            if (loc == true) { return true; }
+            // ***** グローバル変数の存在チェック *****
             // if (this.globalvars.hasOwnProperty(var_name)) {
             if (hasOwn.call(this.globalvars, var_name)) {
                 delete this.globalvars[var_name];
-                return true;
             }
-            // ローカル変数もグローバル変数も存在しない
             return true;
         };
         // ***** 変数の存在チェック *****
@@ -915,28 +909,25 @@ var Interpreter;
             if (var_name.substring(0, 2) == "l\\") { loc = true; var_name = var_name.substring(2); }
             // ***** グローバル変数のみを使うとき *****
             if (localvars == null || use_local_vars == false || glb == true) {
-                // if (!this.globalvars.hasOwnProperty(var_name)) { return false; }
-                if (!hasOwn.call(this.globalvars, var_name)) { return false; }
-                return true;
+                // ***** グローバル変数の存在チェック *****
+                // if (this.globalvars.hasOwnProperty(var_name)) {
+                if (hasOwn.call(this.globalvars, var_name)) {
+                    return true;
+                }
+                return false;
             }
-            // ***** ローカル変数のみを使うとき *****
-            if (loc == true) {
-                // if (!localvars.hasOwnProperty(var_name)) { return false; }
-                if (!hasOwn.call(localvars, var_name)) { return false; }
-                return true;
-            }
-            // ***** グローバル変数とローカル変数を両方使うとき *****
-            // ローカル変数が存在する
+            // ***** ローカル変数の存在チェック *****
             // if (localvars.hasOwnProperty(var_name)) {
             if (hasOwn.call(localvars, var_name)) {
                 return true;
             }
-            // グローバル変数が存在する
+            // ***** ローカル変数のみを使うとき *****
+            if (loc == true) { return false; }
+            // ***** グローバル変数の存在チェック *****
             // if (this.globalvars.hasOwnProperty(var_name)) {
             if (hasOwn.call(this.globalvars, var_name)) {
                 return true;
             }
-            // ローカル変数もグローバル変数も存在しない
             return false;
         };
         // ***** 変数の値を取得する *****
@@ -968,28 +959,30 @@ var Interpreter;
             if (var_name.substring(0, 2) == "l\\") { loc = true; var_name = var_name.substring(2); }
             // ***** グローバル変数のみを使うとき *****
             if (localvars == null || use_local_vars == false || glb == true) {
-                // if (!this.globalvars.hasOwnProperty(var_name)) { this.globalvars[var_name] = 0; }
-                if (!hasOwn.call(this.globalvars, var_name)) { this.globalvars[var_name] = 0; }
-                return this.globalvars[var_name];
+                // ***** グローバル変数の存在チェック *****
+                // if (this.globalvars.hasOwnProperty(var_name)) {
+                if (hasOwn.call(this.globalvars, var_name)) {
+                    return this.globalvars[var_name];
+                }
+                this.globalvars[var_name] = 0;
+                return 0;
             }
-            // ***** ローカル変数のみを使うとき *****
-            if (loc == true) {
-                // if (!localvars.hasOwnProperty(var_name)) { localvars[var_name] = 0; }
-                if (!hasOwn.call(localvars, var_name)) { localvars[var_name] = 0; }
-                return localvars[var_name];
-            }
-            // ***** グローバル変数とローカル変数を両方使うとき *****
-            // ローカル変数が存在する
+            // ***** ローカル変数の存在チェック *****
             // if (localvars.hasOwnProperty(var_name)) {
             if (hasOwn.call(localvars, var_name)) {
                 return localvars[var_name];
             }
-            // グローバル変数が存在する
+            // ***** ローカル変数のみを使うとき *****
+            if (loc == true) {
+                localvars[var_name] = 0;
+                return 0;
+            }
+            // ***** グローバル変数の存在チェック *****
             // if (this.globalvars.hasOwnProperty(var_name)) {
             if (hasOwn.call(this.globalvars, var_name)) {
                 return this.globalvars[var_name];
             }
-            // ローカル変数もグローバル変数も存在しない
+            // ***** 変数が存在しなかったとき *****
             i = var_name.indexOf("[") + 1;
             // 配列のとき
             if (i > 0) {
@@ -1000,13 +993,13 @@ var Interpreter;
                         // if (this.globalvars.hasOwnProperty(var_name2)) {
                         if (hasOwn.call(this.globalvars, var_name2)) {
                             this.globalvars[var_name] = 0;
-                            return this.globalvars[var_name];
+                            return 0;
                         }
                     }
                 }
             }
             localvars[var_name] = 0;
-            return localvars[var_name];
+            return 0;
         };
         // ***** 変数の値を設定する *****
         Vars.prototype.setVarValue = function (var_name, var_value) {
@@ -1045,20 +1038,19 @@ var Interpreter;
                 localvars[var_name] = var_value;
                 return true;
             }
-            // ***** グローバル変数とローカル変数を両方使うとき *****
-            // ローカル変数が存在する
+            // ***** ローカル変数の存在チェック *****
             // if (localvars.hasOwnProperty(var_name)) {
             if (hasOwn.call(localvars, var_name)) {
                 localvars[var_name] = var_value;
                 return true;
             }
-            // グローバル変数が存在する
+            // ***** グローバル変数の存在チェック *****
             // if (this.globalvars.hasOwnProperty(var_name)) {
             if (hasOwn.call(this.globalvars, var_name)) {
                 this.globalvars[var_name] = var_value;
                 return true;
             }
-            // ローカル変数もグローバル変数も存在しない
+            // ***** 変数が存在しなかったとき *****
             i = var_name.indexOf("[") + 1;
             // 配列のとき
             if (i > 0) {
@@ -1084,7 +1076,6 @@ var Interpreter;
             var var_name_len;
             var var_name_from;
             var var_name_to;
-            var copy_flag;
             var localvars;
 
             // // ***** 引数のチェック *****
@@ -1124,6 +1115,7 @@ var Interpreter;
             var_name_len = var_name.length;
             // ***** グローバル変数のみを使うとき *****
             if (localvars == null || use_local_vars == false || glb == true) {
+                // ***** グローバル変数の存在チェック *****
                 for (var_name_from in this.globalvars) {
                     if (var_name_from.substring(0, var_name_len) == var_name) {
                         // if (this.globalvars.hasOwnProperty(var_name_from)) {
@@ -1135,47 +1127,30 @@ var Interpreter;
                 }
                 return true;
             }
-            // ***** ローカル変数のみを使うとき *****
-            if (loc == true) {
-                for (var_name_from in localvars) {
-                    if (var_name_from.substring(0, var_name_len) == var_name) {
-                        // if (localvars.hasOwnProperty(var_name_from)) {
-                        if (hasOwn.call(localvars, var_name_from)) {
-                            var_name_to = var_name2 + var_name_from.substring(var_name_len);
-                            this.setVarValue(var_name_to, this.getVarValue(var_name_from));
-                        }
-                    }
-                }
-                return true;
-            }
-            // ***** グローバル変数とローカル変数を両方使うとき *****
-            // ローカル変数が存在する
-            copy_flag = false;
+            // ***** ローカル変数の存在チェック *****
+            var_name_to = "";
             for (var_name_from in localvars) {
                 if (var_name_from.substring(0, var_name_len) == var_name) {
                     // if (localvars.hasOwnProperty(var_name_from)) {
                     if (hasOwn.call(localvars, var_name_from)) {
                         var_name_to = var_name2 + var_name_from.substring(var_name_len);
                         this.setVarValue(var_name_to, this.getVarValue(var_name_from));
-                        copy_flag = true;
                     }
                 }
             }
-            if (copy_flag) { return true; }
-            // グローバル変数が存在する
-            copy_flag = false;
+            if (var_name_to) { return true; }
+            // ***** ローカル変数のみを使うとき *****
+            if (loc == true) { return true; }
+            // ***** グローバル変数の存在チェック *****
             for (var_name_from in this.globalvars) {
                 if (var_name_from.substring(0, var_name_len) == var_name) {
                     // if (this.globalvars.hasOwnProperty(var_name_from)) {
                     if (hasOwn.call(this.globalvars, var_name_from)) {
                         var_name_to = var_name2 + var_name_from.substring(var_name_len);
                         this.setVarValue(var_name_to, this.getVarValue(var_name_from));
-                        copy_flag = true;
                     }
                 }
             }
-            if (copy_flag) { return true; }
-            // ローカル変数もグローバル変数も存在しない
             return true;
         };
         // ***** 配列変数の一括削除 *****
@@ -1212,6 +1187,7 @@ var Interpreter;
             var_name_len = var_name.length;
             // ***** グローバル変数のみを使うとき *****
             if (localvars == null || use_local_vars == false || glb == true) {
+                // ***** グローバル変数の存在チェック *****
                 for (var_name2 in this.globalvars) {
                     if (var_name2.substring(0, var_name_len) == var_name) {
                         // if (this.globalvars.hasOwnProperty(var_name2)) {
@@ -1222,20 +1198,7 @@ var Interpreter;
                 }
                 return true;
             }
-            // ***** ローカル変数のみを使うとき *****
-            if (loc == true) {
-                for (var_name2 in localvars) {
-                    if (var_name2.substring(0, var_name_len) == var_name) {
-                        // if (localvars.hasOwnProperty(var_name2)) {
-                        if (hasOwn.call(localvars, var_name2)) {
-                            delete localvars[var_name2];
-                        }
-                    }
-                }
-                return true;
-            }
-            // ***** グローバル変数とローカル変数を両方使うとき *****
-            // ローカル変数が存在する
+            // ***** ローカル変数の存在チェック *****
             delete_flag = false;
             for (var_name2 in localvars) {
                 if (var_name2.substring(0, var_name_len) == var_name) {
@@ -1247,19 +1210,17 @@ var Interpreter;
                 }
             }
             if (delete_flag) { return true; }
-            // グローバル変数が存在する
-            delete_flag = false;
+            // ***** ローカル変数のみを使うとき *****
+            if (loc == true) { return true; }
+            // ***** グローバル変数の存在チェック *****
             for (var_name2 in this.globalvars) {
                 if (var_name2.substring(0, var_name_len) == var_name) {
                     // if (this.globalvars.hasOwnProperty(var_name2)) {
                     if (hasOwn.call(this.globalvars, var_name2)) {
                         delete this.globalvars[var_name2];
-                        delete_flag = true;
                     }
                 }
             }
-            if (delete_flag) { return true; }
-            // ローカル変数もグローバル変数も存在しない
             return true;
         };
         return Vars; // これがないとクラスが動かないので注意
@@ -7569,6 +7530,7 @@ var Interpreter;
     Interpreter.set_canvas_axis = set_canvas_axis;
     Interpreter.set_loop_nocount_flag = function () { loop_nocount_flag = true; };
     Interpreter.get_max_array_size = function () { return max_array_size; };
+    Interpreter.get_max_str_size = function () { return max_str_size; };
 
 
 })(Interpreter || (Interpreter = {}));
