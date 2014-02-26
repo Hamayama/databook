@@ -25,8 +25,10 @@
 <script type="text/javascript" src="/static/sp_plugin0001.js"></script>
 <script type="text/javascript">
 <!--
-// ***** 初期化 *****
-init_func = function () {
+// ***** 動作開始 *****
+window.onload = function () {
+    // ***** 初期化 *****
+    init_func();
     // ***** 色設定 *****
     // (引数は、Canvas要素の文字色,背景色,ソフトキー表示エリアの文字色,背景色)
     Interpreter.setcolor("", "", "#000000", "#fffca8");

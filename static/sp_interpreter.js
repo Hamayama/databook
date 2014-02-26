@@ -1,7 +1,7 @@
 // This file is encoded with UTF-8 without BOM.
 
 // sp_interpreter.js
-// 2014-2-26 v1.93
+// 2014-2-26 v1.94
 
 
 // SPALM Web Interpreter
@@ -51,8 +51,8 @@ function BrowserType() {
     return "";
 }
 
-// ***** 動作開始 *****
-window.onload = function () {
+// ***** 初期化 *****
+function init_func() {
     var list_id;
 
     // ***** FlashCanvas用 *****
@@ -72,16 +72,14 @@ window.onload = function () {
         if (check_id(list_id, 8)) {
             load_listfile("list" + list_id + ".txt", true);
         } else {
-            Alm2("window.onload:-:リストファイル指定エラー");
+            Alm2("init_func:-:リストファイル指定エラー");
         }
     }
     // ***** デバッグモードの初期選択 *****
     if (get_one_url_para("debug") == "1") {
         document.getElementById("debug_chk1").checked = true;
     }
-    // ***** 他の初期化があれば実行 *****
-    if (typeof (init_func) == "function") { init_func(); }
-};
+}
 
 // ***** URLパラメータ1個の取得 *****
 function get_one_url_para(key) {
