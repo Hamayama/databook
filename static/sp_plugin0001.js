@@ -14,8 +14,8 @@
 //   Interpreter(名前空間)が先に初期化されている必要があります。
 //
 //   新しい命令の追加は、
-//     make_addfunc_tbl_A()  (戻り値のない関数のとき)
-//     make_addfunc_tbl_B()  (戻り値のある関数のとき)
+//     add_func_tbl_A()  (戻り値のない関数のとき)
+//     add_func_tbl_B()  (戻り値のある関数のとき)
 //   の中で行うことを想定しています。
 //
 //   外部クラス一覧
@@ -30,8 +30,8 @@ var Plugin0001;
     var add_before_run_funcs = Interpreter.add_before_run_funcs;
     var add_after_run_funcs = Interpreter.add_after_run_funcs;
     var add_clear_var_funcs = Interpreter.add_clear_var_funcs;
-    var make_one_addfunc_tbl_A = Interpreter.make_one_addfunc_tbl_A;
-    var make_one_addfunc_tbl_B = Interpreter.make_one_addfunc_tbl_B;
+    var add_one_func_tbl_A = Interpreter.add_one_func_tbl_A;
+    var add_one_func_tbl_B = Interpreter.add_one_func_tbl_B;
     var match = Interpreter.match;
     var expression = Interpreter.expression;
     var getvarname = Interpreter.getvarname;
@@ -42,6 +42,7 @@ var Plugin0001;
     var set_canvas_axis = Interpreter.set_canvas_axis;
     var set_loop_nocount_flag = Interpreter.set_loop_nocount_flag;
     var get_max_array_size = Interpreter.get_max_array_size;
+    var get_max_str_size = Interpreter.get_max_str_size;
 
     // ***** 初期化 *****
     function init() {
@@ -56,16 +57,16 @@ var Plugin0001;
         add_clear_var_funcs("plugin0001", function () {
         });
         // ***** 追加命令の定義情報の生成 *****
-        make_addfunc_tbl_A();
-        make_addfunc_tbl_B();
+        add_func_tbl_A();
+        add_func_tbl_B();
     }
     Plugin0001.init = init;
 
 
     // ***** 追加命令(戻り値のない関数)の定義情報の生成 *****
-    function make_addfunc_tbl_A() {
+    function add_func_tbl_A() {
         // ***** 砂シミュレート用命令の追加 *****
-        make_one_addfunc_tbl_A("sandmake", function () {
+        add_one_func_tbl_A("sandmake", function () {
             var a1, a2, a3, a4;
             var x1, y1;
             var w1, h1;
@@ -96,13 +97,13 @@ var Plugin0001;
             set_loop_nocount_flag();
             return true;
         });
-        make_one_addfunc_tbl_A("sandmove", function () {
+        add_one_func_tbl_A("sandmove", function () {
             match("(");
             match(")");
             if (sand_obj) { sand_obj.move(); }
             return true;
         });
-        make_one_addfunc_tbl_A("sanddraw", function () {
+        add_one_func_tbl_A("sanddraw", function () {
             var ctx = get_ctx();
 
             match("(");
@@ -115,7 +116,7 @@ var Plugin0001;
             return true;
         });
         // ***** 上から見たピラミッド(四角すい)を表示する命令の追加 *****
-        make_one_addfunc_tbl_A("drawpyramid", function () {
+        add_one_func_tbl_A("drawpyramid", function () {
             var a1, a2, a3, a4;
             var x1, y1, x2, y2, ox, oy;
             var alpha_old;
@@ -168,7 +169,7 @@ var Plugin0001;
             return true;
         });
         // ***** 文字列配列の内容を一括置換する命令の追加 *****
-        make_one_addfunc_tbl_A("txtreplace", function () {
+        add_one_func_tbl_A("txtreplace", function () {
             var a1, a2, a3, a4, a5;
             var i;
             var st1, st2;
@@ -219,11 +220,12 @@ var Plugin0001;
             return true;
         });
         // ***** 文字列配列の内容を一括置換する命令の追加2 *****
-        make_one_addfunc_tbl_A("txtreplace2", function () {
+        add_one_func_tbl_A("txtreplace2", function () {
             var a1, a2, a3, a4, a5;
             var i;
             var st1, st2;
             var src_str;
+            var rep_func;
             var reg_exp;
             var ch_tbl;
             var vars = get_vars();
@@ -258,6 +260,7 @@ var Plugin0001;
             // ***** 置換処理 *****
             // src_str = a4.replace(/([.*+?^=!:${}()|[\]\/\\])/g, "\\$1"); // 特殊文字の無効化
             src_str = a4.replace(/([.*+?\^=!:${}()|\[\]\/\\])/g, "\\$1"); // 特殊文字の無効化
+            rep_func = function (c) { return ch_tbl[c]; };
             reg_exp = new RegExp("[" + src_str + "]", "g");
             ch_tbl = {};
             for (i = 0; i < a4.length; i++) {
@@ -266,7 +269,7 @@ var Plugin0001;
             for (i = a2; i <= a3; i++) {
                 // st1 = vars[a1 + "[" + i + "]"];
                 st1 = vars.getVarValue(a1 + "[" + i + "]");
-                st2 = st1.replace(reg_exp, function (c) { return ch_tbl[c]; });
+                st2 = st1.replace(reg_exp, rep_func);
                 // vars[a1 + "[" + i + "]"] = st2;
                 vars.setVarValue(a1 + "[" + i + "]", st2);
             }
@@ -276,9 +279,9 @@ var Plugin0001;
 
 
     // ***** 追加命令(戻り値のある関数)の定義情報の生成 *****
-    function make_addfunc_tbl_B() {
+    function add_func_tbl_B() {
         // ***** フラクタル計算用命令の追加 *****
-        make_one_addfunc_tbl_B("calcfractal", function () {
+        add_one_func_tbl_B("calcfractal", function () {
             var num;
             var x1, y1;
             var dr, di, mr, mi, cr, ci, tr, ti, zr, zi, rep, norm2;
@@ -323,7 +326,7 @@ var Plugin0001;
         // ***** 数値の文字列を加算して文字列で返す命令の追加 *****
         // (例. y=intstradd("100","200")  を実行すると y="300"  となる)
         // (例. y=intstradd("100","-200") を実行すると y="-100" となる)
-        make_one_addfunc_tbl_B("intstradd", function () {
+        add_one_func_tbl_B("intstradd", function () {
             var num;
             var a1, a2;
             var reg_exp;

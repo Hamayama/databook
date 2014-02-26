@@ -1,7 +1,7 @@
 // This file is encoded with UTF-8 without BOM.
 
 // sp_interpreter.js
-// 2014-2-22 v1.92
+// 2014-2-26 v1.93
 
 
 // SPALM Web Interpreter
@@ -468,8 +468,8 @@ function stop_button() {
 // その他 情報等 :
 //
 //   新しい命令の追加は、
-//     make_addfunc_tbl_A()  (戻り値のない関数のとき)
-//     make_addfunc_tbl_B()  (戻り値のある関数のとき)
+//     add_func_tbl_A()  (戻り値のない関数のとき)
+//     add_func_tbl_B()  (戻り値のある関数のとき)
 //   の中で行うことを想定しています。
 //   また、別ファイルのプラグインで命令を追加することもできます(実験中)。
 //
@@ -552,7 +552,6 @@ var Interpreter;
     var loop_nocount_flag;      // ループ時間ノーカウントフラグ
     var return_flag;            // return用のフラグ
     var ret_num;                // returnの戻り値
-    var nest;                   // ネストのカウント
     var funccall_stack = [];    // 関数呼び出し情報保存用(配列)
     var gosub_back = [];        // gosubの戻り先(配列)
 
@@ -578,8 +577,6 @@ var Interpreter;
 
     var func_tbl_A = {};        // 命令(戻り値のない関数)の定義情報(連想配列オブジェクト)
     var func_tbl_B = {};        // 命令(戻り値のある関数)の定義情報(連想配列オブジェクト)
-    var addfunc_tbl_A = {};     // 追加命令(戻り値のない関数)の定義情報(連想配列オブジェクト)
-    var addfunc_tbl_B = {};     // 追加命令(戻り値のある関数)の定義情報(連想配列オブジェクト)
     var operator_tbl = {};      // 演算子の定義情報(連想配列オブジェクト)
 
     var before_run_funcs = {};  // プラグイン用の実行前処理(連想配列オブジェクト)
@@ -680,11 +677,11 @@ var Interpreter;
         // ***** 命令の定義情報の生成 *****
         make_func_tbl_A();
         make_func_tbl_B();
-        if (typeof (make_addfunc_tbl_A) == "function") {
-            make_addfunc_tbl_A();
+        if (typeof (add_func_tbl_A) == "function") {
+            add_func_tbl_A();
         }
-        if (typeof (make_addfunc_tbl_B) == "function") {
-            make_addfunc_tbl_B();
+        if (typeof (add_func_tbl_B) == "function") {
+            add_func_tbl_B();
         }
         // ***** 演算子の定義情報の生成 *****
         make_operator_tbl();
@@ -1408,17 +1405,14 @@ var Interpreter;
     function isAlpha(ch) {
         // if (ch.match(/^[a-zA-Z]+$/)) { return true; }
         var c = ch.charCodeAt(0);
-        if ((c >= 0x41 && c <= 0x5A) ||
-            (c >= 0x61 && c <= 0x7A)) { return true; }
+        if ((c >= 0x41 && c <= 0x5A) || (c >= 0x61 && c <= 0x7A)) { return true; }
         return false;
     }
     // ***** 16進数チェック *****
     function isHex(ch) {
         // if (ch.match(/^[a-fA-F0-9]+$/)) { return true; }
         var c = ch.charCodeAt(0);
-        if ((c >= 0x30 && c <= 0x39) ||
-            (c >= 0x41 && c <= 0x46) ||
-            (c >= 0x61 && c <= 0x66)) { return true; }
+        if ((c >= 0x30 && c <= 0x39) || (c >= 0x41 && c <= 0x46) || (c >= 0x61 && c <= 0x66)) { return true; }
         return false;
     }
     // ***** 文字チェック *****
@@ -1666,7 +1660,6 @@ var Interpreter;
         loop_nocount_flag = false;
         return_flag = false;
         ret_num = 0;
-        nest = 0;
         funccall_stack = [];
         gosub_back = [];
         key_press_code = 0;
@@ -1827,15 +1820,11 @@ var Interpreter;
         sym = symbol[pc];
         // ***** 命令(戻り値のない関数)の処理 *****
         if (func_tbl_A.hasOwnProperty(sym)) {
-            pc++;
-            func_tbl_A[sym]();
-            return true;
-        }
-        // ***** 追加命令(戻り値のない関数)の処理 *****
-        if (use_addfunc && addfunc_tbl_A.hasOwnProperty(sym)) {
-            pc++;
-            addfunc_tbl_A[sym]();
-            return true;
+            if (func_tbl_A[sym].type == 0 || (func_tbl_A[sym].type == 1 && use_addfunc)) {
+                pc++;
+                func_tbl_A[sym].func();
+                return true;
+            }
         }
         // ***** 式の処理 *****
         expression();
@@ -1882,7 +1871,8 @@ var Interpreter;
     function factor() {
         var num;
         var i;
-        var ch;
+        // var ch;
+        var c;
         var sym;
         var pre_inc;
         var var_name;
@@ -1899,16 +1889,13 @@ var Interpreter;
         sym = symbol[pc];
         // ***** 命令(戻り値のある関数)の処理 *****
         if (func_tbl_B.hasOwnProperty(sym)) {
-            pc++;
-            num = func_tbl_B[sym]();
-            return num;
+            if (func_tbl_B[sym].type == 0 || (func_tbl_B[sym].type == 1 && use_addfunc)) {
+                pc++;
+                num = func_tbl_B[sym].func();
+                return num;
+            }
         }
-        // ***** 追加命令(戻り値のある関数)の処理 *****
-        if (use_addfunc && addfunc_tbl_B.hasOwnProperty(sym)) {
-            pc++;
-            num = addfunc_tbl_B[sym]();
-            return num;
-        }
+
         // ***** プレインクリメント(「++」「--」)のとき *****
         if (sym == "++") {
             pc++;
@@ -1923,9 +1910,11 @@ var Interpreter;
         } else { pre_inc = 0; }
 
         // ***** 1文字取り出す *****
-        ch = sym.charAt(0);
+        // ch = sym.charAt(0);
+        c = sym.charCodeAt(0);
         // ***** 文字列のとき *****
-        if (ch == '"') {
+        // if (ch == '"') {
+        if (c == 0x22) {
             pc++;
             if (sym.length > 2) {
                 num = sym.substring(1, sym.length - 1);
@@ -1935,14 +1924,16 @@ var Interpreter;
             return num;
         }
         // ***** 数値のとき *****
-        if (isDigit(ch)) {
+        // if (isDigit(ch)) {
+        if (c >= 0x30 && c <= 0x39) {
             pc++;
             // ***** 数値を返す *****
             num = +sym; // 数値にする
             return num;
         }
         // ***** アルファベットかアンダースコアかポインタのとき *****
-        if (isAlpha(ch) || ch == "_" || ch == "*") {
+        // if (isAlpha(ch) || ch == "_" || ch == "*") {
+        if ((c >= 0x41 && c <= 0x5A) || (c >= 0x61 && c <= 0x7A) || c == 0x5F || c == 0x2A) {
 
             // ***** 変数名取得 *****
             var_name = getvarname();
@@ -2047,7 +2038,6 @@ var Interpreter;
                 funccall_info.func_end = func[sym + "\\end"];
                 funccall_stack.push(funccall_info);
                 // loop_time_start = new Date().getTime(); // ループ開始時間は呼び出し元でセットする
-                nest++;
                 while (pc < symbol_len) {
 
                     // ***** 文(ステートメント)の処理 *****
@@ -2083,7 +2073,6 @@ var Interpreter;
                     if (return_flag) { break; }
                 }
                 // DebugShow(pc + "\n");
-                nest--;
 
                 // ***** ローカル変数を解放 *****
                 vars.deleteLocalScope();
@@ -2152,62 +2141,69 @@ var Interpreter;
                 vars.setVarValue(var_name, num);
                 return num;
             }
-            if (sym == "+=") {
+            // ***** 複合代入のとき *****
+            if (sym == "=\\") {
                 pc++;
-                // vars[var_name] = vars[var_name] + expression();
+                // ***** シンボル取り出し *****
+                sym = symbol[pc];
+                // ***** 複合代入処理 *****
+                if (sym == "+=") {
+                    pc++;
+                    // vars[var_name] = vars[var_name] + expression();
 
-                // num = vars.getVarValue(var_name) + expression();
-                num = (+vars.getVarValue(var_name)) + (+expression()); // 文字の連結にならないように数値にする
+                    // num = vars.getVarValue(var_name) + expression();
+                    num = (+vars.getVarValue(var_name)) + (+expression()); // 文字の連結にならないように数値にする
 
-                vars.setVarValue(var_name, num);
-                return num;
-            }
-            if (sym == "-=") {
-                pc++;
-                // vars[var_name] = vars[var_name] - expression();
-                num = vars.getVarValue(var_name) - expression();
-                vars.setVarValue(var_name, num);
-                return num;
-            }
-            if (sym == "*=") {
-                pc++;
-                // vars[var_name] = vars[var_name] * expression();
-                num = vars.getVarValue(var_name) * expression();
-                vars.setVarValue(var_name, num);
-                return num;
-            }
-            if (sym == "/=") {
-                pc++;
-                if (sp_compati_mode == 1) {
+                    vars.setVarValue(var_name, num);
+                    return num;
+                }
+                if (sym == "-=") {
+                    pc++;
+                    // vars[var_name] = vars[var_name] - expression();
+                    num = vars.getVarValue(var_name) - expression();
+                    vars.setVarValue(var_name, num);
+                    return num;
+                }
+                if (sym == "*=") {
+                    pc++;
+                    // vars[var_name] = vars[var_name] * expression();
+                    num = vars.getVarValue(var_name) * expression();
+                    vars.setVarValue(var_name, num);
+                    return num;
+                }
+                if (sym == "/=") {
+                    pc++;
+                    if (sp_compati_mode == 1) {
+                        // vars[var_name] = parseInt(vars[var_name] / expression(), 10);
+                        num = parseInt(vars.getVarValue(var_name) / expression(), 10);
+                    } else {
+                        // vars[var_name] = vars[var_name] / expression();
+                        num = vars.getVarValue(var_name) / expression();
+                    }
+                    vars.setVarValue(var_name, num);
+                    return num;
+                }
+                if (sym == "%=") {
+                    pc++;
+                    // vars[var_name] = vars[var_name] % expression();
+                    num = vars.getVarValue(var_name) % expression();
+                    vars.setVarValue(var_name, num);
+                    return num;
+                }
+                if (sym == "\\=") {
+                    pc++;
                     // vars[var_name] = parseInt(vars[var_name] / expression(), 10);
                     num = parseInt(vars.getVarValue(var_name) / expression(), 10);
-                } else {
-                    // vars[var_name] = vars[var_name] / expression();
-                    num = vars.getVarValue(var_name) / expression();
+                    vars.setVarValue(var_name, num);
+                    return num;
                 }
-                vars.setVarValue(var_name, num);
-                return num;
-            }
-            if (sym == "%=") {
-                pc++;
-                // vars[var_name] = vars[var_name] % expression();
-                num = vars.getVarValue(var_name) % expression();
-                vars.setVarValue(var_name, num);
-                return num;
-            }
-            if (sym == "\\=") {
-                pc++;
-                // vars[var_name] = parseInt(vars[var_name] / expression(), 10);
-                num = parseInt(vars.getVarValue(var_name) / expression(), 10);
-                vars.setVarValue(var_name, num);
-                return num;
-            }
-            if (sym == ".=") {
-                pc++;
-                // vars[var_name] = String(vars[var_name]) + String(expression());
-                num = String(vars.getVarValue(var_name)) + String(expression());
-                vars.setVarValue(var_name, num);
-                return num;
+                if (sym == ".=") {
+                    pc++;
+                    // vars[var_name] = String(vars[var_name]) + String(expression());
+                    num = String(vars.getVarValue(var_name)) + String(expression());
+                    vars.setVarValue(var_name, num);
+                    return num;
+                }
             }
 
             // ***** 変数の値を返す *****
@@ -2460,6 +2456,13 @@ var Interpreter;
             pc = i + 1;
             sym = symbol[i];
             sym_line = symbol_line[i++];
+
+            // ***** 複合代入演算子のとき *****
+            if (sym == "+=" || sym == "-=" || sym == "*=" || sym == "/=" || sym == "%=" || sym == "\\=" || sym == ".=") {
+                symbol2_push("=\\", sym_line);
+                symbol2_push(sym, sym_line);
+                continue;
+            }
 
             // ***** break文のとき *****
             if (sym == "break") {
@@ -3218,8 +3221,6 @@ var Interpreter;
 
     // ***** 演算子の定義情報の生成 *****
     function make_operator_tbl() {
-        // // ***** 演算子の定義情報の初期化 *****
-        // operator_tbl = {};
         // ***** 演算子の定義情報の生成 *****
         // (第2引数は演算子の優先順位を表す。大きいほど優先順位が高い)
         make_one_operator_tbl("&", 10, function (num) {
@@ -3388,8 +3389,6 @@ var Interpreter;
 
     // ***** 命令(戻り値のない関数)の定義情報の生成 *****
     function make_func_tbl_A() {
-        // // ***** 命令(戻り値のない関数)の定義情報の初期化 *****
-        // func_tbl_A = {};
         // ***** 命令(戻り値のない関数)の定義情報の生成 *****
         make_one_func_tbl_A("addfunc", function () {
             var a1;
@@ -4784,14 +4783,14 @@ var Interpreter;
         });
     }
     function make_one_func_tbl_A(name, func) {
-        func_tbl_A[name] = func;
+        func_tbl_A[name] = {};
+        func_tbl_A[name].type = 0;
+        func_tbl_A[name].func = func;
     }
 
 
     // ***** 命令(戻り値のある関数)の定義情報の生成 *****
     function make_func_tbl_B() {
-        // // ***** 命令(戻り値のある関数)の定義情報の初期化 *****
-        // func_tbl_B = {};
         // ***** 命令(戻り値のある関数)の定義情報の生成 *****
         make_one_func_tbl_B("abs", function () {
             var num;
@@ -5729,7 +5728,9 @@ var Interpreter;
         });
     }
     function make_one_func_tbl_B(name, func) {
-        func_tbl_B[name] = func;
+        func_tbl_B[name] = {};
+        func_tbl_B[name].type = 0;
+        func_tbl_B[name].func = func;
     }
 
 
@@ -5740,11 +5741,9 @@ var Interpreter;
 
 
     // ***** 追加命令(戻り値のない関数)の定義情報の生成 *****
-    function make_addfunc_tbl_A() {
-        // // ***** 追加命令(戻り値のない関数)の定義情報の初期化 *****
-        // addfunc_tbl_A = {};
+    function add_func_tbl_A() {
         // ***** 追加命令(戻り値のない関数)の定義情報の生成 *****
-        make_one_addfunc_tbl_A("audmode", function () {
+        add_one_func_tbl_A("audmode", function () {
             var a1;
 
             match("(");
@@ -5753,7 +5752,7 @@ var Interpreter;
             aud_mode = a1;
             return true;
         });
-        make_one_addfunc_tbl_A("audmake", function () {
+        add_one_func_tbl_A("audmake", function () {
             var a1, a2;
 
             match("("); a1 = parseInt(expression(), 10);
@@ -5779,7 +5778,7 @@ var Interpreter;
             loop_nocount_flag = true;
             return true;
         });
-        make_one_addfunc_tbl_A("audmakedata", function () {
+        add_one_func_tbl_A("audmakedata", function () {
             var a1, a2;
 
             match("("); a1 = parseInt(expression(), 10);
@@ -5805,7 +5804,7 @@ var Interpreter;
             loop_nocount_flag = true;
             return true;
         });
-        make_one_addfunc_tbl_A("audplay", function () {
+        add_one_func_tbl_A("audplay", function () {
             var a1, a2;
 
             match("("); a1 = parseInt(expression(), 10);
@@ -5832,7 +5831,7 @@ var Interpreter;
             }
             return true;
         });
-        make_one_addfunc_tbl_A("audspeedrate", function () {
+        add_one_func_tbl_A("audspeedrate", function () {
             var a1, a2;
 
             match("("); a1 = parseInt(expression(), 10);
@@ -5855,7 +5854,7 @@ var Interpreter;
             }
             return true;
         });
-        make_one_addfunc_tbl_A("audstop", function () {
+        add_one_func_tbl_A("audstop", function () {
             var a1;
 
             match("(");
@@ -5878,7 +5877,7 @@ var Interpreter;
             }
             return true;
         });
-        make_one_addfunc_tbl_A("audvolume", function () {
+        add_one_func_tbl_A("audvolume", function () {
             var a1, a2;
 
             match("("); a1 = parseInt(expression(), 10);
@@ -5901,7 +5900,7 @@ var Interpreter;
             }
             return true;
         });
-        make_one_addfunc_tbl_A("colalpha", function () {
+        add_one_func_tbl_A("colalpha", function () {
             var a1, a2;
             var col_r, col_g, col_b, alpha;
 
@@ -5917,7 +5916,7 @@ var Interpreter;
             ctx.fillStyle = color_val;
             return true;
         });
-        make_one_addfunc_tbl_A("coloralpha", function () {
+        add_one_func_tbl_A("coloralpha", function () {
             var a1, a2, a3 ,a4;
             var col_r, col_g, col_b, alpha;
 
@@ -5935,7 +5934,7 @@ var Interpreter;
             ctx.fillStyle = color_val;
             return true;
         });
-        make_one_addfunc_tbl_A("devprint", function () {
+        add_one_func_tbl_A("devprint", function () {
             var a1;
 
             match("(");
@@ -5944,7 +5943,7 @@ var Interpreter;
             DebugShow(a1 + "\n");
             return true;
         });
-        make_one_addfunc_tbl_A("disaud", function () {
+        add_one_func_tbl_A("disaud", function () {
             var a1;
 
             match("(");
@@ -5956,7 +5955,7 @@ var Interpreter;
             }
             return true;
         });
-        make_one_addfunc_tbl_A("dismis", function () {
+        add_one_func_tbl_A("dismis", function () {
             var a1;
 
             match("(");
@@ -5968,7 +5967,7 @@ var Interpreter;
             // for (var prop_name in missile) { DebugShow(prop_name + " "); } DebugShow("\n");
             return true;
         });
-        make_one_addfunc_tbl_A("disstrimg", function () {
+        add_one_func_tbl_A("disstrimg", function () {
             var a1;
             var ch;
 
@@ -5983,7 +5982,7 @@ var Interpreter;
             // for (var prop_name in stimg) { DebugShow(prop_name + " "); } DebugShow("\n");
             return true;
         });
-        make_one_addfunc_tbl_A("fillarea", function () {
+        add_one_func_tbl_A("fillarea", function () {
             var a1, a2;
             var x1, y1;
             var ret_obj = {};
@@ -6019,7 +6018,7 @@ var Interpreter;
             set_canvas_axis(ctx);                    // 座標系を再設定
             return true;
         });
-        make_one_addfunc_tbl_A("fpoly", function () {
+        add_one_func_tbl_A("fpoly", function () {
             var a1, a2, a3;
             var b1;
             var i;
@@ -6072,7 +6071,7 @@ var Interpreter;
             ctx.fill();
             return true;
         });
-        make_one_addfunc_tbl_A("mismake", function () {
+        add_one_func_tbl_A("mismake", function () {
             var ch;
             var no, useflag, x100, y100, degree, speed100;
             var useflag_var_name, x100_var_name, y100_var_name;
@@ -6106,7 +6105,7 @@ var Interpreter;
                 degree_var_name, speed100_var_name, ch_var_name);
             return true;
         });
-        make_one_addfunc_tbl_A("mismove", function () {
+        add_one_func_tbl_A("mismove", function () {
             var mis, mis_no;
             var range_use, min_no, max_no;
 
@@ -6146,7 +6145,7 @@ var Interpreter;
             }
             return true;
         });
-        make_one_addfunc_tbl_A("mistext", function () {
+        add_one_func_tbl_A("mistext", function () {
             var a1, a2, a3;
             var i;
             var x1, y1;
@@ -6220,7 +6219,7 @@ var Interpreter;
             }
             return true;
         });
-        make_one_addfunc_tbl_A("poly", function () {
+        add_one_func_tbl_A("poly", function () {
             var a1, a2, a3, a4;
             var b1;
             var i;
@@ -6278,7 +6277,7 @@ var Interpreter;
             ctx.stroke();
             return true;
         });
-        make_one_addfunc_tbl_A("setstrimg", function () {
+        add_one_func_tbl_A("setstrimg", function () {
             var a1, a2, a3, a4;
             var ch;
 
@@ -6307,7 +6306,7 @@ var Interpreter;
             }
             return true;
         });
-        make_one_addfunc_tbl_A("transimg", function () {
+        add_one_func_tbl_A("transimg", function () {
             var a1, a2;
             var i;
             var col_r, col_g, col_b;
@@ -6342,7 +6341,7 @@ var Interpreter;
             }
             return true;
         });
-        make_one_addfunc_tbl_A("txtmake", function () {
+        add_one_func_tbl_A("txtmake", function () {
             var a1, a2, a3, a4, a5;
             var i;
             var st1;
@@ -6377,7 +6376,7 @@ var Interpreter;
             }
             return true;
         });
-        make_one_addfunc_tbl_A("txtdraw", function () {
+        add_one_func_tbl_A("txtdraw", function () {
             var a1, a2, a3;
             var x1, y1;
             var i;
@@ -6429,7 +6428,7 @@ var Interpreter;
             }
             return true;
         });
-        make_one_addfunc_tbl_A("txtdrawimg", function () {
+        add_one_func_tbl_A("txtdrawimg", function () {
             var a1, a2, a3;
             var x1, y1, x2, y2;
             var w1, h1;
@@ -6492,7 +6491,7 @@ var Interpreter;
             }
             return true;
         });
-        make_one_addfunc_tbl_A("txtovr", function () {
+        add_one_func_tbl_A("txtovr", function () {
             var a1, a2, a3, a4;
             var b1, b2, b3;
             var x1, y1;
@@ -6576,7 +6575,7 @@ var Interpreter;
             }
             return true;
         });
-        make_one_addfunc_tbl_A("txtpset", function () {
+        add_one_func_tbl_A("txtpset", function () {
             var a1, a2, a3, a4;
             var x1, y1;
 
@@ -6604,7 +6603,7 @@ var Interpreter;
             txtovrsub(a1, a2, a3, x1, y1, a4);
             return true;
         });
-        make_one_addfunc_tbl_A("txtline", function () {
+        add_one_func_tbl_A("txtline", function () {
             var a1, a2, a3, a4;
             var x1, y1, x2, y2, x3, y3;
             var dx1, dy1, sx1, sy1, e1;
@@ -6684,7 +6683,7 @@ var Interpreter;
             }
             return true;
         });
-        make_one_addfunc_tbl_A("txtbox", function () {
+        add_one_func_tbl_A("txtbox", function () {
             var a1, a2, a3, a4, a5;
             var x1, y1, x2, y2, x3, y3, x4, y4;
             var i;
@@ -6730,7 +6729,7 @@ var Interpreter;
             }
             return true;
         });
-        make_one_addfunc_tbl_A("txtfbox", function () {
+        add_one_func_tbl_A("txtfbox", function () {
             var a1, a2, a3, a4, a5;
             var x1, y1, x2, y2, x3, y3, x4, y4;
             var i;
@@ -6773,7 +6772,7 @@ var Interpreter;
             }
             return true;
         });
-        make_one_addfunc_tbl_A("txtcircle", function () {
+        add_one_func_tbl_A("txtcircle", function () {
             var a1, a2, a3, a4;
             var x1, y1, x2, y2;
             var r1, a, b;
@@ -6846,7 +6845,7 @@ var Interpreter;
             }
             return true;
         });
-        make_one_addfunc_tbl_A("txtfcircle", function () {
+        add_one_func_tbl_A("txtfcircle", function () {
             var a1, a2, a3, a4;
             var x1, y1, x2, y2;
             var r1, a, b;
@@ -6896,17 +6895,20 @@ var Interpreter;
             return true;
         });
     }
-    function make_one_addfunc_tbl_A(name, func) {
-        addfunc_tbl_A[name] = func;
+    function add_one_func_tbl_A(name, func) {
+        if (func_tbl_A.hasOwnProperty(name)) {
+            if (func_tbl_A[name].type == 0) { return false; }
+        }
+        func_tbl_A[name] = {};
+        func_tbl_A[name].type = 1;
+        func_tbl_A[name].func = func;
     }
 
 
     // ***** 追加命令(戻り値のある関数)の定義情報の生成 *****
-    function make_addfunc_tbl_B() {
-        // // ***** 追加命令(戻り値のある関数)の定義情報の初期化 *****
-        // addfunc_tbl_B = {};
+    function add_func_tbl_B() {
         // ***** 追加命令(戻り値のある関数)の定義情報の生成 *****
-        make_one_addfunc_tbl_B("audmakestat", function () {
+        add_one_func_tbl_B("audmakestat", function () {
             var num;
             var a1;
 
@@ -6931,7 +6933,7 @@ var Interpreter;
             }
             return num;
         });
-        make_one_addfunc_tbl_B("audstat", function () {
+        add_one_func_tbl_B("audstat", function () {
             var num;
             var a1;
 
@@ -6955,7 +6957,7 @@ var Interpreter;
             if (num == 1 || num == 2) { num = 1; } else { num = 0; }
             return num;
         });
-        make_one_addfunc_tbl_B("charcode", function () {
+        add_one_func_tbl_B("charcode", function () {
             var num;
             var a1, a2;
 
@@ -6969,7 +6971,7 @@ var Interpreter;
             num = a1.charCodeAt(a2);
             return num;
         });
-        make_one_addfunc_tbl_B("charfrom", function () {
+        add_one_func_tbl_B("charfrom", function () {
             var num;
             var a1, a2, a3, a4;
             var pair_flag;
@@ -6999,7 +7001,7 @@ var Interpreter;
             }
             return num;
         });
-        make_one_addfunc_tbl_B("fboxchk", function () {
+        add_one_func_tbl_B("fboxchk", function () {
             var num;
             var x1, y1, x2, y2;
             var w1, h1, w2, h2;
@@ -7020,7 +7022,7 @@ var Interpreter;
             }
             return num;
         });
-        make_one_addfunc_tbl_B("frombinstr", function () {
+        add_one_func_tbl_B("frombinstr", function () {
             var num;
             var a1;
 
@@ -7030,7 +7032,7 @@ var Interpreter;
             num = parseInt(a1, 2);
             return num;
         });
-        make_one_addfunc_tbl_B("fromhexstr", function () {
+        add_one_func_tbl_B("fromhexstr", function () {
             var num;
             var a1;
 
@@ -7040,7 +7042,7 @@ var Interpreter;
             num = parseInt(a1, 16);
             return num;
         });
-        make_one_addfunc_tbl_B("misfreeno", function () {
+        add_one_func_tbl_B("misfreeno", function () {
             var num;
             var mis, mis_no;
             var min_no, max_no;
@@ -7063,7 +7065,7 @@ var Interpreter;
             }
             return num;
         });
-        make_one_addfunc_tbl_B("randint", function () {
+        add_one_func_tbl_B("randint", function () {
             var num;
             var a1, a2, a3;
 
@@ -7077,7 +7079,7 @@ var Interpreter;
             num = Math.floor(Math.random() * (a2 - a1 + 1)) + a1;
             return num;
         });
-        make_one_addfunc_tbl_B("strmake", function () {
+        add_one_func_tbl_B("strmake", function () {
             var num;
             var a1, a2;
 
@@ -7094,7 +7096,7 @@ var Interpreter;
             num = strrepeatsub(a1, a2);
             return num;
         });
-        make_one_addfunc_tbl_B("strovr", function () {
+        add_one_func_tbl_B("strovr", function () {
             var num;
             var a1, a2, a3, a4;
 
@@ -7116,7 +7118,7 @@ var Interpreter;
             }
             return num;
         });
-        make_one_addfunc_tbl_B("tobinstr", function () {
+        add_one_func_tbl_B("tobinstr", function () {
             var num;
             var a1;
 
@@ -7126,7 +7128,7 @@ var Interpreter;
             num = a1.toString(2);
             return num;
         });
-        make_one_addfunc_tbl_B("tofloat", function () {
+        add_one_func_tbl_B("tofloat", function () {
             var num;
             var a1;
 
@@ -7136,7 +7138,7 @@ var Interpreter;
             num = a1;
             return num;
         });
-        make_one_addfunc_tbl_B("tohankaku", function () {
+        add_one_func_tbl_B("tohankaku", function () {
             var num;
             var a1, a2;
 
@@ -7150,7 +7152,7 @@ var Interpreter;
             num = ConvZenHan.toHankaku(a1, a2);
             return num;
         });
-        make_one_addfunc_tbl_B("tohexstr", function () {
+        add_one_func_tbl_B("tohexstr", function () {
             var num;
             var a1;
 
@@ -7160,7 +7162,7 @@ var Interpreter;
             num = a1.toString(16);
             return num;
         });
-        make_one_addfunc_tbl_B("toint", function () {
+        add_one_func_tbl_B("toint", function () {
             var num;
             var a1;
 
@@ -7170,7 +7172,7 @@ var Interpreter;
             num = a1;
             return num;
         });
-        make_one_addfunc_tbl_B("tolower", function () {
+        add_one_func_tbl_B("tolower", function () {
             var num;
             var a1;
 
@@ -7180,7 +7182,7 @@ var Interpreter;
             num = a1.toLowerCase();
             return num;
         });
-        make_one_addfunc_tbl_B("tostr", function () {
+        add_one_func_tbl_B("tostr", function () {
             var num;
             var a1;
 
@@ -7190,7 +7192,7 @@ var Interpreter;
             num = a1;
             return num;
         });
-        make_one_addfunc_tbl_B("toupper", function () {
+        add_one_func_tbl_B("toupper", function () {
             var num;
             var a1;
 
@@ -7200,7 +7202,7 @@ var Interpreter;
             num = a1.toUpperCase();
             return num;
         });
-        make_one_addfunc_tbl_B("tozenkaku", function () {
+        add_one_func_tbl_B("tozenkaku", function () {
             var num;
             var a1, a2;
 
@@ -7214,7 +7216,7 @@ var Interpreter;
             num = ConvZenHan.toZenkaku(a1, a2);
             return num;
         });
-        make_one_addfunc_tbl_B("txtbchk", function () {
+        add_one_func_tbl_B("txtbchk", function () {
             var num;
             var a1, a2, a3, a4;
             var x1, y1, x2, y2, x3, y3, x4, y4;
@@ -7275,7 +7277,7 @@ var Interpreter;
             }
             return num;
         });
-        make_one_addfunc_tbl_B("txtpget", function () {
+        add_one_func_tbl_B("txtpget", function () {
             var num;
             var a1, a2, a3;
             var x1, y1;
@@ -7316,8 +7318,13 @@ var Interpreter;
             return num;
         });
     }
-    function make_one_addfunc_tbl_B(name, func) {
-        addfunc_tbl_B[name] = func;
+    function add_one_func_tbl_B(name, func) {
+        if (func_tbl_B.hasOwnProperty(name)) {
+            if (func_tbl_B[name].type == 0) { return false; }
+        }
+        func_tbl_B[name] = {};
+        func_tbl_B[name].type = 1;
+        func_tbl_B[name].func = func;
     }
 
 
@@ -7506,20 +7513,11 @@ var Interpreter;
 
     // ***** プラグイン用 *****
     // (必要に応じてインタープリターの内部情報を公開する)
-    function add_before_run_funcs(name, func) {
-        before_run_funcs[name] = func;
-    }
-    Interpreter.add_before_run_funcs = add_before_run_funcs;
-    function add_after_run_funcs(name, func) {
-        after_run_funcs[name] = func;
-    }
-    Interpreter.add_after_run_funcs = add_after_run_funcs;
-    function add_clear_var_funcs(name, func) {
-        clear_var_funcs[name] = func;
-    }
-    Interpreter.add_clear_var_funcs = add_clear_var_funcs;
-    Interpreter.make_one_addfunc_tbl_A = make_one_addfunc_tbl_A;
-    Interpreter.make_one_addfunc_tbl_B = make_one_addfunc_tbl_B;
+    Interpreter.add_before_run_funcs = function (name, func) { before_run_funcs[name] = func; };
+    Interpreter.add_after_run_funcs = function (name, func) { after_run_funcs[name] = func; };
+    Interpreter.add_clear_var_funcs = function (name, func) { clear_var_funcs[name] = func; };
+    Interpreter.add_one_func_tbl_A = add_one_func_tbl_A;
+    Interpreter.add_one_func_tbl_B = add_one_func_tbl_B;
     Interpreter.match = match;
     Interpreter.expression = expression;
     Interpreter.getvarname = getvarname;
