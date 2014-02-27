@@ -2113,14 +2113,6 @@ var Interpreter;
 
             // ***** シンボル取り出し *****
             sym = symbol[pc];
-            // ***** 代入のとき *****
-            if (sym == "=") {
-                pc++;
-                // vars[var_name] = expression();
-                num = expression();
-                vars.setVarValue(var_name, num);
-                return num;
-            }
             // ***** ポストインクリメント(「++」「--」)のとき *****
             if (sym == "++") {
                 pc++;
@@ -2139,6 +2131,14 @@ var Interpreter;
                 // vars[var_name] -= 1;
                 num = vars.getVarValue(var_name);
                 vars.setVarValue(var_name, num - 1);
+                return num;
+            }
+            // ***** 代入のとき *****
+            if (sym == "=") {
+                pc++;
+                // vars[var_name] = expression();
+                num = expression();
+                vars.setVarValue(var_name, num);
                 return num;
             }
             // ***** 複合代入のとき *****
