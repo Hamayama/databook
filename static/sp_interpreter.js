@@ -1,7 +1,7 @@
 // This file is encoded with UTF-8 without BOM.
 
 // sp_interpreter.js
-// 2014-2-26 v1.94
+// 2014-2-27 v1.95
 
 
 // SPALM Web Interpreter
@@ -1895,17 +1895,19 @@ var Interpreter;
         }
 
         // ***** プレインクリメント(「++」「--」)のとき *****
+        pre_inc = 0;
         if (sym == "++") {
             pc++;
             pre_inc = 1;
             // ***** シンボル取り出し *****
             sym = symbol[pc];
-        } else if (sym == "--") {
+        }
+        if (sym == "--") {
             pc++;
             pre_inc = -1;
             // ***** シンボル取り出し *****
             sym = symbol[pc];
-        } else { pre_inc = 0; }
+        }
 
         // ***** 1文字取り出す *****
         // ch = sym.charAt(0);
@@ -2111,6 +2113,14 @@ var Interpreter;
 
             // ***** シンボル取り出し *****
             sym = symbol[pc];
+            // ***** 代入のとき *****
+            if (sym == "=") {
+                pc++;
+                // vars[var_name] = expression();
+                num = expression();
+                vars.setVarValue(var_name, num);
+                return num;
+            }
             // ***** ポストインクリメント(「++」「--」)のとき *****
             if (sym == "++") {
                 pc++;
@@ -2131,77 +2141,63 @@ var Interpreter;
                 vars.setVarValue(var_name, num - 1);
                 return num;
             }
-            // ***** 代入のとき *****
-            if (sym == "=") {
+            // ***** 複合代入のとき *****
+            if (sym == "+=") {
                 pc++;
-                // vars[var_name] = expression();
-                num = expression();
+                // vars[var_name] = vars[var_name] + expression();
+
+                // num = vars.getVarValue(var_name) + expression();
+                num = (+vars.getVarValue(var_name)) + (+expression()); // 文字の連結にならないように数値にする
+
                 vars.setVarValue(var_name, num);
                 return num;
             }
-            // ***** 複合代入のとき *****
-            if (sym == "=\\") {
+            if (sym == "-=") {
                 pc++;
-                // ***** シンボル取り出し *****
-                sym = symbol[pc];
-                // ***** 複合代入処理 *****
-                if (sym == "+=") {
-                    pc++;
-                    // vars[var_name] = vars[var_name] + expression();
-
-                    // num = vars.getVarValue(var_name) + expression();
-                    num = (+vars.getVarValue(var_name)) + (+expression()); // 文字の連結にならないように数値にする
-
-                    vars.setVarValue(var_name, num);
-                    return num;
-                }
-                if (sym == "-=") {
-                    pc++;
-                    // vars[var_name] = vars[var_name] - expression();
-                    num = vars.getVarValue(var_name) - expression();
-                    vars.setVarValue(var_name, num);
-                    return num;
-                }
-                if (sym == "*=") {
-                    pc++;
-                    // vars[var_name] = vars[var_name] * expression();
-                    num = vars.getVarValue(var_name) * expression();
-                    vars.setVarValue(var_name, num);
-                    return num;
-                }
-                if (sym == "/=") {
-                    pc++;
-                    if (sp_compati_mode == 1) {
-                        // vars[var_name] = parseInt(vars[var_name] / expression(), 10);
-                        num = parseInt(vars.getVarValue(var_name) / expression(), 10);
-                    } else {
-                        // vars[var_name] = vars[var_name] / expression();
-                        num = vars.getVarValue(var_name) / expression();
-                    }
-                    vars.setVarValue(var_name, num);
-                    return num;
-                }
-                if (sym == "%=") {
-                    pc++;
-                    // vars[var_name] = vars[var_name] % expression();
-                    num = vars.getVarValue(var_name) % expression();
-                    vars.setVarValue(var_name, num);
-                    return num;
-                }
-                if (sym == "\\=") {
-                    pc++;
+                // vars[var_name] = vars[var_name] - expression();
+                num = vars.getVarValue(var_name) - expression();
+                vars.setVarValue(var_name, num);
+                return num;
+            }
+            if (sym == "*=") {
+                pc++;
+                // vars[var_name] = vars[var_name] * expression();
+                num = vars.getVarValue(var_name) * expression();
+                vars.setVarValue(var_name, num);
+                return num;
+            }
+            if (sym == "/=") {
+                pc++;
+                if (sp_compati_mode == 1) {
                     // vars[var_name] = parseInt(vars[var_name] / expression(), 10);
                     num = parseInt(vars.getVarValue(var_name) / expression(), 10);
-                    vars.setVarValue(var_name, num);
-                    return num;
+                } else {
+                    // vars[var_name] = vars[var_name] / expression();
+                    num = vars.getVarValue(var_name) / expression();
                 }
-                if (sym == ".=") {
-                    pc++;
-                    // vars[var_name] = String(vars[var_name]) + String(expression());
-                    num = String(vars.getVarValue(var_name)) + String(expression());
-                    vars.setVarValue(var_name, num);
-                    return num;
-                }
+                vars.setVarValue(var_name, num);
+                return num;
+            }
+            if (sym == "%=") {
+                pc++;
+                // vars[var_name] = vars[var_name] % expression();
+                num = vars.getVarValue(var_name) % expression();
+                vars.setVarValue(var_name, num);
+                return num;
+            }
+            if (sym == "\\=") {
+                pc++;
+                // vars[var_name] = parseInt(vars[var_name] / expression(), 10);
+                num = parseInt(vars.getVarValue(var_name) / expression(), 10);
+                vars.setVarValue(var_name, num);
+                return num;
+            }
+            if (sym == ".=") {
+                pc++;
+                // vars[var_name] = String(vars[var_name]) + String(expression());
+                num = String(vars.getVarValue(var_name)) + String(expression());
+                vars.setVarValue(var_name, num);
+                return num;
             }
 
             // ***** 変数の値を返す *****
@@ -2412,13 +2408,11 @@ var Interpreter;
     // switch, if, for, while, do, break, continue を条件付きgotoに変換する
     // これによって、ループ中もブラウザに制御を返せるようになる
     function compile() {
-        // ***** コンパイル *****
+        // ***** コンパイル処理実行 *****
         symbol2 = [];
         symbol2_line = [];
         symbol2_len = 0;
-
         c_statement(0, symbol_len, "", ""); // 再帰的になるので別関数にした
-
         // ***** 元のシンボルにコピー *****
         symbol = symbol2;
         symbol_line = symbol2_line;
@@ -2454,13 +2448,6 @@ var Interpreter;
             pc = i + 1;
             sym = symbol[i];
             sym_line = symbol_line[i++];
-
-            // ***** 複合代入演算子のとき *****
-            if (sym == "+=" || sym == "-=" || sym == "*=" || sym == "/=" || sym == "%=" || sym == "\\=" || sym == ".=") {
-                symbol2_push("=\\", sym_line);
-                symbol2_push(sym, sym_line);
-                continue;
-            }
 
             // ***** break文のとき *****
             if (sym == "break") {
@@ -3219,7 +3206,7 @@ var Interpreter;
 
     // ***** 演算子の定義情報の生成 *****
     function make_operator_tbl() {
-        // ***** 演算子の定義情報の生成 *****
+        // ***** 演算子の定義情報を1個ずつ生成 *****
         // (第2引数は演算子の優先順位を表す。大きいほど優先順位が高い)
         make_one_operator_tbl("&", 10, function (num) {
             num = num & expression(10);
@@ -3387,7 +3374,7 @@ var Interpreter;
 
     // ***** 命令(戻り値のない関数)の定義情報の生成 *****
     function make_func_tbl_A() {
-        // ***** 命令(戻り値のない関数)の定義情報の生成 *****
+        // ***** 命令(戻り値のない関数)の定義情報を1個ずつ生成 *****
         make_one_func_tbl_A("addfunc", function () {
             var a1;
 
@@ -4789,7 +4776,7 @@ var Interpreter;
 
     // ***** 命令(戻り値のある関数)の定義情報の生成 *****
     function make_func_tbl_B() {
-        // ***** 命令(戻り値のある関数)の定義情報の生成 *****
+        // ***** 命令(戻り値のある関数)の定義情報を1個ずつ生成 *****
         make_one_func_tbl_B("abs", function () {
             var num;
             var a1;
@@ -5740,7 +5727,7 @@ var Interpreter;
 
     // ***** 追加命令(戻り値のない関数)の定義情報の生成 *****
     function add_func_tbl_A() {
-        // ***** 追加命令(戻り値のない関数)の定義情報の生成 *****
+        // ***** 追加命令(戻り値のない関数)の定義情報を1個ずつ生成 *****
         add_one_func_tbl_A("audmode", function () {
             var a1;
 
@@ -6905,7 +6892,7 @@ var Interpreter;
 
     // ***** 追加命令(戻り値のある関数)の定義情報の生成 *****
     function add_func_tbl_B() {
-        // ***** 追加命令(戻り値のある関数)の定義情報の生成 *****
+        // ***** 追加命令(戻り値のある関数)の定義情報を1個ずつ生成 *****
         add_one_func_tbl_B("audmakestat", function () {
             var num;
             var a1;
