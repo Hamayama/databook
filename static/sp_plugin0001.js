@@ -32,10 +32,9 @@ var Plugin0001;
     var add_clear_var_funcs = Interpreter.add_clear_var_funcs;
     var add_one_func_tbl_A = Interpreter.add_one_func_tbl_A;
     var add_one_func_tbl_B = Interpreter.add_one_func_tbl_B;
-    var match = Interpreter.match;
-    var expression = Interpreter.expression;
+    var make_one_param_varname = Interpreter.make_one_param_varname;
     var getvarname = Interpreter.getvarname;
-    var get_symbol = Interpreter.get_symbol;
+    var toglobal = Interpreter.toglobal;
     var get_vars = Interpreter.get_vars;
     var get_ctx = Interpreter.get_ctx;
     var get_can = Interpreter.get_can;
@@ -63,10 +62,12 @@ var Plugin0001;
     Plugin0001.init = init;
 
 
-    // ***** 追加命令(戻り値のない関数)の定義情報の生成 *****
+    // ***** 追加の組み込み関数(戻り値なし)の定義情報の生成 *****
     function add_func_tbl_A() {
+        // ***** 追加の組み込み関数(戻り値なし)の定義情報を1個ずつ生成 *****
+        // (第2引数は関数の引数の数を指定する)
         // ***** 砂シミュレート用命令の追加 *****
-        add_one_func_tbl_A("sandmake", function () {
+        add_one_func_tbl_A("sandmake", 10, function (param) {
             var a1, a2, a3, a4;
             var x1, y1;
             var w1, h1;
@@ -74,40 +75,34 @@ var Plugin0001;
             var can = get_can();
             var ctx = get_ctx();
 
-            match("("); x1 = parseInt(expression(), 10);
-            match(","); y1 = parseInt(expression(), 10);
-            match(","); w1 = parseInt(expression(), 10);
-            match(","); h1 = parseInt(expression(), 10);
-            match(","); a1 = parseFloat(expression());
-            match(","); a2 = parseFloat(expression());
-            match(","); a3 = parseFloat(expression());
-            match(","); a4 = parseFloat(expression());
-            match(","); col = parseInt(expression(), 10);
-            match(","); threshold = parseInt(expression(), 10);
-            // if (symbol[pc] == ")") {
-            if (get_symbol() == ")") {
+            x1 = parseInt(param[0], 10);
+            y1 = parseInt(param[1], 10);
+            w1 = parseInt(param[2], 10);
+            h1 = parseInt(param[3], 10);
+            a1 = parseFloat(param[4]);
+            a2 = parseFloat(param[5]);
+            a3 = parseFloat(param[6]);
+            a4 = parseFloat(param[7]);
+            col = parseInt(param[8], 10);
+            threshold = parseInt(param[9], 10);
+            if (param.length <= 10) {
                 border_mode = 1;
             } else {
-                match(","); border_mode = parseInt(expression(), 10);
+                border_mode = parseInt(param[10], 10);
             }
-            match(")");
             sand_obj = new SandSim(can, ctx, x1, y1, w1, h1, a1, a2, a3, a4, col, threshold, border_mode);
             sand_obj.maketable();
             // loop_nocount_flag = true;
             set_loop_nocount_flag();
             return true;
         });
-        add_one_func_tbl_A("sandmove", function () {
-            match("(");
-            match(")");
+        add_one_func_tbl_A("sandmove", 0, function (param) {
             if (sand_obj) { sand_obj.move(); }
             return true;
         });
-        add_one_func_tbl_A("sanddraw", function () {
+        add_one_func_tbl_A("sanddraw", 0, function (param) {
             var ctx = get_ctx();
 
-            match("(");
-            match(")");
             if (sand_obj) {
                 ctx.setTransform(1, 0, 0, 1, 0, 0);      // 座標系を元に戻す
                 sand_obj.draw();
@@ -116,17 +111,16 @@ var Plugin0001;
             return true;
         });
         // ***** 上から見たピラミッド(四角すい)を表示する命令の追加 *****
-        add_one_func_tbl_A("drawpyramid", function () {
+        add_one_func_tbl_A("drawpyramid", 4, function (param) {
             var a1, a2, a3, a4;
             var x1, y1, x2, y2, ox, oy;
             var alpha_old;
             var ctx = get_ctx();
 
-            match("("); a1 = parseFloat(expression()); // X
-            match(","); a2 = parseFloat(expression()); // Y
-            match(","); a3 = parseFloat(expression()); // W
-            match(","); a4 = parseFloat(expression()); // H
-            match(")");
+            a1 = parseFloat(param[0]); // X
+            a2 = parseFloat(param[1]); // Y
+            a3 = parseFloat(param[2]); // W
+            a4 = parseFloat(param[3]); // H
             // ***** 座標の取得 *****
             x1 = a1;
             y1 = a2;
@@ -168,8 +162,10 @@ var Plugin0001;
             ctx.globalAlpha = alpha_old;
             return true;
         });
+
         // ***** 文字列配列の内容を一括置換する命令の追加 *****
-        add_one_func_tbl_A("txtreplace", function () {
+        make_one_param_varname("txtreplace", 0); // 変数名をとる引数は指定が必要
+        add_one_func_tbl_A("txtreplace", 5, function (param) {
             var a1, a2, a3, a4, a5;
             var i;
             var st1, st2;
@@ -179,13 +175,11 @@ var Plugin0001;
             var vars = get_vars();
             var max_array_size = get_max_array_size();
 
-            match("(");
-            a1 = getvarname();
-            match(","); a2 = parseInt(expression(), 10);
-            match(","); a3 = parseInt(expression(), 10);
-            match(","); a4 = String(expression());
-            match(","); a5 = String(expression());
-            match(")");
+            a1 = getvarname(param[0]);
+            a2 = parseInt(param[1], 10);
+            a3 = parseInt(param[2], 10);
+            a4 = String(param[3]);
+            a5 = String(param[4]);
 
             // ***** NaN対策 *****
             a2 = a2 | 0;
@@ -219,8 +213,10 @@ var Plugin0001;
             }
             return true;
         });
+
         // ***** 文字列配列の内容を一括置換する命令の追加2 *****
-        add_one_func_tbl_A("txtreplace2", function () {
+        make_one_param_varname("txtreplace2", 0); // 変数名をとる引数は指定が必要
+        add_one_func_tbl_A("txtreplace2", 5, function (param) {
             var a1, a2, a3, a4, a5;
             var i;
             var st1, st2;
@@ -231,13 +227,11 @@ var Plugin0001;
             var vars = get_vars();
             var max_array_size = get_max_array_size();
 
-            match("(");
-            a1 = getvarname();
-            match(","); a2 = parseInt(expression(), 10);
-            match(","); a3 = parseInt(expression(), 10);
-            match(","); a4 = String(expression());
-            match(","); a5 = String(expression());
-            match(")");
+            a1 = getvarname(param[0]);
+            a2 = parseInt(param[1], 10);
+            a3 = parseInt(param[2], 10);
+            a4 = String(param[3]);
+            a5 = String(param[4]);
 
             // ***** NaN対策 *****
             a2 = a2 | 0;
@@ -278,36 +272,36 @@ var Plugin0001;
     }
 
 
-    // ***** 追加命令(戻り値のある関数)の定義情報の生成 *****
+    // ***** 追加の組み込み関数(戻り値あり)の定義情報の生成 *****
     function add_func_tbl_B() {
+        // ***** 追加の組み込み関数(戻り値あり)の定義情報を1個ずつ生成 *****
+        // (第2引数は関数の引数の数を指定する。
+        //  これを-1にすると組み込み変数になり、()なしで呼び出せる)
         // ***** フラクタル計算用命令の追加 *****
-        add_one_func_tbl_B("calcfractal", function () {
+        add_one_func_tbl_B("calcfractal", 8, function (param) {
             var num;
             var x1, y1;
             var dr, di, mr, mi, cr, ci, tr, ti, zr, zi, rep, norm2;
 
-            match("("); x1 = parseFloat(expression());
-            match(","); y1 = parseFloat(expression());
-            match(","); dr = parseFloat(expression());
-            match(","); di = parseFloat(expression());
-            match(","); mr = parseFloat(expression());
-            match(","); mi = parseFloat(expression());
-            match(","); cr = parseFloat(expression());
-            match(","); ci = parseFloat(expression());
-            // if (symbol[pc] == ")") {
-            if (get_symbol() == ")") {
+            x1 = parseFloat(param[0]);
+            y1 = parseFloat(param[1]);
+            dr = parseFloat(param[2]);
+            di = parseFloat(param[3]);
+            mr = parseFloat(param[4]);
+            mi = parseFloat(param[5]);
+            cr = parseFloat(param[6]);
+            ci = parseFloat(param[7]);
+            if (param.length <= 8) {
                 rep = 50;
                 norm2 = 4;
             } else {
-                match(","); rep = parseInt(expression(), 10);
-                // if (symbol[pc] == ")") {
-                if (get_symbol() == ")") {
+                rep = parseInt(param[8], 10);
+                if (param.length <= 9) {
                     norm2 = 4;
                 } else {
-                    match(","); norm2 = parseFloat(expression());
+                    norm2 = parseFloat(param[9]);
                 }
             }
-            match(")");
 
             // ***** エラーチェック *****
             if (rep > 1000) { rep = 1000; }
@@ -326,7 +320,7 @@ var Plugin0001;
         // ***** 数値の文字列を加算して文字列で返す命令の追加 *****
         // (例. y=intstradd("100","200")  を実行すると y="300"  となる)
         // (例. y=intstradd("100","-200") を実行すると y="-100" となる)
-        add_one_func_tbl_B("intstradd", function () {
+        add_one_func_tbl_B("intstradd", 2, function (param) {
             var num;
             var a1, a2;
             var reg_exp;
@@ -340,9 +334,8 @@ var Plugin0001;
             var z_digit_len;
             var x_diginum, y_diginum;
 
-            match("("); a1 = String(expression()); // 数値の文字列1
-            match(","); a2 = String(expression()); // 数値の文字列2
-            match(")");
+            a1 = String(param[0]); // 数値の文字列1
+            a2 = String(param[1]); // 数値の文字列2
 
             // ***** 数値を各桁に分解する *****
             reg_exp = /^([+\-]?)(\d*)/;

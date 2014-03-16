@@ -1,7 +1,7 @@
 // This file is encoded with UTF-8 without BOM.
 
 // sp_interpreter.js
-// 2014-2-27 v1.95
+// 2014-3-16 v3.00
 
 
 // SPALM Web Interpreter
@@ -472,7 +472,7 @@ function stop_button() {
 //   また、別ファイルのプラグインで命令を追加することもできます(実験中)。
 //
 //   内部クラス一覧
-//     Var         変数用クラス
+//     Vars        変数用クラス
 //
 //   外部クラス一覧
 //     Download    ファイルダウンロード用クラス(staticクラス)
@@ -523,9 +523,9 @@ var Interpreter;
     var symbol = [];            // シンボル               (配列)
     var symbol_line = [];       // シンボルが何行目か     (配列)
     var symbol_len = 0;         // シンボル数             (symbol.lengthのキャッシュ用)
-    var symbol2 = [];           // コンパイル用シンボル   (配列)
-    var symbol2_line = [];      // コンパイル用シンボルが何行目か(配列)
-    var symbol2_len = 0;        // コンパイル用シンボル数 (symbol2.lengthのキャッシュ用)
+    var code = [];              // コード                 (配列)
+    var code_info = [];         // コード情報             (配列)
+    var code_len = 0;           // コード数               (code.lengthのキャッシュ用)
     var vars = {};              // 変数用                 (Varsクラスのインスタンス)
     var imgvars = {};           // 画像変数用             (連想配列オブジェクト)
     var stimg = {};             // 画像文字割付用         (連想配列オブジェクト)
@@ -533,6 +533,8 @@ var Interpreter;
     var audplayer = {};         // 音楽再生用             (連想配列オブジェクト)
     var label = {};             // ラベル用               (連想配列オブジェクト)
     var func = {};              // 関数用                 (連想配列オブジェクト)
+    var stack = [];             // スタック               (配列)
+    var param = [];             // 関数の引数             (配列)
 
     var pc;                     // プログラムカウンタ
     var debugpc;                // エラーの場所
@@ -540,7 +542,8 @@ var Interpreter;
     var running_flag = false;   // 実行中フラグ
     var loading_flag = false;   // ロード中フラグ
     var debug_mode = 0;         // デバッグモード(=0:通常モード,=1:デバッグモード)
-
+    var debugpos1;              // デバッグ位置1
+    var debugpos2;              // デバッグ位置2
     var sleep_flag;             // スリープ用のフラグ
     var sleep_time;             // スリープ時間(msec)
     var sleep_id = null;        // スリープキャンセル用ID
@@ -548,8 +551,6 @@ var Interpreter;
     var loop_time_start;        // ループ開始時間(msec)
     var loop_time_count;        // ループ経過時間(msec)
     var loop_nocount_flag;      // ループ時間ノーカウントフラグ
-    var return_flag;            // return用のフラグ
-    var ret_num;                // returnの戻り値
     var funccall_stack = [];    // 関数呼び出し情報保存用(配列)
     var gosub_back = [];        // gosubの戻り先(配列)
 
@@ -573,15 +574,13 @@ var Interpreter;
     var prof_obj = {};          // プロファイラ実行用(Profilerクラスのインスタンス)
     var out_data = {};          // 外部データ(連想配列オブジェクト)
 
-    var func_tbl_A = {};        // 命令(戻り値のない関数)の定義情報(連想配列オブジェクト)
-    var func_tbl_B = {};        // 命令(戻り値のある関数)の定義情報(連想配列オブジェクト)
-    var operator_tbl = {};      // 演算子の定義情報(連想配列オブジェクト)
+    var func_tbl = {};          // 組み込み関数の定義情報(連想配列オブジェクト)
 
     var before_run_funcs = {};  // プラグイン用の実行前処理(連想配列オブジェクト)
     var after_run_funcs = {};   // プラグイン用の実行後処理(連想配列オブジェクト)
     var clear_var_funcs = {};   // プラグイン用の全変数クリア時処理(連想配列オブジェクト)
 
-    var constants = {           // 定数
+    var constants = {           // 組み込み定数
         LEFT:4, HCENTER:1, RIGHT:8, TOP:16, VCENTER:2, BASELINE:64, BOTTOM:32,
         key0:1, key1:2, key2:4, key3:8, key4:16, key5:32, key6:64, key7:128, key8:256, key9:512,
         keystar:1024, keysharp:2048, keyup:4096, keyleft:8192, keyright:16384, keydown:32768,
@@ -672,7 +671,7 @@ var Interpreter;
         } else {
             Alm2("Interpreter.init:-:Canvas内のマウスの状態が取得できません。");
         }
-        // ***** 命令の定義情報の生成 *****
+        // ***** 組み込み関数の定義情報の生成 *****
         make_func_tbl_A();
         make_func_tbl_B();
         if (typeof (add_func_tbl_A) == "function") {
@@ -681,8 +680,6 @@ var Interpreter;
         if (typeof (add_func_tbl_B) == "function") {
             add_func_tbl_B();
         }
-        // ***** 演算子の定義情報の生成 *****
-        make_operator_tbl();
         // ***** 戻り値を返す *****
         ret = true;
         return ret;
@@ -798,6 +795,14 @@ var Interpreter;
             this.localvars = null;    // ローカル変数(nullまたは連想配列オブジェクト)
             this.old_vars_stack = []; // ローカル変数のスコープ保存用(配列)
         }
+        // ***** 定数 *****
+        // (Object.keysと配列操作のsome,filter,forEachがあるときは、そちらを利用する)
+        if (Object.keys && Array.prototype.some && Array.prototype.filter && Array.prototype.forEach) {
+            Vars.KeysAvailable = true;
+        } else {
+            Vars.KeysAvailable = false;
+        }
+
         // ***** ローカル変数のスコープを1個生成する *****
         Vars.prototype.makeLocalScope = function () {
             if (this.localvars != null) {
@@ -981,14 +986,23 @@ var Interpreter;
             i = var_name.indexOf("[") + 1;
             // 配列のとき
             if (i > 0) {
+                // 配列のグローバル変数(番号は異なる)が存在するか
                 array_name = var_name.substring(0, i);
-                for (var_name2 in this.globalvars) {
-                    // 配列のグローバル変数が存在する(番号は異なる)
-                    if (var_name2.substring(0, i) == array_name) {
-                        // if (this.globalvars.hasOwnProperty(var_name2)) {
-                        if (hasOwn.call(this.globalvars, var_name2)) {
-                            this.globalvars[var_name] = 0;
-                            return 0;
+                if (Vars.KeysAvailable) {
+                    if (Object.keys(this.globalvars).some(
+                        function (v) { return (v.substring(0, i) == array_name); }
+                    )) {
+                        this.globalvars[var_name] = 0;
+                        return 0;
+                    }
+                } else {
+                    for (var_name2 in this.globalvars) {
+                        if (var_name2.substring(0, i) == array_name) {
+                            // if (this.globalvars.hasOwnProperty(var_name2)) {
+                            if (hasOwn.call(this.globalvars, var_name2)) {
+                                this.globalvars[var_name] = 0;
+                                return 0;
+                            }
                         }
                     }
                 }
@@ -1049,14 +1063,23 @@ var Interpreter;
             i = var_name.indexOf("[") + 1;
             // 配列のとき
             if (i > 0) {
+                // 配列のグローバル変数(番号は異なる)が存在するか
                 array_name = var_name.substring(0, i);
-                for (var_name2 in this.globalvars) {
-                    // 配列のグローバル変数が存在する(番号は異なる)
-                    if (var_name2.substring(0, i) == array_name) {
-                        // if (this.globalvars.hasOwnProperty(var_name2)) {
-                        if (hasOwn.call(this.globalvars, var_name2)) {
-                            this.globalvars[var_name] = var_value;
-                            return true;
+                if (Vars.KeysAvailable) {
+                    if (Object.keys(this.globalvars).some(
+                        function (v) { return (v.substring(0, i) == array_name); }
+                    )) {
+                        this.globalvars[var_name] = var_value;
+                        return true;
+                    }
+                } else {
+                    for (var_name2 in this.globalvars) {
+                        if (var_name2.substring(0, i) == array_name) {
+                            // if (this.globalvars.hasOwnProperty(var_name2)) {
+                            if (hasOwn.call(this.globalvars, var_name2)) {
+                                this.globalvars[var_name] = var_value;
+                                return true;
+                            }
                         }
                     }
                 }
@@ -1072,6 +1095,7 @@ var Interpreter;
             var var_name_from;
             var var_name_to;
             var localvars;
+            var self;
 
             // // ***** 引数のチェック *****
             // if (var_name == "") { return true; }
@@ -1101,48 +1125,60 @@ var Interpreter;
             // (例えば、a[]をa[1][]にコピーすると無限ループのおそれがある)
             i = var_name2.indexOf(var_name);
             if (i >= 0) {
-                if (i == 0 || var_name2.charAt(i - 1) == " " || var_name2.charAt(i - 1) == "\\") {
+                if (i == 0 || var_name2.charAt(i - 1) == "\\") {
                     throw new Error("コピー元とコピー先の変数名が同一です。");
                 }
             }
 
             // ***** 変数の長さを取得 *****
             var_name_len = var_name.length;
-            // ***** グローバル変数のみを使うとき *****
-            if (localvars == null || use_local_vars == false || glb == true) {
-                // ***** グローバル変数の存在チェック *****
+            // ***** 「グローバル変数のみを使うとき」以外のとき *****
+            self = this;
+            if (!(localvars == null || use_local_vars == false || glb == true)) {
+                // ***** ローカル変数の存在チェック *****
+                var_name_to = "";
+                if (Vars.KeysAvailable) {
+                    Object.keys(localvars).filter(
+                        function (v) { return (v.substring(0, var_name_len) == var_name); }
+                    ).forEach(
+                        function (v) {
+                            var_name_to = var_name2 + v.substring(var_name_len);
+                            self.setVarValue(var_name_to, localvars[v]);
+                        }
+                    );
+                } else {
+                    for (var_name_from in localvars) {
+                        if (var_name_from.substring(0, var_name_len) == var_name) {
+                            // if (localvars.hasOwnProperty(var_name_from)) {
+                            if (hasOwn.call(localvars, var_name_from)) {
+                                var_name_to = var_name2 + var_name_from.substring(var_name_len);
+                                this.setVarValue(var_name_to, localvars[var_name_from]);
+                            }
+                        }
+                    }
+                }
+                if (var_name_to) { return true; }
+                // ***** ローカル変数のみを使うとき *****
+                if (loc == true) { return true; }
+            }
+            // ***** グローバル変数の存在チェック *****
+            if (Vars.KeysAvailable) {
+                Object.keys(this.globalvars).filter(
+                    function (v) { return (v.substring(0, var_name_len) == var_name); }
+                ).forEach(
+                    function (v) {
+                        var_name_to = var_name2 + v.substring(var_name_len);
+                        self.setVarValue(var_name_to, self.globalvars[v]);
+                    }
+                );
+            } else {
                 for (var_name_from in this.globalvars) {
                     if (var_name_from.substring(0, var_name_len) == var_name) {
                         // if (this.globalvars.hasOwnProperty(var_name_from)) {
                         if (hasOwn.call(this.globalvars, var_name_from)) {
                             var_name_to = var_name2 + var_name_from.substring(var_name_len);
-                            this.setVarValue(var_name_to, this.getVarValue(var_name_from));
+                            this.setVarValue(var_name_to, this.globalvars[var_name_from]);
                         }
-                    }
-                }
-                return true;
-            }
-            // ***** ローカル変数の存在チェック *****
-            var_name_to = "";
-            for (var_name_from in localvars) {
-                if (var_name_from.substring(0, var_name_len) == var_name) {
-                    // if (localvars.hasOwnProperty(var_name_from)) {
-                    if (hasOwn.call(localvars, var_name_from)) {
-                        var_name_to = var_name2 + var_name_from.substring(var_name_len);
-                        this.setVarValue(var_name_to, this.getVarValue(var_name_from));
-                    }
-                }
-            }
-            if (var_name_to) { return true; }
-            // ***** ローカル変数のみを使うとき *****
-            if (loc == true) { return true; }
-            // ***** グローバル変数の存在チェック *****
-            for (var_name_from in this.globalvars) {
-                if (var_name_from.substring(0, var_name_len) == var_name) {
-                    // if (this.globalvars.hasOwnProperty(var_name_from)) {
-                    if (hasOwn.call(this.globalvars, var_name_from)) {
-                        var_name_to = var_name2 + var_name_from.substring(var_name_len);
-                        this.setVarValue(var_name_to, this.getVarValue(var_name_from));
                     }
                 }
             }
@@ -1156,6 +1192,7 @@ var Interpreter;
             var var_name2;
             var delete_flag;
             var localvars;
+            var self;
 
             // // ***** 引数のチェック *****
             // if (var_name == "") { return true; }
@@ -1180,39 +1217,51 @@ var Interpreter;
             var_name = var_name + "[";
             // ***** 変数の長さを取得 *****
             var_name_len = var_name.length;
-            // ***** グローバル変数のみを使うとき *****
-            if (localvars == null || use_local_vars == false || glb == true) {
-                // ***** グローバル変数の存在チェック *****
+            // ***** 「グローバル変数のみを使うとき」以外のとき *****
+            self = this;
+            if (!(localvars == null || use_local_vars == false || glb == true)) {
+                // ***** ローカル変数の存在チェック *****
+                delete_flag = false;
+                if (Vars.KeysAvailable) {
+                    Object.keys(localvars).filter(
+                        function (v) { return (v.substring(0, var_name_len) == var_name); }
+                    ).forEach(
+                        function (v) {
+                            delete localvars[v];
+                            delete_flag = true;
+                        }
+                    );
+                } else {
+                    for (var_name2 in localvars) {
+                        if (var_name2.substring(0, var_name_len) == var_name) {
+                            // if (localvars.hasOwnProperty(var_name2)) {
+                            if (hasOwn.call(localvars, var_name2)) {
+                                delete localvars[var_name2];
+                                delete_flag = true;
+                            }
+                        }
+                    }
+                }
+                if (delete_flag) { return true; }
+                // ***** ローカル変数のみを使うとき *****
+                if (loc == true) { return true; }
+            }
+            // ***** グローバル変数の存在チェック *****
+            if (Vars.KeysAvailable) {
+                Object.keys(this.globalvars).filter(
+                    function (v) { return (v.substring(0, var_name_len) == var_name); }
+                ).forEach(
+                    function (v) {
+                        delete self.globalvars[v];
+                    }
+                );
+            } else {
                 for (var_name2 in this.globalvars) {
                     if (var_name2.substring(0, var_name_len) == var_name) {
                         // if (this.globalvars.hasOwnProperty(var_name2)) {
                         if (hasOwn.call(this.globalvars, var_name2)) {
                             delete this.globalvars[var_name2];
                         }
-                    }
-                }
-                return true;
-            }
-            // ***** ローカル変数の存在チェック *****
-            delete_flag = false;
-            for (var_name2 in localvars) {
-                if (var_name2.substring(0, var_name_len) == var_name) {
-                    // if (localvars.hasOwnProperty(var_name2)) {
-                    if (hasOwn.call(localvars, var_name2)) {
-                        delete localvars[var_name2];
-                        delete_flag = true;
-                    }
-                }
-            }
-            if (delete_flag) { return true; }
-            // ***** ローカル変数のみを使うとき *****
-            if (loc == true) { return true; }
-            // ***** グローバル変数の存在チェック *****
-            for (var_name2 in this.globalvars) {
-                if (var_name2.substring(0, var_name_len) == var_name) {
-                    // if (this.globalvars.hasOwnProperty(var_name2)) {
-                    if (hasOwn.call(this.globalvars, var_name2)) {
-                        delete this.globalvars[var_name2];
                     }
                 }
             }
@@ -1414,25 +1463,16 @@ var Interpreter;
         return false;
     }
     // ***** 文字チェック *****
-    function match(ch) {
-        if (pc >= symbol_len) {
+    function match2(ch, i) {
+        if (i >= symbol_len) {
             throw new Error("'" + ch + "' が見つかりませんでした。");
         }
-        if (ch != symbol[pc]) {
-            throw new Error("'" + ch + "' があるべき所に '" + symbol[pc] + "' が見つかりました。");
-        }
-        pc++;
-    }
-    function match2(ch, pc2) {
-        if (pc2 >= symbol_len) {
-            throw new Error("'" + ch + "' が見つかりませんでした。");
-        }
-        if (ch != symbol[pc2]) {
-            pc = pc2;
-            throw new Error("'" + ch + "' があるべき所に '" + symbol[pc2] + "' が見つかりました。");
+        if (ch != symbol[i]) {
+            debugpos2 = i;
+            throw new Error("'" + ch + "' があるべき所に '" + symbol[i] + "' が見つかりました。");
         }
         // ***** 加算されないので注意 *****
-        // pc2++;
+        // i++;
     }
 
     // ***** Canvasの各設定の初期化 *****
@@ -1596,50 +1636,55 @@ var Interpreter;
         // ***** 実行開始 *****
         DebugShow("実行開始\n");
         // ***** シンボル初期化 *****
+        debugpos1 = 0;
         try {
             initsymbol();
         } catch (ex1) {
-            DebugShow("symbol:pass1:(" + symbol_len + "個): ");
+            DebugShow("symbol:(" + symbol_len + "個): ");
             msg = symbol.join(" ");
             DebugShow(msg + "\n");
             DebugShow("initsymbol: " + ex1.message + "\n");
-            debugpc = symbol_len - 1;
-            if (debugpc < 0) { debugpc = 0; }
-            msg = "エラー場所: " + symbol_line[debugpc] + "行";
+            debugpos1 = symbol_len - 1;
+            if (debugpos1 < 0) { debugpos1 = 0; }
+            msg = "エラー場所: " + symbol_line[debugpos1] + "行";
             DebugShow(msg + "\n");
             DebugShow("実行終了\n");
             return ret;
         }
         if (debug_mode == 1) {
-            DebugShow("symbol:pass1:(" + symbol_len + "個): ");
+            DebugShow("symbol:(" + symbol_len + "個): ");
             msg = symbol.join(" ");
             DebugShow(msg + "\n");
         }
         // ***** コンパイル *****
+        debugpos1 = 0;
+        debugpos2 = 0;
         try {
             compile();
         } catch (ex2) {
-            DebugShow("symbol:pass2:(" + symbol_len + "個): ");
-            msg = symbol.join(" ");
+            DebugShow("code  :(" + code_len + "個): ");
+            msg = code.join(" ");
             DebugShow(msg + "\n");
-            DebugShow("compile: " + ex2.message + ": debugpc=" + debugpc + "\n");
-            show_err_place();
+            DebugShow("compile: " + ex2.message + ": debugpos=" + debugpos1 + "\n");
+            show_err_place(debugpos1, debugpos2);
             DebugShow("実行終了\n");
             return ret;
         }
         if (debug_mode == 1) {
-            DebugShow("symbol:pass2:(" + symbol_len + "個): ");
-            msg = symbol.join(" ");
+            DebugShow("code  :(" + code_len + "個): ");
+            msg = code.join(" ");
             DebugShow(msg + "\n");
         }
         // ***** ラベル設定 *****
+        debugpos1 = 0;
+        debugpos2 = 0;
         try {
             setlabel();
         } catch (ex3) {
             DebugShow("label=" + JSON.stringify(label) + "\n");
             DebugShow("func=" + JSON.stringify(func) + "\n");
-            DebugShow("setlabel: " + ex3.message + ": debugpc=" + debugpc + "\n");
-            show_err_place();
+            DebugShow("setlabel: " + ex3.message + ": debugpos=" + debugpos1 + "\n");
+            show_err_place(debugpos1, debugpos2);
             DebugShow("実行終了\n");
             return ret;
         }
@@ -1650,14 +1695,14 @@ var Interpreter;
         stimg = {};
         missile = {};
         audplayer = {};
+        stack = [];
+        param = [];
         pc = 0;
         debugpc = 0;
         end_flag = false;
         running_flag = true; runstatchanged();
         sleep_flag = false;
         loop_nocount_flag = false;
-        return_flag = false;
-        ret_num = 0;
         funccall_stack = [];
         gosub_back = [];
         key_press_code = 0;
@@ -1700,17 +1745,16 @@ var Interpreter;
         // ***** 戻り値の初期化 *****
         ret = false;
         // ***** 継続実行 *****
-        // alert(symbol_line[pc] + ":" + symbol[pc]);
         sleep_id = null;
         try {
             // loop_time_start = new Date().getTime();
             loop_time_start = Date.now();
-            while (pc < symbol_len) {
+            while (pc < code_len) {
 
-                // ***** 文(ステートメント)の処理 *****
-                // if (prof_obj) { prof_obj.start("statement"); }
-                statement();
-                // if (prof_obj) { prof_obj.stop("statement"); }
+                // ***** コード実行 *****
+                // if (prof_obj) { prof_obj.start("execcode"); }
+                execcode();
+                // if (prof_obj) { prof_obj.stop("execcode"); }
                 // DebugShow(pc + " ");
 
                 // ***** 各種フラグのチェックと処理時間の測定 *****
@@ -1734,16 +1778,14 @@ var Interpreter;
                     ret = true;
                     return ret;
                 }
-                if (return_flag) {
-                    // ***** 戻り先がない *****
-                    throw new Error("予期しない return または '}' が見つかりました。");
-                }
             }
             // DebugShow(pc + "\n");
         } catch (ex4) {
             if (prof_obj) { prof_obj.stop("result"); }
-            DebugShow("statement: " + ex4.message + ": debugpc=" + debugpc + "\n");
-            show_err_place();
+            debugpos1 = code_info[debugpc].pos1;
+            debugpos2 = code_info[debugpc].pos2;
+            DebugShow("execcode: " + ex4.message + ": debugpos=" + debugpos1 + "\n");
+            show_err_place(debugpos1, debugpos2);
             // ***** 音楽全停止 *****
             if (typeof (audstopall) == "function") { audstopall(); }
             // ***** プラグイン用の実行後処理 *****
@@ -1759,6 +1801,7 @@ var Interpreter;
             DebugShow("localvars=" + JSON.stringify(vars.localvars) + "\n");
             DebugShow("label=" + JSON.stringify(label) + "\n");
             DebugShow("func=" + JSON.stringify(func) + "\n");
+            DebugShow("stack=" + JSON.stringify(stack) + "\n");
             if (prof_obj && Profiler.MicroSecAvailable) { DebugShow(prof_obj.getAllResult()); }
             return ret;
         }
@@ -1779,6 +1822,7 @@ var Interpreter;
             DebugShow("localvars=" + JSON.stringify(vars.localvars) + "\n");
             DebugShow("label=" + JSON.stringify(label) + "\n");
             DebugShow("func=" + JSON.stringify(func) + "\n");
+            DebugShow("stack=" + JSON.stringify(stack) + "\n");
         }
         if (prof_obj && Profiler.MicroSecAvailable) { DebugShow(prof_obj.getAllResult()); }
         // ***** 戻り値を返す *****
@@ -1787,16 +1831,16 @@ var Interpreter;
     }
 
     // ***** エラー場所の表示 *****
-    function show_err_place() {
+    function show_err_place(debugpos1, debugpos2) {
         var i;
         var msg;
         var msg_count;
 
-        msg = "エラー場所: " + symbol_line[debugpc] + "行: ";
+        msg = "エラー場所: " + symbol_line[debugpos1] + "行: ";
         msg_count = 0;
-        if (pc <= debugpc) { pc = debugpc + 1; } // エラーが出ない件の対策
-        for (i = debugpc; i < pc; i++) {
-            if ((i >= 0) && (i < symbol_len)) {
+        if (debugpos2 <= debugpos1) { debugpos2 = debugpos1 + 1; } // エラーが出ない件の対策
+        for (i = debugpos1; i < debugpos2; i++) {
+            if (i >= 0 && i < symbol_len) {
                 msg = msg + symbol[i] + " ";
                 msg_count++;
                 if (msg_count >= 100) {
@@ -1805,520 +1849,578 @@ var Interpreter;
                 }
             }
         }
-        if (pc >= symbol_len) { msg += "プログラム最後まで検索したが文が完成せず"; }
+        if (debugpos2 >= symbol_len) { msg += "プログラム最後まで検索したが文が完成せず"; }
         DebugShow(msg + "\n");
     }
 
-    // ***** 文(ステートメント)の処理 *****
-    function statement() {
+    // ***** コード実行 *****
+    function execcode() {
+        var i;
+        var c;
         var sym;
+        var num, num2;
+        var var_name;
+        var lbl_name;
+        var func_name;
+        var param_num;
+        var goto_pc;
+        var funccall_info;
 
+        // loop_nocount_flag = true;
         // ***** シンボル取り出し *****
         debugpc = pc;
-        sym = symbol[pc];
-        // ***** 命令(戻り値のない関数)の処理 *****
-        if (func_tbl_A.hasOwnProperty(sym)) {
-            if (func_tbl_A[sym].type == 0 || (func_tbl_A[sym].type == 1 && use_addfunc)) {
-                pc++;
-                func_tbl_A[sym].func();
+        sym = code[pc++];
+        // ***** コードごとの処理 *****
+        if (sym == "load") {
+            num = stack.pop();
+            var_name = stack.pop();
+            vars.setVarValue(var_name, num);
+            stack.push(num);
+            return true;
+        }
+        if (sym == "pointer") {
+            var_name = stack.pop();
+            var_name = String(vars.getVarValue(var_name));
+            // ***** 変数名のチェック *****
+            // (アルファベットかアンダースコアで始まらなければエラー)
+            c = var_name.charCodeAt(0);
+            if (!((c >= 0x41 && c <= 0x5A) || (c >= 0x61 && c <= 0x7A) || c == 0x5F)) {
+                throw new Error("ポインタの指す先が不正です。('" + var_name + "')");
+            }
+            stack.push(var_name);
+            return true;
+        }
+        if (sym == "array") {
+            num = stack.pop();
+            var_name = stack.pop();
+            var_name = var_name + "[" + num + "]";
+            stack.push(var_name);
+            return true;
+        }
+        if (sym == "store") {
+            var_name = stack.pop();
+            num = vars.getVarValue(var_name);
+            stack.push(num);
+            return true;
+        }
+        if (sym == "storenum") {
+            num = code[pc++];
+            stack.push(num);
+            return true;
+        }
+        if (sym == "storestr") {
+            num = code[pc++];
+            num = num.substring(1, num.length - 1);
+            stack.push(num);
+            return true;
+        }
+        if (sym == "store0") {
+            stack.push(0);
+            return true;
+        }
+        if (sym == "store1") {
+            stack.push(1);
+            return true;
+        }
+        if (sym == "preinc") {
+            var_name = stack.pop();
+            num = vars.getVarValue(var_name);
+            num++;
+            vars.setVarValue(var_name, num);
+            stack.push(num);
+            return true;
+        }
+        if (sym == "predec") {
+            var_name = stack.pop();
+            num = vars.getVarValue(var_name);
+            num--;
+            vars.setVarValue(var_name, num);
+            stack.push(num);
+            return true;
+        }
+        if (sym == "postinc") {
+            var_name = stack.pop();
+            num = vars.getVarValue(var_name);
+            stack.push(num);
+            num++;
+            vars.setVarValue(var_name, num);
+            return true;
+        }
+        if (sym == "postdec") {
+            var_name = stack.pop();
+            num = vars.getVarValue(var_name);
+            stack.push(num);
+            num--;
+            vars.setVarValue(var_name, num);
+            return true;
+        }
+        if (sym == "loadadd") {
+            num = stack.pop();
+            var_name = stack.pop();
+            num = (+vars.getVarValue(var_name)) + (+num); // 文字の連結にならないように数値にする
+            vars.setVarValue(var_name, num);
+            stack.push(num);
+            return true;
+        }
+        if (sym == "loadsub") {
+            num = stack.pop();
+            var_name = stack.pop();
+            num = vars.getVarValue(var_name) - num;
+            vars.setVarValue(var_name, num);
+            stack.push(num);
+            return true;
+        }
+        if (sym == "loadmul") {
+            num = stack.pop();
+            var_name = stack.pop();
+            num = vars.getVarValue(var_name) * num;
+            vars.setVarValue(var_name, num);
+            stack.push(num);
+            return true;
+        }
+        if (sym == "loaddiv") {
+            num = stack.pop();
+            var_name = stack.pop();
+            if (sp_compati_mode == 1) {
+                num = parseInt(vars.getVarValue(var_name) / num, 10);
+            } else {
+                num = vars.getVarValue(var_name) / num;
+            }
+            vars.setVarValue(var_name, num);
+            stack.push(num);
+            return true;
+        }
+        if (sym == "loaddivint") {
+            num = stack.pop();
+            var_name = stack.pop();
+            num = parseInt(vars.getVarValue(var_name) / num, 10);
+            vars.setVarValue(var_name, num);
+            stack.push(num);
+            return true;
+        }
+        if (sym == "loadmod") {
+            num = stack.pop();
+            var_name = stack.pop();
+            num = vars.getVarValue(var_name) % num;
+            vars.setVarValue(var_name, num);
+            stack.push(num);
+            return true;
+        }
+        if (sym == "loadaddstr") {
+            num = stack.pop();
+            var_name = stack.pop();
+            num = String(vars.getVarValue(var_name)) + String(num);
+            vars.setVarValue(var_name, num);
+            stack.push(num);
+            return true;
+        }
+        if (sym == "add") {
+            num2 = stack.pop();
+            num = stack.pop();
+            num = (+num) + (+num2); // 文字の連結にならないように数値にする
+            stack.push(num);
+            return true;
+        }
+        if (sym == "addstr") {
+            num2 = stack.pop();
+            num = stack.pop();
+            num = String(num) + String(num2);
+            stack.push(num);
+            return true;
+        }
+        if (sym == "sub") {
+            num2 = stack.pop();
+            num = stack.pop();
+            num = num - num2;
+            stack.push(num);
+            return true;
+        }
+        if (sym == "mul") {
+            num2 = stack.pop();
+            num = stack.pop();
+            num = num * num2;
+            stack.push(num);
+            return true;
+        }
+        if (sym == "div") {
+            num2 = stack.pop();
+            num = stack.pop();
+            if (sp_compati_mode == 1) {
+                num = parseInt(num / num2, 10);
+            } else {
+                num = num / num2;
+            }
+            stack.push(num);
+            return true;
+        }
+        if (sym == "divint") {
+            num2 = stack.pop();
+            num = stack.pop();
+            num = parseInt(num / num2, 10);
+            stack.push(num);
+            return true;
+        }
+        if (sym == "mod") {
+            num2 = stack.pop();
+            num = stack.pop();
+            num = num % num2;
+            stack.push(num);
+            return true;
+        }
+        if (sym == "shl") {
+            num2 = stack.pop();
+            num = stack.pop();
+            num = num << num2;
+            stack.push(num);
+            return true;
+        }
+        if (sym == "shr") {
+            num2 = stack.pop();
+            num = stack.pop();
+            num = num >> num2;
+            stack.push(num);
+            return true;
+        }
+        if (sym == "ushr") {
+            num2 = stack.pop();
+            num = stack.pop();
+            num = num >>> num2;
+            stack.push(num);
+            return true;
+        }
+        if (sym == "neg") {
+            num = stack.pop();
+            num = -num;
+            stack.push(num);
+            return true;
+        }
+        if (sym == "and") {
+            num2 = stack.pop();
+            num = stack.pop();
+            num = num & num2;
+            stack.push(num);
+            return true;
+        }
+        if (sym == "or") {
+            num2 = stack.pop();
+            num = stack.pop();
+            num = num | num2;
+            stack.push(num);
+            return true;
+        }
+        if (sym == "xor") {
+            num2 = stack.pop();
+            num = stack.pop();
+            num = num ^ num2;
+            stack.push(num);
+            return true;
+        }
+        if (sym == "not") {
+            num = stack.pop();
+            num = ~num;
+            stack.push(num);
+            return true;
+        }
+        if (sym == "cmpeq") {
+            num2 = stack.pop();
+            num = stack.pop();
+            num = (num == num2) ? 1 : 0;
+            stack.push(num);
+            return true;
+        }
+        if (sym == "cmpne") {
+            num2 = stack.pop();
+            num = stack.pop();
+            num = (num != num2) ? 1 : 0;
+            stack.push(num);
+            return true;
+        }
+        if (sym == "cmplt") {
+            num2 = stack.pop();
+            num = stack.pop();
+            num = (num < num2) ? 1 : 0;
+            stack.push(num);
+            return true;
+        }
+        if (sym == "cmple") {
+            num2 = stack.pop();
+            num = stack.pop();
+            num = (num <= num2) ? 1 : 0;
+            stack.push(num);
+            return true;
+        }
+        if (sym == "cmpgt") {
+            num2 = stack.pop();
+            num = stack.pop();
+            num = (num > num2) ? 1 : 0;
+            stack.push(num);
+            return true;
+        }
+        if (sym == "cmpge") {
+            num2 = stack.pop();
+            num = stack.pop();
+            num = (num >= num2) ? 1 : 0;
+            stack.push(num);
+            return true;
+        }
+        if (sym == "label") {
+            pc++;
+            return true;
+        }
+        if (sym == "goto") {
+            lbl_name = code[pc++];
+            lbl_name = lbl_name.substring(1, lbl_name.length - 1);
+            // ***** ラベルへジャンプ *****
+            // if (!label.hasOwnProperty(lbl_name)) {
+            if (!hasOwn.call(label, lbl_name)) {
+                throw new Error("ラベル '" + lbl_name + "' は未定義です。");
+            }
+            // (ここではチェック不要)
+            // goto_pc = label[lbl_name];
+            // // ***** 関数内のとき *****
+            // if (funccall_stack.length > 0) {
+            //     // ***** 関数呼び出し情報の取得 *****
+            //     funccall_info = funccall_stack[funccall_stack.length - 1];
+            //     // ***** ジャンプ先がfunc内のときだけgotoが可能 *****
+            //     if ((goto_pc < funccall_info.func_start) || (goto_pc >= funccall_info.func_end)) {
+            //         throw new Error("funcの外へは goto できません。");
+            //     }
+            // }
+            // pc = goto_pc;
+            pc = label[lbl_name];
+            return true;
+        }
+        if (sym == "ifgoto") {
+            lbl_name = code[pc++];
+            lbl_name = lbl_name.substring(1, lbl_name.length - 1);
+            num = stack.pop();
+            if (num != 0) {
+                // ***** ラベルへジャンプ *****
+                // if (!label.hasOwnProperty(lbl_name)) {
+                if (!hasOwn.call(label, lbl_name)) {
+                    throw new Error("ラベル '" + lbl_name + "' は未定義です。");
+                }
+                // (ここではチェック不要)
+                // goto_pc = label[lbl_name];
+                // // ***** 関数内のとき *****
+                // if (funccall_stack.length > 0) {
+                //     // ***** 関数呼び出し情報の取得 *****
+                //     funccall_info = funccall_stack[funccall_stack.length - 1];
+                //     // ***** ジャンプ先がfunc内のときだけgotoが可能 *****
+                //     if ((goto_pc < funccall_info.func_start) || (goto_pc >= funccall_info.func_end)) {
+                //         throw new Error("funcの外へは goto できません。");
+                //     }
+                // }
+                // pc = goto_pc;
+                pc = label[lbl_name];
+            }
+            return true;
+        }
+        if (sym == "ifnotgoto") {
+            lbl_name = code[pc++];
+            lbl_name = lbl_name.substring(1, lbl_name.length - 1);
+            num = stack.pop();
+            if (num == 0) {
+                // ***** ラベルへジャンプ *****
+                // if (!label.hasOwnProperty(lbl_name)) {
+                if (!hasOwn.call(label, lbl_name)) {
+                    throw new Error("ラベル '" + lbl_name + "' は未定義です。");
+                }
+                // (ここではチェック不要)
+                // goto_pc = label[lbl_name];
+                // // ***** 関数内のとき *****
+                // if (funccall_stack.length > 0) {
+                //     // ***** 関数呼び出し情報の取得 *****
+                //     funccall_info = funccall_stack[funccall_stack.length - 1];
+                //     // ***** ジャンプ先がfunc内のときだけgotoが可能 *****
+                //     if ((goto_pc < funccall_info.func_start) || (goto_pc >= funccall_info.func_end)) {
+                //         throw new Error("funcの外へは goto できません。");
+                //     }
+                // }
+                // pc = goto_pc;
+                pc = label[lbl_name];
+            }
+            return true;
+        }
+        if (sym == "gotostack") {
+            lbl_name = stack.pop();
+            // ***** ラベルへジャンプ *****
+            // if (!label.hasOwnProperty(lbl_name)) {
+            if (!hasOwn.call(label, lbl_name)) {
+                throw new Error("ラベル '" + lbl_name + "' は未定義です。");
+            }
+            goto_pc = label[lbl_name];
+            // ***** 関数内のとき *****
+            if (funccall_stack.length > 0) {
+                // ***** 関数呼び出し情報の取得 *****
+                funccall_info = funccall_stack[funccall_stack.length - 1];
+                // ***** ジャンプ先がfunc内のときだけgotoが可能 *****
+                if ((goto_pc < funccall_info.func_start) || (goto_pc >= funccall_info.func_end)) {
+                    throw new Error("funcの外へは goto できません。");
+                }
+            }
+            pc = goto_pc;
+            return true;
+        }
+        if (sym == "gosubstack") {
+            lbl_name = stack.pop();
+            // ***** 関数内のとき *****
+            if (funccall_stack.length > 0) {
+                throw new Error("func内では gosub できません。");
+            }
+            // ***** ラベルへジャンプ *****
+            // if (!label.hasOwnProperty(lbl_name)) {
+            if (!hasOwn.call(label, lbl_name)) {
+                throw new Error("ラベル '" + lbl_name + "' は未定義です。");
+            }
+            gosub_back.push(pc);
+            pc = label[lbl_name];
+            return true;
+        }
+        if (sym == "return") {
+            // ***** 関数内のとき *****
+            if (funccall_stack.length > 0) {
+                // ***** ローカル変数を解放 *****
+                vars.deleteLocalScope();
+                // ***** 呼び出し元に復帰 *****
+                funccall_info = funccall_stack.pop();
+                pc = funccall_info.func_back;
                 return true;
             }
+            // ***** gosubのとき *****
+            if (gosub_back.length > 0) {
+                // ***** 戻り値を捨てる *****
+                stack.pop();
+                // ***** 戻り先へ *****
+                pc = gosub_back.pop();
+                return true;
+            }
+            // ***** 戻り先がない *****
+            throw new Error("予期しない return が見つかりました。");
+            // return true;
         }
-        // ***** 式の処理 *****
-        expression();
+        if (sym == "func") {
+            pc = func[code[pc] + "\\end"];
+            return true;
+        }
+        if (sym == "funcend") {
+            // ***** 戻り値は0とする *****
+            stack.push(0);
+            // ***** 関数内のとき *****
+            if (funccall_stack.length > 0) {
+                // ***** ローカル変数を解放 *****
+                vars.deleteLocalScope();
+                // ***** 呼び出し元に復帰 *****
+                funccall_info = funccall_stack.pop();
+                pc = funccall_info.func_back;
+                return true;
+            }
+            // ***** 戻り先がない *****
+            throw new Error("予期しない funcend が見つかりました。");
+            // return true;
+        }
+        if (sym == "call") {
+            // ***** 引数の取得 *****
+            param_num = stack.pop();
+            param = [];
+            for(i = 0; i < param_num; i++) {
+                param[param_num - i - 1] = stack.pop();
+            }
+            // ***** 関数名の取得 *****
+            func_name = stack.pop();
+            func_name = toglobal(func_name);
+            // ***** 組み込み関数の呼び出し *****
+            if (func_tbl.hasOwnProperty(func_name)) {
+                if (!func_tbl[func_name].addfunc || (func_tbl[func_name].addfunc && use_addfunc)) {
+                    if (func_tbl[func_name].use_retval) {
+                        num = func_tbl[func_name].func(param);
+                        stack.push(num);
+                    } else {
+                        func_tbl[func_name].func(param);
+                        stack.push(0);
+                    }
+                }
+            }
+            return true;
+        }
+        if (sym == "calluser") {
+            // ***** 引数の取得 *****
+            param_num = stack.pop();
+            param = [];
+            for(i = 0; i < param_num; i++) {
+                param[param_num - i - 1] = stack.pop();
+            }
+            // ***** 関数名の取得 *****
+            func_name = stack.pop();
+            func_name = toglobal(func_name);
+            // ***** 関数の存在チェック *****
+            // if (!func.hasOwnProperty(func_name)) {
+            if (!hasOwn.call(func, func_name)) {
+                throw new Error("関数 '" + func_name + "' の呼び出しに失敗しました(関数が未定義等)。");
+            }
+            // ***** ローカル変数を生成 *****
+            vars.makeLocalScope();
+            // ***** 関数呼び出し情報の生成 *****
+            funccall_info = {};
+            funccall_info.func_back = pc;
+            funccall_info.func_start = func[func_name];
+            funccall_info.func_end = func[func_name + "\\end"];
+            funccall_stack.push(funccall_info);
+            // ***** 関数の呼び出し *****
+            pc = func[func_name];
+            return true;
+        }
+        if (sym == "loadparam") {
+            if (param.length > 0) {
+                num = param.shift();
+            } else {
+                num = 0;
+            }
+            var_name = stack.pop();
+            // ***** 関数の引数のポインタ対応 *****
+            if (var_name.substring(0, 2) == "p\\") {
+                // (引数名から「p\」を削除)
+                var_name = var_name.substring(2);
+                // ***** 変数名のチェック *****
+                // (アルファベットかアンダースコアで始まらなければエラー)
+                c = num.charCodeAt(0);
+                if (!((c >= 0x41 && c <= 0x5A) || (c >= 0x61 && c <= 0x7A) || c == 0x5F)) {
+                    throw new Error("ポインタの指す先が不正です。('" + num + "')");
+                }
+                // (ローカル変数のスコープをさかのぼれるように、引数の内容に「a\」と数字を付加)
+                if (num.substring(0, 2) != "a\\") {
+                    num = "a\\" + vars.getLocalScopeNum() + "\\" + num;
+                }
+            }
+            vars.setVarValue(var_name, num);
+            return true;
+        }
+        if (sym == "pop") {
+            stack.pop();
+            return true;
+        }
+        if (sym == "dup") {
+            num = stack.pop();
+            stack.push(num);
+            stack.push(num);
+            return true;
+        }
+        if (sym == "end") {
+            end_flag = true;
+            return true;
+        }
         // ***** 戻り値を返す *****
         return true;
     }
 
-    // ***** 式の処理 *****
-    // (引数は処理中の演算子の優先順位を表す)
-    function expression(priority) {
-        var num;
-        var sym;
-        var old_sym;
-
-        // ***** 引数のチェック *****
-        if (priority == null) { priority = 0; }
-        // ***** 因子の処理 *****
-        num = factor();
-        // ***** 演算子処理のループ *****
-        old_sym = "";
-        while (pc < symbol_len) {
-            // ***** シンボル取り出し *****
-            sym = symbol[pc];
-            // ***** 演算子の処理 *****
-            // (より高い優先順位の演算子があれば先に処理する)
-            if (operator_tbl.hasOwnProperty(sym) && operator_tbl[sym].priority > priority) {
-
-                // (3項演算子の処理後は、優先順位10の演算子しか処理しない(既設の仕様))
-                if (old_sym == "?" && operator_tbl[sym].priority != 10) { break; }
-
-                pc++;
-                num = operator_tbl[sym].func(num);
-                old_sym = sym;
-                continue;
-            }
-            // ***** 演算子処理のループを抜ける *****
-            break;
-        }
-        // ***** 戻り値を返す *****
-        return num;
-    }
-
-    // ***** 因子の処理 *****
-    function factor() {
-        var num;
-        var i;
-        // var ch;
-        var c;
-        var sym;
-        var pre_inc;
-        var var_name;
-
-        var func_params = [];
-        var funccall_info = {};
-        var back_pc;
-        var debugpc_old;
-
-        var sleep_time_start;
-        var sleep_time_count;
-
-        // ***** シンボル取り出し *****
-        sym = symbol[pc];
-        // ***** 命令(戻り値のある関数)の処理 *****
-        if (func_tbl_B.hasOwnProperty(sym)) {
-            if (func_tbl_B[sym].type == 0 || (func_tbl_B[sym].type == 1 && use_addfunc)) {
-                pc++;
-                num = func_tbl_B[sym].func();
-                return num;
-            }
-        }
-
-        // ***** プレインクリメント(「++」「--」)のとき *****
-        pre_inc = 0;
-        if (sym == "++") {
-            pc++;
-            pre_inc = 1;
-            // ***** シンボル取り出し *****
-            sym = symbol[pc];
-        }
-        if (sym == "--") {
-            pc++;
-            pre_inc = -1;
-            // ***** シンボル取り出し *****
-            sym = symbol[pc];
-        }
-
-        // ***** 1文字取り出す *****
-        // ch = sym.charAt(0);
-        c = sym.charCodeAt(0);
-        // ***** 文字列のとき *****
-        // if (ch == '"') {
-        if (c == 0x22) {
-            pc++;
-            if (sym.length > 2) {
-                num = sym.substring(1, sym.length - 1);
-            } else {
-                num = "";
-            }
-            return num;
-        }
-        // ***** 数値のとき *****
-        // if (isDigit(ch)) {
-        if (c >= 0x30 && c <= 0x39) {
-            pc++;
-            // ***** 数値を返す *****
-            num = +sym; // 数値にする
-            return num;
-        }
-        // ***** アルファベットかアンダースコアかポインタのとき *****
-        // if (isAlpha(ch) || ch == "_" || ch == "*") {
-        if ((c >= 0x41 && c <= 0x5A) || (c >= 0x61 && c <= 0x7A) || c == 0x5F || c == 0x2A) {
-
-            // ***** 変数名取得 *****
-            var_name = getvarname();
-
-            // ***** 関数のとき *****
-            if (symbol[pc] == "(") {
-                pc++;
-
-                // ***** 関数名の取得 *****
-                // (関数ポインタ対応のため、変数名を取得して関数名にする)
-                sym = toglobal(var_name);
-
-                // ***** 関数呼び出し情報の生成 *****
-                funccall_info = {};
-                // ***** 引数の取得 *****
-                func_params = [];
-                if (symbol[pc] == ")") {
-                    pc++;
-                } else {
-                    while (pc < symbol_len) {
-                        func_params.push(expression());
-                        if (symbol[pc] == ",") {
-                            pc++;
-                            continue;
-                        }
-                        break;
-                    }
-                    match(")");
-                }
-                // ***** 関数の呼び出し *****
-                // if (!func.hasOwnProperty(sym)) {
-                if (!hasOwn.call(func, sym)) {
-                    // throw new Error("関数 '" + sym + "' は未定義です。");
-                    throw new Error("関数 '" + sym + "' の呼び出しに失敗しました(関数が未定義、もしくは、戻り値のない関数を式の中で呼び出した等)。");
-                }
-                back_pc = pc;
-                pc = func[sym];
-                debugpc_old = debugpc;
-                debugpc = pc - 1;
-
-                // ***** ローカル変数を生成 *****
-                vars.makeLocalScope();
-
-                // ***** 引数のセット *****
-                match("(");
-                if (symbol[pc] == ")") {
-                    pc++;
-                } else {
-                    i = 0;
-                    while (pc < symbol_len) {
-                        var_name = getvarname2(); // 関数の引数用
-                        if (i < func_params.length) {
-
-                            // ***** 関数の引数のポインタ対応 *****
-                            if (var_name.substring(0, 2) == "p\\") {
-                                // (引数名から「p\」を削除)
-                                var_name = var_name.substring(2);
-                                // (引数の内容を取得)
-                                func_params[i] = String(func_params[i]);
-                                // ***** 変数名のチェック *****
-                                if (!(isAlpha(func_params[i].charAt(0)) || func_params[i].charAt(0) == "_")) {
-                                    debugpc = debugpc_old;
-                                    pc = back_pc;
-                                    throw new Error("ポインタの指す先が不正です。('" + func_params[i] + "')");
-                                }
-                                // (ローカル変数のスコープをさかのぼれるように、引数の内容に「a\」と数字を付加)
-                                if (func_params[i].substring(0, 2) != "a\\") {
-                                    func_params[i] = "a\\" + vars.getLocalScopeNum() + "\\" + func_params[i];
-                                }
-                            }
-
-                            // vars[var_name] = func_params[i];
-                            vars.setVarValue(var_name, func_params[i]);
-                            i++;
-                        } else {
-
-                            // ***** 関数の引数のポインタ対応 *****
-                            if (var_name.substring(0, 2) == "p\\") {
-                                // (引数名から「p\」を削除)
-                                var_name = var_name.substring(2);
-                            }
-
-                            // vars[var_name] = 0;
-                            vars.setVarValue(var_name, 0);
-                        }
-                        if (symbol[pc] == ",") {
-                            pc++;
-                            continue;
-                        }
-                        break;
-                    }
-                    match(")");
-                }
-                // ***** 関数の本体を実行 *****
-                // 文(ステートメント)の処理が再帰的になるので、
-                // ブラウザに制御を返せないという制約がある
-                match("{");
-                funccall_info.nestcall = true;
-                funccall_info.retvarname = "";
-                funccall_info.func_back = back_pc;
-                funccall_info.func_start = pc;
-                funccall_info.func_end = func[sym + "\\end"];
-                funccall_stack.push(funccall_info);
-                // loop_time_start = new Date().getTime(); // ループ開始時間は呼び出し元でセットする
-                while (pc < symbol_len) {
-
-                    // ***** 文(ステートメント)の処理 *****
-                    statement();
-                    // DebugShow(pc + " ");
-
-                    // ***** 各種フラグのチェックと処理時間の測定 *****
-                    if (loop_nocount_flag) {
-                        loop_nocount_flag = false;
-                        // ***** ループ時間ノーカウントフラグがONのときは処理時間に含めない *****
-                        // loop_time_start = new Date().getTime();
-                        loop_time_start = Date.now();
-                    }
-                    // loop_time_count = new Date().getTime() - loop_time_start;
-                    loop_time_count = Date.now() - loop_time_start;
-                    if (loop_time_count >= loop_time_max) {
-                        throw new Error("処理時間オーバーです(" + loop_time_max + "msec以上ブラウザに制御が返らず)。func内でタイムアウトしました。");
-                    }
-                    if (end_flag) { break; }
-                    if (sleep_flag) {
-                        sleep_flag = false;
-                        // ***** ループでsleep処理 *****
-                        if (sleep_time > loop_time_max) { sleep_time = loop_time_max; }
-                        // sleep_time_start = new Date().getTime();
-                        sleep_time_start = Date.now();
-                        while (true) {
-                            // sleep_time_count = new Date().getTime() - sleep_time_start;
-                            sleep_time_count = Date.now() - sleep_time_start;
-                            if (sleep_time_count > sleep_time) { break; }
-                        }
-                        continue;
-                    }
-                    if (return_flag) { break; }
-                }
-                // DebugShow(pc + "\n");
-
-                // ***** ローカル変数を解放 *****
-                vars.deleteLocalScope();
-
-                // ***** 呼び出し元に復帰 *****
-                funccall_info = funccall_stack.pop();
-                pc = funccall_info.func_back;
-                // ***** 戻り値がないときは0をセット *****
-                if (return_flag == false) { ret_num = 0; }
-                // ***** フラグの復帰処理 *****
-                loop_nocount_flag = false;
-                sleep_flag = false;
-                return_flag = false;
-                // ***** 戻り値を返す *****
-                return ret_num;
-            }
-
-            // ***** 変数の処理 *****
-
-            // (変数の作成は変数用クラスにまかせるようにした)
-            // // ***** 変数がなければ作成 *****
-            // // if (typeof (vars[var_name]) == "undefined") { vars[var_name] = 0; }
-            // // if (!vars.hasOwnProperty(var_name)) { vars[var_name] = 0; }
-            // vars.getVarValue(var_name);
-
-            // ***** プレインクリメント(「++」「--」)のとき *****
-            if (pre_inc != 0) {
-                // vars[var_name] += pre_inc;
-                // num = vars[var_name];
-                num = vars.getVarValue(var_name);
-
-                //num += pre_inc;
-                num = (+num) + (+pre_inc); // 文字の連結にならないように数値にする
-
-                vars.setVarValue(var_name, num);
-                return num;
-            }
-
-            // ***** シンボル取り出し *****
-            sym = symbol[pc];
-            // ***** ポストインクリメント(「++」「--」)のとき *****
-            if (sym == "++") {
-                pc++;
-                // num = vars[var_name];
-                // vars[var_name] += 1;
-                num = vars.getVarValue(var_name);
-
-                // vars.setVarValue(var_name, num + 1);
-                vars.setVarValue(var_name, (+num) + (+1)); // 文字の連結にならないように数値にする
-
-                return num;
-            }
-            if (sym == "--") {
-                pc++;
-                // num = vars[var_name];
-                // vars[var_name] -= 1;
-                num = vars.getVarValue(var_name);
-                vars.setVarValue(var_name, num - 1);
-                return num;
-            }
-            // ***** 代入のとき *****
-            if (sym == "=") {
-                pc++;
-                // vars[var_name] = expression();
-                num = expression();
-                vars.setVarValue(var_name, num);
-                return num;
-            }
-            // ***** 複合代入のとき *****
-            if (sym == "+=") {
-                pc++;
-                // vars[var_name] = vars[var_name] + expression();
-
-                // num = vars.getVarValue(var_name) + expression();
-                num = (+vars.getVarValue(var_name)) + (+expression()); // 文字の連結にならないように数値にする
-
-                vars.setVarValue(var_name, num);
-                return num;
-            }
-            if (sym == "-=") {
-                pc++;
-                // vars[var_name] = vars[var_name] - expression();
-                num = vars.getVarValue(var_name) - expression();
-                vars.setVarValue(var_name, num);
-                return num;
-            }
-            if (sym == "*=") {
-                pc++;
-                // vars[var_name] = vars[var_name] * expression();
-                num = vars.getVarValue(var_name) * expression();
-                vars.setVarValue(var_name, num);
-                return num;
-            }
-            if (sym == "/=") {
-                pc++;
-                if (sp_compati_mode == 1) {
-                    // vars[var_name] = parseInt(vars[var_name] / expression(), 10);
-                    num = parseInt(vars.getVarValue(var_name) / expression(), 10);
-                } else {
-                    // vars[var_name] = vars[var_name] / expression();
-                    num = vars.getVarValue(var_name) / expression();
-                }
-                vars.setVarValue(var_name, num);
-                return num;
-            }
-            if (sym == "%=") {
-                pc++;
-                // vars[var_name] = vars[var_name] % expression();
-                num = vars.getVarValue(var_name) % expression();
-                vars.setVarValue(var_name, num);
-                return num;
-            }
-            if (sym == "\\=") {
-                pc++;
-                // vars[var_name] = parseInt(vars[var_name] / expression(), 10);
-                num = parseInt(vars.getVarValue(var_name) / expression(), 10);
-                vars.setVarValue(var_name, num);
-                return num;
-            }
-            if (sym == ".=") {
-                pc++;
-                // vars[var_name] = String(vars[var_name]) + String(expression());
-                num = String(vars.getVarValue(var_name)) + String(expression());
-                vars.setVarValue(var_name, num);
-                return num;
-            }
-
-            // ***** 変数の値を返す *****
-            // num = vars[var_name];
-            num = vars.getVarValue(var_name);
-            return num;
-        }
-        // ***** 構文エラー *****
-        if (sp_compati_mode != 1) {
-            throw new Error("構文エラー 予期しない '" + symbol[pc] + "' が見つかりました。");
-        }
-        pc++;
-        // ***** 戻り値を返す *****
-        num = 0;
-        return num;
-    }
-
-    // ***** 変数名取得(通常用) *****
-    function getvarname() {
-        var var_name;
-        var var_name2;
-        var array_index;
-        var pointer_flag;
-
-        // ***** 変数名取得 *****
-        var_name = symbol[pc++];
-
-        // ***** ポインタ的なもの(文頭の*の前にはセミコロンが必要) *****
-        // ***** (変数の内容を変数名にする) *****
-        pointer_flag = false;
-        if (var_name == "*") {
-            if (symbol[pc] == "(") {
-                match("(");
-                var_name = getvarname();
-                match(")");
-            } else {
-                var_name = getvarname();
-            }
-            // var_name = String(vars[var_name]);
-            var_name = String(vars.getVarValue(var_name));
-            pointer_flag = true;
-            // (このまま下に降りて変数名の続き(配列の[]等)をサーチする)
-        }
-
-        // ***** 変数名のチェック *****
-        if (!(isAlpha(var_name.charAt(0)) || var_name.charAt(0) == "_")) {
-            if (pointer_flag == true) {
-                throw new Error("ポインタの指す先が不正です。('" + var_name + "')");
-            } else {
-                throw new Error("変数名が不正です。('" + var_name + "')");
-            }
-        }
-        // ***** 接頭語のチェック *****
-        if (var_name == "global" || var_name == "glb" || var_name == "local" || var_name == "loc") {
-            var_name2 = symbol[pc++];
-            if (!(isAlpha(var_name2.charAt(0)) || var_name2.charAt(0) == "_")) {
-                if (pointer_flag == true) {
-                    throw new Error("ポインタの指す先が不正です。('" + var_name2 + "')");
-                } else {
-                    throw new Error("変数名が不正です。('" + var_name2 + "')");
-                }
-            }
-            var_name = var_name.charAt(0) + "\\" + var_name2;
-        }
-        // ***** 配列変数のとき *****
-        while (symbol[pc] == "[") {
-            pc++;
-            // array_index = parseInt(expression(), 10);
-            array_index = expression(); // 配列の添字に文字列もあり
-            match("]");
-            var_name = var_name + "[" + array_index + "]";
-        }
-        return var_name;
-    }
-    // ***** 変数名取得2(関数の仮引数用) *****
-    function getvarname2() {
-        var var_name;
-        var var_name2;
-        var array_index;
-
-        // ***** 変数名取得 *****
-        var_name = symbol[pc++];
-
-        // ***** ポインタ的なもの(文頭の*の前にはセミコロンが必要) *****
-        // ***** (実際は*を削っているだけ) *****
-        if (var_name == "*") {
-            if (symbol[pc] == "(") {
-                match("(");
-                var_name = getvarname2();
-                match(")");
-            } else {
-                var_name = getvarname2();
-            }
-            // (ローカル変数のスコープをさかのぼれるように「p\」を付加)
-            if (var_name.substring(0, 2) != "p\\") {
-                var_name = "p\\" + var_name;
-            }
-            return var_name;
-        }
-
-        // ***** 変数名のチェック *****
-        if (!(isAlpha(var_name.charAt(0)) || var_name.charAt(0) == "_")) {
-            throw new Error("変数名が不正です。('" + var_name + "')");
-        }
-        // ***** 接頭語のチェック *****
-        if (var_name == "global" || var_name == "glb" || var_name == "local" || var_name == "loc") {
-            var_name2 = symbol[pc++];
-            if (!(isAlpha(var_name2.charAt(0)) || var_name2.charAt(0) == "_")) {
-                throw new Error("変数名が不正です。('" + var_name2 + "')");
-            }
-            var_name = var_name.charAt(0) + "\\" + var_name2;
-        }
-        // ***** 配列変数のとき *****
-        while (symbol[pc] == "[") {
-            pc++;
-            // array_index = parseInt(expression(), 10);
-            array_index = expression(); // 配列の添字に文字列もあり
-            match("]");
-            var_name = var_name + "[" + array_index + "]";
-        }
-        return var_name;
+    // ***** 変数名取得 *****
+    function getvarname(sym) {
+        // (ここではチェック不要)
+        // var c = sym.charCodeAt(0);
+        // if (!((c >= 0x41 && c <= 0x5A) || (c >= 0x61 && c <= 0x7A) || c == 0x5F)) {
+        //     throw new Error("変数名が不正です。('" + sym + "')");
+        // }
+        return sym;
     }
     // ***** グローバル変数化 *****
     // (画像変数名や関数名に変換するときに使用)
@@ -2344,58 +2446,54 @@ var Interpreter;
         i = 0;
         label = {};
         func = {};
-        while (i < symbol_len) {
-            sym = symbol[i++];
+        while (i < code_len) {
+            debugpos1 = code_info[i].pos1;
+            sym = code[i++];
             // ***** ラベルのとき *****
             if (sym == "label") {
-                lbl_name = symbol[i];
+                lbl_name = code[i++];
                 if (lbl_name.charAt(0) == '"' && lbl_name.length > 2) {
                     lbl_name = lbl_name.substring(1, lbl_name.length - 1);
                 }
                 // if (label.hasOwnProperty(lbl_name)) {
                 if (hasOwn.call(label, lbl_name)) {
-                    debugpc = i - 1;
-                    pc = i + 1;
+                    debugpos2 = debugpos1 + 2;
                     throw new Error("ラベル '" + lbl_name + "' の定義が重複しています。");
                 }
-                label[lbl_name] = i + 1;
+                label[lbl_name] = i;
                 continue;
             }
             // ***** 関数定義のとき *****
             if (sym == "func") {
-                func_name = symbol[i];
+                func_name = code[i++];
                 if (!(isAlpha(func_name.charAt(0)) || func_name.charAt(0) == "_")) {
-                    debugpc = i - 1;
-                    pc = i + 1;
+                    debugpos2 = debugpos1 + 2;
                     throw new Error("関数名が不正です。");
                 }
                 // if (func.hasOwnProperty(func_name)) {
                 if (hasOwn.call(func, func_name)) {
-                    debugpc = i - 1;
-                    pc = i + 1;
+                    debugpos2 = debugpos1 + 2;
                     throw new Error("関数 '" + func_name + "' の定義が重複しています。");
                 }
-                func[func_name] = i + 1;
-                j = i;
-                k = 0;
+                func[func_name] = i;
+                j = i - 1;
+                k = 1;
                 while (true) {
                     j++;
-                    if (j >= symbol_len) {
-                        debugpc = i - 1;
-                        pc = j + 1;
+                    if (j >= code_len) {
+                        debugpos2 = debugpos1 + 2;
                         throw new Error("funcの{}がありません。");
                     }
-                    if (symbol[j] == "{") { k++; }
-                    if (symbol[j] == "}") {
+                    // if (code[j] == "func") { k++; }
+                    if (code[j] == "funcend") {
                         k--;
                         if (k == 0) {
                             func[func_name + "\\end"] = j + 1;
                             break;
                         }
                     }
-                    if (symbol[j] == "func") {
-                        debugpc = i - 1;
-                        pc = j + 1;
+                    if (code[j] == "func") {
+                        debugpos2 = code_info[j].pos1 + 1;
                         throw new Error("funcの中にfuncを入れられません。");
                     }
                 }
@@ -2405,25 +2503,21 @@ var Interpreter;
     }
 
     // ***** コンパイル *****
-    // switch, if, for, while, do, break, continue を条件付きgotoに変換する
-    // これによって、ループ中もブラウザに制御を返せるようになる
     function compile() {
-        // ***** コンパイル処理実行 *****
-        symbol2 = [];
-        symbol2_line = [];
-        symbol2_len = 0;
-        c_statement(0, symbol_len, "", ""); // 再帰的になるので別関数にした
-        // ***** 元のシンボルにコピー *****
-        symbol = symbol2;
-        symbol_line = symbol2_line;
-        symbol_len = symbol2_len;
+        // ***** 文(ステートメント)のコンパイル *****
+        code = [];
+        code_info = [];
+        code_len = 0;
+        c_statement(0, symbol_len, "", "");
     }
 
     // ***** 文(ステートメント)のコンパイル *****
     function c_statement(sym_start, sym_end, break_lbl, continue_lbl) {
         var i, j, k, k2;
         var sym;
-        var sym_line;
+
+        var func_stm, func_end;
+        var funccall_p1, funccall_p2, funccall_end;
 
         var switch_exp, switch_stm, switch_default_stm, switch_end;
         var switch_case_no;
@@ -2444,40 +2538,180 @@ var Interpreter;
         // ***** シンボル解析のループ *****
         i = sym_start;
         while (i < sym_end) {
-            debugpc = i;
-            pc = i + 1;
+            debugpos1 = i;
             sym = symbol[i];
-            sym_line = symbol_line[i++];
+
+            // ***** 「;」のとき *****
+            if (sym == ";") {
+                i++;
+                continue;
+            }
+
+            // ***** label文のとき *****
+            if (sym == "label") {
+                i++;
+                code_push("label", debugpos1, i);
+                code_push(symbol[i++], debugpos1, i);
+                continue;
+            }
+
+            // ***** goto文のとき *****
+            if (sym == "goto") {
+                i++;
+                i = c_expression(i, sym_end);
+                code_push("gotostack", debugpos1, i);
+                continue;
+            }
+
+            // ***** gosub文のとき *****
+            if (sym == "gosub") {
+                i++;
+                i = c_expression(i, sym_end);
+                code_push("gosubstack", debugpos1, i);
+                continue;
+            }
+
+            // ***** return文のとき *****
+            if (sym == "return") {
+                i++;
+                // ***** 戻り値を取得 *****
+                if (symbol[i] == ";") {
+                    code_push("store0", debugpos1, i);
+                } else {
+                    i = c_expression(i, sym_end);
+                }
+                code_push("return", debugpos1, i);
+                continue;
+            }
+
+            // ***** end文のとき *****
+            if (sym == "end") {
+                i++;
+                code_push("end", debugpos1, i);
+                continue;
+            }
+
+            // ***** func文のとき *****
+            if (sym == "func") {
+                i++;
+                code_push("func", debugpos1, i);
+                code_push(symbol[i++], debugpos1, i);
+                // ***** 仮引数 *****
+                match2("(", i++);
+                if (symbol[i] == ")") {
+                    i++;
+                } else {
+                    while (i < sym_end) {
+                        // ***** 変数名のコンパイル2(関数の仮引数用) *****
+                        i = c_getvarname2(i, sym_end);
+                        code_push("loadparam", debugpos1, i);
+                        if (symbol[i] == ",") {
+                            i++;
+                            continue;
+                        }
+                        break;
+                    }
+                    match2(")", i++);
+                }
+                // ***** 本体 *****
+                j = i;
+                match2("{", j++);
+                func_stm = j;
+                k = 1;
+                while (j < sym_end) {
+                    if (symbol[j] == "{") { k++; }
+                    if (symbol[j] == "}") { k--; }
+                    if (k == 0) { break; }
+                    j++;
+                }
+                match2("}", j++);
+                func_end = j;
+                i = func_end;
+                // ***** 文(ステートメント)のコンパイル(再帰的に実行) *****
+                c_statement(func_stm, func_end - 1, "", "");
+                code_push("funcend", debugpos1, i);
+                continue;
+            }
+
+            // ***** funccall文のとき *****
+            if (sym == "funccall") {
+                i++;
+                // ***** 解析とアドレスの取得 *****
+                j = i;
+                match2("(", j++);
+                // 引数1
+                funccall_p1 = j;
+                k = 1;
+                while (j < sym_end) {
+                    if (symbol[j] == "(") { k++; }
+                    if (symbol[j] == ")") { k--; }
+                    if (k == 0) { break; }
+                    if (k == 1 && symbol[j] == ",") { break; }
+                    j++;
+                }
+                // 引数2
+                funccall_p2 = -1;
+                if (k == 1 && symbol[j] == ",") {
+                    match2(",", j++);
+                    funccall_p2 = j;
+                    k = 1;
+                    while (j < sym_end) {
+                        if (symbol[j] == "(") { k++; }
+                        if (symbol[j] == ")") { k--; }
+                        if (k == 0) { break; }
+                        j++;
+                    }
+                }
+                match2(")", j++);
+                // 終了
+                funccall_end = j;
+                // ***** 新しいシンボルの生成 *****
+                if (funccall_p2 < 0) {
+                    // 引数1
+                    j = c_expression(funccall_p1, funccall_end - 1);
+                    // 終了
+                    code_push("pop", debugpos1, j);
+                } else {
+                    // 引数2
+                    j = c_getvarname(funccall_p2, funccall_end - 1);
+                    // 引数1
+                    j = c_expression(funccall_p1, funccall_p2 - 1);
+                    // 終了
+                    code_push("load", debugpos1, j);
+                    code_push("pop", debugpos1, j);
+                }
+                i = funccall_end;
+                continue;
+            }
 
             // ***** break文のとき *****
             if (sym == "break") {
+                i++;
                 if (break_lbl == "") {
-                    debugpc = i - 1;
-                    pc = i;
+                    debugpos2 = i;
                     throw new Error("予期しない break が見つかりました。");
                 }
-                symbol2_push("goto", sym_line);
-                symbol2_push(break_lbl, sym_line);
-                symbol2_push(";", sym_line); // コンパイルエラー対応2
+                code_push("goto", debugpos1, i);
+                code_push(break_lbl, debugpos1, i);
                 continue;
             }
 
             // ***** continue文のとき *****
             if (sym == "continue") {
+                i++;
                 if (continue_lbl == "") {
-                    debugpc = i - 1;
-                    pc = i;
+                    debugpos2 = i;
                     throw new Error("予期しない continue が見つかりました。");
                 }
-                symbol2_push("goto", sym_line);
-                symbol2_push(continue_lbl, sym_line);
-                symbol2_push(";", sym_line); // コンパイルエラー対応2
+                code_push("goto", debugpos1, i);
+                code_push(continue_lbl, debugpos1, i);
                 continue;
             }
 
             // ***** switch文のとき *****
             // switch (式) { case 式: 文 ... case 式: 文 default: 文 }
             if (sym == "switch") {
+                i++;
                 // ***** 解析とアドレスの取得 *****
                 j = i;
                 match2("(", j++);
@@ -2485,8 +2719,7 @@ var Interpreter;
                 switch_exp = j;
                 k = 1;
                 if (symbol[j] == ")") {
-                    debugpc = i - 1;
-                    pc = j + 1;
+                    debugpos2 = j + 1;
                     throw new Error("switch文の条件式がありません。");
                 }
                 while (j < sym_end) {
@@ -2513,8 +2746,7 @@ var Interpreter;
                             // 式
                             switch_case_exp.push(j);
                             if (symbol[j] == ":") {
-                                debugpc = i - 1;
-                                pc = j + 1;
+                                debugpos2 = j + 1;
                                 throw new Error("case文の値がありません。");
                             }
                             k2 = 1;                  // caseに式を可能とする
@@ -2542,53 +2774,34 @@ var Interpreter;
                     j++;
                 }
                 match2("}", j++);
+                // 終了
                 switch_end = j;
                 // ***** 新しいシンボルの生成 *****
                 // 式
-                symbol2_push(";", sym_line); // コンパイルエラー対応1
-                symbol2_push("switch_var\\" + i, sym_line);     // テンポラリ変数に条件式を代入
-                symbol2_push("=", sym_line);
-                symbol2_push("(", sym_line);
-                for (j = switch_exp; j < switch_stm - 2; j++) {
-                    symbol2_push(symbol[j], symbol_line[j]);
-                    sym_line = symbol_line[j];
-                }
-                symbol2_push(")", sym_line);
-                symbol2_push(";", sym_line);
+                j = c_expression2(switch_exp, switch_stm - 3);
                 for (switch_case_no = 0; switch_case_no < switch_case_exp.length; switch_case_no++) {
                     if (switch_case_stm[switch_case_no] == switch_default_stm) { continue; }
-                    symbol2_push("ifgoto\\", sym_line);
-                    symbol2_push("(", sym_line);
-                    symbol2_push("switch_var\\" + i, sym_line); // テンポラリ変数とcaseの値を比較
-                    symbol2_push("==", sym_line);
-                    symbol2_push("(", sym_line);
-                    for (j = switch_case_exp[switch_case_no]; j < switch_case_stm[switch_case_no] - 1; j++) {
-                        symbol2_push(symbol[j], symbol_line[j]);
-                        sym_line = symbol_line[j];
-                    }
-                    symbol2_push(")", sym_line);
-                    symbol2_push(")", sym_line);
-                    symbol2_push('"switch_case_stm' + switch_case_no + '\\' + i + '"', sym_line);
-                    // symbol2_push(";", sym_line); // コンパイルエラー対応2
+                    code_push("dup", debugpos1, j);
+                    j = c_expression2(switch_case_exp[switch_case_no], switch_case_stm[switch_case_no] - 2);
+                    code_push("cmpeq", debugpos1, j);
+                    code_push("ifgoto", debugpos1, j);
+                    code_push('"switch_case_stm' + switch_case_no + '\\' + i + '"', debugpos1, j);
                 }
                 if (switch_default_stm >= 0) {
-                    symbol2_push("goto", sym_line);
-                    symbol2_push('"switch_default_stm\\' + i + '"', sym_line);
-                    // symbol2_push(";", sym_line); // コンパイルエラー対応2
+                    code_push("goto", debugpos1, j);
+                    code_push('"switch_default_stm\\' + i + '"', debugpos1, j);
                 } else {
-                    symbol2_push("goto", sym_line);
-                    symbol2_push('"switch_end\\' + i + '"', sym_line);
-                    // symbol2_push(";", sym_line); // コンパイルエラー対応2
+                    code_push("goto", debugpos1, j);
+                    code_push('"switch_end\\' + i + '"', debugpos1, j);
                 }
                 // 文
                 for (switch_case_no = 0; switch_case_no < switch_case_exp.length; switch_case_no++) {
-                    symbol2_push("label", sym_line);
+                    code_push("label", debugpos1, j);
                     if (switch_case_stm[switch_case_no] == switch_default_stm) {
-                        symbol2_push('"switch_default_stm\\' + i + '"', sym_line);
+                        code_push('"switch_default_stm\\' + i + '"', debugpos1, j);
                     } else {
-                        symbol2_push('"switch_case_stm' + switch_case_no + '\\' + i + '"', sym_line);
+                        code_push('"switch_case_stm' + switch_case_no + '\\' + i + '"', debugpos1, j);
                     }
-                    // symbol2_push(";", sym_line); // コンパイルエラー対応2
                     if (switch_case_no < switch_case_exp.length - 1) {
                         switch_case_stm_end = switch_case_exp[switch_case_no + 1];
                     } else {
@@ -2598,9 +2811,9 @@ var Interpreter;
                     c_statement(switch_case_stm[switch_case_no], switch_case_stm_end - 1, '"switch_end\\' + i + '"', continue_lbl);
                 }
                 // 終了
-                symbol2_push("label", sym_line);
-                symbol2_push('"switch_end\\' + i + '"', sym_line);
-                // symbol2_push(";", sym_line); // コンパイルエラー対応2
+                code_push("label", debugpos1, j);
+                code_push('"switch_end\\' + i + '"', debugpos1, j);
+                code_push("pop", debugpos1, j);
                 i = switch_end;
                 continue;
             }
@@ -2608,6 +2821,7 @@ var Interpreter;
             // ***** if文のとき *****
             // if (式) { 文 } elsif (式) { 文 } ... elsif (式) { 文 } else { 文 }
             if (sym == "if") {
+                i++;
                 // ***** 解析とアドレスの取得 *****
                 j = i;
                 match2("(", j++);
@@ -2615,8 +2829,7 @@ var Interpreter;
                 if_exp = j;
                 k = 1;
                 if (symbol[j] == ")") {
-                    debugpc = i - 1;
-                    pc = j + 1;
+                    debugpos2 = j + 1;
                     throw new Error("if文の条件式がありません。");
                 }
                 while (j < sym_end) {
@@ -2646,14 +2859,16 @@ var Interpreter;
                 while (j < sym_end) {
                     // elsif
                     if (symbol[j] == "elsif") {
+
+                        debugpos1 = j;
+
                         j++;
                         match2("(", j++);
                         // 式
                         elsif_exp.push(j);
                         k = 1;
                         if (symbol[j] == ")") {
-                            debugpc = j - 2;
-                            pc = j + 1;
+                            debugpos2 = j + 1;
                             throw new Error("elsif文の条件式がありません。");
                         }
                         while (j < sym_end) {
@@ -2679,6 +2894,9 @@ var Interpreter;
                     }
                     // else
                     if (symbol[j] == "else") {
+
+                        debugpos1 = j;
+
                         j++;
                         match2("{", j++);
                         // 文
@@ -2700,72 +2918,55 @@ var Interpreter;
                 if_end = j;
                 // ***** 新しいシンボルの生成 *****
                 // 式
-                symbol2_push("ifnotgoto\\", sym_line);
-                symbol2_push("(", sym_line);
-                for (j = if_exp; j < if_stm - 2; j++) {
-                    symbol2_push(symbol[j], symbol_line[j]);
-                    sym_line = symbol_line[j];
-                }
-                symbol2_push(")", sym_line);
+                j = c_expression2(if_exp, if_stm - 3);
+                code_push("ifnotgoto", debugpos1, j);
                 if (elsif_exp.length > 0) {
-                    symbol2_push('"elsif_exp0\\' + i + '"', sym_line);
+                    code_push('"elsif_exp0\\' + i + '"', debugpos1, j);
                 } else if (else_stm >= 0) {
-                    symbol2_push('"else_stm\\' + i + '"', sym_line);
+                    code_push('"else_stm\\' + i + '"', debugpos1, j);
                 } else {
-                    symbol2_push('"if_end\\' + i + '"', sym_line);
+                    code_push('"if_end\\' + i + '"', debugpos1, j);
                 }
-                symbol2_push(";", sym_line); // コンパイルエラー対応2
                 // 文
                 // ***** 文(ステートメント)のコンパイル(再帰的に実行) *****
                 c_statement(if_stm, if_stm_end - 1, break_lbl, continue_lbl);
                 if (elsif_exp.length > 0 || else_stm >=0) {
-                    symbol2_push("goto", sym_line);
-                    symbol2_push('"if_end\\' + i + '"', sym_line);
-                    // symbol2_push(";", sym_line); // コンパイルエラー対応2
+                    code_push("goto", debugpos1, j);
+                    code_push('"if_end\\' + i + '"', debugpos1, j);
                 }
                 // elsif
                 for (elsif_no = 0; elsif_no < elsif_exp.length; elsif_no++) {
                     // 式
-                    symbol2_push("label", sym_line);
-                    symbol2_push('"elsif_exp' + elsif_no + '\\' + i + '"', sym_line);
-                    // symbol2_push(";", sym_line); // コンパイルエラー対応2
-                    symbol2_push("ifnotgoto\\", sym_line);
-                    symbol2_push("(", sym_line);
-                    for (j = elsif_exp[elsif_no]; j < elsif_stm[elsif_no] - 2; j++) {
-                        symbol2_push(symbol[j], symbol_line[j]);
-                        sym_line = symbol_line[j];
-                    }
-                    symbol2_push(")", sym_line);
+                    code_push("label", debugpos1, j);
+                    code_push('"elsif_exp' + elsif_no + '\\' + i + '"', debugpos1, j);
+                    j = c_expression2(elsif_exp[elsif_no], elsif_stm[elsif_no] - 3);
+                    code_push("ifnotgoto", debugpos1, j);
                     if (elsif_exp.length > elsif_no + 1) {
-                        symbol2_push('"elsif_exp' + (elsif_no + 1) + '\\' + i + '"', sym_line);
+                        code_push('"elsif_exp' + (elsif_no + 1) + '\\' + i + '"', debugpos1, j);
                     } else if (else_stm >= 0) {
-                        symbol2_push('"else_stm\\' + i + '"', sym_line);
+                        code_push('"else_stm\\' + i + '"', debugpos1, j);
                     } else {
-                        symbol2_push('"if_end\\' + i + '"', sym_line);
+                        code_push('"if_end\\' + i + '"', debugpos1, j);
                     }
-                    symbol2_push(";", sym_line); // コンパイルエラー対応2
                     // 文
                     // ***** 文(ステートメント)のコンパイル(再帰的に実行) *****
                     c_statement(elsif_stm[elsif_no], elsif_stm_end[elsif_no] - 1, break_lbl, continue_lbl);
                     if (elsif_exp.length > elsif_no + 1 || else_stm >=0) {
-                        symbol2_push("goto", sym_line);
-                        symbol2_push('"if_end\\' + i + '"', sym_line);
-                        // symbol2_push(";", sym_line); // コンパイルエラー対応2
+                        code_push("goto", debugpos1, j);
+                        code_push('"if_end\\' + i + '"', debugpos1, j);
                     }
                 }
                 // else
                 if (else_stm >= 0) {
                     // 文
-                    symbol2_push("label", sym_line);
-                    symbol2_push('"else_stm\\' + i + '"', sym_line);
-                    // symbol2_push(";", sym_line); // コンパイルエラー対応2
+                    code_push("label", debugpos1, j);
+                    code_push('"else_stm\\' + i + '"', debugpos1, j);
                     // ***** 文(ステートメント)のコンパイル(再帰的に実行) *****
                     c_statement(else_stm, if_end - 1, break_lbl, continue_lbl);
                 }
                 // 終了
-                symbol2_push("label", sym_line);
-                symbol2_push('"if_end\\' + i + '"', sym_line);
-                // symbol2_push(";", sym_line); // コンパイルエラー対応2
+                code_push("label", debugpos1, j);
+                code_push('"if_end\\' + i + '"', debugpos1, j);
                 i = if_end;
                 continue;
             }
@@ -2773,6 +2974,7 @@ var Interpreter;
             // ***** for文のとき *****
             // for (式1; 式2; 式3) { 文 }
             if (sym == "for") {
+                i++;
                 // ***** 解析とアドレスの取得 *****
                 j = i;
                 match2("(", j++);
@@ -2821,67 +3023,40 @@ var Interpreter;
                 for_end = j;
                 // ***** 新しいシンボルの生成 *****
                 // 式1
-                symbol2_push(";", sym_line); // コンパイルエラー対応1
-                symbol2_push("(", sym_line);
                 if (for_exp1 < for_exp2 - 1) {
-                    for (j = for_exp1; j < for_exp2 - 1; j++) {
-                        symbol2_push(symbol[j], symbol_line[j]);
-                        sym_line = symbol_line[j];
-                    }
-                } else {
-                    symbol2_push("1", sym_line); // 式1が空なら何もしない
+                    j = c_expression2(for_exp1, for_exp2 - 2);
+                    code_push("pop", debugpos1, j);
                 }
-                symbol2_push(")", sym_line);
-                symbol2_push(";", sym_line);
-                symbol2_push("goto", sym_line);
-                symbol2_push('"for_exp2\\' + i + '"', sym_line);
-                // symbol2_push(";", sym_line); // コンパイルエラー対応2
+                code_push("goto", debugpos1, j);
+                code_push('"for_exp2\\' + i + '"', debugpos1, j);
                 // 式3
-                symbol2_push("label", sym_line);
-                symbol2_push('"for_exp3\\' + i + '"', sym_line);
-                // symbol2_push(";", sym_line); // コンパイルエラー対応2
-                symbol2_push("(", sym_line);
+                code_push("label", debugpos1, j);
+                code_push('"for_exp3\\' + i + '"', debugpos1, j);
                 if (for_exp3 < for_stm - 2) {
-                    for (j = for_exp3; j < for_stm - 2; j++) {
-                        symbol2_push(symbol[j], symbol_line[j]);
-                        sym_line = symbol_line[j];
-                    }
-                } else {
-                    symbol2_push("1", sym_line); // 式3が空なら何もしない
+                    j = c_expression2(for_exp3, for_stm - 3);
+                    code_push("pop", debugpos1, j);
                 }
-                symbol2_push(")", sym_line);
-                symbol2_push(";", sym_line);
                 // 式2
-                symbol2_push("label", sym_line);
-                symbol2_push('"for_exp2\\' + i + '"', sym_line);
-                // symbol2_push(";", sym_line); // コンパイルエラー対応2
-                symbol2_push("ifnotgoto\\", sym_line);
-                symbol2_push("(", sym_line);
+                code_push("label", debugpos1, j);
+                code_push('"for_exp2\\' + i + '"', debugpos1, j);
                 if (for_exp2 < for_exp3 - 1) {
-                    for (j = for_exp2; j < for_exp3 - 1; j++) {
-                        symbol2_push(symbol[j], symbol_line[j]);
-                        sym_line = symbol_line[j];
-                    }
+                    j = c_expression2(for_exp2, for_exp3 - 2);
                 } else {
-                    symbol2_push("1", sym_line); // 式2が空なら無限ループ
+                    code_push("store1", debugpos1, j); // 式2が空なら無限ループ
                 }
-                symbol2_push(")", sym_line);
-                symbol2_push('"for_end\\' + i + '"', sym_line);
-                symbol2_push(";", sym_line); // コンパイルエラー対応2
+                code_push("ifnotgoto", debugpos1, j);
+                code_push('"for_end\\' + i + '"', debugpos1, j);
                 // 文
                 // ***** 文(ステートメント)のコンパイル(再帰的に実行) *****
                 c_statement(for_stm, for_end - 1, '"for_end\\' + i + '"', '"for_exp3\\' + i + '"');
                 // for (j = for_stm; j < for_end - 1; j++) {
-                //     symbol2_push(symbol[j], symbol_line[j]);
-                //     sym_line = symbol_line[j];
+                //     code_push(symbol[j], debugpos1, j);
                 // }
-                symbol2_push("goto", sym_line);
-                symbol2_push('"for_exp3\\' + i + '"', sym_line);
-                // symbol2_push(";", sym_line); // コンパイルエラー対応2
+                code_push("goto", debugpos1, j);
+                code_push('"for_exp3\\' + i + '"', debugpos1, j);
                 // 終了
-                symbol2_push("label", sym_line);
-                symbol2_push('"for_end\\' + i + '"', sym_line);
-                // symbol2_push(";", sym_line); // コンパイルエラー対応2
+                code_push("label", debugpos1, j);
+                code_push('"for_end\\' + i + '"', debugpos1, j);
                 i = for_end;
                 continue;
             }
@@ -2889,6 +3064,7 @@ var Interpreter;
             // ***** while文のとき *****
             // while (式) { 文 }
             if (sym == "while") {
+                i++;
                 // ***** 解析とアドレスの取得 *****
                 j = i;
                 match2("(", j++);
@@ -2896,8 +3072,7 @@ var Interpreter;
                 while_exp = j;
                 k = 1;
                 if (symbol[j] == ")") {
-                    debugpc = i - 1;
-                    pc = j + 1;
+                    debugpos2 = j + 1;
                     throw new Error("while文の条件式がありません。");
                 }
                 while (j < sym_end) {
@@ -2922,28 +3097,19 @@ var Interpreter;
                 while_end = j;
                 // ***** 新しいシンボルの生成 *****
                 // 式
-                symbol2_push("label", sym_line);
-                symbol2_push('"while_exp\\' + i + '"', sym_line);
-                // symbol2_push(";", sym_line); // コンパイルエラー対応2
-                symbol2_push("ifnotgoto\\", sym_line);
-                symbol2_push("(", sym_line);
-                for (j = while_exp; j < while_stm - 2; j++) {
-                    symbol2_push(symbol[j], symbol_line[j]);
-                    sym_line = symbol_line[j];
-                }
-                symbol2_push(")", sym_line);
-                symbol2_push('"while_end\\' + i + '"', sym_line);
-                symbol2_push(";", sym_line); // コンパイルエラー対応2
+                code_push("label", debugpos1, j);
+                code_push('"while_exp\\' + i + '"', debugpos1, j);
+                j = c_expression2(while_exp, while_stm - 3);
+                code_push("ifnotgoto", debugpos1, j);
+                code_push('"while_end\\' + i + '"', debugpos1, j);
                 // 文
                 // ***** 文(ステートメント)のコンパイル(再帰的に実行) *****
                 c_statement(while_stm, while_end - 1, '"while_end\\' + i + '"', '"while_exp\\' + i + '"');
-                symbol2_push("goto", sym_line);
-                symbol2_push('"while_exp\\' + i + '"', sym_line);
-                // symbol2_push(";", sym_line); // コンパイルエラー対応2
+                code_push("goto", debugpos1, j);
+                code_push('"while_exp\\' + i + '"', debugpos1, j);
                 // 終了
-                symbol2_push("label", sym_line);
-                symbol2_push('"while_end\\' + i + '"', sym_line);
-                // symbol2_push(";", sym_line); // コンパイルエラー対応2
+                code_push("label", debugpos1, j);
+                code_push('"while_end\\' + i + '"', debugpos1, j);
                 i = while_end;
                 continue;
             }
@@ -2951,6 +3117,7 @@ var Interpreter;
             // ***** do文のとき *****
             // do { 文 } while (式)
             if (sym == "do") {
+                i++;
                 // ***** 解析とアドレスの取得 *****
                 j = i;
                 match2("{", j++);
@@ -2965,8 +3132,7 @@ var Interpreter;
                 }
                 match2("}", j++);
                 if (symbol[j] != "while") {
-                    debugpc = i - 1;
-                    pc = j + 1;
+                    debugpos2 = j + 1;
                     throw new Error("do文のwhileがありません。");
                 }
                 j++;
@@ -2975,8 +3141,7 @@ var Interpreter;
                 do_exp = j;
                 k = 1;
                 if (symbol[j] == ")") {
-                    debugpc = i - 1;
-                    pc = j + 1;
+                    debugpos2 = j + 1;
                     throw new Error("do文の条件式がありません。");
                 }
                 while (j < sym_end) {
@@ -2990,46 +3155,682 @@ var Interpreter;
                 do_end = j;
                 // ***** 新しいシンボルの生成 *****
                 // 文
-                symbol2_push("label", sym_line);
-                symbol2_push('"do_stm\\' + i + '"', sym_line);
-                // symbol2_push(";", sym_line); // コンパイルエラー対応2
+                code_push("label", debugpos1, j);
+                code_push('"do_stm\\' + i + '"', debugpos1, j);
                 // ***** 文(ステートメント)のコンパイル(再帰的に実行) *****
                 c_statement(do_stm, do_exp - 3, '"do_end\\' + i + '"', '"do_stm\\' + i + '"');
                 // 式
-                symbol2_push("ifgoto\\", sym_line);
-                symbol2_push("(", sym_line);
-                for (j = do_exp; j < do_end - 1; j++) {
-                    symbol2_push(symbol[j], symbol_line[j]);
-                    sym_line = symbol_line[j];
-                }
-                symbol2_push(")", sym_line);
-                symbol2_push('"do_stm\\' + i + '"', sym_line);
-                // symbol2_push(";", sym_line); // コンパイルエラー対応2
+                j = c_expression2(do_exp, do_end - 2);
+                code_push("ifgoto", debugpos1, j);
+                code_push('"do_stm\\' + i + '"', debugpos1, j);
                 // 終了
-                symbol2_push("label", sym_line);
-                symbol2_push('"do_end\\' + i + '"', sym_line);
-                // symbol2_push(";", sym_line); // コンパイルエラー対応2
+                code_push("label", debugpos1, j);
+                code_push('"do_end\\' + i + '"', debugpos1, j);
                 i = do_end;
                 continue;
             }
 
-            // ***** その他のとき *****
-            symbol2_push(sym, sym_line);
+            // ***** 式のコンパイル *****
+            i = c_expression(i, sym_end);
+            code_push("pop", debugpos1, i);
         }
+    }
+
+    // ***** 式のコンパイル *****
+    // (priorityは演算子の優先順位を表す。大きいほど優先順位が高い)
+    function c_expression(sym_start, sym_end, priority) {
+        var i, j;
+        var sym;
+        var tri_flag;
+
+        // ***** 引数のチェック *****
+        if (priority == null) { priority = 0; }
+        // ***** 因子の処理 *****
+        i = sym_start;
+        i = c_factor(i, sym_end);
+        // ***** 演算子処理のループ *****
+        tri_flag = false;
+        while (i < sym_end) {
+            // ***** シンボル取り出し *****
+            // debugpos1 = i;
+            sym = symbol[i];
+            // ***** 「&」のとき *****
+            if (sym == "&" && priority < 10) {
+                i++;
+                i = c_expression(i, sym_end, 10);
+                code_push("and", debugpos1, i);
+                tri_flag = false;
+                continue;
+            }
+            // ***** 「&&」のとき *****
+            if (sym == "&&" && priority < 10) {
+                j = i;
+                i++;
+                code_push("ifnotgoto", debugpos1, i);
+                code_push('"and_zero\\' + j + '"', debugpos1, i);
+                i = c_expression(i, sym_end, 9); // 右結合
+                code_push("ifnotgoto", debugpos1, i);
+                code_push('"and_zero\\' + j + '"', debugpos1, i);
+                code_push("store1", debugpos1, i);
+                code_push("goto", debugpos1, i);
+                code_push('"and_end\\' + j + '"', debugpos1, i);
+                code_push("label", debugpos1, i);
+                code_push('"and_zero\\' + j + '"', debugpos1, i);
+                code_push("store0", debugpos1, i);
+                code_push("label", debugpos1, i);
+                code_push('"and_end\\' + j + '"', debugpos1, i);
+                tri_flag = false;
+                continue;
+            }
+            // ***** 「|」のとき *****
+            if (sym == "|" && priority < 10) {
+                i++;
+                i = c_expression(i, sym_end, 10);
+                code_push("or", debugpos1, i);
+                tri_flag = false;
+                continue;
+            }
+            // ***** 「||」のとき *****
+            if (sym == "||" && priority < 10) {
+                j = i;
+                i++;
+                code_push("ifgoto", debugpos1, i);
+                code_push('"or_one\\' + j + '"', debugpos1, i);
+                i = c_expression(i, sym_end, 9); // 右結合
+                code_push("ifgoto", debugpos1, i);
+                code_push('"or_one\\' + j + '"', debugpos1, i);
+                code_push("store0", debugpos1, i);
+                code_push("goto", debugpos1, i);
+                code_push('"or_end\\' + j + '"', debugpos1, i);
+                code_push("label", debugpos1, i);
+                code_push('"or_one\\' + j + '"', debugpos1, i);
+                code_push("store1", debugpos1, i);
+                code_push("label", debugpos1, i);
+                code_push('"or_end\\' + j + '"', debugpos1, i);
+                tri_flag = false;
+                continue;
+            }
+            // ***** 「^」のとき *****
+            if (sym == "^" && priority < 10) {
+                i++;
+                i = c_expression(i, sym_end, 10);
+                code_push("xor", debugpos1, i);
+                tri_flag = false;
+                continue;
+            }
+            // ***** 3項演算子「?:;」のとき *****
+            if (sym == "?" && priority < 10) {
+                j = i;
+                i++;
+                code_push("ifnotgoto", debugpos1, i);
+                code_push('"tri_zero\\' + j + '"', debugpos1, i);
+                i = c_expression(i, sym_end, 9); // 右結合
+                match2(":", i++);
+                code_push("goto", debugpos1, i);
+                code_push('"tri_end\\' + j + '"', debugpos1, i);
+                code_push("label", debugpos1, i);
+                code_push('"tri_zero\\' + j + '"', debugpos1, i);
+                i = c_expression(i, sym_end, 9); // 右結合
+                match2(";", i++);
+                code_push("label", debugpos1, i);
+                code_push('"tri_end\\' + j + '"', debugpos1, i);
+                tri_flag = true;
+                continue;
+            }
+
+            // (3項演算子の処理後は、優先順位10の演算子しか処理しない(既設の仕様))
+            if (tri_flag == true) {
+                break;
+            }
+
+            // ***** 「<<」のとき *****
+            if (sym == "<<" && priority < 20) {
+                i++;
+                i = c_expression(i, sym_end, 20);
+                code_push("shl", debugpos1, i);
+                continue;
+            }
+            // ***** 「<」のとき *****
+            if (sym == "<" && priority < 20) {
+                i++;
+                i = c_expression(i, sym_end, 20);
+                code_push("cmplt", debugpos1, i);
+                continue;
+            }
+            // ***** 「<=」のとき *****
+            if (sym == "<=" && priority < 20) {
+                i++;
+                i = c_expression(i, sym_end, 20);
+                code_push("cmple", debugpos1, i);
+                continue;
+            }
+            // ***** 「>>>」のとき *****
+            if (sym == ">>>" && priority < 20) {
+                i++;
+                i = c_expression(i, sym_end, 20);
+                code_push("ushr", debugpos1, i);
+                continue;
+            }
+            // ***** 「>>」のとき *****
+            if (sym == ">>" && priority < 20) {
+                i++;
+                i = c_expression(i, sym_end, 20);
+                code_push("shr", debugpos1, i);
+                continue;
+            }
+            // ***** 「>」のとき *****
+            if (sym == ">" && priority < 20) {
+                i++;
+                i = c_expression(i, sym_end, 20);
+                code_push("cmpgt", debugpos1, i);
+                continue;
+            }
+            // ***** 「>=」のとき *****
+            if (sym == ">=" && priority < 20) {
+                i++;
+                i = c_expression(i, sym_end, 20);
+                code_push("cmpge", debugpos1, i);
+                continue;
+            }
+            // ***** 「==」のとき *****
+            if (sym == "==" && priority < 20) {
+                i++;
+                i = c_expression(i, sym_end, 20);
+                code_push("cmpeq", debugpos1, i);
+                continue;
+            }
+            // ***** 「!=」のとき *****
+            if (sym == "!=" && priority < 20) {
+                i++;
+                i = c_expression(i, sym_end, 20);
+                code_push("cmpne", debugpos1, i);
+                continue;
+            }
+            // ***** 「+」のとき *****
+            if (sym == "+" && priority < 30) {
+                i++;
+                i = c_expression(i, sym_end, 30);
+                code_push("add", debugpos1, i);
+                continue;
+            }
+            // ***** 「.」のとき *****
+            if (sym == "." && priority < 30) {
+                i++;
+                i = c_expression(i, sym_end, 30);
+                code_push("addstr", debugpos1, i);
+                continue;
+            }
+            // ***** 「-」のとき *****
+            if (sym == "-" && priority < 30) {
+                i++;
+                i = c_expression(i, sym_end, 30);
+                code_push("sub", debugpos1, i);
+                continue;
+            }
+            // ***** 「*」のとき *****
+            if (sym == "*" && priority < 40) {
+                i++;
+                i = c_expression(i, sym_end, 40);
+                code_push("mul", debugpos1, i);
+                continue;
+            }
+            // ***** 「/」のとき *****
+            if (sym == "/" && priority < 40) {
+                i++;
+                i = c_expression(i, sym_end, 40);
+                code_push("div", debugpos1, i);
+                continue;
+            }
+            // ***** 「\」のとき *****
+            if (sym == "\\" && priority < 40) {
+                i++;
+                i = c_expression(i, sym_end, 40);
+                code_push("divint", debugpos1, i);
+                continue;
+            }
+            // ***** 「%」のとき *****
+            if (sym == "%" && priority < 40) {
+                i++;
+                i = c_expression(i, sym_end, 40);
+                code_push("mod", debugpos1, i);
+                continue;
+            }
+            // ***** 演算子処理のループを抜ける *****
+            break;
+        }
+        // ***** 戻り値を返す *****
+        return i;
+    }
+    // ***** 式のコンパイル2(カンマ区切りあり) *****
+    function c_expression2(sym_start, sym_end) {
+        var i;
+
+        i = sym_start;
+        i = c_expression(i, sym_end);
+        while (i < sym_end) {
+            if (symbol[i] == ",") {
+                i++;
+                code_push("pop", debugpos1, i);
+                i = c_expression(i, sym_end);
+                continue;
+            }
+            break;
+        }
+        return i;
+    }
+
+    // ***** 因子のコンパイル *****
+    function c_factor(sym_start, sym_end) {
+        var num;
+        var i, j;
+        var ch;
+        var sym;
+        var pre_inc;
+        var func_name;
+        var param_num;
+
+        // ***** シンボル取り出し *****
+        i = sym_start;
+        // debugpos1 = i;
+        sym = symbol[i];
+        // ***** 「!」のとき *****
+        if (sym == "!") {
+            j = i;
+            i++;
+            i = c_factor(i, sym_end);
+            code_push("ifnotgoto", debugpos1, i);
+            code_push('"not_one\\' + j + '"', debugpos1, i);
+            code_push("store0", debugpos1, i);
+            code_push("goto", debugpos1, i);
+            code_push('"not_end\\' + j + '"', debugpos1, i);
+            code_push("label", debugpos1, i);
+            code_push('"not_one\\' + j + '"', debugpos1, i);
+            code_push("store1", debugpos1, i);
+            code_push("label", debugpos1, i);
+            code_push('"not_end\\' + j + '"', debugpos1, i);
+            return i;
+        }
+        // ***** 「~」のとき *****
+        if (sym == "~") {
+            i++;
+            i = c_factor(i, sym_end);
+            code_push("not", debugpos1, i);
+            return i;
+        }
+        // ***** 「+」のとき *****
+        if (sym == "+") {
+            i++;
+            i = c_factor(i, sym_end);
+            return i;
+        }
+        // ***** 「-」のとき *****
+        if (sym == "-") {
+            i++;
+            i = c_factor(i, sym_end);
+            code_push("neg", debugpos1, i);
+            return i;
+        }
+        // ***** 「(」のとき *****
+        if (sym == "(") {
+            i++;
+            i = c_expression2(i, sym_end);
+            match2(")", i++);
+            return i;
+        }
+        // ***** 「&」のとき *****
+        if (sym == "&") {
+            i++;
+            if (symbol[i] == "(") {
+                match2("(", i++);
+                i = c_getvarname(i, sym_end);
+                match2(")", i++);
+            } else {
+                i = c_getvarname(i, sym_end);
+            }
+            return i;
+        }
+
+        // ***** 組み込み関数/組み込み変数のとき *****
+        if (func_tbl.hasOwnProperty(sym)) {
+            i++;
+            func_name = sym;
+            code_push("storestr", debugpos1, i);
+            code_push('"' + func_name + '"', debugpos1, i);
+            // ***** 組み込み変数のとき *****
+            if (func_tbl[func_name].param_num == -1) {
+                code_push("store0", debugpos1, i);
+                code_push("call", debugpos1, i);
+                return i;
+            }
+            // ***** 組み込み関数のとき *****
+            match2("(", i++);
+            // ***** 引数の取得 *****
+            param_num = 0;
+            if (symbol[i] == ")") {
+                i++;
+            } else {
+                while (i < sym_end) {
+                    // ***** 変数名をとる引数のとき *****
+                    if (func_tbl[func_name].param_varname.hasOwnProperty(param_num)) {
+                        i = c_getvarname(i, sym_end);
+                    } else {
+                        i = c_expression(i, sym_end);
+                    }
+                    param_num++;
+                    if (symbol[i] == ",") {
+                        i++;
+                        continue;
+                    }
+                    break;
+                }
+                match2(")", i++);
+            }
+            if (param_num < func_tbl[func_name].param_num) {
+                debugpos2 = i;
+                throw new Error("引数の数が足りません。");
+            }
+            // ***** 引数の数を設定 *****
+            code_push("storenum", debugpos1, i);
+            code_push(param_num, debugpos1, i);
+            // ***** 関数の呼び出し *****
+            code_push("call", debugpos1, i);
+            // ***** 戻り値を返す *****
+            return i;
+        }
+
+        // ***** プレインクリメント(「++」「--」)のとき *****
+        pre_inc = 0;
+        if (sym == "++") {
+            i++;
+            pre_inc = 1;
+            // ***** シンボル取り出し *****
+            sym = symbol[i];
+        }
+        if (sym == "--") {
+            i++;
+            pre_inc = -1;
+            // ***** シンボル取り出し *****
+            sym = symbol[i];
+        }
+
+        // ***** 1文字取り出す *****
+        ch = sym.charAt(0);
+        // ***** 文字列のとき *****
+        if (ch == '"') {
+            i++;
+            // if (sym.length > 2) {
+            //     num = sym.substring(1, sym.length - 1);
+            // } else {
+            //     num = "";
+            // }
+            num = sym;
+            code_push("storestr", debugpos1, i);
+            code_push(num, debugpos1, i);
+            return i;
+        }
+        // ***** 数値のとき *****
+        if (isDigit(ch)) {
+            i++;
+            // ***** 数値を返す *****
+            num = +sym; // 数値にする
+            code_push("storenum", debugpos1, i);
+            code_push(num, debugpos1, i);
+            return i;
+        }
+        // ***** アルファベットかアンダースコアかポインタのとき *****
+        if (isAlpha(ch) || ch == "_" || ch == "*") {
+
+            // ***** 変数名のコンパイル *****
+            i = c_getvarname(i, sym_end);
+
+            // ***** 関数のとき *****
+            if (symbol[i] == "(") {
+                i++;
+                // ***** 引数の取得 *****
+                param_num = 0;
+                if (symbol[i] == ")") {
+                    i++;
+                } else {
+                    while (i < sym_end) {
+                        i = c_expression(i, sym_end);
+                        param_num++;
+                        if (symbol[i] == ",") {
+                            i++;
+                            continue;
+                        }
+                        break;
+                    }
+                    match2(")", i++);
+                }
+                // ***** 引数の数を設定 *****
+                code_push("storenum", debugpos1, i);
+                code_push(param_num, debugpos1, i);
+                // ***** 関数の呼び出し *****
+                code_push("calluser", debugpos1, i);
+                // ***** 戻り値を返す *****
+                return i;
+            }
+
+            // ***** 変数の処理 *****
+
+            // ***** プレインクリメント(「++」「--」)のとき *****
+            if (pre_inc == 1) {
+                code_push("preinc", debugpos1, i);
+                return i;
+            }
+            if (pre_inc == -1) {
+                code_push("predec", debugpos1, i);
+                return i;
+            }
+
+            // ***** シンボル取り出し *****
+            sym = symbol[i];
+            // ***** ポストインクリメント(「++」「--」)のとき *****
+            if (sym == "++") {
+                i++;
+                code_push("postinc", debugpos1, i);
+                return i;
+            }
+            if (sym == "--") {
+                i++;
+                code_push("postdec", debugpos1, i);
+                return i;
+            }
+            // ***** 代入のとき *****
+            if (sym == "=") {
+                i++;
+                i = c_expression(i, sym_end);
+                code_push("load", debugpos1, i);
+                return i;
+            }
+            // ***** 複合代入のとき *****
+            if (sym == "+=") {
+                i++;
+                i = c_expression(i, sym_end);
+                code_push("loadadd", debugpos1, i);
+                return i;
+            }
+            if (sym == "-=") {
+                i++;
+                i = c_expression(i, sym_end);
+                code_push("loadsub", debugpos1, i);
+                return i;
+            }
+            if (sym == "*=") {
+                i++;
+                i = c_expression(i, sym_end);
+                code_push("loadmul", debugpos1, i);
+                return i;
+            }
+            if (sym == "/=") {
+                i++;
+                i = c_expression(i, sym_end);
+                code_push("loaddiv", debugpos1, i);
+                return i;
+            }
+            if (sym == "\\=") {
+                i++;
+                i = c_expression(i, sym_end);
+                code_push("loaddivint", debugpos1, i);
+                return i;
+            }
+            if (sym == "%=") {
+                i++;
+                i = c_expression(i, sym_end);
+                code_push("loadmod", debugpos1, i);
+                return i;
+            }
+            if (sym == ".=") {
+                i++;
+                i = c_expression(i, sym_end);
+                code_push("loadaddstr", debugpos1, i);
+                return i;
+            }
+
+            // ***** 変数の値を返す *****
+            code_push("store", debugpos1, i);
+            return i;
+        }
+        // ***** 構文エラー *****
+        // debugpos2 = i + 1;
+        // throw new Error("構文エラー 予期しない '" + symbol[i] + "' が見つかりました。");
+        i++;
+        // ***** 戻り値を返す *****
+        return i;
+    }
+
+    // ***** 変数名のコンパイル(通常用) *****
+    function c_getvarname(sym_start, sym_end) {
+        var i;
+        var var_name;
+        var var_name2;
+
+        // ***** 変数名取得 *****
+        i = sym_start;
+        // debugpos1 = i;
+        var_name = symbol[i++];
+
+        // ***** ポインタ的なもの(文頭の*の前にはセミコロンが必要) *****
+        // ***** (変数の内容を変数名にする) *****
+        if (var_name == "*") {
+            if (symbol[i] == "(") {
+                match2("(", i++);
+                i = c_getvarname(i, sym_end);
+                match2(")", i++);
+                code_push("pointer", debugpos1, i);
+            } else {
+                i = c_getvarname(i, sym_end);
+                code_push("pointer", debugpos1, i);
+            }
+            // (このまま下に降りて変数名の続き(配列の[]等)をサーチする)
+        } else {
+            // ***** 変数名のチェック *****
+            if (!(isAlpha(var_name.charAt(0)) || var_name.charAt(0) == "_")) {
+                debugpos2 = i + 1;
+                throw new Error("変数名が不正です。('" + var_name + "')");
+            }
+            // ***** 接頭語のチェック *****
+            if (var_name == "global" || var_name == "glb" || var_name == "local" || var_name == "loc") {
+                var_name2 = symbol[i++];
+                if (!(isAlpha(var_name2.charAt(0)) || var_name2.charAt(0) == "_")) {
+                    debugpos2 = i + 1;
+                    throw new Error("変数名が不正です。('" + var_name2 + "')");
+                }
+                var_name = var_name.charAt(0) + "\\" + var_name2;
+            }
+            // ***** 変数名をセット *****
+            code_push("storestr", debugpos1, i);
+            code_push('"' + var_name + '"', debugpos1, i);
+        }
+        // ***** 配列変数のとき *****
+        while (symbol[i] == "[") {
+            i++;
+            // i = parseInt(c_expression(i, sym_end), 10);
+            i = c_expression(i, sym_end); // 配列の添字に文字列もあり
+            match2("]", i++);
+            code_push("array", debugpos1, i);
+        }
+        return i;
+    }
+    // ***** 変数名のコンパイル2(関数の仮引数用) *****
+    function c_getvarname2(sym_start, sym_end, pointer_flag) {
+        var i;
+        var var_name;
+        var var_name2;
+
+        // ***** 引数のチェック *****
+        if (pointer_flag == null) { pointer_flag = false; }
+
+        // ***** 変数名取得 *****
+        i = sym_start;
+        // debugpos1 = i;
+        var_name = symbol[i++];
+
+        // ***** ポインタ的なもの(文頭の*の前にはセミコロンが必要) *****
+        // ***** (実際は*を削っているだけ) *****
+        if (var_name == "*") {
+            if (symbol[i] == "(") {
+                match2("(", i++);
+                i = c_getvarname2(i, sym_end, true);
+                match2(")", i++);
+            } else {
+                i = c_getvarname2(i, sym_end, true);
+            }
+            return i;
+        }
+        // ***** 変数名のチェック *****
+        if (!(isAlpha(var_name.charAt(0)) || var_name.charAt(0) == "_")) {
+            debugpos2 = i + 1;
+            throw new Error("変数名が不正です。('" + var_name + "')");
+        }
+        // ***** 接頭語のチェック *****
+        if (var_name == "global" || var_name == "glb" || var_name == "local" || var_name == "loc") {
+            var_name2 = symbol[i++];
+            if (!(isAlpha(var_name2.charAt(0)) || var_name2.charAt(0) == "_")) {
+                debugpos2 = i + 1;
+                throw new Error("変数名が不正です。('" + var_name2 + "')");
+            }
+            var_name = var_name.charAt(0) + "\\" + var_name2;
+        }
+        // ***** ポインタ的なもののとき *****
+        // (ローカル変数のスコープをさかのぼれるように「p\」を付加)
+        if (pointer_flag && var_name.substring(0, 2) != "p\\") {
+            var_name = "p\\" + var_name;
+        }
+        // ***** 変数名をセット *****
+        code_push("storestr", debugpos1, i);
+        code_push('"' + var_name + '"', debugpos1, i);
+        // ***** 配列変数のとき *****
+        while (symbol[i] == "[") {
+            i++;
+            // i = parseInt(c_expression(i, sym_end), 10);
+            i = c_expression(i, sym_end); // 配列の添字に文字列もあり
+            match2("]", i++);
+            code_push("array", debugpos1, i);
+        }
+        return i;
+    }
+
+    // ***** コード追加 *****
+    function code_push(sym, pos1, pos2) {
+        // code.push(sym);
+        // code_info.push({});
+        // code_len++;
+        // code_info[code_len - 1].pos1 = pos1;
+        // code_info[code_len - 1].pos2 = pos2;
+        code[code_len] = sym;
+        code_info[code_len] = {};
+        code_info[code_len].pos1 = pos1;
+        code_info[code_len++].pos2 = pos2;
     }
 
     // ***** シンボル追加 *****
     function symbol_push(sym, line_no) {
         // symbol.push(sym);
         // symbol_line.push(line_no);
+        // symbol_len++;
         symbol[symbol_len] = sym;
         symbol_line[symbol_len++] = line_no;
-    }
-    function symbol2_push(sym, line_no) {
-        // symbol2.push(sym);
-        // symbol2_line.push(line_no);
-        symbol2[symbol2_len] = sym;
-        symbol2_line[symbol2_len++] = line_no;
     }
 
     // ***** シンボル初期化 *****
@@ -3127,7 +3928,7 @@ var Interpreter;
                 }
                 temp_st = src.substring(sym_start, i);
 
-                // ***** 定数のとき *****
+                // ***** 組み込み定数のとき *****
                 if (constants.hasOwnProperty(temp_st)) {
                     // ***** 値に展開する *****
                     temp_st = String(constants[temp_st]);
@@ -3165,6 +3966,7 @@ var Interpreter;
             }
             if (ch == ">") {
                 if (ch2 == "=" || ch2 == ">") { i++; }
+                if (ch2 == ">" && src.charAt(i) == ">") { i++; }
             }
             if (ch == "&") {
                 if (ch2 == "&") { i++; }
@@ -3204,183 +4006,14 @@ var Interpreter;
     }
 
 
-    // ***** 演算子の定義情報の生成 *****
-    function make_operator_tbl() {
-        // ***** 演算子の定義情報を1個ずつ生成 *****
-        // (第2引数は演算子の優先順位を表す。大きいほど優先順位が高い)
-        make_one_operator_tbl("&", 10, function (num) {
-            num = num & expression(10);
-            return num;
-        });
-        make_one_operator_tbl("&&", 10, function (num) {
-            var i, j;
-
-            i = 1;
-            j = 1;
-            if (num == 0) {
-                while (pc < symbol_len) {
-                    if (i == 1) {
-                        if (symbol[pc] == "," || symbol[pc] == ":") { break; }
-                        if (symbol[pc] == "?") { j++; }
-                        if (symbol[pc] == ";") { j--; }
-                        if (j == 0) { break; }
-                    }
-                    if (symbol[pc] == "(" || symbol[pc] == "[") { i++; }
-                    if (symbol[pc] == ")" || symbol[pc] == "]") { i--; }
-                    if (i == 0) { break; }
-                    pc++;
-                }
-                num = 0;
-            } else if (expression(10) == 0) {
-                num = 0;
-            } else {
-                num = 1;
-            }
-            return num;
-        });
-        make_one_operator_tbl("|", 10, function (num) {
-            num = num | expression(10);
-            return num;
-        });
-        make_one_operator_tbl("||", 10, function (num) {
-            var i, j;
-
-            i = 1;
-            j = 1;
-            if (num != 0) {
-                while (pc < symbol_len) {
-                    if (i == 1) {
-                        if (symbol[pc] == "," || symbol[pc] == ":") { break; }
-                        if (symbol[pc] == "?") { j++; }
-                        if (symbol[pc] == ";") { j--; }
-                        if (j == 0) { break; }
-                    }
-                    if (symbol[pc] == "(" || symbol[pc] == "[") { i++; }
-                    if (symbol[pc] == ")" || symbol[pc] == "]") { i--; }
-                    if (i == 0) { break; }
-                    pc++;
-                }
-                num = 1;
-            } else if (expression(10) != 0) {
-                num = 1;
-            } else {
-                num = 0;
-            }
-            return num;
-        });
-        make_one_operator_tbl("^", 10, function (num) {
-            num = num ^ expression(10);
-            return num;
-        });
-        make_one_operator_tbl("?", 10, function (num) {
-            var i;
-
-            i = 1;
-            if (num != 0) {
-                num = expression(9); // 右結合
-                match(":");
-                while (pc < symbol_len) {
-                    if (symbol[pc] == "?") { i++; }
-                    if (symbol[pc] == ";") { i--; }
-                    if (i == 0) { break; }
-                    pc++;
-                }
-                match(";");
-            } else {
-                while (pc < symbol_len) {
-                    if (symbol[pc] == "?") { i += 2; }
-                    if (symbol[pc] == ":" || symbol[pc] == ";") { i--; }
-                    if (i == 0) { break; }
-                    pc++;
-                }
-                match(":");
-                num = expression(9); // 右結合
-                match(";");
-            }
-            return num;
-        });
-        make_one_operator_tbl("<<", 20, function (num) {
-            num = num << expression(20);
-            return num;
-        });
-        make_one_operator_tbl("<", 20, function (num) {
-            num = (num < expression(20)) ? 1 : 0;
-            return num;
-        });
-        make_one_operator_tbl("<=", 20, function (num) {
-            num = (num <= expression(20)) ? 1 : 0;
-            return num;
-        });
-        make_one_operator_tbl(">>", 20, function (num) {
-            num = num >> expression(20);
-            return num;
-        });
-        make_one_operator_tbl(">", 20, function (num) {
-            num = (num > expression(20)) ? 1 : 0;
-            return num;
-        });
-        make_one_operator_tbl(">=", 20, function (num) {
-            num = (num >= expression(20)) ? 1 : 0;
-            return num;
-        });
-        make_one_operator_tbl("==", 20, function (num) {
-            num = (num == expression(20)) ? 1 : 0;
-            return num;
-        });
-        make_one_operator_tbl("!=", 20, function (num) {
-            num = (num != expression(20)) ? 1 : 0;
-            return num;
-        });
-        make_one_operator_tbl("+", 30, function (num) {
-            // num = num +  expression(30);
-            num = (+num) + (+expression(30)); // 文字の連結にならないように数値にする
-            return num;
-        });
-        make_one_operator_tbl(".", 30, function (num) {
-            num = String(num) + String(expression(30));
-            return num;
-        });
-        make_one_operator_tbl("-", 30, function (num) {
-            num = num - expression(30);
-            return num;
-        });
-        make_one_operator_tbl("*", 40, function (num) {
-            num = num * expression(40);
-            return num;
-        });
-        make_one_operator_tbl("/", 40, function (num) {
-            if (sp_compati_mode == 1) {
-                num = parseInt(num / expression(40), 10);
-            } else {
-                num = num / expression(40);
-            }
-            return num;
-        });
-        make_one_operator_tbl("%", 40, function (num) {
-            num = num % expression(40);
-            return num;
-        });
-        make_one_operator_tbl("\\", 40, function (num) {
-            num = parseInt(num / expression(40), 10);
-            return num;
-        });
-    }
-    function make_one_operator_tbl(name, priority, func) {
-        operator_tbl[name] = {};
-        operator_tbl[name].priority = priority;
-        operator_tbl[name].func = func;
-    }
-
-
-    // ***** 命令(戻り値のない関数)の定義情報の生成 *****
+    // ***** 組み込み関数(戻り値なし)の定義情報の生成 *****
     function make_func_tbl_A() {
-        // ***** 命令(戻り値のない関数)の定義情報を1個ずつ生成 *****
-        make_one_func_tbl_A("addfunc", function () {
+        // ***** 組み込み関数(戻り値なし)の定義情報を1個ずつ生成 *****
+        // (第2引数は関数の引数の数を指定する)
+        make_one_func_tbl_A("addfunc", 1, function (param) {
             var a1;
 
-            match("(");
-            a1 = parseInt(expression(), 10);
-            match(")");
+            a1 = parseInt(param[0], 10);
             if (a1 == 0) {
                 use_addfunc = false;
             } else {
@@ -3388,20 +4021,19 @@ var Interpreter;
             }
             return true;
         });
-        make_one_func_tbl_A("arc", function () {
+        make_one_func_tbl_A("arc", 3, function (param) {
             var a1, a2, a3, a4;
             var i;
             var a, b, x0, y0;
 
-            match("("); a1 = parseFloat(expression()); // X
-            match(","); a2 = parseFloat(expression()); // Y
-            match(","); a3 = parseFloat(expression()); // W
-            if (symbol[pc] == ")") {
+            a1 = parseFloat(param[0]); // X
+            a2 = parseFloat(param[1]); // Y
+            a3 = parseFloat(param[2]); // W
+            if (param.length <= 3) {
                 a4 = a3;
             } else {
-                match(","); a4 = parseFloat(expression()); // H
+                a4 = parseFloat(param[3]); // H
             }
-            match(")");
             a = a3 / 2;  // X方向の半径
             b = a4 / 2;  // Y方向の半径
             x0 = a1 + a; // 中心のX座標
@@ -3418,29 +4050,24 @@ var Interpreter;
             // ctx.fillRect(a + x0, y0, 0.5, 0.5);
             return true;
         });
-        make_one_func_tbl_A("clear", function () {
+        make_one_func_tbl_A("clear", 4, function (param) {
             var a1, a2, a3, a4;
 
-            match("("); a1 = parseInt(expression(), 10); // X
-            match(","); a2 = parseInt(expression(), 10); // Y
-            match(","); a3 = parseInt(expression(), 10); // W
-            match(","); a4 = parseInt(expression(), 10); // H
-            match(")");
+            a1 = parseInt(param[0], 10); // X
+            a2 = parseInt(param[1], 10); // Y
+            a3 = parseInt(param[2], 10); // W
+            a4 = parseInt(param[3], 10); // H
             ctx.clearRect(a1, a2, a3, a4);
             return true;
         });
-        make_one_func_tbl_A("clearkey", function () {
-            match("(");
-            match(")");
+        make_one_func_tbl_A("clearkey", 0, function (param) {
             input_buf = [];
             keyinput_buf = [];
             return true;
         });
-        make_one_func_tbl_A("clearvar", function () {
+        make_one_func_tbl_A("clearvar", 0, function (param) {
             var name;
 
-            match("(");
-            match(")");
             // vars = {};
             vars.clearVars();
             imgvars = {};
@@ -3456,14 +4083,13 @@ var Interpreter;
             }
             return true;
         });
-        make_one_func_tbl_A("clip", function () {
+        make_one_func_tbl_A("clip", 4, function (param) {
             var a1, a2, a3, a4;
 
-            match("("); a1 = parseInt(expression(), 10); // X
-            match(","); a2 = parseInt(expression(), 10); // Y
-            match(","); a3 = parseInt(expression(), 10); // W
-            match(","); a4 = parseInt(expression(), 10); // H
-            match(")");
+            a1 = parseInt(param[0], 10); // X
+            a2 = parseInt(param[1], 10); // Y
+            a3 = parseInt(param[2], 10); // W
+            a4 = parseInt(param[3], 10); // H
 
             // ***** Canvasの各設定のリセット2 *****
             reset_canvas_setting2(ctx); // clipを解除する方法がrestoreしかない
@@ -3473,9 +4099,7 @@ var Interpreter;
             ctx.clip();
             return true;
         });
-        make_one_func_tbl_A("cls", function () {
-            match("(");
-            match(")");
+        make_one_func_tbl_A("cls", 0, function (param) {
             // ***** 画面クリア *****
             // ctx.clearRect(-ctx_originx, -ctx_originy, can.width, can.height);
             ctx.setTransform(1, 0, 0, 1, 0, 0);      // 座標系を元に戻す
@@ -3483,13 +4107,11 @@ var Interpreter;
             set_canvas_axis(ctx);                    // 座標系を再設定
             return true;
         });
-        make_one_func_tbl_A("col", function () {
+        make_one_func_tbl_A("col", 1, function (param) {
             var a1;
             var col_r, col_g, col_b;
 
-            match("(");
-            a1 = parseInt(expression(), 10); // RGB
-            match(")");
+            a1 = parseInt(param[0], 10); // RGB
             col_r = (a1 & 0xff0000) >> 16; // R
             col_g = (a1 & 0x00ff00) >> 8;  // G
             col_b = (a1 & 0x0000ff);       // B
@@ -3498,14 +4120,13 @@ var Interpreter;
             ctx.fillStyle = color_val;
             return true;
         });
-        make_one_func_tbl_A("color", function () {
+        make_one_func_tbl_A("color", 3, function (param) {
             var a1, a2, a3;
             var col_r, col_g, col_b;
 
-            match("("); a1 = parseInt(expression(), 10); // R
-            match(","); a2 = parseInt(expression(), 10); // G
-            match(","); a3 = parseInt(expression(), 10); // B
-            match(")");
+            a1 = parseInt(param[0], 10); // R
+            a2 = parseInt(param[1], 10); // G
+            a3 = parseInt(param[2], 10); // B
             col_r = a1;
             col_g = a2;
             col_b = a3;
@@ -3514,19 +4135,19 @@ var Interpreter;
             ctx.fillStyle = color_val;
             return true;
         });
-        make_one_func_tbl_A("copy", function () {
+
+        make_one_param_varname("copy", 0); // 変数名をとる引数は指定が必要
+        make_one_param_varname("copy", 2); // 変数名をとる引数は指定が必要
+        make_one_func_tbl_A("copy", 5, function (param) {
             var a1, a2, a3, a4, a5, a6;
             var i;
             var i_start, i_end, i_plus;
 
-            match("(");
-            a1 = getvarname();
-            match(","); a2 = parseInt(expression(), 10);
-            match(",");
-            a3 = getvarname();
-            match(","); a4 = parseInt(expression(), 10);
-            match(","); a5 = parseInt(expression(), 10);
-            match(")");
+            a1 = getvarname(param[0]);
+            a2 = parseInt(param[1], 10);
+            a3 = getvarname(param[2]);
+            a4 = parseInt(param[3], 10);
+            a5 = parseInt(param[4], 10);
 
             // ***** NaN対策 *****
             a2 = a2 | 0;
@@ -3566,37 +4187,37 @@ var Interpreter;
             }
             return true;
         });
-        make_one_func_tbl_A("copyall", function () {
+
+        make_one_param_varname("copyall", 0);
+        make_one_param_varname("copyall", 1);
+        make_one_func_tbl_A("copyall", 2, function (param) {
             var a1, a2;
 
-            match("(");
-            a1 = getvarname();
-            match(",");
-            a2 = getvarname();
-            match(")");
+            a1 = getvarname(param[0]);
+            a2 = getvarname(param[1]);
             // ***** 配列変数の一括コピー *****
             vars.copyArray(a1, a2);
             return true;
         });
-        make_one_func_tbl_A("disarray", function () {
+
+        make_one_param_varname("disarray", 0);
+        make_one_func_tbl_A("disarray", 1, function (param) {
             var a1, a2, a3;
             var i;
 
-            match("(");
-            a1 = getvarname();
-            if (symbol[pc] == ")") {
+            a1 = getvarname(param[0]);
+            if (param.length <= 1) {
                 a2 = null;
                 a3 = 0;
             } else {
-                match(","); a2 = parseInt(expression(), 10);
-                if (symbol[pc] == ")") {
+                a2 = parseInt(param[1], 10);
+                if (param.length <= 2) {
                     a3 = a2 - 1;
                     a2 = 0;
                 } else {
-                    match(","); a3 = parseInt(expression(), 10);
+                    a3 = parseInt(param[2], 10);
                 }
             }
-            match(")");
 
             // ***** エラーチェック *****
             // if (a2 != null && (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size)) {
@@ -3614,12 +4235,12 @@ var Interpreter;
             }
             return true;
         });
-        make_one_func_tbl_A("disimg", function () {
+
+        make_one_param_varname("disimg", 0);
+        make_one_func_tbl_A("disimg", 1, function (param) {
             var a1;
 
-            match("(");
-            a1 = toglobal(getvarname()); // 画像変数名取得
-            match(")");
+            a1 = toglobal(getvarname(param[0])); // 画像変数名取得
             // if (imgvars.hasOwnProperty(a1)) {
             if (hasOwn.call(imgvars, a1)) {
                 delete imgvars[a1];
@@ -3627,28 +4248,28 @@ var Interpreter;
             // for (var prop_name in imgvars) { DebugShow(prop_name + " "); } DebugShow("\n");
             return true;
         });
-        make_one_func_tbl_A("disvar", function () {
+
+        make_one_param_varname("disvar", 0);
+        make_one_func_tbl_A("disvar", 1, function (param) {
             var a1;
 
-            match("(");
-            a1 = getvarname();
-            match(")");
+            a1 = getvarname(param[0]);
             // delete vars[a1];
             vars.deleteVar(a1);
             return true;
         });
-        make_one_func_tbl_A("drawarea", function () {
+
+        make_one_param_varname("drawarea", 0);
+        make_one_func_tbl_A("drawarea", 7, function (param) {
             var a1, a2, a3, a4, a5, a6, a7;
 
-            match("(");
-            a1 = toglobal(getvarname()); // 画像変数名取得
-            match(","); a2 = parseInt(expression(), 10); // 先X
-            match(","); a3 = parseInt(expression(), 10); // 先Y
-            match(","); a4 = parseInt(expression(), 10); // 元X
-            match(","); a5 = parseInt(expression(), 10); // 元Y
-            match(","); a6 = parseInt(expression(), 10); // W
-            match(","); a7 = parseInt(expression(), 10); // H
-            match(")");
+            a1 = toglobal(getvarname(param[0])); // 画像変数名取得
+            a2 = parseInt(param[1], 10); // 先X
+            a3 = parseInt(param[2], 10); // 先Y
+            a4 = parseInt(param[3], 10); // 元X
+            a5 = parseInt(param[4], 10); // 元Y
+            a6 = parseInt(param[5], 10); // W
+            a7 = parseInt(param[6], 10); // H
             if (a1 == "screen") {
                 // ***** 画像を描画(表示画面→ターゲット) *****
                 ctx.drawImage(can1, a4, a5, a6, a7, a2, a3, a6, a7);
@@ -3663,15 +4284,15 @@ var Interpreter;
             }
             return true;
         });
-        make_one_func_tbl_A("drawimg", function () {
+
+        make_one_param_varname("drawimg", 0);
+        make_one_func_tbl_A("drawimg", 4, function (param) {
             var a1, a2, a3, a4;
 
-            match("(");
-            a1 = toglobal(getvarname()); // 画像変数名取得
-            match(","); a2 = parseInt(expression(), 10); // X
-            match(","); a3 = parseInt(expression(), 10); // Y
-            match(","); a4 = parseInt(expression(), 10); // アンカー
-            match(")");
+            a1 = toglobal(getvarname(param[0])); // 画像変数名取得
+            a2 = parseInt(param[1], 10); // X
+            a3 = parseInt(param[2], 10); // Y
+            a4 = parseInt(param[3], 10); // アンカー
             if (a1 == "screen") {
                 // ***** 水平方向 *****
                 // if (a4 & 4) { }                               // 左
@@ -3706,20 +4327,20 @@ var Interpreter;
             }
             return true;
         });
-        make_one_func_tbl_A("drawscaledimg", function () {
+
+        make_one_param_varname("drawscaledimg", 0);
+        make_one_func_tbl_A("drawscaledimg", 9, function (param) {
             var a1, a2, a3, a4, a5, a6, a7, a8, a9;
 
-            match("(");
-            a1 = toglobal(getvarname()); // 画像変数名取得
-            match(","); a2 = parseInt(expression(), 10); // 先X
-            match(","); a3 = parseInt(expression(), 10); // 先Y
-            match(","); a4 = parseInt(expression(), 10); // 先W
-            match(","); a5 = parseInt(expression(), 10); // 先H
-            match(","); a6 = parseInt(expression(), 10); // 元X
-            match(","); a7 = parseInt(expression(), 10); // 元Y
-            match(","); a8 = parseInt(expression(), 10); // 元W
-            match(","); a9 = parseInt(expression(), 10); // 元H
-            match(")");
+            a1 = toglobal(getvarname(param[0])); // 画像変数名取得
+            a2 = parseInt(param[1], 10); // 先X
+            a3 = parseInt(param[2], 10); // 先Y
+            a4 = parseInt(param[3], 10); // 先W
+            a5 = parseInt(param[4], 10); // 先H
+            a6 = parseInt(param[5], 10); // 元X
+            a7 = parseInt(param[6], 10); // 元Y
+            a8 = parseInt(param[7], 10); // 元W
+            a9 = parseInt(param[8], 10); // 元H
             if (a1 == "screen") {
                 // ***** 画像を描画(表示画面→ターゲット) *****
                 ctx.drawImage(can1, a6, a7, a8, a9, a2, a3, a4, a5);
@@ -3734,24 +4355,20 @@ var Interpreter;
             }
             return true;
         });
-        make_one_func_tbl_A("end", function () {
-            end_flag = true;
-            return true;
-        });
-        make_one_func_tbl_A("farc", function () {
+
+        make_one_func_tbl_A("farc", 3, function (param) {
             var a1, a2, a3, a4;
             var i;
             var a, b, x0, y0;
 
-            match("("); a1 = parseFloat(expression()); // X
-            match(","); a2 = parseFloat(expression()); // Y
-            match(","); a3 = parseFloat(expression()); // W
-            if (symbol[pc] == ")") {
+            a1 = parseFloat(param[0]); // X
+            a2 = parseFloat(param[1]); // Y
+            a3 = parseFloat(param[2]); // W
+            if (param.length <= 3) {
                 a4 = a3;
             } else {
-                match(","); a4 = parseFloat(expression()); // H
+                a4 = parseFloat(param[3]); // H
             }
-            match(")");
             a = a3 / 2;  // X方向の半径
             b = a4 / 2;  // Y方向の半径
             x0 = a1 + a; // 中心のX座標
@@ -3770,19 +4387,18 @@ var Interpreter;
             // ctx.fillRect(x0, y0, 1, 1); // 反転して抜けた真ん中の小さな四角をさらに塗りつぶす
             return true;
         });
-        make_one_func_tbl_A("foval", function () {
+        make_one_func_tbl_A("foval", 6, function (param) {
             var a1, a2, a3, a4, a5, a6;
             var i;
             var a, b, x0, y0;
             var rad1, rad2;
 
-            match("("); a1 = parseFloat(expression()); // X
-            match(","); a2 = parseFloat(expression()); // Y
-            match(","); a3 = parseFloat(expression()); // W
-            match(","); a4 = parseFloat(expression()); // H
-            match(","); a5 = parseFloat(expression()); // 開始角
-            match(","); a6 = parseFloat(expression()); // 描画角
-            match(")");
+            a1 = parseFloat(param[0]); // X
+            a2 = parseFloat(param[1]); // Y
+            a3 = parseFloat(param[2]); // W
+            a4 = parseFloat(param[3]); // H
+            a5 = parseFloat(param[4]); // 開始角
+            a6 = parseFloat(param[5]); // 描画角
             a = a3 / 2;  // X方向の半径
             b = a4 / 2;  // Y方向の半径
             x0 = a1 + a; // 中心のX座標
@@ -3807,28 +4423,26 @@ var Interpreter;
             // ctx.fillRect(x0, y0, 1, 1); // 反転して抜けた真ん中の小さな四角をさらに塗りつぶす
             return true;
         });
-        make_one_func_tbl_A("frect", function () {
+        make_one_func_tbl_A("frect", 4, function (param) {
             var a1, a2, a3, a4;
 
-            match("("); a1 = parseFloat(expression()); // X
-            match(","); a2 = parseFloat(expression()); // Y
-            match(","); a3 = parseFloat(expression()); // W
-            match(","); a4 = parseFloat(expression()); // H
-            match(")");
+            a1 = parseFloat(param[0]); // X
+            a2 = parseFloat(param[1]); // Y
+            a3 = parseFloat(param[2]); // W
+            a4 = parseFloat(param[3]); // H
             ctx.fillRect(a1, a2, a3, a4);
             return true;
         });
-        make_one_func_tbl_A("fround", function () {
+        make_one_func_tbl_A("fround", 6, function (param) {
             var a1, a2, a3, a4, a5, a6;
             var rx, ry;
 
-            match("("); a1 = parseFloat(expression()); // X
-            match(","); a2 = parseFloat(expression()); // Y
-            match(","); a3 = parseFloat(expression()); // W
-            match(","); a4 = parseFloat(expression()); // H
-            match(","); a5 = parseFloat(expression()); // RX
-            match(","); a6 = parseFloat(expression()); // RY
-            match(")");
+            a1 = parseFloat(param[0]); // X
+            a2 = parseFloat(param[1]); // Y
+            a3 = parseFloat(param[2]); // W
+            a4 = parseFloat(param[3]); // H
+            a5 = parseFloat(param[4]); // RX
+            a6 = parseFloat(param[5]); // RY
             rx = a5;
             ry = a6;
             ctx.beginPath();
@@ -3851,267 +4465,34 @@ var Interpreter;
             // set_canvas_axis(ctx);                    // 座標系を再設定
             return true;
         });
-        make_one_func_tbl_A("func", function () {
-            pc = func[symbol[pc] + "\\end"];
-            return true;
-        });
-        make_one_func_tbl_A("funccall", function () {
-            var a1;
-            var i;
-            var sym;
-            var var_name;
-            var func_params = [];
-            var funccall_info = {};
-            var back_pc;
-            var debugpc_old;
-
-            match("(");
-
-            // ***** 関数名の取得 *****
-            // (関数ポインタ対応のため、変数名を取得して関数名にする)
-            sym = toglobal(getvarname());
-
-            match("(");
-            // ***** 関数呼び出し情報の生成 *****
-            funccall_info = {};
-            // ***** 引数の取得 *****
-            func_params = [];
-            if (symbol[pc] == ")") {
-                pc++;
-            } else {
-                while (pc < symbol_len) {
-                    func_params.push(expression());
-                    if (symbol[pc] == ",") {
-                        pc++;
-                        continue;
-                    }
-                    break;
-                }
-                match(")");
-            }
-            // ***** 戻り値を格納する変数名の取得 *****
-            if (symbol[pc] == ")") {
-                a1 = "";
-            } else {
-                match(",");
-                a1 = getvarname();
-            }
-            match(")");
-            // ***** 関数の呼び出し *****
-            // if (!func.hasOwnProperty(sym)) {
-            if (!hasOwn.call(func, sym)) {
-                throw new Error("関数 '" + sym + "' の呼び出しに失敗しました(funccallはfuncで定義した関数のみ呼び出せます)。");
-            }
-            back_pc = pc;
-            pc = func[sym];
-            debugpc_old = debugpc;
-            debugpc = pc - 1;
-
-            // ***** ローカル変数を生成 *****
-            vars.makeLocalScope();
-
-            // ***** 引数のセット *****
-            match("(");
-            if (symbol[pc] == ")") {
-                pc++;
-            } else {
-                i = 0;
-                while (pc < symbol_len) {
-                    var_name = getvarname2(); // 関数の引数用
-                    if (i < func_params.length) {
-
-                        // ***** 関数の引数のポインタ対応 *****
-                        if (var_name.substring(0, 2) == "p\\") {
-                            // (引数名から「p\」を削除)
-                            var_name = var_name.substring(2);
-                            // (引数の内容を取得)
-                            func_params[i] = String(func_params[i]);
-                            // ***** 変数名のチェック *****
-                            if (!(isAlpha(func_params[i].charAt(0)) || func_params[i].charAt(0) == "_")) {
-                                debugpc = debugpc_old;
-                                pc = back_pc;
-                                throw new Error("ポインタの指す先が不正です。('" + func_params[i] + "')");
-                            }
-                            // (ローカル変数のスコープをさかのぼれるように、引数の内容に「a\」と数字を付加)
-                            if (func_params[i].substring(0, 2) != "a\\") {
-                                func_params[i] = "a\\" + vars.getLocalScopeNum() + "\\" + func_params[i];
-                            }
-                        }
-
-                        // vars[var_name] = func_params[i];
-                        vars.setVarValue(var_name, func_params[i]);
-                        i++;
-                    } else {
-
-                        // ***** 関数の引数のポインタ対応 *****
-                        if (var_name.substring(0, 2) == "p\\") {
-                            // (引数名から「p\」を削除)
-                            var_name = var_name.substring(2);
-                        }
-
-                        // vars[var_name] = 0;
-                        vars.setVarValue(var_name, 0);
-                    }
-                    if (symbol[pc] == ",") {
-                        pc++;
-                        continue;
-                    }
-                    break;
-                }
-                match(")");
-            }
-            // ***** 関数の本体を実行 *****
-            match("{");
-            funccall_info.nestcall = false;
-            funccall_info.retvarname = a1;
-            funccall_info.func_back = back_pc;
-            funccall_info.func_start = pc;
-            funccall_info.func_end = func[sym + "\\end"];
-            funccall_stack.push(funccall_info);
-            return true;
-        });
-        make_one_func_tbl_A("gc", function () {
-            match("(");
-            match(")");
+        make_one_func_tbl_A("gc", 0, function (param) {
             // ***** NOP *****
             return true;
         });
-        make_one_func_tbl_A("gosub", function () {
-            var lbl_name;
-
-            // ***** 関数内のとき *****
-            if (funccall_stack.length > 0) {
-                throw new Error("func内では gosub できません。");
-            }
-            // ***** ラベルへジャンプ *****
-            lbl_name = expression();
-            // if (!label.hasOwnProperty(lbl_name)) {
-            if (!hasOwn.call(label, lbl_name)) {
-                throw new Error("ラベル '" + lbl_name + "' は未定義です。");
-            }
-            gosub_back.push(pc);
-            pc = label[lbl_name];
-            return true;
-        });
-        make_one_func_tbl_A("goto", function () {
-            var lbl_name;
-            var goto_pc;
-            var funccall_info = {};
-
-            // ***** ラベルへジャンプ *****
-            lbl_name = expression();
-            // if (!label.hasOwnProperty(lbl_name)) {
-            if (!hasOwn.call(label, lbl_name)) {
-                throw new Error("ラベル '" + lbl_name + "' は未定義です。");
-            }
-            goto_pc = label[lbl_name];
-            // ***** 関数内のとき *****
-            if (funccall_stack.length > 0) {
-                // ***** 関数呼び出し情報をチェック *****
-                funccall_info = funccall_stack[funccall_stack.length - 1];
-                // ***** ジャンプ先がfunc内のときだけgotoが可能 *****
-                if ((goto_pc < funccall_info.func_start) || (goto_pc >= funccall_info.func_end)) {
-                    throw new Error("funcの外へは goto できません。");
-                }
-            }
-            pc = goto_pc;
-            return true;
-        });
-        make_one_func_tbl_A("ifgoto\\", function () {    // 内部命令なので「\」を付けている
-            var a1;
-            var lbl_name;
-            var goto_pc;
-            var funccall_info = {};
-
-            match("(");
-            pc--;
-            a1 = expression();
-            // match(")");
-            if (a1 != 0) {
-                // ***** ラベルへジャンプ *****
-                lbl_name = expression();
-                // if (!label.hasOwnProperty(lbl_name)) {
-                if (!hasOwn.call(label, lbl_name)) {
-                    throw new Error("ラベル '" + lbl_name + "' は未定義です。");
-                }
-                goto_pc = label[lbl_name];
-                // ***** 関数内のとき *****
-                if (funccall_stack.length > 0) {
-                    // ***** 関数呼び出し情報をチェック *****
-                    funccall_info = funccall_stack[funccall_stack.length - 1];
-                    // ***** ジャンプ先がfunc内のときだけgotoが可能 *****
-                    if ((goto_pc < funccall_info.func_start) || (goto_pc >= funccall_info.func_end)) {
-                        throw new Error("funcの外へは goto できません。");
-                    }
-                }
-                pc = goto_pc;
-            } else {
-                pc++;
-            }
-            return true;
-        });
-        make_one_func_tbl_A("ifnotgoto\\", function () { // 内部命令なので「\」を付けている
-            var a1;
-            var lbl_name;
-            var goto_pc;
-            var funccall_info = {};
-
-            match("(");
-            pc--;
-            a1 = expression();
-            // match(")");
-            if (a1 == 0) {
-                // ***** ラベルへジャンプ *****
-                lbl_name = expression();
-                // if (!label.hasOwnProperty(lbl_name)) {
-                if (!hasOwn.call(label, lbl_name)) {
-                    throw new Error("ラベル '" + lbl_name + "' は未定義です。");
-                }
-                goto_pc = label[lbl_name];
-                // ***** 関数内のとき *****
-                if (funccall_stack.length > 0) {
-                    // ***** 関数呼び出し情報をチェック *****
-                    funccall_info = funccall_stack[funccall_stack.length - 1];
-                    // ***** ジャンプ先がfunc内のときだけgotoが可能 *****
-                    if ((goto_pc < funccall_info.func_start) || (goto_pc >= funccall_info.func_end)) {
-                        throw new Error("funcの外へは goto できません。");
-                    }
-                }
-                pc = goto_pc;
-            } else {
-                pc++;
-            }
-            return true;
-        });
-        make_one_func_tbl_A("label", function () {
-            pc++;
-            return true;
-        });
-        make_one_func_tbl_A("line", function () {
+        make_one_func_tbl_A("line", 4, function (param) {
             var a1, a2, a3, a4;
 
-            match("("); a1 = parseFloat(expression()); // X1
-            match(","); a2 = parseFloat(expression()); // Y1
-            match(","); a3 = parseFloat(expression()); // X2
-            match(","); a4 = parseFloat(expression()); // Y2
-            match(")");
+            a1 = parseFloat(param[0]); // X1
+            a2 = parseFloat(param[1]); // Y1
+            a3 = parseFloat(param[2]); // X2
+            a4 = parseFloat(param[3]); // Y2
             ctx.beginPath();
             ctx.moveTo(a1, a2);
             ctx.lineTo(a3, a4);
             ctx.stroke();
             return true;
         });
-        make_one_func_tbl_A("linewidth", function () {
+        make_one_func_tbl_A("linewidth", 1, function (param) {
             var a1;
 
-            match("(");
-            a1 = parseFloat(expression()); // W
-            match(")");
+            a1 = parseFloat(param[0]); // W
             line_width = a1;
             ctx.lineWidth = line_width;
             return true;
         });
-        make_one_func_tbl_A("loadimg", function () {
+
+        make_one_param_varname("loadimg", 0);
+        make_one_func_tbl_A("loadimg", 2, function (param) {
             var a1, a2;
             var i, j, k;
             var g_data = [];
@@ -4122,10 +4503,8 @@ var Interpreter;
             var img_w, img_h;
             var img_data = {};
 
-            match("(");
-            a1 = toglobal(getvarname()); // 画像変数名取得
-            match(","); a2 = String(expression()); // 画像データ文字列
-            match(")");
+            a1 = toglobal(getvarname(param[0])); // 画像変数名取得
+            a2 = String(param[1]); // 画像データ文字列
             // ***** FlashCanvas用 *****
             if (!ctx.createImageData) { throw new Error("画像生成機能が利用できません。"); }
             // ***** 画像データの取得 *****
@@ -4188,14 +4567,14 @@ var Interpreter;
             imgvars[a1].ctx.putImageData(img_data, 0, 0);
             return true;
         });
-        make_one_func_tbl_A("loadimgdata", function () {
+
+        make_one_param_varname("loadimgdata", 0);
+        make_one_func_tbl_A("loadimgdata", 2, function (param) {
             var a1, a2;
             var img_obj = {};
 
-            match("(");
-            a1 = toglobal(getvarname()); // 画像変数名取得
-            match(","); a2 = String(expression()); // 画像データ文字列(data URI scheme)
-            match(")");
+            a1 = toglobal(getvarname(param[0])); // 画像変数名取得
+            a2 = String(param[1]); // 画像データ文字列(data URI scheme)
             // ***** Canvasの生成 *****
             imgvars[a1] = {};
             imgvars[a1].can = document.createElement("canvas");
@@ -4232,32 +4611,31 @@ var Interpreter;
             img_obj.src = a2; // 常にonloadより後にsrcをセットすること
             return true;
         });
-        make_one_func_tbl_A("lock", function () {
-            match("(");
-            match(")");
+
+        make_one_func_tbl_A("lock", 0, function (param) {
             // ***** NOP *****
             return true;
         });
-        make_one_func_tbl_A("makearray", function () {
+
+        make_one_param_varname("makearray", 0);
+        make_one_func_tbl_A("makearray", 2, function (param) {
             var a1, a2, a3, a4;
             var i;
 
-            match("(");
-            a1 = getvarname();
-            match(","); a2 = parseInt(expression(), 10);
-            if (symbol[pc] == ")") {
+            a1 = getvarname(param[0]);
+            a2 = parseInt(param[1], 10);
+            if (param.length <= 2) {
                 a3 = a2 - 1;
                 a2 = 0;
                 a4 = 0;
             } else {
-                match(","); a3 = parseInt(expression(), 10);
-                if (symbol[pc] == ")") {
+                a3 = parseInt(param[2], 10);
+                if (param.length <= 3) {
                     a4 = 0;
                 } else {
-                    match(","); a4 = expression();
+                    a4 = param[3];
                 }
             }
-            match(")");
 
             // ***** エラーチェック *****
             // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
@@ -4271,14 +4649,14 @@ var Interpreter;
             }
             return true;
         });
-        make_one_func_tbl_A("makeimg", function () {
+
+        make_one_param_varname("makeimg", 0);
+        make_one_func_tbl_A("makeimg", 3, function (param) {
             var a1, a2, a3;
 
-            match("(");
-            a1 = toglobal(getvarname()); // 画像変数名取得
-            match(","); a2 = parseInt(expression(), 10); // W
-            match(","); a3 = parseInt(expression(), 10); // H
-            match(")");
+            a1 = toglobal(getvarname(param[0])); // 画像変数名取得
+            a2 = parseInt(param[1], 10); // W
+            a3 = parseInt(param[2], 10); // H
 
             // ***** エラーチェック *****
             // if (a2 <= 0 || a2 > max_image_size || a3 <= 0 || a3 > max_image_size) {
@@ -4302,38 +4680,33 @@ var Interpreter;
             init_canvas_setting(imgvars[a1].ctx);
             return true;
         });
-        make_one_func_tbl_A("msgdlg", function () {
+
+        make_one_func_tbl_A("msgdlg", 1, function (param) {
             var a1;
 
-            match("("); a1 = String(expression());
-            if (symbol[pc] != ")") {
-                match(","); a1 = String(expression());
+            a1 = String(param[0]);
+            if (param.length >= 2) {
+                a1 = String(param[1]);
             }
-            match(")");
             alert(a1);
             keyclear();
             mousebuttonclear();
             loop_nocount_flag = true;
             return true;
         });
-        make_one_func_tbl_A("onlocal", function () {
-            match("(");
-            match(")");
+        make_one_func_tbl_A("onlocal", 0, function (param) {
             use_local_vars = true;
             return true;
         });
-        make_one_func_tbl_A("offlocal", function () {
-            match("(");
-            match(")");
+        make_one_func_tbl_A("offlocal", 0, function (param) {
             use_local_vars = false;
             return true;
         });
-        make_one_func_tbl_A("origin", function () {
+        make_one_func_tbl_A("origin", 2, function (param) {
             var a1, a2;
 
-            match("("); a1 = parseInt(expression(), 10); // X
-            match(","); a2 = parseInt(expression(), 10); // Y
-            match(")");
+            a1 = parseInt(param[0], 10); // X
+            a2 = parseInt(param[1], 10); // Y
             // ***** 座標系の原点座標設定 *****
             ctx_originx = a1;
             ctx_originy = a2;
@@ -4341,19 +4714,18 @@ var Interpreter;
             set_canvas_axis(ctx);                    // 座標系を再設定
             return true;
         });
-        make_one_func_tbl_A("oval", function () {
+        make_one_func_tbl_A("oval", 6, function (param) {
             var a1, a2, a3, a4, a5, a6;
             var i;
             var a, b, x0, y0;
             var rad1, rad2;
 
-            match("("); a1 = parseFloat(expression()); // X
-            match(","); a2 = parseFloat(expression()); // Y
-            match(","); a3 = parseFloat(expression()); // W
-            match(","); a4 = parseFloat(expression()); // H
-            match(","); a5 = parseFloat(expression()); // 開始角
-            match(","); a6 = parseFloat(expression()); // 描画角
-            match(")");
+            a1 = parseFloat(param[0]); // X
+            a2 = parseFloat(param[1]); // Y
+            a3 = parseFloat(param[2]); // W
+            a4 = parseFloat(param[3]); // H
+            a5 = parseFloat(param[4]); // 開始角
+            a6 = parseFloat(param[5]); // 描画角
             a = a3 / 2;  // X方向の半径
             b = a4 / 2;  // Y方向の半径
             x0 = a1 + a; // 中心のX座標
@@ -4371,81 +4743,37 @@ var Interpreter;
             // ctx.fillRect(a * Math.cos(rad1) + x0, b * Math.sin(rad1) + y0, 0.5, 0.5);
             return true;
         });
-        make_one_func_tbl_A("point", function () {
+        make_one_func_tbl_A("point", 2, function (param) {
             var a1, a2;
 
-            match("("); a1 = parseFloat(expression()); // X
-            match(","); a2 = parseFloat(expression()); // Y
-            match(")");
+            a1 = parseFloat(param[0]); // X
+            a2 = parseFloat(param[1]); // Y
             ctx.fillRect(a1, a2, 1, 1);
             return true;
         });
-        make_one_func_tbl_A("rect", function () {
+        make_one_func_tbl_A("rect", 4, function (param) {
             var a1, a2, a3, a4;
 
-            match("("); a1 = parseFloat(expression()); // X
-            match(","); a2 = parseFloat(expression()); // Y
-            match(","); a3 = parseFloat(expression()); // W
-            match(","); a4 = parseFloat(expression()); // H
-            match(")");
+            a1 = parseFloat(param[0]); // X
+            a2 = parseFloat(param[1]); // Y
+            a3 = parseFloat(param[2]); // W
+            a4 = parseFloat(param[3]); // H
             ctx.beginPath();
             ctx.rect(a1, a2, a3, a4);
             ctx.stroke();
             return true;
         });
-        make_one_func_tbl_A("return", function () {
-            var funccall_info = {};
-
-            // ***** 関数内のとき *****
-            if (funccall_stack.length > 0) {
-                // ***** 戻り値を取得 *****
-                if (symbol[pc] == ";") {
-                    ret_num = 0;
-                } else {
-                    ret_num = expression();
-                }
-                // ***** 関数呼び出し情報をチェック *****
-                funccall_info = funccall_stack[funccall_stack.length - 1];
-                // ***** ネストありのとき(通常の関数呼び出しのとき) *****
-                if (funccall_info.nestcall) {
-                    // ***** 呼び出し元に復帰 *****
-                    return_flag = true;
-                    return true;
-                }
-                // ***** ネストなしのとき(funccall文で呼び出されたとき) *****
-
-                // ***** ローカル変数を解放 *****
-                vars.deleteLocalScope();
-
-                // ***** 戻り値を変数に格納 *****
-                // vars[funccall_info.retvarname] = ret_num;
-                vars.setVarValue(funccall_info.retvarname, ret_num);
-                // ***** 呼び出し元に復帰 *****
-                funccall_info = funccall_stack.pop();
-                pc = funccall_info.func_back;
-                return true;
-            }
-            // ***** gosubのとき *****
-            if (gosub_back.length > 0) {
-                // ***** 戻り先へ *****
-                pc = gosub_back.pop();
-                return true;
-            }
-            return_flag = true;
-            return true;
-        });
-        make_one_func_tbl_A("rotate", function () {
+        make_one_func_tbl_A("rotate", 1, function (param) {
             var a1, a2, a3;
 
-            match("("); a1 = parseFloat(expression()); // 角度
-            if (symbol[pc] == ")") {
+            a1 = parseFloat(param[0]); // 角度
+            if (param.length <= 2) {
                 a2 = 0;
                 a3 = 0;
             } else {
-                match(","); a2 = parseFloat(expression()); // 中心座標X
-                match(","); a3 = parseFloat(expression()); // 中心座標Y
+                a2 = parseFloat(param[1]); // 中心座標X
+                a3 = parseFloat(param[2]); // 中心座標Y
             }
-            match(")");
             // ***** 座標系の角度設定 *****
             ctx_rotate = a1 * Math.PI / 180;
             ctx_rotateox = a2;
@@ -4454,17 +4782,16 @@ var Interpreter;
             set_canvas_axis(ctx);                    // 座標系を再設定
             return true;
         });
-        make_one_func_tbl_A("round", function () {
+        make_one_func_tbl_A("round", 6, function (param) {
             var a1, a2, a3, a4, a5, a6;
             var rx, ry;
 
-            match("("); a1 = parseFloat(expression()); // X
-            match(","); a2 = parseFloat(expression()); // Y
-            match(","); a3 = parseFloat(expression()); // W
-            match(","); a4 = parseFloat(expression()); // H
-            match(","); a5 = parseFloat(expression()); // RX
-            match(","); a6 = parseFloat(expression()); // RY
-            match(")");
+            a1 = parseFloat(param[0]); // X
+            a2 = parseFloat(param[1]); // Y
+            a3 = parseFloat(param[2]); // W
+            a4 = parseFloat(param[3]); // H
+            a5 = parseFloat(param[4]); // RX
+            a6 = parseFloat(param[5]); // RY
             rx = a5;
             ry = a6;
             ctx.beginPath();
@@ -4487,38 +4814,36 @@ var Interpreter;
             // set_canvas_axis(ctx);                    // 座標系を再設定
             return true;
         });
-        make_one_func_tbl_A("save", function () {
+        make_one_func_tbl_A("save", 1, function (param) {
             var a1, a2;
 
-            match("("); a1 = String(expression());
-            if (symbol[pc] == ")") {
+            a1 = String(param[0]);
+            if (param.length <= 1) {
                 a2 = 0;
             } else {
-                match(","); a2 = parseInt(expression(), 10);
+                a2 = parseInt(param[0], 10);
             }
-            match(")");
             save_data[a2] = a1;
             return true;
         });
-        make_one_func_tbl_A("scale", function () {
+        make_one_func_tbl_A("scale", 1, function (param) {
             var a1, a2, a3, a4;
 
-            match("("); a1 = parseFloat(expression()); // X方向倍率
-            if (symbol[pc] == ")") {
+            a1 = parseFloat(param[0]); // X方向倍率
+            if (param.length <= 1) {
                 a2 = a1;
                 a3 = 0;
                 a4 = 0;
             } else {
-                match(","); a2 = parseFloat(expression()); // Y方向倍率
-                if (symbol[pc] == ")") {
+                a2 = parseFloat(param[1]); // Y方向倍率
+                if (param.length <= 3) {
                     a3 = 0;
                     a4 = 0;
                 } else {
-                    match(","); a3 = parseFloat(expression()); // 中心座標X
-                    match(","); a4 = parseFloat(expression()); // 中心座標Y
+                    a3 = parseFloat(param[2]); // 中心座標X
+                    a4 = parseFloat(param[3]); // 中心座標Y
                 }
             }
-            match(")");
             // ***** エラーチェック *****
             // if (a1 <= 0 || a1 > max_scale_size || a2 <= 0 || a2 > max_scale_size) {
             if (!(a1 > 0 && a1 <= max_scale_size && a2 > 0 && a2 <= max_scale_size)) {
@@ -4533,12 +4858,10 @@ var Interpreter;
             set_canvas_axis(ctx);                    // 座標系を再設定
             return true;
         });
-        make_one_func_tbl_A("setfont", function () {
+        make_one_func_tbl_A("setfont", 1, function (param) {
             var a1;
 
-            match("(");
-            a1 = String(expression()).toUpperCase();
-            match(")");
+            a1 = String(param[0]).toUpperCase();
             switch (a1) {
                 case "L": font_size = 30; break;
                 case "M": font_size = 24; break;
@@ -4549,23 +4872,21 @@ var Interpreter;
             ctx.font = font_size + "px " + font_family;
             return true;
         });
-        make_one_func_tbl_A("setoutdata", function () {
+        make_one_func_tbl_A("setoutdata", 2, function (param) {
             var a1, a2;
 
-            match("("); a1 = parseInt(expression(), 10);
-            match(","); a2 = String(expression());
-            match(")");
+            a1 = parseInt(param[0], 10);
+            a2 = String(param[1]);
             out_data[a1] = a2;
             return true;
         });
-        make_one_func_tbl_A("setpixel", function () {
+        make_one_func_tbl_A("setpixel", 3, function (param) {
             var a1, a2, a3;
             var col_r, col_g, col_b;
 
-            match("("); a1 = parseFloat(expression());   // X
-            match(","); a2 = parseFloat(expression());   // Y
-            match(","); a3 = parseInt(expression(), 10); // RGB
-            match(")");
+            a1 = parseFloat(param[0]);   // X
+            a2 = parseFloat(param[1]);   // Y
+            a3 = parseInt(param[2], 10); // RGB
             col_r = (a3 & 0xff0000) >> 16; // R
             col_g = (a3 & 0x00ff00) >> 8;  // G
             col_b = (a3 & 0x0000ff);       // B
@@ -4574,19 +4895,18 @@ var Interpreter;
             ctx.fillStyle = color_val;
             return true;
         });
-        make_one_func_tbl_A("setscsize", function () {
+        make_one_func_tbl_A("setscsize", 2, function (param) {
             var a1, a2, a3, a4;
 
-            match("("); a1 = parseInt(expression(), 10); // W
-            match(","); a2 = parseInt(expression(), 10); // H
-            if (symbol[pc] == ")") {
+            a1 = parseInt(param[0], 10); // W
+            a2 = parseInt(param[1], 10); // H
+            if (param.length <= 3) {
                 a3 = a1;
                 a4 = a2;
             } else {
-                match(","); a3 = parseInt(expression(), 10); // W2
-                match(","); a4 = parseInt(expression(), 10); // H2
+                a3 = parseInt(param[2], 10); // W2
+                a4 = parseInt(param[3], 10); // H2
             }
-            match(")");
             // ***** エラーチェック *****
             // if (a1 <= 0 || a1 >= max_image_size || a2 <= 0 || a2 >= max_image_size ||
             //     a3 <= 0 || a3 >= max_image_size || a4 <= 0 || a4 >= max_image_size) {
@@ -4603,42 +4923,34 @@ var Interpreter;
             reset_canvas_setting(ctx1);
             return true;
         });
-        make_one_func_tbl_A("sleep", function () {
+        make_one_func_tbl_A("sleep", 1, function (param) {
             var a1;
 
-            match("(");
-            a1 = parseInt(expression(), 10);
-            match(")");
+            a1 = parseInt(param[0], 10);
             sleep_flag = true;
             sleep_time = a1;
             return true;
         });
-        make_one_func_tbl_A("soft1", function () {
+        make_one_func_tbl_A("soft1", 1, function (param) {
             var a1;
 
-            match("(");
-            a1 = String(expression());
-            match(")");
+            a1 = String(param[0]);
             softkey[0] = a1;
             disp_softkey();
             return true;
         });
-        make_one_func_tbl_A("soft2", function () {
+        make_one_func_tbl_A("soft2", 1, function (param) {
             var a1;
 
-            match("(");
-            a1 = String(expression());
-            match(")");
+            a1 = String(param[0]);
             softkey[1] = a1;
             disp_softkey();
             return true;
         });
-        make_one_func_tbl_A("spmode", function () {
+        make_one_func_tbl_A("spmode", 1, function (param) {
             var a1;
 
-            match("(");
-            a1 = parseInt(expression(), 10);
-            match(")");
+            a1 = parseInt(param[0], 10);
             sp_compati_mode = a1;
             if (sp_compati_mode == 1) {
                 font_size = 12;
@@ -4647,25 +4959,23 @@ var Interpreter;
             }
             return true;
         });
-        make_one_func_tbl_A("text", function () {
+        make_one_func_tbl_A("text", 1, function (param) {
             var a1, a2, a3, a4;
 
-            match("(");
             // ***** 文字列に変換 *****
-            // a1 = expression();
-            a1 = String(expression());
+            // a1 = param[0];
+            a1 = String(param[0]);
 
             // ***** Chrome v24 で全角スペースが半角のサイズで表示される件の対策 *****
             a1 = a1.replace(/　/g, "  "); // 全角スペースを半角スペース2個に変換
 
-            if (symbol[pc] == ")") {
+            if (param.length <= 3) {
                 a2 = a3 = a4 = 0;
             } else {
-                match(","); a2 = parseInt(expression(), 10); // X
-                match(","); a3 = parseInt(expression(), 10); // Y
-                match(","); a4 = parseInt(expression(), 10); // アンカー
+                a2 = parseInt(param[1], 10); // X
+                a3 = parseInt(param[2], 10); // Y
+                a4 = parseInt(param[3], 10); // アンカー
             }
-            match(")");
             // ***** 水平方向 *****
             if (a4 & 4)       { ctx.textAlign = "left"; }    // 左
             else if (a4 & 8)  { ctx.textAlign = "right"; }   // 右
@@ -4681,12 +4991,12 @@ var Interpreter;
             ctx.fillText(a1, a2, a3);
             return true;
         });
-        make_one_func_tbl_A("trgt", function () {
+
+        make_one_param_varname("trgt", 0);
+        make_one_func_tbl_A("trgt", 1, function (param) {
             var a1;
 
-            match("(");
-            a1 = toglobal(getvarname()); // 画像変数名取得
-            match(")");
+            a1 = toglobal(getvarname(param[0])); // 画像変数名取得
             if (a1 == "off") {
                 can = can1;
                 ctx = ctx1;
@@ -4701,121 +5011,89 @@ var Interpreter;
             reset_canvas_setting(ctx);
             return true;
         });
-        make_one_func_tbl_A("unlock", function () {
+
+        make_one_func_tbl_A("unlock", 0, function (param) {
             var a1;
 
-            match("(");
-            if (symbol[pc] == ")") {
+            if (param.length <= 0) {
                 a1 = 0;
             } else {
-                a1 = parseInt(expression(), 10);
+                a1 = parseInt(param[0], 10);
             }
-            match(")");
             // ***** NOP *****
             return true;
         });
-        make_one_func_tbl_A("}", function () {
-            var funccall_info = {};
 
-            // ***** 戻り値は0とする *****
-            ret_num = 0;
-            // ***** 関数内のとき *****
-            if (funccall_stack.length > 0) {
-                // ***** 関数呼び出し情報をチェック *****
-                funccall_info = funccall_stack[funccall_stack.length - 1];
-                // ***** ネストありのとき(通常の関数呼び出しのとき) *****
-                if (funccall_info.nestcall) {
-                    // ***** 呼び出し元に復帰 *****
-                    return_flag = true;
-                    return true;
-                }
-                // ***** ネストなしのとき(funccall文で呼び出されたとき) *****
-
-                // ***** ローカル変数を解放 *****
-                vars.deleteLocalScope();
-
-                // ***** 戻り値を変数に格納 *****
-                // vars[funccall_info.retvarname] = ret_num;
-                vars.setVarValue(funccall_info.retvarname, ret_num);
-                // ***** 呼び出し元に復帰 *****
-                funccall_info = funccall_stack.pop();
-                pc = funccall_info.func_back;
-                return true;
-            }
-            return_flag = true;
-            return true;
-        });
-        make_one_func_tbl_A(";", function () {
-            return true;
-        });
-        make_one_func_tbl_A("@", function () {
+        make_one_param_varname("@", 0);
+        make_one_func_tbl_A("@", 1, function (param) {
             var a1, a2;
             var i;
 
-            match("(");
-            a1 = getvarname();
-            i = 0;
-            while (pc < symbol_len) {
-                if (symbol[pc] == ")") { break; }
-                match(",");
-                a2 = expression();
-                // vars[a1 + "[" + i + "]"] = a2;
-                vars.setVarValue(a1 + "[" + i + "]", a2);
-                i++;
+            a1 = getvarname(param[0]);
+            for (i = 1; i < param.length; i++) {
+                a2 = param[i];
+                // vars[a1 + "[" + (i - 1) + "]"] = a2;
+                vars.setVarValue(a1 + "[" + (i - 1) + "]", a2);
             }
-            match(")");
             return true;
         });
     }
-    function make_one_func_tbl_A(name, func) {
-        func_tbl_A[name] = {};
-        func_tbl_A[name].type = 0;
-        func_tbl_A[name].func = func;
+    function make_one_func_tbl_A(name, param_num, func) {
+        if (!func_tbl[name]) { func_tbl[name] = {}; }
+        func_tbl[name].addfunc = false;
+        func_tbl[name].param_num = param_num;
+        if (!func_tbl[name].param_varname) { func_tbl[name].param_varname = {}; }
+        func_tbl[name].use_retval = false;
+        func_tbl[name].func = func;
+    }
+    // (関数のi番目の引数が、変数名をとる引数であることを指定する)
+    function make_one_param_varname(name, i) {
+        if (!func_tbl[name]) { func_tbl[name] = {}; }
+        if (!func_tbl[name].param_varname) { func_tbl[name].param_varname = {}; }
+        func_tbl[name].param_varname[i] = true;
     }
 
 
-    // ***** 命令(戻り値のある関数)の定義情報の生成 *****
+    // ***** 組み込み関数(戻り値あり)の定義情報の生成 *****
     function make_func_tbl_B() {
-        // ***** 命令(戻り値のある関数)の定義情報を1個ずつ生成 *****
-        make_one_func_tbl_B("abs", function () {
+        // ***** 組み込み関数(戻り値あり)の定義情報を1個ずつ生成 *****
+        // (第2引数は関数の引数の数を指定する。
+        //  これを-1にすると組み込み変数になり、()なしで呼び出せる)
+        make_one_func_tbl_B("abs", 1, function (param) {
             var num;
             var a1;
 
-            match("(");
-            a1 = parseFloat(expression());
-            match(")");
+            a1 = parseFloat(param[0]);
             num = Math.abs(a1);
             return num;
         });
-        make_one_func_tbl_B("acos", function () {
+        make_one_func_tbl_B("acos", 1, function (param) {
             var num;
             var a1;
 
-            match("(");
-            a1 = parseFloat(expression());
-            match(")");
+            a1 = parseFloat(param[0]);
             num = Math.acos(a1) * 180 / Math.PI;
             return num;
         });
-        make_one_func_tbl_B("arraylen", function () {
+
+        make_one_param_varname("arraylen", 0);
+        make_one_func_tbl_B("arraylen", 1, function (param) {
             var num;
             var a1, a2, a3;
             var i;
 
-            match("(");
-            a1 = getvarname();
-            if (symbol[pc] == ")") {
+            a1 = getvarname(param[0]);
+            if (param.length <= 1) {
                 a2 = 0;
                 a3 = null;
             } else {
-                match(","); a2 = parseInt(expression(), 10);
-                if (symbol[pc] == ")") {
+                a2 = parseInt(param[1], 10);
+                if (param.length <= 2) {
                     a3 = null;
                 } else {
-                    match(","); a3 = parseInt(expression(), 10);
+                    a3 = parseInt(param[2], 10);
                 }
             }
-            match(")");
 
             // ***** NaN対策 *****
             a2 = a2 | 0;
@@ -4840,54 +5118,45 @@ var Interpreter;
             } while (a3 == null || i <= a3);
             return num;
         });
-        make_one_func_tbl_B("asin", function () {
+        make_one_func_tbl_B("asin", 1, function (param) {
             var num;
             var a1;
 
-            match("(");
-            a1 = parseFloat(expression());
-            match(")");
+            a1 = parseFloat(param[0]);
             num = Math.asin(a1) * 180 / Math.PI;
             return num;
         });
-        make_one_func_tbl_B("atan", function () {
+        make_one_func_tbl_B("atan", 1, function (param) {
             var num;
             var a1;
 
-            match("(");
-            a1 = parseFloat(expression());
-            match(")");
+            a1 = parseFloat(param[0]);
             num = Math.atan(a1) * 180 / Math.PI;
             return num;
         });
-        make_one_func_tbl_B("atan2", function () {
+        make_one_func_tbl_B("atan2", 2, function (param) {
             var num;
             var a1, a2;
 
-            match("("); a1 = parseFloat(expression());
-            match(","); a2 = parseFloat(expression());
-            match(")");
+            a1 = parseFloat(param[0]);
+            a2 = parseFloat(param[1]);
             // num = Math.atan2(a2, a1) * 180 / Math.PI;
             num = Math.atan2(a1, a2) * 180 / Math.PI;
             return num;
         });
-        make_one_func_tbl_B("ceil", function () {
+        make_one_func_tbl_B("ceil", 1, function (param) {
             var num;
             var a1;
 
-            match("(");
-            a1 = parseFloat(expression());
-            match(")");
+            a1 = parseFloat(param[0]);
             num = Math.ceil(a1);
             return num;
         });
-        make_one_func_tbl_B("cos", function () {
+        make_one_func_tbl_B("cos", 1, function (param) {
             var num;
             var a1;
 
-            match("(");
-            a1 = parseFloat(expression());
-            match(")");
+            a1 = parseFloat(param[0]);
             if (sp_compati_mode == 1) {
                 num = parseInt(Math.cos(a1 * Math.PI / 180) * 100, 10);
             } else {
@@ -4895,46 +5164,42 @@ var Interpreter;
             }
             return num;
         });
-        make_one_func_tbl_B("day", function () {
+        make_one_func_tbl_B("day", -1, function (param) {
             var num;
 
             num = new Date().getDate();
             return num;
         });
-        make_one_func_tbl_B("dayofweek", function () {
+        make_one_func_tbl_B("dayofweek", -1, function (param) {
             var num;
 
             num = new Date().getDay(); // =0:日曜日,=1:月曜日 ... =6:土曜日
             return num;
         });
-        make_one_func_tbl_B("dcos", function () {
+        make_one_func_tbl_B("dcos", 1, function (param) {
             var num;
             var a1;
 
-            match("(");
-            a1 = parseFloat(expression());
-            match(")");
+            a1 = parseFloat(param[0]);
             num = Math.cos(a1 * Math.PI / 180);
             return num;
         });
-        make_one_func_tbl_B("download", function () {
+        make_one_func_tbl_B("download", 1, function (param) {
             var num;
             var a1, a2, a3;
 
-            match("(");
-            a1 = String(expression());
-            if (symbol[pc] == ")") {
+            a1 = String(param[0]);
+            if (param.length <= 1) {
                 a2 = "";
                 a3 = 0;
             } else {
-                match(","); a2 = String(expression());
-                if (symbol[pc] == ")") {
+                a2 = String(param[1]);
+                if (param.length <= 2) {
                     a3 = 0;
                 } else {
-                    match(","); a3 = parseInt(expression(), 10);
+                    a3 = parseInt(param[2], 10);
                 }
             }
-            match(")");
             if (a3 != 1) {
                 if (typeof (Download) == "function") {
                     Download.download(a1, a2);
@@ -4945,23 +5210,21 @@ var Interpreter;
             num = "data:text/plain;charset=utf-8," + encodeURIComponent(a1);
             return num;
         });
-        make_one_func_tbl_B("downloadimg", function () {
+        make_one_func_tbl_B("downloadimg", 0, function (param) {
             var num;
             var a1, a2;
 
-            match("(");
-            if (symbol[pc] == ")") {
+            if (param.length <= 0) {
                 a1 = "";
                 a2 = 0;
             } else {
-                a1 = String(expression());
-                if (symbol[pc] == ")") {
+                a1 = String(param[0]);
+                if (param.length <= 1) {
                     a2 = 0;
                 } else {
-                    match(","); a2 = parseInt(expression(), 10);
+                    a2 = parseInt(param[1], 10);
                 }
             }
-            match(")");
             if (a2 != 1) {
                 if (typeof (Download) == "function") {
                     Download.downloadCanvas(can, a1);
@@ -4972,76 +5235,64 @@ var Interpreter;
             num = can.toDataURL("image/png");
             return num;
         });
-        make_one_func_tbl_B("dpow", function () {
+        make_one_func_tbl_B("dpow", 2, function (param) {
             var num;
             var a1, a2;
 
-            match("("); a1 = parseFloat(expression());
-            match(","); a2 = parseFloat(expression());
-            match(")");
+            a1 = parseFloat(param[0]);
+            a2 = parseFloat(param[1]);
             num = Math.pow(a1, a2);
             return num;
         });
-        make_one_func_tbl_B("dsin", function () {
+        make_one_func_tbl_B("dsin", 1, function (param) {
             var num;
             var a1;
 
-            match("(");
-            a1 = parseFloat(expression());
-            match(")");
+            a1 = parseFloat(param[0]);
             num = Math.sin(a1 * Math.PI / 180);
             return num;
         });
-        make_one_func_tbl_B("dtan", function () {
+        make_one_func_tbl_B("dtan", 1, function (param) {
             var num;
             var a1;
 
-            match("(");
-            a1 = parseFloat(expression());
-            match(")");
+            a1 = parseFloat(param[0]);
             num = Math.tan(a1 * Math.PI / 180);
             return num;
         });
-        make_one_func_tbl_B("exp", function () {
+        make_one_func_tbl_B("exp", 1, function (param) {
             var num;
             var a1;
 
-            match("(");
-            a1 = parseFloat(expression());
-            match(")");
+            a1 = parseFloat(param[0]);
             num = Math.exp(a1);
             return num;
         });
-        make_one_func_tbl_B("floor", function () {
+        make_one_func_tbl_B("floor", 1, function (param) {
             var num;
             var a1;
 
-            match("(");
-            a1 = parseFloat(expression());
-            match(")");
+            a1 = parseFloat(param[0]);
             num = Math.floor(a1);
             return num;
         });
-        make_one_func_tbl_B("getoutdata", function () {
+        make_one_func_tbl_B("getoutdata", 1, function (param) {
             var num;
             var a1;
 
-            match("(");
-            a1 = parseInt(expression(), 10);
-            match(")");
+            a1 = parseInt(param[0], 10);
             if (out_data.hasOwnProperty(a1)) { num = out_data[a1]; } else { num = ""; }
             return num;
         });
-        make_one_func_tbl_B("getpixel", function () {
+        make_one_func_tbl_B("getpixel", 2, function (param) {
             var num;
             var a1, a2;
             var x1, y1;
             var ret_obj = {};
             var img_data = {};
 
-            match("("); a1 = parseFloat(expression()); // X
-            match(","); a2 = parseFloat(expression()); // Y
-            match(")");
+            a1 = parseFloat(param[0]); // X
+            a2 = parseFloat(param[1]); // Y
             // ***** 座標系の変換の分を補正 *****
             ret_obj = {};
             conv_axis_point(a1, a2, ret_obj);
@@ -5056,70 +5307,68 @@ var Interpreter;
             num = (img_data.data[0] << 16) | (img_data.data[1] << 8) | img_data.data[2];
             return num;
         });
-        make_one_func_tbl_B("height", function () {
+        make_one_func_tbl_B("height", -1, function (param) {
             var num;
 
             num = can1.height;
             return num;
         });
-        make_one_func_tbl_B("hour", function () {
+        make_one_func_tbl_B("hour", -1, function (param) {
             var num;
 
             num = new Date().getHours();
             return num;
         });
-        make_one_func_tbl_B("imgheight", function () {
+
+        make_one_param_varname("imgheight", 0);
+        make_one_func_tbl_B("imgheight", 1, function (param) {
             var num;
             var a1;
 
-            match("(");
-            a1 = toglobal(getvarname()); // 画像変数名取得
-            match(")");
+            a1 = toglobal(getvarname(param[0])); // 画像変数名取得
             // if (imgvars.hasOwnProperty(a1)) {
             if (hasOwn.call(imgvars, a1)) {
                 num = imgvars[a1].can.height;
             } else { num = 0; }
             return num;
         });
-        make_one_func_tbl_B("imgwidth", function () {
+
+        make_one_param_varname("imgwidth", 0);
+        make_one_func_tbl_B("imgwidth", 1, function (param) {
             var num;
             var a1;
 
-            match("(");
-            a1 = toglobal(getvarname()); // 画像変数名取得
-            match(")");
+            a1 = toglobal(getvarname(param[0])); // 画像変数名取得
             // if (imgvars.hasOwnProperty(a1)) {
             if (hasOwn.call(imgvars, a1)) {
                 num = imgvars[a1].can.width;
             } else { num = 0; }
             return num;
         });
-        make_one_func_tbl_B("index", function () {
+
+        make_one_func_tbl_B("index", 2, function (param) {
             var num;
             var a1, a2, a3;
 
-            match("("); a1 = String(expression());
-            match(","); a2 = String(expression());
-            if (symbol[pc] == ")") {
+            a1 = String(param[0]);
+            a2 = String(param[1]);
+            if (param.length <= 2) {
                 a3 = 0;
             } else {
-                match(","); a3 = parseInt(expression(), 10);
+                a3 = parseInt(param[2], 10);
             }
-            match(")");
             num = a1.indexOf(a2, a3);
             return num;
         });
-        make_one_func_tbl_B("input", function () {
+        make_one_func_tbl_B("input", 0, function (param) {
             var num;
             var a1;
 
-            match("(");
-            if (symbol[pc] == ")") {
+            if (param.length <= 0) {
                 a1 = 0;
             } else {
-                a1 = parseInt(expression(), 10);
+                a1 = parseInt(param[0], 10);
             }
-            match(")");
             // ***** キー入力待ちはしない *****
             if (input_buf.length > 0) {
                 num = input_buf.shift();
@@ -5128,59 +5377,56 @@ var Interpreter;
             }
             return num;
         });
-        make_one_func_tbl_B("inputdlg", function () {
+        make_one_func_tbl_B("inputdlg", 1, function (param) {
             var num;
             var a1, a2, a3, a4;
 
-            match("("); a1 = String(expression());
-            if (symbol[pc] == ")") {
+            a1 = String(param[0]);
+            if (param.length <= 1) {
                 a2 = "";
             } else {
-                match(","); a2 = String(expression());
-                if (symbol[pc] == ")") {
+                a2 = String(param[1]);
+                if (param.length <= 3) {
                     a3 = a4 = 0;
                 } else {
-                    match(","); a3 = parseInt(expression(), 10); // 未使用
-                    match(","); a4 = parseInt(expression(), 10); // 未使用
+                    a3 = parseInt(param[2], 10); // 未使用
+                    a4 = parseInt(param[3], 10); // 未使用
                 }
             }
-            match(")");
             num = prompt(a1, a2) || ""; // nullのときは空文字列にする
             keyclear();
             mousebuttonclear();
             loop_nocount_flag = true;
             return num;
         });
-        make_one_func_tbl_B("int", function () {
+        make_one_func_tbl_B("int", 1, function (param) {
             var num;
             var a1;
 
-            match("(");
-            a1 = parseInt(expression(), 10);
-            match(")");
+            a1 = parseInt(param[0], 10);
             num = a1;
             return num;
         });
-        make_one_func_tbl_B("join", function () {
+
+        make_one_param_varname("join", 0);
+        make_one_func_tbl_B("join", 2, function (param) {
             var num;
             var a1, a2, a3, a4;
             var i;
 
-            match("(");
-            a1 = getvarname();
-            match(","); a2 = String(expression());
-            if (symbol[pc] == ")") {
+            a1 = getvarname(param[0]);
+            a2 = String(param[1]);
+            if (param.length <= 2) {
                 a3 = 0;
                 a4 = null;
             } else {
-                match(","); a3 = parseInt(expression(), 10);
-                if (symbol[pc] == ")") {
+                a3 = parseInt(param[2], 10);
+                if (param.length <= 3) {
                     a4 = null;
                 } else {
-                    match(","); a4 = parseInt(expression(), 10);
+                    a4 = parseInt(param[3], 10);
                 }
             }
-            match(")");
 
             // ***** NaN対策 *****
             a3 = a3 | 0;
@@ -5209,24 +5455,23 @@ var Interpreter;
             } while (a4 == null || i <= a4);
             return num;
         });
-        // make_one_func_tbl_B("keydown", function () { // 名前がキー定数とかぶったため変更
-        make_one_func_tbl_B("keydowncode", function () {
+
+        // make_one_func_tbl_B("keydown", -1, function (param) { // 名前がキー定数とかぶったため変更
+        make_one_func_tbl_B("keydowncode", -1, function (param) {
             var num;
 
             num = key_down_code;
             return num;
         });
-        make_one_func_tbl_B("keyinput", function () {
+        make_one_func_tbl_B("keyinput", 0, function (param) {
             var num;
             var a1;
 
-            match("(");
-            if (symbol[pc] == ")") {
+            if (param.length <= 0) {
                 a1 = 0;
             } else {
-                a1 = parseInt(expression(), 10);
+                a1 = parseInt(param[0], 10);
             }
-            match(")");
             // ***** キー入力待ちはしない *****
             if (keyinput_buf.length > 0) {
                 num = keyinput_buf.shift();
@@ -5235,33 +5480,29 @@ var Interpreter;
             }
             return num;
         });
-        make_one_func_tbl_B("keyscan", function () {
+        make_one_func_tbl_B("keyscan", 1, function (param) {
             var num;
             var a1;
 
-            match("(");
-            a1 = parseInt(expression(), 10);
-            match(")");
+            a1 = parseInt(param[0], 10);
             if (key_down_stat[a1] == true) { num = 1; } else { num = 0; }
             return num;
         });
-        make_one_func_tbl_B("keypress", function () {
+        make_one_func_tbl_B("keypress", -1, function (param) {
             var num;
 
             num = key_press_code;
             return num;
         });
-        make_one_func_tbl_B("load", function () {
+        make_one_func_tbl_B("load", 0, function (param) {
             var num;
             var a1;
 
-            match("(");
-            if (symbol[pc] == ")") {
+            if (param.length <= 0) {
                 a1 = 0;
             } else {
-                a1 = parseInt(expression(), 10);
+                a1 = parseInt(param[0], 10);
             }
-            match(")");
             if (!save_data.hasOwnProperty(a1)) {
                 num = "0";
             } else {
@@ -5273,13 +5514,13 @@ var Interpreter;
             }
             return num;
         });
-        make_one_func_tbl_B("loadimgstat", function () {
+
+        make_one_param_varname("loadimgstat", 0);
+        make_one_func_tbl_B("loadimgstat", 1, function (param) {
             var num;
             var a1;
 
-            match("(");
-            a1 = toglobal(getvarname()); // 画像変数名取得
-            match(")");
+            a1 = toglobal(getvarname(param[0])); // 画像変数名取得
             // ***** 完了フラグをチェックして返す *****
             num = 0;
             // if (imgvars.hasOwnProperty(a1)) {
@@ -5292,17 +5533,17 @@ var Interpreter;
             }
             return num;
         });
-        make_one_func_tbl_B("log", function () {
+
+        make_one_func_tbl_B("log", 1, function (param) {
             var num;
             var a1, a2;
 
-            match("("); a1 = parseFloat(expression());
-            if (symbol[pc] == ")") {
+            a1 = parseFloat(param[0]);
+            if (param.length <= 1) {
                 a2 = 0;
             } else {
-                match(","); a2 = parseFloat(expression());
+                a2 = parseFloat(param[1]);
             }
-            match(")");
             if (a2 == 0) {
                 num = Math.log(a1);
             } else {
@@ -5310,67 +5551,65 @@ var Interpreter;
             }
             return num;
         });
-        make_one_func_tbl_B("max", function () {
+        make_one_func_tbl_B("max", 2, function (param) {
             var num;
             var a1, a2, a3;
+            var i;
 
-            match("("); a1 = parseFloat(expression());
-            match(","); a2 = parseFloat(expression());
+            a1 = parseFloat(param[0]);
+            a2 = parseFloat(param[1]);
             num = Math.max(a1, a2);
-            while (symbol[pc] == ",") {
-                pc++;
-                a3 = parseFloat(expression());
+            for (i = 2; i < param.length; i++) {
+                a3 = parseFloat(param[i]);
                 num = Math.max(num, a3);
             }
-            match(")");
             return num;
         });
-        make_one_func_tbl_B("millisecond", function () {
+        make_one_func_tbl_B("millisecond", -1, function (param) {
             var num;
 
             num = new Date().getMilliseconds();
             return num;
         });
-        make_one_func_tbl_B("min", function () {
+        make_one_func_tbl_B("min", 2, function (param) {
             var num;
             var a1, a2, a3;
+            var i;
 
-            match("("); a1 = parseFloat(expression());
-            match(","); a2 = parseFloat(expression());
+            a1 = parseFloat(param[0]);
+            a2 = parseFloat(param[1]);
             num = Math.min(a1, a2);
-            while (symbol[pc] == ",") {
-                pc++;
-                a3 = parseFloat(expression());
+            for (i = 2; i < param.length; i++) {
+                a3 = parseFloat(param[i]);
                 num = Math.min(num, a3);
             }
-            match(")");
             return num;
         });
-        make_one_func_tbl_B("minute", function () {
+        make_one_func_tbl_B("minute", -1, function (param) {
             var num;
 
             num = new Date().getMinutes();
             return num;
         });
-        make_one_func_tbl_B("month", function () {
+        make_one_func_tbl_B("month", -1, function (param) {
             var num;
 
             num = new Date().getMonth() + 1; // 1から12にするため1を加算
             return num;
         });
-        make_one_func_tbl_B("mousex", function () {
+        make_one_func_tbl_B("mousex", -1, function (param) {
             var num;
 
             num = mousex;
             return num;
         });
-        make_one_func_tbl_B("mousey", function () {
+        make_one_func_tbl_B("mousey", -1, function (param) {
             var num;
 
             num = mousey;
             return num;
         });
-        make_one_func_tbl_B("mousebtn", function () {
+        make_one_func_tbl_B("mousebtn", -1, function (param) {
             var num;
 
             num = 0;
@@ -5379,23 +5618,22 @@ var Interpreter;
             if (mouse_btn_stat[2] == true) { num = num | (1 << 1); } // 右ボタン(シフト値2でないので注意)
             return num;
         });
-        make_one_func_tbl_B("pow", function () {
+        make_one_func_tbl_B("pow", 2, function (param) {
             var num;
             var a1, a2;
 
-            match("("); a1 = parseFloat(expression());
-            match(","); a2 = parseFloat(expression());
-            match(")");
+            a1 = parseFloat(param[0]);
+            a2 = parseFloat(param[1]);
             num = Math.pow(a1, a2);
             return num;
         });
-        make_one_func_tbl_B("PI", function () {
+        make_one_func_tbl_B("PI", -1, function (param) {
             var num;
 
             num = Math.PI;
             return num;
         });
-        make_one_func_tbl_B("rand", function () {
+        make_one_func_tbl_B("rand", -1, function (param) {
             var num;
 
             // min から max までの整数の乱数を返す
@@ -5404,32 +5642,31 @@ var Interpreter;
             num = Math.floor(Math.random() * (2147483647 - (-2147483648) + 1)) + (-2147483648);
             return num;
         });
-        make_one_func_tbl_B("random", function () {
+        make_one_func_tbl_B("random", -1, function (param) {
             var num;
 
             num = Math.random();
             return num;
         });
-        make_one_func_tbl_B("replace", function () {
+        make_one_func_tbl_B("replace", 3, function (param) {
             var num;
             var a1, a2, a3, a4, a5;
             var i, j, k;
 
-            match("("); a1 = String(expression());
-            match(","); a2 = String(expression());
-            match(","); a3 = String(expression());
-            if (symbol[pc] == ")") {
+            a1 = String(param[0]);
+            a2 = String(param[1]);
+            a3 = String(param[2]);
+            if (param.length <= 3) {
                 a4 = 0;
                 a5 = -1;
             } else {
-                match(","); a4 = parseInt(expression(), 10);
-                if (symbol[pc] == ")") {
+                a4 = parseInt(param[3], 10);
+                if (param.length <= 4) {
                     a5 = -1;
                 } else {
-                    match(","); a5 = parseInt(expression(), 10);
+                    a5 = parseInt(param[4], 10);
                 }
             }
-            match(")");
             if (a1.length == 0 || a2.length == 0) {
                 num = a1;
             } else {
@@ -5450,40 +5687,37 @@ var Interpreter;
             }
             return num;
         });
-        make_one_func_tbl_B("scan", function () {
+        make_one_func_tbl_B("scan", -1, function (param) {
             var num;
 
             num = key_scan_stat;
             return num;
         });
-        make_one_func_tbl_B("second", function () {
+        make_one_func_tbl_B("second", -1, function (param) {
             var num;
 
             num = new Date().getSeconds();
             return num;
         });
-        make_one_func_tbl_B("setscl", function () {
+        make_one_func_tbl_B("setscl", 1, function (param) {
             var num;
             var a1, a2, a3;
 
-            match("("); a1 = parseFloat(expression());
-            if (symbol[pc] == ")") {
+            a1 = parseFloat(param[0]);
+            if (param.length <= 1) {
                 a2 = 0;
             } else {
-                match(","); a2 = parseFloat(expression());
+                a2 = parseFloat(param[1]);
             }
-            match(")");
             a3 = Math.pow(10, a2);
             num = Math.round(a1 * a3) / a3;
             return num;
         });
-        make_one_func_tbl_B("sin", function () {
+        make_one_func_tbl_B("sin", 1, function (param) {
             var num;
             var a1;
 
-            match("(");
-            a1 = parseFloat(expression());
-            match(")");
+            a1 = parseFloat(param[0]);
             if (sp_compati_mode == 1) {
                 num = parseInt(Math.sin(a1 * Math.PI / 180) * 100, 10);
             } else {
@@ -5491,21 +5725,21 @@ var Interpreter;
             }
             return num;
         });
-        make_one_func_tbl_B("split", function () {
+
+        make_one_param_varname("split", 0);
+        make_one_func_tbl_B("split", 3, function (param) {
             var num;
             var a1, a2, a3, a4;
             var i, j, k;
 
-            match("(");
-            a1 = getvarname();
-            match(","); a2 = String(expression());
-            match(","); a3 = String(expression());
-            if (symbol[pc] == ")") {
+            a1 = getvarname(param[0]);
+            a2 = String(param[1]);
+            a3 = String(param[2]);
+            if (param.length <= 3) {
                 a4 = 0;
             } else {
-                match(","); a4 = parseInt(expression(), 10);
+                a4 = parseInt(param[3], 10);
             }
-            match(")");
             if (a2.length == 0 || a3.length == 0) {
                 num = 0;
             } else {
@@ -5528,80 +5762,71 @@ var Interpreter;
             }
             return num;
         });
-        make_one_func_tbl_B("spweb", function () {
+
+        make_one_func_tbl_B("spweb", -1, function (param) {
             var num;
 
             num = 1;
             return num;
         });
-        make_one_func_tbl_B("sqrt", function () {
+        make_one_func_tbl_B("sqrt", 1, function (param) {
             var num;
             var a1;
 
-            match("(");
-            a1 = parseFloat(expression());
-            match(")");
+            a1 = parseFloat(param[0]);
             num = Math.sqrt(a1);
             return num;
         });
-        make_one_func_tbl_B("sthigh", function () {
+        make_one_func_tbl_B("sthigh", -1, function (param) {
             var num;
 
             num = font_size;
             return num;
         });
-        make_one_func_tbl_B("strat", function () {
+        make_one_func_tbl_B("strat", 2, function (param) {
             var num;
             var a1, a2;
 
-            match("("); a1 = String(expression());
-            match(","); a2 = parseInt(expression(), 10);
-            match(")");
+            a1 = String(param[0]);
+            a2 = parseInt(param[1], 10);
             num = a1.charAt(a2);
             return num;
         });
-        make_one_func_tbl_B("strlen", function () {
+        make_one_func_tbl_B("strlen", 1, function (param) {
             var num;
             var a1;
 
-            match("(");
-            a1 = String(expression());
-            match(")");
+            a1 = String(param[0]);
             num = a1.length;
             return num;
         });
-        make_one_func_tbl_B("stwide", function () {
+        make_one_func_tbl_B("stwide", 1, function (param) {
             var num;
             var a1;
 
-            match("(");
-            a1 = String(expression());
-            match(")");
+            a1 = String(param[0]);
             num = ctx.measureText(a1).width;
             return num;
         });
-        make_one_func_tbl_B("substr", function () {
+        make_one_func_tbl_B("substr", 2, function (param) {
             var num;
             var a1, a2, a3;
 
-            match("("); a1 = String(expression());
-            match(","); a2 = parseInt(expression(), 10);
-            if (symbol[pc] == ")") {
+            a1 = String(param[0]);
+            a2 = parseInt(param[1], 10);
+            if (param.length <= 2) {
                 a3 = a1.length - a2;
             } else {
-                match(","); a3 = parseInt(expression(), 10);
+                a3 = parseInt(param[2], 10);
             }
-            match(")");
             num = a1.substring(a2, a2 + a3);
             return num;
         });
-        make_one_func_tbl_B("tan", function () {
+        make_one_func_tbl_B("tan", 1, function (param) {
             var num;
             var a1;
 
-            match("(");
-            a1 = parseFloat(expression());
-            match(")");
+            a1 = parseFloat(param[0]);
             if (sp_compati_mode == 1) {
                 num = parseInt(Math.tan(a1 * Math.PI / 180) * 100, 10);
             } else {
@@ -5609,113 +5834,55 @@ var Interpreter;
             }
             return num;
         });
-        make_one_func_tbl_B("tick", function () {
+        make_one_func_tbl_B("tick", -1, function (param) {
             var num;
 
             // num = new Date().getTime();
             num = Date.now();
             return num;
         });
-        make_one_func_tbl_B("trim", function () {
+        make_one_func_tbl_B("trim", 1, function (param) {
             var num;
             var a1;
 
-            match("(");
-            a1 = String(expression());
-            match(")");
+            a1 = String(param[0]);
             num = a1.replace(/^\s+|\s+$/g,"");
             return num;
         });
-        make_one_func_tbl_B("width", function () {
+        make_one_func_tbl_B("width", -1, function (param) {
             var num;
 
             num = can1.width;
             return num;
         });
-        make_one_func_tbl_B("year", function () {
+        make_one_func_tbl_B("year", -1, function (param) {
             var num;
 
             num = new Date().getFullYear();
             return num;
         });
-        make_one_func_tbl_B("yndlg", function () {
+        make_one_func_tbl_B("yndlg", 1, function (param) {
             var num;
             var a1;
 
-            match("("); a1 = String(expression());
-            if (symbol[pc] != ")") {
-                match(","); a1 = String(expression());
+            a1 = String(param[0]);
+            if (param.length >= 2) {
+                a1 = String(param[1]);
             }
-            match(")");
             if (confirm(a1)) { num = "YES"; } else { num = "NO"; }
             keyclear();
             mousebuttonclear();
             loop_nocount_flag = true;
             return num;
         });
-        make_one_func_tbl_B("!", function () {
-            var num;
-
-            num = (factor() == 0) ? 1 : 0;
-            return num;
-        });
-        make_one_func_tbl_B("~", function () {
-            var num;
-
-            num = ~factor();
-            return num;
-        });
-        make_one_func_tbl_B("+", function () {
-            var num;
-
-            num = factor();
-            return num;
-        });
-        make_one_func_tbl_B("-", function () {
-            var num;
-
-            num = -factor();
-            return num;
-        });
-        make_one_func_tbl_B("(", function () {
-            var num;
-
-            num = expression();
-            while (pc < symbol_len) {
-                if (symbol[pc] == ",") {
-                    pc++;
-                    num = expression();
-                    continue;
-                }
-                break;
-            }
-            match(")");
-            return num;
-        });
-        // ***** アドレス的なもの *****
-        // ***** (変数名を取得して返す) *****
-        make_one_func_tbl_B("&", function () {
-            var var_name;
-
-            if (symbol[pc] == "(") {
-                match("(");
-                var_name = getvarname();
-                match(")");
-            } else {
-                var_name = getvarname();
-            }
-            // (変数の作成はしない)
-            // // ***** 変数がなければ作成 *****
-            // // if (typeof (vars[var_name]) == "undefined") { vars[var_name] = 0; }
-            // // if (!vars.hasOwnProperty(var_name)) { vars[var_name] = 0; }
-            // vars.getVarValue(var_name);
-            return var_name;
-        });
     }
-    function make_one_func_tbl_B(name, func) {
-        func_tbl_B[name] = {};
-        func_tbl_B[name].type = 0;
-        func_tbl_B[name].func = func;
+    function make_one_func_tbl_B(name, param_num, func) {
+        if (!func_tbl[name]) { func_tbl[name] = {}; }
+        func_tbl[name].addfunc = false;
+        func_tbl[name].param_num = param_num;
+        if (!func_tbl[name].param_varname) { func_tbl[name].param_varname = {}; }
+        func_tbl[name].use_retval = true;
+        func_tbl[name].func = func;
     }
 
 
@@ -5725,24 +5892,22 @@ var Interpreter;
     // ***** 以下は追加命令の処理等 *****
 
 
-    // ***** 追加命令(戻り値のない関数)の定義情報の生成 *****
+    // ***** 追加の組み込み関数(戻り値なし)の定義情報の生成 *****
     function add_func_tbl_A() {
-        // ***** 追加命令(戻り値のない関数)の定義情報を1個ずつ生成 *****
-        add_one_func_tbl_A("audmode", function () {
+        // ***** 追加の組み込み関数(戻り値なし)の定義情報を1個ずつ生成 *****
+        // (第2引数は関数の引数の数を指定する)
+        add_one_func_tbl_A("audmode", 1, function (param) {
             var a1;
 
-            match("(");
-            a1 = parseInt(expression(), 10);
-            match(")");
+            a1 = parseInt(param[0], 10);
             aud_mode = a1;
             return true;
         });
-        add_one_func_tbl_A("audmake", function () {
+        add_one_func_tbl_A("audmake", 2, function (param) {
             var a1, a2;
 
-            match("("); a1 = parseInt(expression(), 10);
-            match(","); a2 = String(expression());
-            match(")");
+            a1 = parseInt(param[0], 10);
+            a2 = String(param[1]);
 
             // ***** 音楽モードチェック *****
             if (aud_mode == 1) {
@@ -5763,12 +5928,11 @@ var Interpreter;
             loop_nocount_flag = true;
             return true;
         });
-        add_one_func_tbl_A("audmakedata", function () {
+        add_one_func_tbl_A("audmakedata", 2, function (param) {
             var a1, a2;
 
-            match("("); a1 = parseInt(expression(), 10);
-            match(","); a2 = String(expression()); // 音楽データ(data URI scheme)
-            match(")");
+            a1 = parseInt(param[0], 10);
+            a2 = String(param[1]); // 音楽データ(data URI scheme)
 
             // ***** 音楽モードチェック *****
             if (aud_mode == 1) {
@@ -5789,16 +5953,15 @@ var Interpreter;
             loop_nocount_flag = true;
             return true;
         });
-        add_one_func_tbl_A("audplay", function () {
+        add_one_func_tbl_A("audplay", 1, function (param) {
             var a1, a2;
 
-            match("("); a1 = parseInt(expression(), 10);
-            if (symbol[pc] == ")") {
+            a1 = parseInt(param[0], 10);
+            if (param.length <= 1) {
                 a2 = 0;
             } else {
-                match(","); a2 = parseInt(expression(), 10);
+                a2 = parseInt(param[1], 10);
             }
-            match(")");
 
             // ***** 音楽モードチェック *****
             if (aud_mode == 1) {
@@ -5816,12 +5979,11 @@ var Interpreter;
             }
             return true;
         });
-        add_one_func_tbl_A("audspeedrate", function () {
+        add_one_func_tbl_A("audspeedrate", 2, function (param) {
             var a1, a2;
 
-            match("("); a1 = parseInt(expression(), 10);
-            match(","); a2 = parseFloat(expression());
-            match(")");
+            a1 = parseInt(param[0], 10);
+            a2 = parseFloat(param[1]);
 
             // ***** 音楽モードチェック *****
             if (aud_mode == 1) {
@@ -5839,12 +6001,10 @@ var Interpreter;
             }
             return true;
         });
-        add_one_func_tbl_A("audstop", function () {
+        add_one_func_tbl_A("audstop", 1, function (param) {
             var a1;
 
-            match("(");
-            a1 = parseInt(expression(), 10);
-            match(")");
+            a1 = parseInt(param[0], 10);
 
             // ***** 音楽モードチェック *****
             if (aud_mode == 1) {
@@ -5862,12 +6022,11 @@ var Interpreter;
             }
             return true;
         });
-        add_one_func_tbl_A("audvolume", function () {
+        add_one_func_tbl_A("audvolume", 2, function (param) {
             var a1, a2;
 
-            match("("); a1 = parseInt(expression(), 10);
-            match(","); a2 = parseInt(expression(), 10);
-            match(")");
+            a1 = parseInt(param[0], 10);
+            a2 = parseInt(param[1], 10);
 
             // ***** 音楽モードチェック *****
             if (aud_mode == 1) {
@@ -5885,13 +6044,12 @@ var Interpreter;
             }
             return true;
         });
-        add_one_func_tbl_A("colalpha", function () {
+        add_one_func_tbl_A("colalpha", 2, function (param) {
             var a1, a2;
             var col_r, col_g, col_b, alpha;
 
-            match("("); a1 = parseInt(expression(), 10); // RGB
-            match(","); a2 = parseInt(expression(), 10); // alpha
-            match(")");
+            a1 = parseInt(param[0], 10); // RGB
+            a2 = parseInt(param[1], 10); // alpha
             col_r = (a1 & 0xff0000) >> 16; // R
             col_g = (a1 & 0x00ff00) >> 8;  // G
             col_b = (a1 & 0x0000ff);       // B
@@ -5901,15 +6059,14 @@ var Interpreter;
             ctx.fillStyle = color_val;
             return true;
         });
-        add_one_func_tbl_A("coloralpha", function () {
+        add_one_func_tbl_A("coloralpha", 4, function (param) {
             var a1, a2, a3 ,a4;
             var col_r, col_g, col_b, alpha;
 
-            match("("); a1 = parseInt(expression(), 10); // R
-            match(","); a2 = parseInt(expression(), 10); // G
-            match(","); a3 = parseInt(expression(), 10); // B
-            match(","); a4 = parseInt(expression(), 10); // alpha
-            match(")");
+            a1 = parseInt(param[0], 10); // R
+            a2 = parseInt(param[1], 10); // G
+            a3 = parseInt(param[2], 10); // B
+            a4 = parseInt(param[3], 10); // alpha
             col_r = a1;
             col_g = a2;
             col_b = a3;
@@ -5919,46 +6076,49 @@ var Interpreter;
             ctx.fillStyle = color_val;
             return true;
         });
-        add_one_func_tbl_A("devprint", function () {
+        add_one_func_tbl_A("dbgprint", 1, function (param) {
             var a1;
 
-            match("(");
-            a1 = String(expression());
-            match(")");
+            a1 = String(param[0]);
             DebugShow(a1 + "\n");
             return true;
         });
-        add_one_func_tbl_A("disaud", function () {
+        add_one_func_tbl_A("dbgstop", 0, function (param) {
             var a1;
 
-            match("(");
-            a1 = parseInt(expression(), 10);
-            match(")");
+            a1 = "";
+            if (param.length >= 1) {
+                a1 = String(param[0]);
+            }
+            if (a1 != "") { a1 = "('" + a1 + "')"; }
+            throw new Error("dbgstop命令で停止しました。" + a1);
+            // return true;
+        });
+        add_one_func_tbl_A("disaud", 1, function (param) {
+            var a1;
+
+            a1 = parseInt(param[0], 10);
             if (audplayer.hasOwnProperty(a1)) {
                 audplayer[a1].mmlplayer.stop();
                 delete audplayer[a1];
             }
             return true;
         });
-        add_one_func_tbl_A("dismis", function () {
+        add_one_func_tbl_A("dismis", 1, function (param) {
             var a1;
 
-            match("(");
-            a1 = parseInt(expression(), 10);
-            match(")");
+            a1 = parseInt(param[0], 10);
             if (missile.hasOwnProperty(a1)) {
                 delete missile[a1];
             }
             // for (var prop_name in missile) { DebugShow(prop_name + " "); } DebugShow("\n");
             return true;
         });
-        add_one_func_tbl_A("disstrimg", function () {
+        add_one_func_tbl_A("disstrimg", 1, function (param) {
             var a1;
             var ch;
 
-            match("(");
-            a1 = String(expression());
-            match(")");
+            a1 = String(param[0]);
             ch = a1.charAt(0); // 1文字だけにする
             if (ch.length == 0) { return true; }
             if (stimg.hasOwnProperty(ch)) {
@@ -5967,30 +6127,29 @@ var Interpreter;
             // for (var prop_name in stimg) { DebugShow(prop_name + " "); } DebugShow("\n");
             return true;
         });
-        add_one_func_tbl_A("fillarea", function () {
+        add_one_func_tbl_A("fillarea", 2, function (param) {
             var a1, a2;
             var x1, y1;
             var ret_obj = {};
             var col, threshold, paint_mode;
             var ffill_obj = {};
 
-            match("("); a1 = parseFloat(expression()); // X
-            match(","); a2 = parseFloat(expression()); // Y
-            if (symbol[pc] == ")") {
+            a1 = parseFloat(param[0]); // X
+            a2 = parseFloat(param[1]); // Y
+            if (param.length <= 2) {
                 threshold = 0;
                 col = 0;
                 paint_mode = 0;
             } else {
-                match(","); threshold = parseInt(expression(), 10); // しきい値
-                if (symbol[pc] == ")") {
+                threshold = parseInt(param[2], 10); // しきい値
+                if (param.length <= 3) {
                     col = 0;
                     paint_mode = 0;
                 } else {
-                    match(","); col = parseInt(expression(), 10); // 境界色 RGB
+                    col = parseInt(param[3], 10); // 境界色 RGB
                     paint_mode = 1;
                 }
             }
-            match(")");
             // ***** 座標系の変換の分を補正 *****
             ret_obj = {};
             conv_axis_point(a1, a2, ret_obj);
@@ -6003,19 +6162,19 @@ var Interpreter;
             set_canvas_axis(ctx);                    // 座標系を再設定
             return true;
         });
-        add_one_func_tbl_A("fpoly", function () {
+
+        make_one_param_varname("fpoly", 0);
+        make_one_param_varname("fpoly", 1);
+        add_one_func_tbl_A("fpoly", 4, function (param) {
             var a1, a2, a3;
             var b1;
             var i;
             var x0, y0, x1, y1;
 
-            match("(");
-            a1 = getvarname();
-            match(",");
-            b1 = getvarname();
-            match(","); a2 = parseInt(expression(), 10);
-            match(","); a3 = parseInt(expression(), 10);
-            match(")");
+            a1 = getvarname(param[0]);
+            b1 = getvarname(param[1]);
+            a2 = parseInt(param[2], 10);
+            a3 = parseInt(param[3], 10);
 
             // ***** NaN対策 *****
             a2 = a2 | 0;
@@ -6056,27 +6215,33 @@ var Interpreter;
             ctx.fill();
             return true;
         });
-        add_one_func_tbl_A("mismake", function () {
+
+        make_one_param_varname("mismake", 1);
+        make_one_param_varname("mismake", 2);
+        make_one_param_varname("mismake", 3);
+        make_one_param_varname("mismake", 4);
+        make_one_param_varname("mismake", 5);
+        make_one_param_varname("mismake", 6);
+        add_one_func_tbl_A("mismake", 13, function (param) {
             var ch;
             var no, useflag, x100, y100, degree, speed100;
             var useflag_var_name, x100_var_name, y100_var_name;
             var degree_var_name, speed100_var_name, ch_var_name;
             var min_x, max_x, min_y, max_y, div_x, div_y;
 
-            match("("); no = parseInt(expression(), 10);
-            match(","); useflag_var_name =  getvarname(); // 制御用の変数名を取得
-            match(","); x100_var_name =     getvarname(); // 制御用の変数名を取得
-            match(","); y100_var_name =     getvarname(); // 制御用の変数名を取得
-            match(","); degree_var_name =   getvarname(); // 制御用の変数名を取得
-            match(","); speed100_var_name = getvarname(); // 制御用の変数名を取得
-            match(","); ch_var_name =       getvarname(); // 制御用の変数名を取得
-            match(","); min_x = parseInt(expression(), 10);
-            match(","); max_x = parseInt(expression(), 10);
-            match(","); min_y = parseInt(expression(), 10);
-            match(","); max_y = parseInt(expression(), 10);
-            match(","); div_x = parseFloat(expression());
-            match(","); div_y = parseFloat(expression());
-            match(")");
+            no = parseInt(param[0], 10);
+            useflag_var_name =  getvarname(param[1]); // 制御用の変数名を取得
+            x100_var_name =     getvarname(param[2]); // 制御用の変数名を取得
+            y100_var_name =     getvarname(param[3]); // 制御用の変数名を取得
+            degree_var_name =   getvarname(param[4]); // 制御用の変数名を取得
+            speed100_var_name = getvarname(param[5]); // 制御用の変数名を取得
+            ch_var_name =       getvarname(param[6]); // 制御用の変数名を取得
+            min_x = parseInt(param[7], 10);
+            max_x = parseInt(param[8], 10);
+            min_y = parseInt(param[9], 10);
+            max_y = parseInt(param[10], 10);
+            div_x = parseFloat(param[11]);
+            div_y = parseFloat(param[12]);
             // ***** ミサイル作成 *****
             useflag =  parseInt(vars.getVarValue(useflag_var_name),  10);
             x100 =     parseInt(vars.getVarValue(x100_var_name),     10);
@@ -6090,21 +6255,20 @@ var Interpreter;
                 degree_var_name, speed100_var_name, ch_var_name);
             return true;
         });
-        add_one_func_tbl_A("mismove", function () {
+
+        add_one_func_tbl_A("mismove", 0, function (param) {
             var mis, mis_no;
             var range_use, min_no, max_no;
 
-            match("(");
-            if (symbol[pc] == ")") {
+            if (param.length <= 1) {
                 range_use = false;
                 min_no = 0;
                 max_no = 0;
             } else {
                 range_use = true;
-                min_no = parseInt(expression(), 10);
-                match(","); max_no = parseInt(expression(), 10);
+                min_no = parseInt(param[0], 10);
+                max_no = parseInt(param[1], 10);
             }
-            match(")");
             // ***** 全ミサイルを移動 *****
             for (mis_no in missile) {
                 if (missile.hasOwnProperty(mis_no)) {
@@ -6130,7 +6294,9 @@ var Interpreter;
             }
             return true;
         });
-        add_one_func_tbl_A("mistext", function () {
+
+        make_one_param_varname("mistext", 0);
+        add_one_func_tbl_A("mistext", 3, function (param) {
             var a1, a2, a3;
             var i;
             var x1, y1;
@@ -6138,20 +6304,18 @@ var Interpreter;
             var mis, mis_no;
             var range_use, min_no, max_no;
 
-            match("(");
-            a1 = getvarname();
-            match(","); a2 = parseInt(expression(), 10);
-            match(","); a3 = parseInt(expression(), 10);
-            if (symbol[pc] == ")") {
+            a1 = getvarname(param[0]);
+            a2 = parseInt(param[1], 10);
+            a3 = parseInt(param[2], 10);
+            if (param.length <= 4) {
                 range_use = false;
                 min_no = 0;
                 max_no = 0;
             } else {
                 range_use = true;
-                match(","); min_no = parseInt(expression(), 10);
-                match(","); max_no = parseInt(expression(), 10);
+                min_no = parseInt(param[3], 10);
+                max_no = parseInt(param[4], 10);
             }
-            match(")");
 
             // ***** NaN対策 *****
             a2 = a2 | 0;
@@ -6204,24 +6368,24 @@ var Interpreter;
             }
             return true;
         });
-        add_one_func_tbl_A("poly", function () {
+
+        make_one_param_varname("poly", 0);
+        make_one_param_varname("poly", 1);
+        add_one_func_tbl_A("poly", 4, function (param) {
             var a1, a2, a3, a4;
             var b1;
             var i;
             var x0, y0, x1, y1;
 
-            match("(");
-            a1 = getvarname();
-            match(",");
-            b1 = getvarname();
-            match(","); a2 = parseInt(expression(), 10);
-            match(","); a3 = parseInt(expression(), 10);
-            if (symbol[pc] == ")") {
+            a1 = getvarname(param[0]);
+            b1 = getvarname(param[1]);
+            a2 = parseInt(param[2], 10);
+            a3 = parseInt(param[3], 10);
+            if (param.length <= 4) {
                 a4 = 0;
             } else {
-                match(","); a4 = parseInt(expression(), 10);
+                a4 = parseInt(param[4], 10);
             }
-            match(")");
 
             // ***** NaN対策 *****
             a2 = a2 | 0;
@@ -6262,21 +6426,21 @@ var Interpreter;
             ctx.stroke();
             return true;
         });
-        add_one_func_tbl_A("setstrimg", function () {
+
+        make_one_param_varname("setstrimg", 1);
+        add_one_func_tbl_A("setstrimg", 2, function (param) {
             var a1, a2, a3, a4;
             var ch;
 
-            match("("); a1 = String(expression());
-            match(",");
-            a2 = toglobal(getvarname()); // 画像変数名取得
-            if (symbol[pc] == ")") {
+            a1 = String(param[0]);
+            a2 = toglobal(getvarname(param[1])); // 画像変数名取得
+            if (param.length <= 3) {
                 a3 = 0;
                 a4 = 0;
             } else {
-                match(","); a3 = parseInt(expression(), 10);
-                match(","); a4 = parseInt(expression(), 10);
+                a3 = parseInt(param[2], 10);
+                a4 = parseInt(param[3], 10);
             }
-            match(")");
             // ***** 画像文字割付を格納 *****
             ch = a1.charAt(0); // 1文字だけにする
             if (ch.length == 0) { return true; }
@@ -6291,16 +6455,16 @@ var Interpreter;
             }
             return true;
         });
-        add_one_func_tbl_A("transimg", function () {
+
+        make_one_param_varname("transimg", 0);
+        add_one_func_tbl_A("transimg", 2, function (param) {
             var a1, a2;
             var i;
             var col_r, col_g, col_b;
             var img_data = {};
 
-            match("(");
-            a1 = toglobal(getvarname()); // 画像変数名取得
-            match(","); a2 = parseInt(expression(), 10); // RGB
-            match(")");
+            a1 = toglobal(getvarname(param[0])); // 画像変数名取得
+            a2 = parseInt(param[1], 10); // RGB
             // if (imgvars.hasOwnProperty(a1)) {
             if (hasOwn.call(imgvars, a1)) {
                 col_r = (a2 & 0xff0000) >> 16; // R
@@ -6326,18 +6490,18 @@ var Interpreter;
             }
             return true;
         });
-        add_one_func_tbl_A("txtmake", function () {
+
+        make_one_param_varname("txtmake", 0);
+        add_one_func_tbl_A("txtmake", 5, function (param) {
             var a1, a2, a3, a4, a5;
             var i;
             var st1;
 
-            match("(");
-            a1 = getvarname();
-            match(","); a2 = parseInt(expression(), 10);
-            match(","); a3 = parseInt(expression(), 10);
-            match(","); a4 = String(expression());
-            match(","); a5 = parseInt(expression(), 10);
-            match(")");
+            a1 = getvarname(param[0]);
+            a2 = parseInt(param[1], 10);
+            a3 = parseInt(param[2], 10);
+            a4 = String(param[3]);
+            a5 = parseInt(param[4], 10);
 
             // ***** NaN対策 *****
             a2 = a2 | 0;
@@ -6361,24 +6525,24 @@ var Interpreter;
             }
             return true;
         });
-        add_one_func_tbl_A("txtdraw", function () {
+
+        make_one_param_varname("txtdraw", 0);
+        add_one_func_tbl_A("txtdraw", 3, function (param) {
             var a1, a2, a3;
             var x1, y1;
             var i;
             var st1;
 
-            match("(");
-            a1 = getvarname();
-            match(","); a2 = parseInt(expression(), 10);
-            match(","); a3 = parseInt(expression(), 10);
-            if (symbol[pc] == ")") {
+            a1 = getvarname(param[0]);
+            a2 = parseInt(param[1], 10);
+            a3 = parseInt(param[2], 10);
+            if (param.length <= 4) {
                 x1 = 0;
                 y1 = 0;
             } else {
-                match(","); x1 = parseInt(expression(), 10);
-                match(","); y1 = parseInt(expression(), 10);
+                x1 = parseInt(param[3], 10);
+                y1 = parseInt(param[4], 10);
             }
-            match(")");
 
             // ***** NaN対策 *****
             a2 = a2 | 0;
@@ -6413,7 +6577,9 @@ var Interpreter;
             }
             return true;
         });
-        add_one_func_tbl_A("txtdrawimg", function () {
+
+        make_one_param_varname("txtdrawimg", 0);
+        add_one_func_tbl_A("txtdrawimg", 7, function (param) {
             var a1, a2, a3;
             var x1, y1, x2, y2;
             var w1, h1;
@@ -6421,15 +6587,13 @@ var Interpreter;
             var ch;
             var st1;
 
-            match("(");
-            a1 = getvarname();
-            match(","); a2 = parseInt(expression(), 10);
-            match(","); a3 = parseInt(expression(), 10);
-            match(","); x1 = parseInt(expression(), 10);
-            match(","); y1 = parseInt(expression(), 10);
-            match(","); w1 = parseFloat(expression());
-            match(","); h1 = parseFloat(expression());
-            match(")");
+            a1 = getvarname(param[0]);
+            a2 = parseInt(param[1], 10);
+            a3 = parseInt(param[2], 10);
+            x1 = parseInt(param[3], 10);
+            y1 = parseInt(param[4], 10);
+            w1 = parseFloat(param[5]);
+            h1 = parseFloat(param[6]);
 
             // ***** NaN対策 *****
             a2 = a2 | 0;
@@ -6476,7 +6640,10 @@ var Interpreter;
             }
             return true;
         });
-        add_one_func_tbl_A("txtovr", function () {
+
+        make_one_param_varname("txtovr", 0);
+        make_one_param_varname("txtovr", 5);
+        add_one_func_tbl_A("txtovr", 8, function (param) {
             var a1, a2, a3, a4;
             var b1, b2, b3;
             var x1, y1;
@@ -6484,22 +6651,19 @@ var Interpreter;
             var i_start, i_end, i_plus;
             var st1, st2;
 
-            match("(");
-            a1 = getvarname();
-            match(","); a2 = parseInt(expression(), 10);
-            match(","); a3 = parseInt(expression(), 10);
-            match(","); x1 = parseInt(expression(), 10);
-            match(","); y1 = parseInt(expression(), 10);
-            match(",");
-            b1 = getvarname();
-            match(","); b2 = parseInt(expression(), 10);
-            match(","); b3 = parseInt(expression(), 10);
-            if (symbol[pc] == ")") {
+            a1 = getvarname(param[0]);
+            a2 = parseInt(param[1], 10);
+            a3 = parseInt(param[2], 10);
+            x1 = parseInt(param[3], 10);
+            y1 = parseInt(param[4], 10);
+            b1 = getvarname(param[5]);
+            b2 = parseInt(param[6], 10);
+            b3 = parseInt(param[7], 10);
+            if (param.length <= 8) {
                 a4 = 0;
             } else {
-                match(","); a4 = parseInt(expression(), 10);
+                a4 = parseInt(param[8], 10);
             }
-            match(")");
 
             // ***** NaN対策 *****
             a2 = a2 | 0;
@@ -6560,18 +6724,18 @@ var Interpreter;
             }
             return true;
         });
-        add_one_func_tbl_A("txtpset", function () {
+
+        make_one_param_varname("txtpset", 0);
+        add_one_func_tbl_A("txtpset", 6, function (param) {
             var a1, a2, a3, a4;
             var x1, y1;
 
-            match("(");
-            a1 = getvarname();
-            match(","); a2 = parseInt(expression(), 10);
-            match(","); a3 = parseInt(expression(), 10);
-            match(","); x1 = parseInt(expression(), 10);
-            match(","); y1 = parseInt(expression(), 10);
-            match(","); a4 = String(expression());
-            match(")");
+            a1 = getvarname(param[0]);
+            a2 = parseInt(param[1], 10);
+            a3 = parseInt(param[2], 10);
+            x1 = parseInt(param[3], 10);
+            y1 = parseInt(param[4], 10);
+            a4 = String(param[5]);
 
             // ***** NaN対策 *****
             a2 = a2 | 0;
@@ -6588,23 +6752,23 @@ var Interpreter;
             txtovrsub(a1, a2, a3, x1, y1, a4);
             return true;
         });
-        add_one_func_tbl_A("txtline", function () {
+
+        make_one_param_varname("txtline", 0);
+        add_one_func_tbl_A("txtline", 8, function (param) {
             var a1, a2, a3, a4;
             var x1, y1, x2, y2, x3, y3;
             var dx1, dy1, sx1, sy1, e1;
             var i;
             var ch;
 
-            match("(");
-            a1 = getvarname();
-            match(","); a2 = parseInt(expression(), 10);
-            match(","); a3 = parseInt(expression(), 10);
-            match(","); x1 = parseInt(expression(), 10);
-            match(","); y1 = parseInt(expression(), 10);
-            match(","); x2 = parseInt(expression(), 10);
-            match(","); y2 = parseInt(expression(), 10);
-            match(","); a4 = String(expression());
-            match(")");
+            a1 = getvarname(param[0]);
+            a2 = parseInt(param[1], 10);
+            a3 = parseInt(param[2], 10);
+            x1 = parseInt(param[3], 10);
+            y1 = parseInt(param[4], 10);
+            x2 = parseInt(param[5], 10);
+            y2 = parseInt(param[6], 10);
+            a4 = String(param[7]);
 
             // ***** NaN対策 *****
             a2 = a2 | 0;
@@ -6668,21 +6832,21 @@ var Interpreter;
             }
             return true;
         });
-        add_one_func_tbl_A("txtbox", function () {
+
+        make_one_param_varname("txtbox", 0);
+        add_one_func_tbl_A("txtbox", 8, function (param) {
             var a1, a2, a3, a4, a5;
             var x1, y1, x2, y2, x3, y3, x4, y4;
             var i;
 
-            match("(");
-            a1 = getvarname();
-            match(","); a2 = parseInt(expression(), 10);
-            match(","); a3 = parseInt(expression(), 10);
-            match(","); x1 = parseInt(expression(), 10);
-            match(","); y1 = parseInt(expression(), 10);
-            match(","); x2 = parseInt(expression(), 10);
-            match(","); y2 = parseInt(expression(), 10);
-            match(","); a4 = String(expression());
-            match(")");
+            a1 = getvarname(param[0]);
+            a2 = parseInt(param[1], 10);
+            a3 = parseInt(param[2], 10);
+            x1 = parseInt(param[3], 10);
+            y1 = parseInt(param[4], 10);
+            x2 = parseInt(param[5], 10);
+            y2 = parseInt(param[6], 10);
+            a4 = String(param[7]);
 
             // ***** NaN対策 *****
             a2 = a2 | 0;
@@ -6714,21 +6878,21 @@ var Interpreter;
             }
             return true;
         });
-        add_one_func_tbl_A("txtfbox", function () {
+
+        make_one_param_varname("txtfbox", 0);
+        add_one_func_tbl_A("txtfbox", 8, function (param) {
             var a1, a2, a3, a4, a5;
             var x1, y1, x2, y2, x3, y3, x4, y4;
             var i;
 
-            match("(");
-            a1 = getvarname();
-            match(","); a2 = parseInt(expression(), 10);
-            match(","); a3 = parseInt(expression(), 10);
-            match(","); x1 = parseInt(expression(), 10);
-            match(","); y1 = parseInt(expression(), 10);
-            match(","); x2 = parseInt(expression(), 10);
-            match(","); y2 = parseInt(expression(), 10);
-            match(","); a4 = String(expression());
-            match(")");
+            a1 = getvarname(param[0]);
+            a2 = parseInt(param[1], 10);
+            a3 = parseInt(param[2], 10);
+            x1 = parseInt(param[3], 10);
+            y1 = parseInt(param[4], 10);
+            x2 = parseInt(param[5], 10);
+            y2 = parseInt(param[6], 10);
+            a4 = String(param[7]);
 
             // ***** NaN対策 *****
             a2 = a2 | 0;
@@ -6757,24 +6921,24 @@ var Interpreter;
             }
             return true;
         });
-        add_one_func_tbl_A("txtcircle", function () {
+
+        make_one_param_varname("txtcircle", 0);
+        add_one_func_tbl_A("txtcircle", 9, function (param) {
             var a1, a2, a3, a4;
             var x1, y1, x2, y2;
             var r1, a, b;
             var drawflag;
             var x_old, y_old;
 
-            match("(");
-            a1 = getvarname();
-            match(","); a2 = parseInt(expression(), 10);
-            match(","); a3 = parseInt(expression(), 10);
-            match(","); x1 = parseInt(expression(), 10);
-            match(","); y1 = parseInt(expression(), 10);
-            match(","); r1 = parseInt(expression(), 10);
-            match(","); a = parseFloat(expression());
-            match(","); b = parseFloat(expression());
-            match(","); a4 = String(expression());
-            match(")");
+            a1 = getvarname(param[0]);
+            a2 = parseInt(param[1], 10);
+            a3 = parseInt(param[2], 10);
+            x1 = parseInt(param[3], 10);
+            y1 = parseInt(param[4], 10);
+            r1 = parseInt(param[5], 10);
+            a = parseFloat(param[6]);
+            b = parseFloat(param[7]);
+            a4 = String(param[8]);
 
             // ***** NaN対策 *****
             a2 = a2 | 0;
@@ -6830,22 +6994,22 @@ var Interpreter;
             }
             return true;
         });
-        add_one_func_tbl_A("txtfcircle", function () {
+
+        make_one_param_varname("txtfcircle", 0);
+        add_one_func_tbl_A("txtfcircle", 9, function (param) {
             var a1, a2, a3, a4;
             var x1, y1, x2, y2;
             var r1, a, b;
 
-            match("(");
-            a1 = getvarname();
-            match(","); a2 = parseInt(expression(), 10);
-            match(","); a3 = parseInt(expression(), 10);
-            match(","); x1 = parseInt(expression(), 10);
-            match(","); y1 = parseInt(expression(), 10);
-            match(","); r1 = parseInt(expression(), 10);
-            match(","); a = parseFloat(expression());
-            match(","); b = parseFloat(expression());
-            match(","); a4 = String(expression());
-            match(")");
+            a1 = getvarname(param[0]);
+            a2 = parseInt(param[1], 10);
+            a3 = parseInt(param[2], 10);
+            x1 = parseInt(param[3], 10);
+            y1 = parseInt(param[4], 10);
+            r1 = parseInt(param[5], 10);
+            a = parseFloat(param[6]);
+            b = parseFloat(param[7]);
+            a4 = String(param[8]);
 
             // ***** NaN対策 *****
             a2 = a2 | 0;
@@ -6880,26 +7044,27 @@ var Interpreter;
             return true;
         });
     }
-    function add_one_func_tbl_A(name, func) {
-        if (func_tbl_A.hasOwnProperty(name)) {
-            if (func_tbl_A[name].type == 0) { return false; }
-        }
-        func_tbl_A[name] = {};
-        func_tbl_A[name].type = 1;
-        func_tbl_A[name].func = func;
+    function add_one_func_tbl_A(name, param_num, func) {
+        if (func_tbl[name] && func_tbl[name].addfunc == false) { return false; }
+        if (!func_tbl[name]) { func_tbl[name] = {}; }
+        func_tbl[name].addfunc = true;
+        func_tbl[name].param_num = param_num;
+        if (!func_tbl[name].param_varname) { func_tbl[name].param_varname = {}; }
+        func_tbl[name].use_retval = false;
+        func_tbl[name].func = func;
     }
 
 
-    // ***** 追加命令(戻り値のある関数)の定義情報の生成 *****
+    // ***** 追加の組み込み関数(戻り値あり)の定義情報の生成 *****
     function add_func_tbl_B() {
-        // ***** 追加命令(戻り値のある関数)の定義情報を1個ずつ生成 *****
-        add_one_func_tbl_B("audmakestat", function () {
+        // ***** 追加の組み込み関数(戻り値あり)の定義情報を1個ずつ生成 *****
+        // (第2引数は関数の引数の数を指定する。
+        //  これを-1にすると組み込み変数になり、()なしで呼び出せる)
+        add_one_func_tbl_B("audmakestat", 1, function (param) {
             var num;
             var a1;
 
-            match("(");
-            a1 = parseInt(expression(), 10);
-            match(")");
+            a1 = parseInt(param[0], 10);
 
             // ***** 音楽モードチェック *****
             if (aud_mode == 1 || aud_mode == 2) {
@@ -6918,13 +7083,11 @@ var Interpreter;
             }
             return num;
         });
-        add_one_func_tbl_B("audstat", function () {
+        add_one_func_tbl_B("audstat", 1, function (param) {
             var num;
             var a1;
 
-            match("(");
-            a1 = parseInt(expression(), 10);
-            match(")");
+            a1 = parseInt(param[0], 10);
 
             // ***** 音楽モードチェック *****
             if (aud_mode == 1 || aud_mode == 2) {
@@ -6942,34 +7105,32 @@ var Interpreter;
             if (num == 1 || num == 2) { num = 1; } else { num = 0; }
             return num;
         });
-        add_one_func_tbl_B("charcode", function () {
+        add_one_func_tbl_B("charcode", 1, function (param) {
             var num;
             var a1, a2;
 
-            match("("); a1 = String(expression());
-            if (symbol[pc] == ")") {
+            a1 = String(param[0]);
+            if (param.length <= 1) {
                 a2 = 0;
             } else {
-                match(","); a2 = parseInt(expression(), 10);
+                a2 = parseInt(param[1], 10);
             }
-            match(")");
             num = a1.charCodeAt(a2);
             return num;
         });
-        add_one_func_tbl_B("charfrom", function () {
+        add_one_func_tbl_B("charfrom", 1, function (param) {
             var num;
             var a1, a2, a3, a4;
             var pair_flag;
 
-            match("("); a1 = parseInt(expression(), 10);
-            if (symbol[pc] == ")") {
+            a1 = parseInt(param[0], 10);
+            if (param.length <= 1) {
                 a2 = 0;
                 pair_flag = false;
             } else {
-                match(","); a2 = parseInt(expression(), 10);
+                a2 = parseInt(param[1], 10);
                 pair_flag = true;
             }
-            match(")");
             if (pair_flag) {
                 // ***** サロゲートペア指定のとき *****
                 num = String.fromCharCode(a1, a2);
@@ -6986,20 +7147,19 @@ var Interpreter;
             }
             return num;
         });
-        add_one_func_tbl_B("fboxchk", function () {
+        add_one_func_tbl_B("fboxchk", 8, function (param) {
             var num;
             var x1, y1, x2, y2;
             var w1, h1, w2, h2;
 
-            match("("); x1 = parseFloat(expression());
-            match(","); y1 = parseFloat(expression());
-            match(","); w1 = parseFloat(expression());
-            match(","); h1 = parseFloat(expression());
-            match(","); x2 = parseFloat(expression());
-            match(","); y2 = parseFloat(expression());
-            match(","); w2 = parseFloat(expression());
-            match(","); h2 = parseFloat(expression());
-            match(")");
+            x1 = parseFloat(param[0]);
+            y1 = parseFloat(param[1]);
+            w1 = parseFloat(param[2]);
+            h1 = parseFloat(param[3]);
+            x2 = parseFloat(param[4]);
+            y2 = parseFloat(param[5]);
+            w2 = parseFloat(param[6]);
+            h2 = parseFloat(param[7]);
             if (x1 < x2 + w2 && x2 < x1 + w1 && y1 < y2 + h2 && y2 < y1 + h1) {
                 num = 1;
             } else {
@@ -7007,34 +7167,29 @@ var Interpreter;
             }
             return num;
         });
-        add_one_func_tbl_B("frombinstr", function () {
+        add_one_func_tbl_B("frombinstr", 1, function (param) {
             var num;
             var a1;
 
-            match("(");
-            a1 = String(expression());
-            match(")");
+            a1 = String(param[0]);
             num = parseInt(a1, 2);
             return num;
         });
-        add_one_func_tbl_B("fromhexstr", function () {
+        add_one_func_tbl_B("fromhexstr", 1, function (param) {
             var num;
             var a1;
 
-            match("(");
-            a1 = String(expression());
-            match(")");
+            a1 = String(param[0]);
             num = parseInt(a1, 16);
             return num;
         });
-        add_one_func_tbl_B("misfreeno", function () {
+        add_one_func_tbl_B("misfreeno", 2, function (param) {
             var num;
             var mis, mis_no;
             var min_no, max_no;
 
-            match("("); min_no = parseInt(expression(), 10);
-            match(","); max_no = parseInt(expression(), 10);
-            match(")");
+            min_no = parseInt(param[0], 10);
+            max_no = parseInt(param[1], 10);
             // ***** ミサイル空番号を検索 *****
             num = -1;
             for (mis_no in missile) {
@@ -7050,13 +7205,12 @@ var Interpreter;
             }
             return num;
         });
-        add_one_func_tbl_B("randint", function () {
+        add_one_func_tbl_B("randint", 2, function (param) {
             var num;
             var a1, a2, a3;
 
-            match("("); a1 = parseInt(expression(), 10);
-            match(","); a2 = parseInt(expression(), 10);
-            match(")");
+            a1 = parseInt(param[0], 10);
+            a2 = parseInt(param[1], 10);
             if (a1 > a2) { a3 = a2; a2 = a1; a1 = a3; }
             // min から max までの整数の乱数を返す
             // (Math.round() を用いると、非一様分布になるのでNG)
@@ -7064,13 +7218,12 @@ var Interpreter;
             num = Math.floor(Math.random() * (a2 - a1 + 1)) + a1;
             return num;
         });
-        add_one_func_tbl_B("strmake", function () {
+        add_one_func_tbl_B("strmake", 2, function (param) {
             var num;
             var a1, a2;
 
-            match("("); a1 = String(expression());
-            match(","); a2 = parseInt(expression(), 10);
-            match(")");
+            a1 = String(param[0]);
+            a2 = parseInt(param[1], 10);
 
             // ***** エラーチェック *****
             // if (a2 > max_str_size) {
@@ -7081,19 +7234,18 @@ var Interpreter;
             num = strrepeatsub(a1, a2);
             return num;
         });
-        add_one_func_tbl_B("strovr", function () {
+        add_one_func_tbl_B("strovr", 3, function (param) {
             var num;
             var a1, a2, a3, a4;
 
-            match("("); a1 = String(expression());
-            match(","); a2 = parseInt(expression(), 10);
-            match(","); a3 = String(expression());
-            if (symbol[pc] == ")") {
+            a1 = String(param[0]);
+            a2 = parseInt(param[1], 10);
+            a3 = String(param[2]);
+            if (param.length <= 3) {
                 a4 = 0;
             } else {
-                match(","); a4 = parseInt(expression(), 10);
+                a4 = parseInt(param[3], 10);
             }
-            match(")");
             if (a4 == 1) {
                 num = strovrsub2(a1, a2, a3);
             } else if (a4 == 2) {
@@ -7103,105 +7255,91 @@ var Interpreter;
             }
             return num;
         });
-        add_one_func_tbl_B("tobinstr", function () {
+        add_one_func_tbl_B("tobinstr", 1, function (param) {
             var num;
             var a1;
 
-            match("(");
-            a1 = parseInt(expression(), 10);
-            match(")");
+            a1 = parseInt(param[0], 10);
             num = a1.toString(2);
             return num;
         });
-        add_one_func_tbl_B("tofloat", function () {
+        add_one_func_tbl_B("tofloat", 1, function (param) {
             var num;
             var a1;
 
-            match("(");
-            a1 = parseFloat(expression());
-            match(")");
+            a1 = parseFloat(param[0]);
             num = a1;
             return num;
         });
-        add_one_func_tbl_B("tohankaku", function () {
+        add_one_func_tbl_B("tohankaku", 1, function (param) {
             var num;
             var a1, a2;
 
-            match("("); a1 = String(expression());
-            if (symbol[pc] == ")") {
+            a1 = String(param[0]);
+            if (param.length <= 1) {
                 a2 = "";
             } else {
-                match(","); a2 = String(expression());
+                a2 = String(param[1]);
             }
-            match(")");
             num = ConvZenHan.toHankaku(a1, a2);
             return num;
         });
-        add_one_func_tbl_B("tohexstr", function () {
+        add_one_func_tbl_B("tohexstr", 1, function (param) {
             var num;
             var a1;
 
-            match("(");
-            a1 = parseInt(expression(), 10);
-            match(")");
+            a1 = parseInt(param[0], 10);
             num = a1.toString(16);
             return num;
         });
-        add_one_func_tbl_B("toint", function () {
+        add_one_func_tbl_B("toint", 1, function (param) {
             var num;
             var a1;
 
-            match("(");
-            a1 = parseInt(expression(), 10);
-            match(")");
+            a1 = parseInt(param[0], 10);
             num = a1;
             return num;
         });
-        add_one_func_tbl_B("tolower", function () {
+        add_one_func_tbl_B("tolower", 1, function (param) {
             var num;
             var a1;
 
-            match("(");
-            a1 = String(expression());
-            match(")");
+            a1 = String(param[0]);
             num = a1.toLowerCase();
             return num;
         });
-        add_one_func_tbl_B("tostr", function () {
+        add_one_func_tbl_B("tostr", 1, function (param) {
             var num;
             var a1;
 
-            match("(");
-            a1 = String(expression());
-            match(")");
+            a1 = String(param[0]);
             num = a1;
             return num;
         });
-        add_one_func_tbl_B("toupper", function () {
+        add_one_func_tbl_B("toupper", 1, function (param) {
             var num;
             var a1;
 
-            match("(");
-            a1 = String(expression());
-            match(")");
+            a1 = String(param[0]);
             num = a1.toUpperCase();
             return num;
         });
-        add_one_func_tbl_B("tozenkaku", function () {
+        add_one_func_tbl_B("tozenkaku", 1, function (param) {
             var num;
             var a1, a2;
 
-            match("("); a1 = String(expression());
-            if (symbol[pc] == ")") {
+            a1 = String(param[0]);
+            if (param.length <= 1) {
                 a2 = "";
             } else {
-                match(","); a2 = String(expression());
+                a2 = String(param[1]);
             }
-            match(")");
             num = ConvZenHan.toZenkaku(a1, a2);
             return num;
         });
-        add_one_func_tbl_B("txtbchk", function () {
+
+        make_one_param_varname("txtbchk", 0);
+        add_one_func_tbl_B("txtbchk", 8, function (param) {
             var num;
             var a1, a2, a3, a4;
             var x1, y1, x2, y2, x3, y3, x4, y4;
@@ -7209,16 +7347,14 @@ var Interpreter;
             var ch;
             var st1;
 
-            match("(");
-            a1 = getvarname();
-            match(","); a2 = parseInt(expression(), 10);
-            match(","); a3 = parseInt(expression(), 10);
-            match(","); x1 = parseInt(expression(), 10);
-            match(","); y1 = parseInt(expression(), 10);
-            match(","); x2 = parseInt(expression(), 10);
-            match(","); y2 = parseInt(expression(), 10);
-            match(","); a4 = String(expression());
-            match(")");
+            a1 = getvarname(param[0]);
+            a2 = parseInt(param[1], 10);
+            a3 = parseInt(param[2], 10);
+            x1 = parseInt(param[3], 10);
+            y1 = parseInt(param[4], 10);
+            x2 = parseInt(param[5], 10);
+            y2 = parseInt(param[6], 10);
+            a4 = String(param[7]);
 
             // ***** NaN対策 *****
             a2 = a2 | 0;
@@ -7262,19 +7398,19 @@ var Interpreter;
             }
             return num;
         });
-        add_one_func_tbl_B("txtpget", function () {
+
+        make_one_param_varname("txtpget", 0);
+        add_one_func_tbl_B("txtpget", 5, function (param) {
             var num;
             var a1, a2, a3;
             var x1, y1;
             var st1;
 
-            match("(");
-            a1 = getvarname();
-            match(","); a2 = parseInt(expression(), 10);
-            match(","); a3 = parseInt(expression(), 10);
-            match(","); x1 = parseInt(expression(), 10);
-            match(","); y1 = parseInt(expression(), 10);
-            match(")");
+            a1 = getvarname(param[0]);
+            a2 = parseInt(param[1], 10);
+            a3 = parseInt(param[2], 10);
+            x1 = parseInt(param[3], 10);
+            y1 = parseInt(param[4], 10);
 
             // ***** NaN対策 *****
             a2 = a2 | 0;
@@ -7303,13 +7439,14 @@ var Interpreter;
             return num;
         });
     }
-    function add_one_func_tbl_B(name, func) {
-        if (func_tbl_B.hasOwnProperty(name)) {
-            if (func_tbl_B[name].type == 0) { return false; }
-        }
-        func_tbl_B[name] = {};
-        func_tbl_B[name].type = 1;
-        func_tbl_B[name].func = func;
+    function add_one_func_tbl_B(name, param_num, func) {
+        if (func_tbl[name] && func_tbl[name].addfunc == false) { return false; }
+        if (!func_tbl[name]) { func_tbl[name] = {}; }
+        func_tbl[name].addfunc = true;
+        func_tbl[name].param_num = param_num;
+        if (!func_tbl[name].param_varname) { func_tbl[name].param_varname = {}; }
+        func_tbl[name].use_retval = true;
+        func_tbl[name].func = func;
     }
 
 
@@ -7503,10 +7640,9 @@ var Interpreter;
     Interpreter.add_clear_var_funcs = function (name, func) { clear_var_funcs[name] = func; };
     Interpreter.add_one_func_tbl_A = add_one_func_tbl_A;
     Interpreter.add_one_func_tbl_B = add_one_func_tbl_B;
-    Interpreter.match = match;
-    Interpreter.expression = expression;
+    Interpreter.make_one_param_varname = make_one_param_varname;
     Interpreter.getvarname = getvarname;
-    Interpreter.get_symbol = function () { return symbol[pc]; };
+    Interpreter.toglobal = toglobal;
     Interpreter.get_vars = function () { return vars; };
     Interpreter.get_ctx = function () { return ctx; };
     Interpreter.get_can = function () { return can; };
