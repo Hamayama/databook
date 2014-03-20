@@ -1,7 +1,7 @@
 // This file is encoded with UTF-8 without BOM.
 
 // sp_interpreter.js
-// 2014-3-16 v3.00
+// 2014-3-20 v3.01
 
 
 // SPALM Web Interpreter
@@ -525,6 +525,7 @@ var Interpreter;
     var symbol_len = 0;         // シンボル数             (symbol.lengthのキャッシュ用)
     var code = [];              // コード                 (配列)
     var code_info = [];         // コード情報             (配列)
+    var code_str = [];          // コード表示用           (配列)(ラベル設定時にも使用)
     var code_len = 0;           // コード数               (code.lengthのキャッシュ用)
     var vars = {};              // 変数用                 (Varsクラスのインスタンス)
     var imgvars = {};           // 画像変数用             (連想配列オブジェクト)
@@ -551,6 +552,8 @@ var Interpreter;
     var loop_time_start;        // ループ開始時間(msec)
     var loop_time_count;        // ループ経過時間(msec)
     var loop_nocount_flag;      // ループ時間ノーカウントフラグ
+    var input_flag;             // キー入力待ちフラグ1(携帯互換用)
+    var keyinput_flag;          // キー入力待ちフラグ2(PC用)
     var funccall_stack = [];    // 関数呼び出し情報保存用(配列)
     var gosub_back = [];        // gosubの戻り先(配列)
 
@@ -606,6 +609,20 @@ var Interpreter;
         32:(1 << 16), 13:(1 << 16), 17:(1 << 16),
         // [Soft1][Soft2] は [c][v]にする
         67:(1 << 17), 86:(1 << 18) };
+
+    var opecode = {             // スタックマシンの命令コード
+        load:1,        pointer:2,      array:3,    store:4,       storenum:5,
+        storestr:6,    store0:7,       store1:8,   preinc:9,      predec:10,
+        postinc:11,    postdec:12,     loadadd:13, loadsub:14,    loadmul:15,
+        loaddiv:16,    loaddivint:17,  loadmod:18, loadaddstr:19, add:20,
+        addstr:21,     sub:22,         mul:23,     div:24,        divint:25,
+        mod:26,        shl:27,         shr:28,     ushr:29,       neg:30,
+        and:31,        or:32,          xor:33,     not:34,        cmpeq:35,
+        cmpne:36,      cmplt:37,       cmple:38,   cmpgt:39,      cmpge:40,
+        label:41,      "goto":42,      ifgoto:43,  ifnotgoto:44,  gotostack:45,
+        gosubstack:46, "return":47,    func:48,    funcend:49,    call:50,
+        calluser:51,   loadparam:52,   pop:53,     dup:54,        end:55,
+        callinput:56,  callkeyinput:57 };
 
     // ***** hasOwnPropertyをプロパティ名に使うかもしれない場合の対策 *****
     // (変数名、関数名、ラベル名、画像変数名について、
@@ -1300,6 +1317,13 @@ var Interpreter;
             // ***** キー入力バッファ1に追加 *****
             if (input_buf.length >= 40) { input_buf.shift(); }
             input_buf.push(num);
+
+            // ***** キー入力待ちならば解除 *****
+            if (input_flag && sleep_id != null) {
+                clearTimeout(sleep_id);
+                run_continuously();
+            }
+
         }
         // ***** スペースキーのとき *****
         // スペースキーを上で無効化したためkeypressが発生しないので、ここで処理する
@@ -1308,6 +1332,13 @@ var Interpreter;
             // ***** キー入力バッファ2に追加 *****
             if (keyinput_buf.length >= 40) { keyinput_buf.shift(); }
             keyinput_buf.push(key_press_code);
+
+            // ***** キー入力待ちならば解除 *****
+            if (keyinput_flag && sleep_id != null) {
+                clearTimeout(sleep_id);
+                run_continuously();
+            }
+
         }
     }
     function keyup(ev) {
@@ -1337,6 +1368,13 @@ var Interpreter;
         // ***** キー入力バッファ2に追加 *****
         if (keyinput_buf.length >= 40) { keyinput_buf.shift(); }
         keyinput_buf.push(key_press_code);
+
+        // ***** キー入力待ちならば解除 *****
+        if (keyinput_flag && sleep_id != null) {
+            clearTimeout(sleep_id);
+            run_continuously();
+        }
+
     }
     // ダイアログを表示するとkeyupが発生しないことがあるので、
     // この関数を呼んでクリア可能とする
@@ -1663,7 +1701,7 @@ var Interpreter;
             compile();
         } catch (ex2) {
             DebugShow("code  :(" + code_len + "個): ");
-            msg = code.join(" ");
+            msg = code_str.join(" ");
             DebugShow(msg + "\n");
             DebugShow("compile: " + ex2.message + ": debugpos=" + debugpos1 + "\n");
             show_err_place(debugpos1, debugpos2);
@@ -1672,7 +1710,7 @@ var Interpreter;
         }
         if (debug_mode == 1) {
             DebugShow("code  :(" + code_len + "個): ");
-            msg = code.join(" ");
+            msg = code_str.join(" ");
             DebugShow(msg + "\n");
         }
         // ***** ラベル設定 *****
@@ -1703,6 +1741,8 @@ var Interpreter;
         running_flag = true; runstatchanged();
         sleep_flag = false;
         loop_nocount_flag = false;
+        input_flag = false;
+        keyinput_flag = false;
         funccall_stack = [];
         gosub_back = [];
         key_press_code = 0;
@@ -1741,6 +1781,7 @@ var Interpreter;
     function run_continuously() {
         var ret;
         var name;
+        var time_cnt;
 
         // ***** 戻り値の初期化 *****
         ret = false;
@@ -1749,6 +1790,7 @@ var Interpreter;
         try {
             // loop_time_start = new Date().getTime();
             loop_time_start = Date.now();
+            time_cnt = 0;
             while (pc < code_len) {
 
                 // ***** コード実行 *****
@@ -1763,11 +1805,17 @@ var Interpreter;
                     // ***** ループ時間ノーカウントフラグがONのときは処理時間に含めない *****
                     // loop_time_start = new Date().getTime();
                     loop_time_start = Date.now();
-                }
-                // loop_time_count = new Date().getTime() - loop_time_start;
-                loop_time_count = Date.now() - loop_time_start;
-                if (loop_time_count >= loop_time_max) {
-                    throw new Error("処理時間オーバーです(" + loop_time_max + "msec以上ブラウザに制御が返らず)。ループ内でsleep関数の利用を検討ください。");
+                } else {
+                    // (Date.now()が遅かったので10回に1回だけ測定する)
+                    time_cnt++;
+                    if (time_cnt >= 10) {
+                        time_cnt = 0;
+                        // loop_time_count = new Date().getTime() - loop_time_start;
+                        loop_time_count = Date.now() - loop_time_start;
+                        if (loop_time_count >= loop_time_max) {
+                            throw new Error("処理時間オーバーです(" + loop_time_max + "msec以上ブラウザに制御が返らず)。ループ内でsleep関数の利用を検討ください。");
+                        }
+                    }
                 }
                 if (end_flag) { break; }
                 if (sleep_flag) {
@@ -1784,7 +1832,7 @@ var Interpreter;
             if (prof_obj) { prof_obj.stop("result"); }
             debugpos1 = code_info[debugpc].pos1;
             debugpos2 = code_info[debugpc].pos2;
-            DebugShow("execcode: " + ex4.message + ": debugpos=" + debugpos1 + "\n");
+            DebugShow("execcode: " + ex4.message + ": debugpos=" + debugpos1 + ", debugpc=" + debugpc + "\n");
             show_err_place(debugpos1, debugpos2);
             // ***** 音楽全停止 *****
             if (typeof (audstopall) == "function") { audstopall(); }
@@ -1843,10 +1891,10 @@ var Interpreter;
             if (i >= 0 && i < symbol_len) {
                 msg = msg + symbol[i] + " ";
                 msg_count++;
-                if (msg_count >= 100) {
-                    msg += "... ";
-                    break;
-                }
+                // if (msg_count >= 100) {
+                //     msg += "... ";
+                //     break;
+                // }
             }
         }
         if (debugpos2 >= symbol_len) { msg += "プログラム最後まで検索したが文が完成せず"; }
@@ -1865,473 +1913,372 @@ var Interpreter;
         var param_num;
         var goto_pc;
         var funccall_info;
+        var key_code;
 
         // loop_nocount_flag = true;
         // ***** シンボル取り出し *****
         debugpc = pc;
         sym = code[pc++];
-        // ***** コードごとの処理 *****
-        if (sym == "load") {
-            num = stack.pop();
-            var_name = stack.pop();
-            vars.setVarValue(var_name, num);
-            stack.push(num);
-            return true;
-        }
-        if (sym == "pointer") {
-            var_name = stack.pop();
-            var_name = String(vars.getVarValue(var_name));
-            // ***** 変数名のチェック *****
-            // (アルファベットかアンダースコアで始まらなければエラー)
-            c = var_name.charCodeAt(0);
-            if (!((c >= 0x41 && c <= 0x5A) || (c >= 0x61 && c <= 0x7A) || c == 0x5F)) {
-                throw new Error("ポインタの指す先が不正です。('" + var_name + "')");
-            }
-            stack.push(var_name);
-            return true;
-        }
-        if (sym == "array") {
-            num = stack.pop();
-            var_name = stack.pop();
-            var_name = var_name + "[" + num + "]";
-            stack.push(var_name);
-            return true;
-        }
-        if (sym == "store") {
-            var_name = stack.pop();
-            num = vars.getVarValue(var_name);
-            stack.push(num);
-            return true;
-        }
-        if (sym == "storenum") {
-            num = code[pc++];
-            stack.push(num);
-            return true;
-        }
-        if (sym == "storestr") {
-            num = code[pc++];
-            num = num.substring(1, num.length - 1);
-            stack.push(num);
-            return true;
-        }
-        if (sym == "store0") {
-            stack.push(0);
-            return true;
-        }
-        if (sym == "store1") {
-            stack.push(1);
-            return true;
-        }
-        if (sym == "preinc") {
-            var_name = stack.pop();
-            num = vars.getVarValue(var_name);
-            num++;
-            vars.setVarValue(var_name, num);
-            stack.push(num);
-            return true;
-        }
-        if (sym == "predec") {
-            var_name = stack.pop();
-            num = vars.getVarValue(var_name);
-            num--;
-            vars.setVarValue(var_name, num);
-            stack.push(num);
-            return true;
-        }
-        if (sym == "postinc") {
-            var_name = stack.pop();
-            num = vars.getVarValue(var_name);
-            stack.push(num);
-            num++;
-            vars.setVarValue(var_name, num);
-            return true;
-        }
-        if (sym == "postdec") {
-            var_name = stack.pop();
-            num = vars.getVarValue(var_name);
-            stack.push(num);
-            num--;
-            vars.setVarValue(var_name, num);
-            return true;
-        }
-        if (sym == "loadadd") {
-            num = stack.pop();
-            var_name = stack.pop();
-            num = (+vars.getVarValue(var_name)) + (+num); // 文字の連結にならないように数値にする
-            vars.setVarValue(var_name, num);
-            stack.push(num);
-            return true;
-        }
-        if (sym == "loadsub") {
-            num = stack.pop();
-            var_name = stack.pop();
-            num = vars.getVarValue(var_name) - num;
-            vars.setVarValue(var_name, num);
-            stack.push(num);
-            return true;
-        }
-        if (sym == "loadmul") {
-            num = stack.pop();
-            var_name = stack.pop();
-            num = vars.getVarValue(var_name) * num;
-            vars.setVarValue(var_name, num);
-            stack.push(num);
-            return true;
-        }
-        if (sym == "loaddiv") {
-            num = stack.pop();
-            var_name = stack.pop();
-            if (sp_compati_mode == 1) {
+        // ***** 命令コードの処理 *****
+        switch (sym) {
+            // ( case opecode.load: が遅かったので数値を直接指定する)
+            case 1: // load
+                num = stack.pop();
+                var_name = stack.pop();
+                vars.setVarValue(var_name, num);
+                stack.push(num);
+                return true;
+            case 2: // pointer
+                var_name = stack.pop();
+                var_name = String(vars.getVarValue(var_name));
+                // ***** 変数名のチェック *****
+                // (アルファベットかアンダースコアで始まらなければエラー)
+                c = var_name.charCodeAt(0);
+                if (!((c >= 0x41 && c <= 0x5A) || (c >= 0x61 && c <= 0x7A) || c == 0x5F)) {
+                    throw new Error("ポインタの指す先が不正です。('" + var_name + "')");
+                }
+                stack.push(var_name);
+                return true;
+            case 3: // array
+                num = stack.pop();
+                var_name = stack.pop();
+                var_name = var_name + "[" + num + "]";
+                stack.push(var_name);
+                return true;
+            case 4: // store
+                var_name = stack.pop();
+                num = vars.getVarValue(var_name);
+                stack.push(num);
+                return true;
+            case 5: // storenum
+                num = code[pc++];
+                stack.push(num);
+                return true;
+            case 6: // storestr
+                num = code[pc++];
+                stack.push(num);
+                return true;
+            case 7: // store0
+                stack.push(0);
+                return true;
+            case 8: // store1
+                stack.push(1);
+                return true;
+            case 9: // preinc
+                var_name = stack.pop();
+                num = vars.getVarValue(var_name);
+                num++;
+                vars.setVarValue(var_name, num);
+                stack.push(num);
+                return true;
+            case 10: // predec
+                var_name = stack.pop();
+                num = vars.getVarValue(var_name);
+                num--;
+                vars.setVarValue(var_name, num);
+                stack.push(num);
+                return true;
+            case 11: // postinc
+                var_name = stack.pop();
+                num = vars.getVarValue(var_name);
+                stack.push(num);
+                num++;
+                vars.setVarValue(var_name, num);
+                return true;
+            case 12: // postdec
+                var_name = stack.pop();
+                num = vars.getVarValue(var_name);
+                stack.push(num);
+                num--;
+                vars.setVarValue(var_name, num);
+                return true;
+            case 13: // loadadd
+                num = stack.pop();
+                var_name = stack.pop();
+                num = (+vars.getVarValue(var_name)) + (+num); // 文字の連結にならないように数値にする
+                vars.setVarValue(var_name, num);
+                stack.push(num);
+                return true;
+            case 14: // loadsub
+                num = stack.pop();
+                var_name = stack.pop();
+                num = vars.getVarValue(var_name) - num;
+                vars.setVarValue(var_name, num);
+                stack.push(num);
+                return true;
+            case 15: // loadmul
+                num = stack.pop();
+                var_name = stack.pop();
+                num = vars.getVarValue(var_name) * num;
+                vars.setVarValue(var_name, num);
+                stack.push(num);
+                return true;
+            case 16: // loaddiv
+                num = stack.pop();
+                var_name = stack.pop();
+                if (sp_compati_mode == 1) {
+                    num = parseInt(vars.getVarValue(var_name) / num, 10);
+                } else {
+                    num = vars.getVarValue(var_name) / num;
+                }
+                vars.setVarValue(var_name, num);
+                stack.push(num);
+                return true;
+            case 17: // loaddivint
+                num = stack.pop();
+                var_name = stack.pop();
                 num = parseInt(vars.getVarValue(var_name) / num, 10);
-            } else {
-                num = vars.getVarValue(var_name) / num;
-            }
-            vars.setVarValue(var_name, num);
-            stack.push(num);
-            return true;
-        }
-        if (sym == "loaddivint") {
-            num = stack.pop();
-            var_name = stack.pop();
-            num = parseInt(vars.getVarValue(var_name) / num, 10);
-            vars.setVarValue(var_name, num);
-            stack.push(num);
-            return true;
-        }
-        if (sym == "loadmod") {
-            num = stack.pop();
-            var_name = stack.pop();
-            num = vars.getVarValue(var_name) % num;
-            vars.setVarValue(var_name, num);
-            stack.push(num);
-            return true;
-        }
-        if (sym == "loadaddstr") {
-            num = stack.pop();
-            var_name = stack.pop();
-            num = String(vars.getVarValue(var_name)) + String(num);
-            vars.setVarValue(var_name, num);
-            stack.push(num);
-            return true;
-        }
-        if (sym == "add") {
-            num2 = stack.pop();
-            num = stack.pop();
-            num = (+num) + (+num2); // 文字の連結にならないように数値にする
-            stack.push(num);
-            return true;
-        }
-        if (sym == "addstr") {
-            num2 = stack.pop();
-            num = stack.pop();
-            num = String(num) + String(num2);
-            stack.push(num);
-            return true;
-        }
-        if (sym == "sub") {
-            num2 = stack.pop();
-            num = stack.pop();
-            num = num - num2;
-            stack.push(num);
-            return true;
-        }
-        if (sym == "mul") {
-            num2 = stack.pop();
-            num = stack.pop();
-            num = num * num2;
-            stack.push(num);
-            return true;
-        }
-        if (sym == "div") {
-            num2 = stack.pop();
-            num = stack.pop();
-            if (sp_compati_mode == 1) {
+                vars.setVarValue(var_name, num);
+                stack.push(num);
+                return true;
+            case 18: // loadmod
+                num = stack.pop();
+                var_name = stack.pop();
+                num = vars.getVarValue(var_name) % num;
+                vars.setVarValue(var_name, num);
+                stack.push(num);
+                return true;
+            case 19: // loadaddstr
+                num = stack.pop();
+                var_name = stack.pop();
+                num = String(vars.getVarValue(var_name)) + String(num);
+                vars.setVarValue(var_name, num);
+                stack.push(num);
+                return true;
+            case 20: // add
+                num2 = stack.pop();
+                num = stack.pop();
+                num = (+num) + (+num2); // 文字の連結にならないように数値にする
+                stack.push(num);
+                return true;
+            case 21: // addstr
+                num2 = stack.pop();
+                num = stack.pop();
+                num = String(num) + String(num2);
+                stack.push(num);
+                return true;
+            case 22: // sub
+                num2 = stack.pop();
+                num = stack.pop();
+                num = num - num2;
+                stack.push(num);
+                return true;
+            case 23: // mul
+                num2 = stack.pop();
+                num = stack.pop();
+                num = num * num2;
+                stack.push(num);
+                return true;
+            case 24: // div
+                num2 = stack.pop();
+                num = stack.pop();
+                if (sp_compati_mode == 1) {
+                    num = parseInt(num / num2, 10);
+                } else {
+                    num = num / num2;
+                }
+                stack.push(num);
+                return true;
+            case 25: // divint
+                num2 = stack.pop();
+                num = stack.pop();
                 num = parseInt(num / num2, 10);
-            } else {
-                num = num / num2;
-            }
-            stack.push(num);
-            return true;
-        }
-        if (sym == "divint") {
-            num2 = stack.pop();
-            num = stack.pop();
-            num = parseInt(num / num2, 10);
-            stack.push(num);
-            return true;
-        }
-        if (sym == "mod") {
-            num2 = stack.pop();
-            num = stack.pop();
-            num = num % num2;
-            stack.push(num);
-            return true;
-        }
-        if (sym == "shl") {
-            num2 = stack.pop();
-            num = stack.pop();
-            num = num << num2;
-            stack.push(num);
-            return true;
-        }
-        if (sym == "shr") {
-            num2 = stack.pop();
-            num = stack.pop();
-            num = num >> num2;
-            stack.push(num);
-            return true;
-        }
-        if (sym == "ushr") {
-            num2 = stack.pop();
-            num = stack.pop();
-            num = num >>> num2;
-            stack.push(num);
-            return true;
-        }
-        if (sym == "neg") {
-            num = stack.pop();
-            num = -num;
-            stack.push(num);
-            return true;
-        }
-        if (sym == "and") {
-            num2 = stack.pop();
-            num = stack.pop();
-            num = num & num2;
-            stack.push(num);
-            return true;
-        }
-        if (sym == "or") {
-            num2 = stack.pop();
-            num = stack.pop();
-            num = num | num2;
-            stack.push(num);
-            return true;
-        }
-        if (sym == "xor") {
-            num2 = stack.pop();
-            num = stack.pop();
-            num = num ^ num2;
-            stack.push(num);
-            return true;
-        }
-        if (sym == "not") {
-            num = stack.pop();
-            num = ~num;
-            stack.push(num);
-            return true;
-        }
-        if (sym == "cmpeq") {
-            num2 = stack.pop();
-            num = stack.pop();
-            num = (num == num2) ? 1 : 0;
-            stack.push(num);
-            return true;
-        }
-        if (sym == "cmpne") {
-            num2 = stack.pop();
-            num = stack.pop();
-            num = (num != num2) ? 1 : 0;
-            stack.push(num);
-            return true;
-        }
-        if (sym == "cmplt") {
-            num2 = stack.pop();
-            num = stack.pop();
-            num = (num < num2) ? 1 : 0;
-            stack.push(num);
-            return true;
-        }
-        if (sym == "cmple") {
-            num2 = stack.pop();
-            num = stack.pop();
-            num = (num <= num2) ? 1 : 0;
-            stack.push(num);
-            return true;
-        }
-        if (sym == "cmpgt") {
-            num2 = stack.pop();
-            num = stack.pop();
-            num = (num > num2) ? 1 : 0;
-            stack.push(num);
-            return true;
-        }
-        if (sym == "cmpge") {
-            num2 = stack.pop();
-            num = stack.pop();
-            num = (num >= num2) ? 1 : 0;
-            stack.push(num);
-            return true;
-        }
-        if (sym == "label") {
-            pc++;
-            return true;
-        }
-        if (sym == "goto") {
-            lbl_name = code[pc++];
-            lbl_name = lbl_name.substring(1, lbl_name.length - 1);
-            // ***** ラベルへジャンプ *****
-            // if (!label.hasOwnProperty(lbl_name)) {
-            if (!hasOwn.call(label, lbl_name)) {
-                throw new Error("ラベル '" + lbl_name + "' は未定義です。");
-            }
-            // (ここではチェック不要)
-            // goto_pc = label[lbl_name];
-            // // ***** 関数内のとき *****
-            // if (funccall_stack.length > 0) {
-            //     // ***** 関数呼び出し情報の取得 *****
-            //     funccall_info = funccall_stack[funccall_stack.length - 1];
-            //     // ***** ジャンプ先がfunc内のときだけgotoが可能 *****
-            //     if ((goto_pc < funccall_info.func_start) || (goto_pc >= funccall_info.func_end)) {
-            //         throw new Error("funcの外へは goto できません。");
-            //     }
-            // }
-            // pc = goto_pc;
-            pc = label[lbl_name];
-            return true;
-        }
-        if (sym == "ifgoto") {
-            lbl_name = code[pc++];
-            lbl_name = lbl_name.substring(1, lbl_name.length - 1);
-            num = stack.pop();
-            if (num != 0) {
+                stack.push(num);
+                return true;
+            case 26: // mod
+                num2 = stack.pop();
+                num = stack.pop();
+                num = num % num2;
+                stack.push(num);
+                return true;
+            case 27: // shl
+                num2 = stack.pop();
+                num = stack.pop();
+                num = num << num2;
+                stack.push(num);
+                return true;
+            case 28: // shr
+                num2 = stack.pop();
+                num = stack.pop();
+                num = num >> num2;
+                stack.push(num);
+                return true;
+            case 29: // ushr
+                num2 = stack.pop();
+                num = stack.pop();
+                num = num >>> num2;
+                stack.push(num);
+                return true;
+            case 30: // neg
+                num = stack.pop();
+                num = -num;
+                stack.push(num);
+                return true;
+            case 31: // and
+                num2 = stack.pop();
+                num = stack.pop();
+                num = num & num2;
+                stack.push(num);
+                return true;
+            case 32: // or
+                num2 = stack.pop();
+                num = stack.pop();
+                num = num | num2;
+                stack.push(num);
+                return true;
+            case 33: // xor
+                num2 = stack.pop();
+                num = stack.pop();
+                num = num ^ num2;
+                stack.push(num);
+                return true;
+            case 34: // not
+                num = stack.pop();
+                num = ~num;
+                stack.push(num);
+                return true;
+            case 35: // cmpeq
+                num2 = stack.pop();
+                num = stack.pop();
+                num = (num == num2) ? 1 : 0;
+                stack.push(num);
+                return true;
+            case 36: // cmpne
+                num2 = stack.pop();
+                num = stack.pop();
+                num = (num != num2) ? 1 : 0;
+                stack.push(num);
+                return true;
+            case 37: // cmplt
+                num2 = stack.pop();
+                num = stack.pop();
+                num = (num < num2) ? 1 : 0;
+                stack.push(num);
+                return true;
+            case 38: // cmple
+                num2 = stack.pop();
+                num = stack.pop();
+                num = (num <= num2) ? 1 : 0;
+                stack.push(num);
+                return true;
+            case 39: // cmpgt
+                num2 = stack.pop();
+                num = stack.pop();
+                num = (num > num2) ? 1 : 0;
+                stack.push(num);
+                return true;
+            case 40: // cmpge
+                num2 = stack.pop();
+                num = stack.pop();
+                num = (num >= num2) ? 1 : 0;
+                stack.push(num);
+                return true;
+            case 41: // label
+                pc++;
+                return true;
+            case 42: // goto
+                lbl_name = code[pc++];
+                pc = label[lbl_name];
+                return true;
+            case 43: // ifgoto
+                lbl_name = code[pc++];
+                num = stack.pop();
+                if (num != 0) {
+                    pc = label[lbl_name];
+                }
+                return true;
+            case 44: // ifnotgoto
+                lbl_name = code[pc++];
+                num = stack.pop();
+                if (num == 0) {
+                    pc = label[lbl_name];
+                }
+                return true;
+            case 45: // gotostack
+                lbl_name = stack.pop();
                 // ***** ラベルへジャンプ *****
                 // if (!label.hasOwnProperty(lbl_name)) {
                 if (!hasOwn.call(label, lbl_name)) {
                     throw new Error("ラベル '" + lbl_name + "' は未定義です。");
                 }
-                // (ここではチェック不要)
-                // goto_pc = label[lbl_name];
-                // // ***** 関数内のとき *****
-                // if (funccall_stack.length > 0) {
-                //     // ***** 関数呼び出し情報の取得 *****
-                //     funccall_info = funccall_stack[funccall_stack.length - 1];
-                //     // ***** ジャンプ先がfunc内のときだけgotoが可能 *****
-                //     if ((goto_pc < funccall_info.func_start) || (goto_pc >= funccall_info.func_end)) {
-                //         throw new Error("funcの外へは goto できません。");
-                //     }
-                // }
-                // pc = goto_pc;
-                pc = label[lbl_name];
-            }
-            return true;
-        }
-        if (sym == "ifnotgoto") {
-            lbl_name = code[pc++];
-            lbl_name = lbl_name.substring(1, lbl_name.length - 1);
-            num = stack.pop();
-            if (num == 0) {
+                goto_pc = label[lbl_name];
+                // ***** 関数内のとき *****
+                if (funccall_stack.length > 0) {
+                    // ***** 関数呼び出し情報の取得 *****
+                    funccall_info = funccall_stack[funccall_stack.length - 1];
+                    // ***** ジャンプ先がfunc内のときだけgotoが可能 *****
+                    if ((goto_pc < funccall_info.func_start) || (goto_pc >= funccall_info.func_end)) {
+                        throw new Error("funcの外へは goto できません。");
+                    }
+                }
+                pc = goto_pc;
+                return true;
+            case 46: // gosubstack
+                lbl_name = stack.pop();
+                // ***** 関数内のとき *****
+                if (funccall_stack.length > 0) {
+                    throw new Error("func内では gosub できません。");
+                }
                 // ***** ラベルへジャンプ *****
                 // if (!label.hasOwnProperty(lbl_name)) {
                 if (!hasOwn.call(label, lbl_name)) {
                     throw new Error("ラベル '" + lbl_name + "' は未定義です。");
                 }
-                // (ここではチェック不要)
-                // goto_pc = label[lbl_name];
-                // // ***** 関数内のとき *****
-                // if (funccall_stack.length > 0) {
-                //     // ***** 関数呼び出し情報の取得 *****
-                //     funccall_info = funccall_stack[funccall_stack.length - 1];
-                //     // ***** ジャンプ先がfunc内のときだけgotoが可能 *****
-                //     if ((goto_pc < funccall_info.func_start) || (goto_pc >= funccall_info.func_end)) {
-                //         throw new Error("funcの外へは goto できません。");
-                //     }
-                // }
-                // pc = goto_pc;
+                gosub_back.push(pc);
                 pc = label[lbl_name];
-            }
-            return true;
-        }
-        if (sym == "gotostack") {
-            lbl_name = stack.pop();
-            // ***** ラベルへジャンプ *****
-            // if (!label.hasOwnProperty(lbl_name)) {
-            if (!hasOwn.call(label, lbl_name)) {
-                throw new Error("ラベル '" + lbl_name + "' は未定義です。");
-            }
-            goto_pc = label[lbl_name];
-            // ***** 関数内のとき *****
-            if (funccall_stack.length > 0) {
-                // ***** 関数呼び出し情報の取得 *****
-                funccall_info = funccall_stack[funccall_stack.length - 1];
-                // ***** ジャンプ先がfunc内のときだけgotoが可能 *****
-                if ((goto_pc < funccall_info.func_start) || (goto_pc >= funccall_info.func_end)) {
-                    throw new Error("funcの外へは goto できません。");
+                return true;
+            case 47: // return
+                // ***** 関数内のとき *****
+                if (funccall_stack.length > 0) {
+                    // ***** ローカル変数を解放 *****
+                    vars.deleteLocalScope();
+                    // ***** 呼び出し元に復帰 *****
+                    funccall_info = funccall_stack.pop();
+                    pc = funccall_info.func_back;
+                    return true;
                 }
-            }
-            pc = goto_pc;
-            return true;
-        }
-        if (sym == "gosubstack") {
-            lbl_name = stack.pop();
-            // ***** 関数内のとき *****
-            if (funccall_stack.length > 0) {
-                throw new Error("func内では gosub できません。");
-            }
-            // ***** ラベルへジャンプ *****
-            // if (!label.hasOwnProperty(lbl_name)) {
-            if (!hasOwn.call(label, lbl_name)) {
-                throw new Error("ラベル '" + lbl_name + "' は未定義です。");
-            }
-            gosub_back.push(pc);
-            pc = label[lbl_name];
-            return true;
-        }
-        if (sym == "return") {
-            // ***** 関数内のとき *****
-            if (funccall_stack.length > 0) {
-                // ***** ローカル変数を解放 *****
-                vars.deleteLocalScope();
-                // ***** 呼び出し元に復帰 *****
-                funccall_info = funccall_stack.pop();
-                pc = funccall_info.func_back;
+                // ***** gosubのとき *****
+                if (gosub_back.length > 0) {
+                    // ***** 戻り値を捨てる *****
+                    stack.pop();
+                    // ***** 戻り先へ *****
+                    pc = gosub_back.pop();
+                    return true;
+                }
+                // ***** 戻り先がない *****
+                throw new Error("予期しない return が見つかりました。");
+                // return true;
+            case 48: // func
+                pc = func[code[pc] + "\\end"];
                 return true;
-            }
-            // ***** gosubのとき *****
-            if (gosub_back.length > 0) {
-                // ***** 戻り値を捨てる *****
-                stack.pop();
-                // ***** 戻り先へ *****
-                pc = gosub_back.pop();
-                return true;
-            }
-            // ***** 戻り先がない *****
-            throw new Error("予期しない return が見つかりました。");
-            // return true;
-        }
-        if (sym == "func") {
-            pc = func[code[pc] + "\\end"];
-            return true;
-        }
-        if (sym == "funcend") {
-            // ***** 戻り値は0とする *****
-            stack.push(0);
-            // ***** 関数内のとき *****
-            if (funccall_stack.length > 0) {
-                // ***** ローカル変数を解放 *****
-                vars.deleteLocalScope();
-                // ***** 呼び出し元に復帰 *****
-                funccall_info = funccall_stack.pop();
-                pc = funccall_info.func_back;
-                return true;
-            }
-            // ***** 戻り先がない *****
-            throw new Error("予期しない funcend が見つかりました。");
-            // return true;
-        }
-        if (sym == "call") {
-            // ***** 引数の取得 *****
-            param_num = stack.pop();
-            param = [];
-            for(i = 0; i < param_num; i++) {
-                param[param_num - i - 1] = stack.pop();
-            }
-            // ***** 関数名の取得 *****
-            func_name = stack.pop();
-            func_name = toglobal(func_name);
-            // ***** 組み込み関数の呼び出し *****
-            if (func_tbl.hasOwnProperty(func_name)) {
+            case 49: // funcend
+                // ***** 戻り値は0とする *****
+                stack.push(0);
+                // ***** 関数内のとき *****
+                if (funccall_stack.length > 0) {
+                    // ***** ローカル変数を解放 *****
+                    vars.deleteLocalScope();
+                    // ***** 呼び出し元に復帰 *****
+                    funccall_info = funccall_stack.pop();
+                    pc = funccall_info.func_back;
+                    return true;
+                }
+                // ***** 戻り先がない *****
+                throw new Error("予期しない funcend が見つかりました。");
+                // return true;
+            case 50: // call
+                // ***** 引数の取得 *****
+                param_num = stack.pop();
+                param = [];
+                for(i = 0; i < param_num; i++) {
+                    param[param_num - i - 1] = stack.pop();
+                }
+                // ***** 関数名の取得 *****
+                func_name = stack.pop();
+                // func_name = toglobal(func_name);
+                // ***** 組み込み関数の呼び出し *****
                 if (!func_tbl[func_name].addfunc || (func_tbl[func_name].addfunc && use_addfunc)) {
+                    // ***** 戻り値の有無をチェック *****
                     if (func_tbl[func_name].use_retval) {
                         num = func_tbl[func_name].func(param);
                         stack.push(num);
@@ -2340,76 +2287,157 @@ var Interpreter;
                         stack.push(0);
                     }
                 }
-            }
-            return true;
-        }
-        if (sym == "calluser") {
-            // ***** 引数の取得 *****
-            param_num = stack.pop();
-            param = [];
-            for(i = 0; i < param_num; i++) {
-                param[param_num - i - 1] = stack.pop();
-            }
-            // ***** 関数名の取得 *****
-            func_name = stack.pop();
-            func_name = toglobal(func_name);
-            // ***** 関数の存在チェック *****
-            // if (!func.hasOwnProperty(func_name)) {
-            if (!hasOwn.call(func, func_name)) {
-                throw new Error("関数 '" + func_name + "' の呼び出しに失敗しました(関数が未定義等)。");
-            }
-            // ***** ローカル変数を生成 *****
-            vars.makeLocalScope();
-            // ***** 関数呼び出し情報の生成 *****
-            funccall_info = {};
-            funccall_info.func_back = pc;
-            funccall_info.func_start = func[func_name];
-            funccall_info.func_end = func[func_name + "\\end"];
-            funccall_stack.push(funccall_info);
-            // ***** 関数の呼び出し *****
-            pc = func[func_name];
-            return true;
-        }
-        if (sym == "loadparam") {
-            if (param.length > 0) {
-                num = param.shift();
-            } else {
-                num = 0;
-            }
-            var_name = stack.pop();
-            // ***** 関数の引数のポインタ対応 *****
-            if (var_name.substring(0, 2) == "p\\") {
-                // (引数名から「p\」を削除)
-                var_name = var_name.substring(2);
-                // ***** 変数名のチェック *****
-                // (アルファベットかアンダースコアで始まらなければエラー)
-                c = num.charCodeAt(0);
-                if (!((c >= 0x41 && c <= 0x5A) || (c >= 0x61 && c <= 0x7A) || c == 0x5F)) {
-                    throw new Error("ポインタの指す先が不正です。('" + num + "')");
+                return true;
+            case 51: // calluser
+                // ***** 引数の取得 *****
+                param_num = stack.pop();
+                param = [];
+                for(i = 0; i < param_num; i++) {
+                    param[param_num - i - 1] = stack.pop();
                 }
-                // (ローカル変数のスコープをさかのぼれるように、引数の内容に「a\」と数字を付加)
-                if (num.substring(0, 2) != "a\\") {
-                    num = "a\\" + vars.getLocalScopeNum() + "\\" + num;
+                // ***** 関数名の取得 *****
+                func_name = stack.pop();
+                func_name = toglobal(func_name);
+                // ***** 関数の存在チェック *****
+                // if (!func.hasOwnProperty(func_name)) {
+                if (!hasOwn.call(func, func_name)) {
+                    throw new Error("関数 '" + func_name + "' の呼び出しに失敗しました(関数が未定義等)。");
                 }
-            }
-            vars.setVarValue(var_name, num);
-            return true;
+                // ***** ローカル変数を生成 *****
+                vars.makeLocalScope();
+                // ***** 関数呼び出し情報の生成 *****
+                funccall_info = {};
+                funccall_info.func_back = pc;
+                funccall_info.func_start = func[func_name];
+                funccall_info.func_end = func[func_name + "\\end"];
+                funccall_stack.push(funccall_info);
+                // ***** 関数の呼び出し *****
+                pc = func[func_name];
+                return true;
+            case 52: // loadparam
+                if (param.length > 0) {
+                    num = param.shift();
+                } else {
+                    num = 0;
+                }
+                var_name = stack.pop();
+                // ***** 関数の引数のポインタ対応 *****
+                if (var_name.substring(0, 2) == "p\\") {
+                    // (引数名から「p\」を削除)
+                    var_name = var_name.substring(2);
+                    // ***** 変数名のチェック *****
+                    // (アルファベットかアンダースコアで始まらなければエラー)
+                    c = num.charCodeAt(0);
+                    if (!((c >= 0x41 && c <= 0x5A) || (c >= 0x61 && c <= 0x7A) || c == 0x5F)) {
+                        throw new Error("ポインタの指す先が不正です。('" + num + "')");
+                    }
+                    // (ローカル変数のスコープをさかのぼれるように、引数の内容に「a\」と数字を付加)
+                    if (num.substring(0, 2) != "a\\") {
+                        num = "a\\" + vars.getLocalScopeNum() + "\\" + num;
+                    }
+                }
+                vars.setVarValue(var_name, num);
+                return true;
+            case 53: // pop
+                stack.pop();
+                return true;
+            case 54: // dup
+                num = stack.pop();
+                stack.push(num);
+                stack.push(num);
+                return true;
+            case 55: // end
+                end_flag = true;
+                return true;
+            case 56: // callinput
+                // ***** キー入力待ち(携帯互換用) *****
+                if (input_flag == false) {
+                    // ***** 引数の取得 *****
+                    param_num = stack.pop();
+                    param = [];
+                    for(i = 0; i < param_num; i++) {
+                        param[param_num - i - 1] = stack.pop();
+                    }
+                    // ***** 関数名の取得 *****
+                    func_name = stack.pop();
+                    // func_name = toglobal(func_name);
+                }
+                // ***** キー入力ありのとき *****
+                if (input_buf.length > 0) {
+                    input_flag = false;
+                    key_code = input_buf.shift();
+                    stack.push(key_code);
+                    return true;
+                }
+                // ***** キー入力なしのとき *****
+                if (input_flag == false) {
+                    if (param.length >= 1) {
+                        if (param[0] > 0) {
+                            input_flag = true;
+                            sleep_flag = true;
+                            sleep_time = param[0];
+                            pc--;
+                            return true;
+                        }
+                        stack.push(0);
+                        return true;
+                    }
+                }
+                if (input_flag == true) {
+                    input_flag = false;
+                    stack.push(0);
+                    return true;
+                }
+                input_flag = 2;
+                sleep_flag = true;
+                sleep_time = 1000;
+                pc--;
+                return true;
+            case 57: // callkeyinput
+                // ***** キー入力待ち(PC用) *****
+                if (keyinput_flag == false) {
+                    // ***** 引数の取得 *****
+                    param_num = stack.pop();
+                    param = [];
+                    for(i = 0; i < param_num; i++) {
+                        param[param_num - i - 1] = stack.pop();
+                    }
+                    // ***** 関数名の取得 *****
+                    func_name = stack.pop();
+                    // func_name = toglobal(func_name);
+                }
+                // ***** キー入力ありのとき *****
+                if (keyinput_buf.length > 0) {
+                    keyinput_flag = false;
+                    key_code = keyinput_buf.shift();
+                    stack.push(key_code);
+                    return true;
+                }
+                // ***** キー入力なしのとき *****
+                if (keyinput_flag == false) {
+                    if (param.length >= 1) {
+                        if (param[0] > 0) {
+                            keyinput_flag = true;
+                            sleep_flag = true;
+                            sleep_time = param[0];
+                            pc--;
+                            return true;
+                        }
+                        stack.push(0);
+                        return true;
+                    }
+                }
+                if (keyinput_flag == true) {
+                    keyinput_flag = false;
+                    stack.push(0);
+                    return true;
+                }
+                keyinput_flag = 2;
+                sleep_flag = true;
+                sleep_time = 1000;
+                pc--;
+                return true;
         }
-        if (sym == "pop") {
-            stack.pop();
-            return true;
-        }
-        if (sym == "dup") {
-            num = stack.pop();
-            stack.push(num);
-            stack.push(num);
-            return true;
-        }
-        if (sym == "end") {
-            end_flag = true;
-            return true;
-        }
-        // ***** 戻り値を返す *****
         return true;
     }
 
@@ -2448,13 +2476,11 @@ var Interpreter;
         func = {};
         while (i < code_len) {
             debugpos1 = code_info[i].pos1;
-            sym = code[i++];
+            // sym = code[i++];
+            sym = code_str[i++];
             // ***** ラベルのとき *****
             if (sym == "label") {
                 lbl_name = code[i++];
-                if (lbl_name.charAt(0) == '"' && lbl_name.length > 2) {
-                    lbl_name = lbl_name.substring(1, lbl_name.length - 1);
-                }
                 // if (label.hasOwnProperty(lbl_name)) {
                 if (hasOwn.call(label, lbl_name)) {
                     debugpos2 = debugpos1 + 2;
@@ -2476,24 +2502,25 @@ var Interpreter;
                     throw new Error("関数 '" + func_name + "' の定義が重複しています。");
                 }
                 func[func_name] = i;
-                j = i - 1;
+                j = i;
                 k = 1;
                 while (true) {
-                    j++;
                     if (j >= code_len) {
                         debugpos2 = debugpos1 + 2;
                         throw new Error("funcの{}がありません。");
                     }
-                    // if (code[j] == "func") { k++; }
-                    if (code[j] == "funcend") {
+                    // sym = code[j++];
+                    sym = code_str[j++];
+                    // if (sym == "func") { k++; }
+                    if (sym == "funcend") {
                         k--;
                         if (k == 0) {
-                            func[func_name + "\\end"] = j + 1;
+                            func[func_name + "\\end"] = j;
                             break;
                         }
                     }
-                    if (code[j] == "func") {
-                        debugpos2 = code_info[j].pos1 + 1;
+                    if (sym == "func") {
+                        debugpos2 = code_info[j - 1].pos1 + 1;
                         throw new Error("funcの中にfuncを入れられません。");
                     }
                 }
@@ -2507,6 +2534,7 @@ var Interpreter;
         // ***** 文(ステートメント)のコンパイル *****
         code = [];
         code_info = [];
+        code_str = [];
         code_len = 0;
         c_statement(0, symbol_len, "", "");
     }
@@ -2575,7 +2603,8 @@ var Interpreter;
             if (sym == "return") {
                 i++;
                 // ***** 戻り値を取得 *****
-                if (symbol[i] == ";") {
+                // if (symbol[i] == ";") {
+                if (symbol[i] == ";" || symbol[i] == "}") { // 過去との互換性維持
                     code_push("store0", debugpos1, i);
                 } else {
                     i = c_expression(i, sym_end);
@@ -3401,7 +3430,7 @@ var Interpreter;
         // ***** 戻り値を返す *****
         return i;
     }
-    // ***** 式のコンパイル2(カンマ区切りあり) *****
+    // ***** 式のコンパイル2(カンマ区切りありバージョン) *****
     function c_expression2(sym_start, sym_end) {
         var i;
 
@@ -3533,7 +3562,13 @@ var Interpreter;
             code_push("storenum", debugpos1, i);
             code_push(param_num, debugpos1, i);
             // ***** 関数の呼び出し *****
-            code_push("call", debugpos1, i);
+            if (func_name == "input") {
+                code_push("callinput", debugpos1, i);
+            } else if (func_name == "keyinput") {
+                code_push("callkeyinput", debugpos1, i);
+            } else {
+                code_push("call", debugpos1, i);
+            }
             // ***** 戻り値を返す *****
             return i;
         }
@@ -3558,11 +3593,6 @@ var Interpreter;
         // ***** 文字列のとき *****
         if (ch == '"') {
             i++;
-            // if (sym.length > 2) {
-            //     num = sym.substring(1, sym.length - 1);
-            // } else {
-            //     num = "";
-            // }
             num = sym;
             code_push("storestr", debugpos1, i);
             code_push(num, debugpos1, i);
@@ -3571,7 +3601,6 @@ var Interpreter;
         // ***** 数値のとき *****
         if (isDigit(ch)) {
             i++;
-            // ***** 数値を返す *****
             num = +sym; // 数値にする
             code_push("storenum", debugpos1, i);
             code_push(num, debugpos1, i);
@@ -3692,11 +3721,16 @@ var Interpreter;
             return i;
         }
         // ***** 構文エラー *****
-        // debugpos2 = i + 1;
-        // throw new Error("構文エラー 予期しない '" + symbol[i] + "' が見つかりました。");
-        i++;
+        // (過去との互換性維持のため一部の構文エラーを発生させない)
+        if (sym == ")") {
+            i++;
+            return i;
+        }
+        debugpos2 = i + 1;
+        throw new Error("構文エラー 予期しない '" + symbol[i] + "' が見つかりました。");
         // ***** 戻り値を返す *****
-        return i;
+        // i++;
+        // return i;
     }
 
     // ***** 変数名のコンパイル(通常用) *****
@@ -3813,15 +3847,17 @@ var Interpreter;
 
     // ***** コード追加 *****
     function code_push(sym, pos1, pos2) {
-        // code.push(sym);
-        // code_info.push({});
-        // code_len++;
-        // code_info[code_len - 1].pos1 = pos1;
-        // code_info[code_len - 1].pos2 = pos2;
-        code[code_len] = sym;
+        if (opecode.hasOwnProperty(sym)) {
+            code[code_len] = opecode[sym];
+        } else if (String(sym).charAt(0) == '"') {
+            code[code_len] = sym.substring(1, sym.length - 1);
+        } else {
+            code[code_len] = sym;
+        }
         code_info[code_len] = {};
         code_info[code_len].pos1 = pos1;
-        code_info[code_len++].pos2 = pos2;
+        code_info[code_len].pos2 = pos2;
+        code_str[code_len++] = sym;
     }
 
     // ***** シンボル追加 *****
@@ -5361,21 +5397,22 @@ var Interpreter;
             return num;
         });
         make_one_func_tbl_B("input", 0, function (param) {
-            var num;
-            var a1;
-
-            if (param.length <= 0) {
-                a1 = 0;
-            } else {
-                a1 = parseInt(param[0], 10);
-            }
-            // ***** キー入力待ちはしない *****
-            if (input_buf.length > 0) {
-                num = input_buf.shift();
-            } else {
-                num = 0;
-            }
-            return num;
+            // (これは未使用)
+            // var num;
+            // var a1;
+            //
+            // if (param.length <= 0) {
+            //     a1 = 0;
+            // } else {
+            //     a1 = parseInt(param[0], 10);
+            // }
+            // // ***** キー入力待ちはしない *****
+            // if (input_buf.length > 0) {
+            //     num = input_buf.shift();
+            // } else {
+            //     num = 0;
+            // }
+            // return num;
         });
         make_one_func_tbl_B("inputdlg", 1, function (param) {
             var num;
@@ -5464,21 +5501,22 @@ var Interpreter;
             return num;
         });
         make_one_func_tbl_B("keyinput", 0, function (param) {
-            var num;
-            var a1;
-
-            if (param.length <= 0) {
-                a1 = 0;
-            } else {
-                a1 = parseInt(param[0], 10);
-            }
-            // ***** キー入力待ちはしない *****
-            if (keyinput_buf.length > 0) {
-                num = keyinput_buf.shift();
-            } else {
-                num = 0;
-            }
-            return num;
+            // (これは未使用)
+            // var num;
+            // var a1;
+            //
+            // if (param.length <= 0) {
+            //     a1 = 0;
+            // } else {
+            //     a1 = parseInt(param[0], 10);
+            // }
+            // // ***** キー入力待ちはしない *****
+            // if (keyinput_buf.length > 0) {
+            //     num = keyinput_buf.shift();
+            // } else {
+            //     num = 0;
+            // }
+            // return num;
         });
         make_one_func_tbl_B("keyscan", 1, function (param) {
             var num;
