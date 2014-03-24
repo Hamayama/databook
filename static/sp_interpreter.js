@@ -1,7 +1,7 @@
 // This file is encoded with UTF-8 without BOM.
 
 // sp_interpreter.js
-// 2014-3-20 v3.01
+// 2014-3-24 v3.02
 
 
 // SPALM Web Interpreter
@@ -866,8 +866,7 @@ var Interpreter;
                 j = var_name.indexOf("\\", 2) + 1;
                 i = parseInt(var_name.substring(2, j), 10) - 1;
                 var_name = var_name.substring(j);
-                if (i >= 0 && i < this.old_vars_stack.length) { localvars = this.old_vars_stack[i]; }
-                else { localvars = null; }
+                if (i >= 0) { localvars = this.old_vars_stack[i]; } else { localvars = null; }
             } else { localvars = this.localvars; }
 
             // ***** 接頭語のチェック *****
@@ -915,8 +914,7 @@ var Interpreter;
                 j = var_name.indexOf("\\", 2) + 1;
                 i = parseInt(var_name.substring(2, j), 10) - 1;
                 var_name = var_name.substring(j);
-                if (i >= 0 && i < this.old_vars_stack.length) { localvars = this.old_vars_stack[i]; }
-                else { localvars = null; }
+                if (i >= 0) { localvars = this.old_vars_stack[i]; } else { localvars = null; }
             } else { localvars = this.localvars; }
 
             // ***** 接頭語のチェック *****
@@ -965,8 +963,7 @@ var Interpreter;
                 j = var_name.indexOf("\\", 2) + 1;
                 i = parseInt(var_name.substring(2, j), 10) - 1;
                 var_name = var_name.substring(j);
-                if (i >= 0 && i < this.old_vars_stack.length) { localvars = this.old_vars_stack[i]; }
-                else { localvars = null; }
+                if (i >= 0) { localvars = this.old_vars_stack[i]; } else { localvars = null; }
             } else { localvars = this.localvars; }
 
             // ***** 接頭語のチェック *****
@@ -1045,8 +1042,7 @@ var Interpreter;
                 j = var_name.indexOf("\\", 2) + 1;
                 i = parseInt(var_name.substring(2, j), 10) - 1;
                 var_name = var_name.substring(j);
-                if (i >= 0 && i < this.old_vars_stack.length) { localvars = this.old_vars_stack[i]; }
-                else { localvars = null; }
+                if (i >= 0) { localvars = this.old_vars_stack[i]; } else { localvars = null; }
             } else { localvars = this.localvars; }
 
             // ***** 接頭語のチェック *****
@@ -1125,8 +1121,7 @@ var Interpreter;
                 j = var_name.indexOf("\\", 2) + 1;
                 i = parseInt(var_name.substring(2, j), 10) - 1;
                 var_name = var_name.substring(j);
-                if (i >= 0 && i < this.old_vars_stack.length) { localvars = this.old_vars_stack[i]; }
-                else { localvars = null; }
+                if (i >= 0) { localvars = this.old_vars_stack[i]; } else { localvars = null; }
             } else { localvars = this.localvars; }
 
             // ***** 接頭語のチェック *****
@@ -1221,8 +1216,7 @@ var Interpreter;
                 j = var_name.indexOf("\\", 2) + 1;
                 i = parseInt(var_name.substring(2, j), 10) - 1;
                 var_name = var_name.substring(j);
-                if (i >= 0 && i < this.old_vars_stack.length) { localvars = this.old_vars_stack[i]; }
-                else { localvars = null; }
+                if (i >= 0) { localvars = this.old_vars_stack[i]; } else { localvars = null; }
             } else { localvars = this.localvars; }
 
             // ***** 接頭語のチェック *****
@@ -1317,13 +1311,11 @@ var Interpreter;
             // ***** キー入力バッファ1に追加 *****
             if (input_buf.length >= 40) { input_buf.shift(); }
             input_buf.push(num);
-
             // ***** キー入力待ちならば解除 *****
             if (input_flag && sleep_id != null) {
                 clearTimeout(sleep_id);
                 run_continuously();
             }
-
         }
         // ***** スペースキーのとき *****
         // スペースキーを上で無効化したためkeypressが発生しないので、ここで処理する
@@ -1332,13 +1324,11 @@ var Interpreter;
             // ***** キー入力バッファ2に追加 *****
             if (keyinput_buf.length >= 40) { keyinput_buf.shift(); }
             keyinput_buf.push(key_press_code);
-
             // ***** キー入力待ちならば解除 *****
             if (keyinput_flag && sleep_id != null) {
                 clearTimeout(sleep_id);
                 run_continuously();
             }
-
         }
     }
     function keyup(ev) {
@@ -1368,13 +1358,11 @@ var Interpreter;
         // ***** キー入力バッファ2に追加 *****
         if (keyinput_buf.length >= 40) { keyinput_buf.shift(); }
         keyinput_buf.push(key_press_code);
-
         // ***** キー入力待ちならば解除 *****
         if (keyinput_flag && sleep_id != null) {
             clearTimeout(sleep_id);
             run_continuously();
         }
-
     }
     // ダイアログを表示するとkeyupが発生しないことがあるので、
     // この関数を呼んでクリア可能とする
@@ -2277,16 +2265,16 @@ var Interpreter;
                 func_name = stack.pop();
                 // func_name = toglobal(func_name);
                 // ***** 組み込み関数の呼び出し *****
-                if (!func_tbl[func_name].addfunc || (func_tbl[func_name].addfunc && use_addfunc)) {
-                    // ***** 戻り値の有無をチェック *****
-                    if (func_tbl[func_name].use_retval) {
-                        num = func_tbl[func_name].func(param);
-                        stack.push(num);
-                    } else {
-                        func_tbl[func_name].func(param);
-                        stack.push(0);
-                    }
+                if (!use_addfunc && func_tbl[func_name].addfunc) {
+                    throw new Error("関数 '" + func_name + "' の呼び出しに失敗しました(追加命令が無効に設定されています)。");
                 }
+                if (func_tbl[func_name].use_retval) {
+                    num = func_tbl[func_name].func(param);
+                    stack.push(num);
+                    return true;
+                }
+                func_tbl[func_name].func(param);
+                stack.push(0);
                 return true;
             case 51: // calluser
                 // ***** 引数の取得 *****
@@ -2301,7 +2289,7 @@ var Interpreter;
                 // ***** 関数の存在チェック *****
                 // if (!func.hasOwnProperty(func_name)) {
                 if (!hasOwn.call(func, func_name)) {
-                    throw new Error("関数 '" + func_name + "' の呼び出しに失敗しました(関数が未定義等)。");
+                    throw new Error("関数 '" + func_name + "' の呼び出しに失敗しました(関数が未定義です)。");
                 }
                 // ***** ローカル変数を生成 *****
                 vars.makeLocalScope();
@@ -2372,10 +2360,11 @@ var Interpreter;
                 // ***** キー入力なしのとき *****
                 if (input_flag == false) {
                     if (param.length >= 1) {
-                        if (param[0] > 0) {
+                        num = parseInt(param[0], 10);
+                        if (num > 0) {
                             input_flag = true;
                             sleep_flag = true;
-                            sleep_time = param[0];
+                            sleep_time = num;
                             pc--;
                             return true;
                         }
@@ -2416,10 +2405,11 @@ var Interpreter;
                 // ***** キー入力なしのとき *****
                 if (keyinput_flag == false) {
                     if (param.length >= 1) {
-                        if (param[0] > 0) {
+                        num = parseInt(param[0], 10);
+                        if (num > 0) {
                             keyinput_flag = true;
                             sleep_flag = true;
-                            sleep_time = param[0];
+                            sleep_time = num;
                             pc--;
                             return true;
                         }
@@ -2475,6 +2465,7 @@ var Interpreter;
         label = {};
         func = {};
         while (i < code_len) {
+            // ***** シンボル取り出し *****
             debugpos1 = code_info[i].pos1;
             // sym = code[i++];
             sym = code_str[i++];
@@ -2545,7 +2536,6 @@ var Interpreter;
         var sym;
 
         var func_stm, func_end;
-        var funccall_p1, funccall_p2, funccall_end;
 
         var switch_exp, switch_stm, switch_default_stm, switch_end;
         var switch_case_no;
@@ -2566,6 +2556,7 @@ var Interpreter;
         // ***** シンボル解析のループ *****
         i = sym_start;
         while (i < sym_end) {
+            // ***** シンボル取り出し *****
             debugpos1 = i;
             sym = symbol[i];
 
@@ -2603,8 +2594,9 @@ var Interpreter;
             if (sym == "return") {
                 i++;
                 // ***** 戻り値を取得 *****
+                // (直後が } のときも戻り値なしとする(過去との互換性維持のため))
                 // if (symbol[i] == ";") {
-                if (symbol[i] == ";" || symbol[i] == "}") { // 過去との互換性維持
+                if (symbol[i] == ";" || symbol[i] == "}") {
                     code_push("store0", debugpos1, i);
                 } else {
                     i = c_expression(i, sym_end);
@@ -2659,57 +2651,6 @@ var Interpreter;
                 // ***** 文(ステートメント)のコンパイル(再帰的に実行) *****
                 c_statement(func_stm, func_end - 1, "", "");
                 code_push("funcend", debugpos1, i);
-                continue;
-            }
-
-            // ***** funccall文のとき *****
-            if (sym == "funccall") {
-                i++;
-                // ***** 解析とアドレスの取得 *****
-                j = i;
-                match2("(", j++);
-                // 引数1
-                funccall_p1 = j;
-                k = 1;
-                while (j < sym_end) {
-                    if (symbol[j] == "(") { k++; }
-                    if (symbol[j] == ")") { k--; }
-                    if (k == 0) { break; }
-                    if (k == 1 && symbol[j] == ",") { break; }
-                    j++;
-                }
-                // 引数2
-                funccall_p2 = -1;
-                if (k == 1 && symbol[j] == ",") {
-                    match2(",", j++);
-                    funccall_p2 = j;
-                    k = 1;
-                    while (j < sym_end) {
-                        if (symbol[j] == "(") { k++; }
-                        if (symbol[j] == ")") { k--; }
-                        if (k == 0) { break; }
-                        j++;
-                    }
-                }
-                match2(")", j++);
-                // 終了
-                funccall_end = j;
-                // ***** 新しいシンボルの生成 *****
-                if (funccall_p2 < 0) {
-                    // 引数1
-                    j = c_expression(funccall_p1, funccall_end - 1);
-                    // 終了
-                    code_push("pop", debugpos1, j);
-                } else {
-                    // 引数2
-                    j = c_getvarname(funccall_p2, funccall_end - 1);
-                    // 引数1
-                    j = c_expression(funccall_p1, funccall_p2 - 1);
-                    // 終了
-                    code_push("load", debugpos1, j);
-                    code_push("pop", debugpos1, j);
-                }
-                i = funccall_end;
                 continue;
             }
 
@@ -3307,7 +3248,7 @@ var Interpreter;
                 continue;
             }
 
-            // (3項演算子の処理後は、優先順位10の演算子しか処理しない(既設の仕様))
+            // (3項演算子の処理後は、優先順位10の演算子しか処理しない(過去との互換性維持のため))
             if (tri_flag == true) {
                 break;
             }
@@ -3721,7 +3662,7 @@ var Interpreter;
             return i;
         }
         // ***** 構文エラー *****
-        // (過去との互換性維持のため一部の構文エラーを発生させない)
+        // (一部の構文エラーを発生させない(過去との互換性維持のため))
         if (sym == ")") {
             i++;
             return i;
@@ -3849,7 +3790,7 @@ var Interpreter;
     function code_push(sym, pos1, pos2) {
         if (opecode.hasOwnProperty(sym)) {
             code[code_len] = opecode[sym];
-        } else if (String(sym).charAt(0) == '"') {
+        } else if (sym.charAt && sym.charAt(0) == '"') {
             code[code_len] = sym.substring(1, sym.length - 1);
         } else {
             code[code_len] = sym;
@@ -4045,7 +3986,7 @@ var Interpreter;
     // ***** 組み込み関数(戻り値なし)の定義情報の生成 *****
     function make_func_tbl_A() {
         // ***** 組み込み関数(戻り値なし)の定義情報を1個ずつ生成 *****
-        // (第2引数は関数の引数の数を指定する)
+        // (第2引数は関数の引数の数を指定する(ただし省略可能な引数は数に入れない))
         make_one_func_tbl_A("addfunc", 1, function (param) {
             var a1;
 
@@ -4501,6 +4442,20 @@ var Interpreter;
             // set_canvas_axis(ctx);                    // 座標系を再設定
             return true;
         });
+
+        make_one_param_varname("funccall", 1);
+        make_one_func_tbl_A("funccall", 1, function (param) {
+            var a1, a2;
+
+            a1 = param[0];
+            if (param.length >= 2) {
+                a2 = getvarname(param[1]);
+                // vars[a2] = a1;
+                vars.setVarValue(a2, a1);
+            }
+            return true;
+        });
+
         make_one_func_tbl_A("gc", 0, function (param) {
             // ***** NOP *****
             return true;
@@ -5074,15 +5029,22 @@ var Interpreter;
             return true;
         });
     }
+    // ***** 組み込み関数(戻り値なし)の定義情報1個の生成 *****
     function make_one_func_tbl_A(name, param_num, func) {
+        // ***** 定義情報1個の生成 *****
         if (!func_tbl[name]) { func_tbl[name] = {}; }
+        // ***** 追加命令かどうかを設定 *****
         func_tbl[name].addfunc = false;
+        // ***** 引数の数を設定(ただし省略可能な引数は数に入れない) *****
         func_tbl[name].param_num = param_num;
+        // ***** 変数名をとる引数の指定フラグを生成 *****
         if (!func_tbl[name].param_varname) { func_tbl[name].param_varname = {}; }
+        // ***** 戻り値の有無を設定 *****
         func_tbl[name].use_retval = false;
+        // ***** 関数の本体を設定 *****
         func_tbl[name].func = func;
     }
-    // (関数のi番目の引数が、変数名をとる引数であることを指定する)
+    // ***** 関数のi番目の引数が、変数名をとる引数であることを指定する *****
     function make_one_param_varname(name, i) {
         if (!func_tbl[name]) { func_tbl[name] = {}; }
         if (!func_tbl[name].param_varname) { func_tbl[name].param_varname = {}; }
@@ -5093,8 +5055,8 @@ var Interpreter;
     // ***** 組み込み関数(戻り値あり)の定義情報の生成 *****
     function make_func_tbl_B() {
         // ***** 組み込み関数(戻り値あり)の定義情報を1個ずつ生成 *****
-        // (第2引数は関数の引数の数を指定する。
-        //  これを-1にすると組み込み変数になり、()なしで呼び出せる)
+        // (第2引数は関数の引数の数を指定する(ただし省略可能な引数は数に入れない))
+        // (第2引数を-1にすると組み込み変数になり、()なしで呼び出せる)
         make_one_func_tbl_B("abs", 1, function (param) {
             var num;
             var a1;
@@ -5112,7 +5074,7 @@ var Interpreter;
             return num;
         });
 
-        make_one_param_varname("arraylen", 0);
+        make_one_param_varname("arraylen", 0); // 変数名をとる引数は指定が必要
         make_one_func_tbl_B("arraylen", 1, function (param) {
             var num;
             var a1, a2, a3;
@@ -5914,12 +5876,20 @@ var Interpreter;
             return num;
         });
     }
+    // ***** 組み込み関数(戻り値あり)の定義情報1個の生成 *****
     function make_one_func_tbl_B(name, param_num, func) {
+        // ***** 定義情報1個の生成 *****
         if (!func_tbl[name]) { func_tbl[name] = {}; }
+        // ***** 追加命令かどうかを設定 *****
         func_tbl[name].addfunc = false;
+        // ***** 引数の数を設定(ただし省略可能な引数は数に入れない) *****
+        // ***** (-1にすると組み込み変数になり、()なしで呼び出せる) *****
         func_tbl[name].param_num = param_num;
+        // ***** 変数名をとる引数の指定フラグを生成 *****
         if (!func_tbl[name].param_varname) { func_tbl[name].param_varname = {}; }
+        // ***** 戻り値の有無を設定 *****
         func_tbl[name].use_retval = true;
+        // ***** 関数の本体を設定 *****
         func_tbl[name].func = func;
     }
 
@@ -5933,7 +5903,7 @@ var Interpreter;
     // ***** 追加の組み込み関数(戻り値なし)の定義情報の生成 *****
     function add_func_tbl_A() {
         // ***** 追加の組み込み関数(戻り値なし)の定義情報を1個ずつ生成 *****
-        // (第2引数は関数の引数の数を指定する)
+        // (第2引数は関数の引数の数を指定する(ただし省略可能な引数は数に入れない))
         add_one_func_tbl_A("audmode", 1, function (param) {
             var a1;
 
@@ -6201,8 +6171,8 @@ var Interpreter;
             return true;
         });
 
-        make_one_param_varname("fpoly", 0);
-        make_one_param_varname("fpoly", 1);
+        make_one_param_varname("fpoly", 0); // 変数名をとる引数は指定が必要
+        make_one_param_varname("fpoly", 1); // 変数名をとる引数は指定が必要
         add_one_func_tbl_A("fpoly", 4, function (param) {
             var a1, a2, a3;
             var b1;
@@ -6660,20 +6630,6 @@ var Interpreter;
                         ctx.drawImage(stimg[ch].img.can, x2, y2);
                     }
                 }
-                // for (ch in stimg) { // 速度ほとんど変わらず...
-                //     if (stimg.hasOwnProperty(ch)) {
-                //         j = 0;
-                //         while (j >= 0) {
-                //             j = st1.indexOf(ch, j);
-                //             if (j >= 0) {
-                //                 x2 = (x1 + (j * w1) + stimg[ch].off_x) | 0;
-                //                 y2 = (y1            + stimg[ch].off_y) | 0;
-                //                 ctx.drawImage(stimg[ch].img.can, x2, y2);
-                //                 j++;
-                //             }
-                //         }
-                //     }
-                // }
                 y1 += h1;
             }
             return true;
@@ -7082,13 +7038,21 @@ var Interpreter;
             return true;
         });
     }
+    // ***** 追加の組み込み関数(戻り値なし)の定義情報1個の生成 *****
     function add_one_func_tbl_A(name, param_num, func) {
+        // ***** オリジナルの上書き禁止 *****
         if (func_tbl[name] && func_tbl[name].addfunc == false) { return false; }
+        // ***** 定義情報1個の生成 *****
         if (!func_tbl[name]) { func_tbl[name] = {}; }
+        // ***** 追加命令かどうかを設定 *****
         func_tbl[name].addfunc = true;
+        // ***** 引数の数を設定(ただし省略可能な引数は数に入れない) *****
         func_tbl[name].param_num = param_num;
+        // ***** 変数名をとる引数の指定フラグを生成 *****
         if (!func_tbl[name].param_varname) { func_tbl[name].param_varname = {}; }
+        // ***** 戻り値の有無を設定 *****
         func_tbl[name].use_retval = false;
+        // ***** 関数の本体を設定 *****
         func_tbl[name].func = func;
     }
 
@@ -7096,8 +7060,8 @@ var Interpreter;
     // ***** 追加の組み込み関数(戻り値あり)の定義情報の生成 *****
     function add_func_tbl_B() {
         // ***** 追加の組み込み関数(戻り値あり)の定義情報を1個ずつ生成 *****
-        // (第2引数は関数の引数の数を指定する。
-        //  これを-1にすると組み込み変数になり、()なしで呼び出せる)
+        // (第2引数は関数の引数の数を指定する(ただし省略可能な引数は数に入れない))
+        // (第2引数を-1にすると組み込み変数になり、()なしで呼び出せる)
         add_one_func_tbl_B("audmakestat", 1, function (param) {
             var num;
             var a1;
@@ -7221,19 +7185,26 @@ var Interpreter;
             num = parseInt(a1, 16);
             return num;
         });
-        add_one_func_tbl_B("misfreeno", 2, function (param) {
+        add_one_func_tbl_B("misfreeno", 0, function (param) {
             var num;
             var mis, mis_no;
-            var min_no, max_no;
+            var range_use, min_no, max_no;
 
-            min_no = parseInt(param[0], 10);
-            max_no = parseInt(param[1], 10);
+            if (param.length <= 1) {
+                range_use = false;
+                min_no = 0;
+                max_no = 0;
+            } else {
+                range_use = true;
+                min_no = parseInt(param[0], 10);
+                max_no = parseInt(param[1], 10);
+            }
             // ***** ミサイル空番号を検索 *****
             num = -1;
             for (mis_no in missile) {
                 if (missile.hasOwnProperty(mis_no)) {
                     mis = missile[mis_no];
-                    if (mis.no >= min_no && mis.no <= max_no) {
+                    if (range_use == false || (mis.no >= min_no && mis.no <= max_no)) {
                         mis.useflag = parseInt(vars.getVarValue(mis.useflag_var_name), 10);
                         if (mis.useflag == 0) {
                             num = mis.no;
@@ -7376,7 +7347,7 @@ var Interpreter;
             return num;
         });
 
-        make_one_param_varname("txtbchk", 0);
+        make_one_param_varname("txtbchk", 0); // 変数名をとる引数は指定が必要
         add_one_func_tbl_B("txtbchk", 8, function (param) {
             var num;
             var a1, a2, a3, a4;
@@ -7437,7 +7408,7 @@ var Interpreter;
             return num;
         });
 
-        make_one_param_varname("txtpget", 0);
+        make_one_param_varname("txtpget", 0); // 変数名をとる引数は指定が必要
         add_one_func_tbl_B("txtpget", 5, function (param) {
             var num;
             var a1, a2, a3;
@@ -7477,13 +7448,22 @@ var Interpreter;
             return num;
         });
     }
+    // ***** 追加の組み込み関数(戻り値あり)の定義情報1個の生成 *****
     function add_one_func_tbl_B(name, param_num, func) {
+        // ***** オリジナルの上書き禁止 *****
         if (func_tbl[name] && func_tbl[name].addfunc == false) { return false; }
+        // ***** 定義情報1個の生成 *****
         if (!func_tbl[name]) { func_tbl[name] = {}; }
+        // ***** 追加命令かどうかを設定 *****
         func_tbl[name].addfunc = true;
+        // ***** 引数の数を設定(ただし省略可能な引数は数に入れない) *****
+        // ***** (-1にすると組み込み変数になり、()なしで呼び出せる) *****
         func_tbl[name].param_num = param_num;
+        // ***** 変数名をとる引数の指定フラグを生成 *****
         if (!func_tbl[name].param_varname) { func_tbl[name].param_varname = {}; }
+        // ***** 戻り値の有無を設定 *****
         func_tbl[name].use_retval = true;
+        // ***** 関数の本体を設定 *****
         func_tbl[name].func = func;
     }
 
