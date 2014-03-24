@@ -1,7 +1,7 @@
 // This file is encoded with UTF-8 without BOM.
 
 // sp_interpreter.js
-// 2014-3-24 v3.02
+// 2014-3-25 v3.03
 
 
 // SPALM Web Interpreter
@@ -711,7 +711,7 @@ var Interpreter;
         ret = false;
         // ***** 引数のチェック *****
         if (src_st == null) { Alm2("Interpreter.run:-:ソースがありません。"); return ret; }
-        // if (src_st == "") { Alm("Interpreter.run:+:ソースがありません。"); return ret; }
+        // if (src_st == "") { Alm2("Interpreter.run:+:ソースがありません。"); return ret; }
         // ***** ソース設定 *****
         src = src_st;
         // ***** 実行開始 *****
@@ -3447,7 +3447,8 @@ var Interpreter;
             match2(")", i++);
             return i;
         }
-        // ***** 「&」のとき *****
+        // ***** アドレス的なもののとき *****
+        // ***** (変数名を取得して返す) *****
         if (sym == "&") {
             i++;
             if (symbol[i] == "(") {
@@ -3480,7 +3481,7 @@ var Interpreter;
                 i++;
             } else {
                 while (i < sym_end) {
-                    // ***** 変数名をとる引数のとき *****
+                    // ***** 「変数名をとる引数」のとき *****
                     if (func_tbl[func_name].param_varname.hasOwnProperty(param_num)) {
                         i = c_getvarname(i, sym_end);
                     } else {
@@ -3685,7 +3686,7 @@ var Interpreter;
         // debugpos1 = i;
         var_name = symbol[i++];
 
-        // ***** ポインタ的なもの(文頭の*の前にはセミコロンが必要) *****
+        // ***** ポインタ的なもののとき(文頭の*の前にはセミコロンが必要) *****
         // ***** (変数の内容を変数名にする) *****
         if (var_name == "*") {
             if (symbol[i] == "(") {
@@ -3741,7 +3742,7 @@ var Interpreter;
         // debugpos1 = i;
         var_name = symbol[i++];
 
-        // ***** ポインタ的なもの(文頭の*の前にはセミコロンが必要) *****
+        // ***** ポインタ的なもののとき(文頭の*の前にはセミコロンが必要) *****
         // ***** (実際は*を削っているだけ) *****
         if (var_name == "*") {
             if (symbol[i] == "(") {
@@ -3822,8 +3823,6 @@ var Interpreter;
         var temp_no;
         var line_no;
 
-        // ***** 終端追加 *****
-        src = src + " end end end end";
         // ***** ソース解析のループ *****
         i = 0;
         line_no = 1;
@@ -3980,6 +3979,11 @@ var Interpreter;
             }
             symbol_push(src.substring(sym_start, i), line_no);
         }
+        // ***** 終端の追加(安全のため) *****
+        symbol_push("end", line_no);
+        symbol_push("end", line_no);
+        symbol_push("end", line_no);
+        symbol_push("end", line_no);
     }
 
 
@@ -4113,8 +4117,8 @@ var Interpreter;
             return true;
         });
 
-        make_one_param_varname("copy", 0); // 変数名をとる引数は指定が必要
-        make_one_param_varname("copy", 2); // 変数名をとる引数は指定が必要
+        make_one_param_varname("copy", 0); // 「変数名をとる引数」は指定が必要
+        make_one_param_varname("copy", 2); // 「変数名をとる引数」は指定が必要
         make_one_func_tbl_A("copy", 5, function (param) {
             var a1, a2, a3, a4, a5, a6;
             var i;
@@ -5037,14 +5041,14 @@ var Interpreter;
         func_tbl[name].addfunc = false;
         // ***** 引数の数を設定(ただし省略可能な引数は数に入れない) *****
         func_tbl[name].param_num = param_num;
-        // ***** 変数名をとる引数の指定フラグを生成 *****
+        // ***** 「変数名をとる引数」の指定フラグを生成 *****
         if (!func_tbl[name].param_varname) { func_tbl[name].param_varname = {}; }
         // ***** 戻り値の有無を設定 *****
         func_tbl[name].use_retval = false;
         // ***** 関数の本体を設定 *****
         func_tbl[name].func = func;
     }
-    // ***** 関数のi番目の引数が、変数名をとる引数であることを指定する *****
+    // ***** 関数のi番目の引数が「変数名をとる引数」であることを指定する *****
     function make_one_param_varname(name, i) {
         if (!func_tbl[name]) { func_tbl[name] = {}; }
         if (!func_tbl[name].param_varname) { func_tbl[name].param_varname = {}; }
@@ -5074,7 +5078,7 @@ var Interpreter;
             return num;
         });
 
-        make_one_param_varname("arraylen", 0); // 変数名をとる引数は指定が必要
+        make_one_param_varname("arraylen", 0); // 「変数名をとる引数」は指定が必要
         make_one_func_tbl_B("arraylen", 1, function (param) {
             var num;
             var a1, a2, a3;
@@ -5885,7 +5889,7 @@ var Interpreter;
         // ***** 引数の数を設定(ただし省略可能な引数は数に入れない) *****
         // ***** (-1にすると組み込み変数になり、()なしで呼び出せる) *****
         func_tbl[name].param_num = param_num;
-        // ***** 変数名をとる引数の指定フラグを生成 *****
+        // ***** 「変数名をとる引数」の指定フラグを生成 *****
         if (!func_tbl[name].param_varname) { func_tbl[name].param_varname = {}; }
         // ***** 戻り値の有無を設定 *****
         func_tbl[name].use_retval = true;
@@ -6171,8 +6175,8 @@ var Interpreter;
             return true;
         });
 
-        make_one_param_varname("fpoly", 0); // 変数名をとる引数は指定が必要
-        make_one_param_varname("fpoly", 1); // 変数名をとる引数は指定が必要
+        make_one_param_varname("fpoly", 0); // 「変数名をとる引数」は指定が必要
+        make_one_param_varname("fpoly", 1); // 「変数名をとる引数」は指定が必要
         add_one_func_tbl_A("fpoly", 4, function (param) {
             var a1, a2, a3;
             var b1;
@@ -7048,7 +7052,7 @@ var Interpreter;
         func_tbl[name].addfunc = true;
         // ***** 引数の数を設定(ただし省略可能な引数は数に入れない) *****
         func_tbl[name].param_num = param_num;
-        // ***** 変数名をとる引数の指定フラグを生成 *****
+        // ***** 「変数名をとる引数」の指定フラグを生成 *****
         if (!func_tbl[name].param_varname) { func_tbl[name].param_varname = {}; }
         // ***** 戻り値の有無を設定 *****
         func_tbl[name].use_retval = false;
@@ -7347,7 +7351,7 @@ var Interpreter;
             return num;
         });
 
-        make_one_param_varname("txtbchk", 0); // 変数名をとる引数は指定が必要
+        make_one_param_varname("txtbchk", 0); // 「変数名をとる引数」は指定が必要
         add_one_func_tbl_B("txtbchk", 8, function (param) {
             var num;
             var a1, a2, a3, a4;
@@ -7408,7 +7412,7 @@ var Interpreter;
             return num;
         });
 
-        make_one_param_varname("txtpget", 0); // 変数名をとる引数は指定が必要
+        make_one_param_varname("txtpget", 0); // 「変数名をとる引数」は指定が必要
         add_one_func_tbl_B("txtpget", 5, function (param) {
             var num;
             var a1, a2, a3;
@@ -7459,7 +7463,7 @@ var Interpreter;
         // ***** 引数の数を設定(ただし省略可能な引数は数に入れない) *****
         // ***** (-1にすると組み込み変数になり、()なしで呼び出せる) *****
         func_tbl[name].param_num = param_num;
-        // ***** 変数名をとる引数の指定フラグを生成 *****
+        // ***** 「変数名をとる引数」の指定フラグを生成 *****
         if (!func_tbl[name].param_varname) { func_tbl[name].param_varname = {}; }
         // ***** 戻り値の有無を設定 *****
         func_tbl[name].use_retval = true;

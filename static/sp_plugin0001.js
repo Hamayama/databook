@@ -164,7 +164,7 @@ var Plugin0001;
         });
 
         // ***** 文字列配列の内容を一括置換する命令の追加 *****
-        make_one_param_varname("txtreplace", 0); // 変数名をとる引数は指定が必要
+        make_one_param_varname("txtreplace", 0); // 「変数名をとる引数」は指定が必要
         add_one_func_tbl_A("txtreplace", 5, function (param) {
             var a1, a2, a3, a4, a5;
             var i;
@@ -215,7 +215,7 @@ var Plugin0001;
         });
 
         // ***** 文字列配列の内容を一括置換する命令の追加2 *****
-        make_one_param_varname("txtreplace2", 0); // 変数名をとる引数は指定が必要
+        make_one_param_varname("txtreplace2", 0); // 「変数名をとる引数」は指定が必要
         add_one_func_tbl_A("txtreplace2", 5, function (param) {
             var a1, a2, a3, a4, a5;
             var i;
