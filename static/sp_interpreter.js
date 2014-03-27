@@ -1,7 +1,7 @@
 // This file is encoded with UTF-8 without BOM.
 
 // sp_interpreter.js
-// 2014-3-26 v3.05
+// 2014-3-27 v3.06
 
 
 // SPALM Web Interpreter
@@ -1607,6 +1607,11 @@ var Interpreter;
         }
     }
 
+
+    // ===== 以下は実行処理 =====
+    // (コンパイルで生成したスタックマシンのコードを実行する)
+
+
     // ***** 実行開始 *****
     function run_start() {
         var ret;
@@ -1843,11 +1848,6 @@ var Interpreter;
         // ***** 戻り値を返す *****
         ret = true;
         return ret;
-    }
-
-    // ***** ループ時間ノーカウント設定 *****
-    function set_loop_nocount() {
-        loop_nocount_flag = true;
     }
 
     // ***** エラー場所の表示 *****
@@ -2449,6 +2449,11 @@ var Interpreter;
         return var_name;
     }
 
+
+    // ===== 以下はラベル設定処理 =====
+    // (コンパイルで生成したラベルのアドレスを解決する)
+
+
     // ***** ラベル設定 *****
     function setlabel() {
         var i, j, k;
@@ -2515,6 +2520,11 @@ var Interpreter;
             }
         }
     }
+
+
+    // ===== 以下はコンパイル処理 =====
+    // (シンボルを解析してスタックマシンのコードを生成する)
+
 
     // ***** コンパイル *****
     function compile() {
@@ -3818,6 +3828,11 @@ var Interpreter;
         code_str[code_len++] = sym;
     }
 
+
+    // ===== 以下はシンボル初期化処理 =====
+    // (ソースを解析してシンボルを生成する)
+
+
     // ***** シンボル追加 *****
     function symbol_push(sym, line_no) {
         // symbol.push(sym);
@@ -4001,6 +4016,10 @@ var Interpreter;
         symbol_push("end", line_no);
         symbol_push("end", line_no);
     }
+
+
+    // ===== 以下は命令の定義処理 =====
+    // (各命令の定義情報を生成する)
 
 
     // ***** 組み込み関数(戻り値なし)の定義情報の生成 *****
@@ -4696,8 +4715,7 @@ var Interpreter;
             alert(a1);
             keyclear();
             mousebuttonclear();
-            // loop_nocount_flag = true;
-            set_loop_nocount();
+            loop_nocount_flag = true;
             return true;
         });
         make_one_func_tbl_A("onlocal", 0, function (param) {
@@ -5389,8 +5407,7 @@ var Interpreter;
             num = prompt(a1, a2) || ""; // nullのときは空文字列にする
             keyclear();
             mousebuttonclear();
-            // loop_nocount_flag = true;
-            set_loop_nocount();
+            loop_nocount_flag = true;
             return num;
         });
         make_one_func_tbl_B("int", 1, function (param) {
@@ -5867,8 +5884,7 @@ var Interpreter;
             if (confirm(a1)) { num = "YES"; } else { num = "NO"; }
             keyclear();
             mousebuttonclear();
-            // loop_nocount_flag = true;
-            set_loop_nocount();
+            loop_nocount_flag = true;
             return num;
         });
     }
@@ -5913,7 +5929,8 @@ var Interpreter;
     }
 
 
-    // ***** 以下は追加命令の処理等 *****
+    // ===== 以下は追加命令用の処理 =====
+    // (追加命令の定義情報を生成するための関数等)
 
 
     // ***** 追加の組み込み関数(戻り値なし)の定義情報1個の生成 *****
@@ -5966,12 +5983,12 @@ var Interpreter;
     Interpreter.toglobal = toglobal;
     Interpreter.set_canvas_axis = set_canvas_axis;
     Interpreter.conv_axis_point = conv_axis_point;
-    Interpreter.set_loop_nocount = set_loop_nocount;
     Interpreter.max_array_size = max_array_size;
     Interpreter.max_str_size = max_str_size;
     Interpreter.get_imgvars = function () { return imgvars; };
     Interpreter.get_font_size = function () { return font_size; };
     Interpreter.set_color_val = function (v) { color_val = v; };
+    Interpreter.set_loop_nocount = function () { loop_nocount_flag = true; };
 
 
 })(Interpreter || (Interpreter = {}));

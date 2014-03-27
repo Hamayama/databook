@@ -45,12 +45,12 @@ var Plugin0001;
     var toglobal = Interpreter.toglobal;
     var set_canvas_axis = Interpreter.set_canvas_axis;
     var conv_axis_point = Interpreter.conv_axis_point;
-    var set_loop_nocount = Interpreter.set_loop_nocount;
     var max_array_size = Interpreter.max_array_size;
     var max_str_size = Interpreter.max_str_size;
     var get_imgvars = Interpreter.get_imgvars;
     var get_font_size = Interpreter.get_font_size;
     var set_color_val = Interpreter.set_color_val;
+    var set_loop_nocount = Interpreter.set_loop_nocount;
 
     // ***** hasOwnPropertyをプロパティ名に使うかもしれない場合の対策 *****
     // (変数名、関数名、ラベル名、画像変数名について、
@@ -2119,7 +2119,6 @@ var Plugin0001;
         // ***** 戻り値を返す *****
         return ret_st;
     }
-
 
     // ***** 音楽全停止 *****
     function audstopall() {
