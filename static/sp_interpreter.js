@@ -1,7 +1,7 @@
 // This file is encoded with UTF-8 without BOM.
 
 // sp_interpreter.js
-// 2014-3-27 v3.06
+// 2014-3-28 v3.07
 
 
 // SPALM Web Interpreter
@@ -604,18 +604,18 @@ var Interpreter;
         67:(1 << 17), 86:(1 << 18) };
 
     var opecode = {             // スタックマシンの命令コード
-        load:1,         pointer:2,      array:3,        store:4,       storenum:5,
-        storestr:6,     store0:7,       store1:8,       preinc:9,      predec:10,
-        postinc:11,     postdec:12,     loadadd:13,     loadsub:14,    loadmul:15,
-        loaddiv:16,     loaddivint:17,  loadmod:18,     loadaddstr:19, add:20,
-        addstr:21,      sub:22,         mul:23,         div:24,        divint:25,
-        mod:26,         shl:27,         shr:28,         ushr:29,       neg:30,
-        and:31,         or:32,          xor:33,         not:34,        cmpeq:35,
-        cmpne:36,       cmplt:37,       cmple:38,       cmpgt:39,      cmpge:40,
-        label:41,       "goto":42,      ifgoto:43,      ifnotgoto:44,  gotostack:45,
-        gosubstack:46,  "return":47,    func:48,        funcend:49,    call:50,
-        calladdfunc:51, calluser:52,    loadparam:53,   pop:54,        dup:55,
-        end:56,         callinput:57,   callkeyinput:58 };
+        load:1,         pointer:2,      array:3,        store:4,        storenum:5,
+        storestr:6,     store0:7,       store1:8,       preinc:9,       predec:10,
+        postinc:11,     postdec:12,     loadadd:13,     loadsub:14,     loadmul:15,
+        loaddiv:16,     loaddivint:17,  loadmod:18,     loadaddstr:19,  add:20,
+        addstr:21,      sub:22,         mul:23,         div:24,         divint:25,
+        mod:26,         shl:27,         shr:28,         ushr:29,        neg:30,
+        and:31,         or:32,          xor:33,         not:34,         cmpeq:35,
+        cmpne:36,       cmplt:37,       cmple:38,       cmpgt:39,       cmpge:40,
+        label:41,       "goto":42,      ifgoto:43,      ifnotgoto:44,   gotostack:45,
+        gosubstack:46,  "return":47,    func:48,        funcend:49,     call:50,
+        callwait:51,    calladdfunc:52, calluser:53,    loadparam:54,   pop:55,
+        dup:56,         end:57          };
 
     // ***** hasOwnPropertyをプロパティ名に使うかもしれない場合の対策 *****
     // (変数名、関数名、ラベル名、画像変数名について、
@@ -1477,7 +1477,9 @@ var Interpreter;
     }
     // ***** 文字チェック *****
     function match2(ch, i) {
-        if (i >= symbol_len) {
+        // if (i >= symbol_len) {
+        if (i >= symbol_len - 4) { // 終端の分を引いて判定
+            debugpos2 = symbol_len - 4;
             throw new Error("'" + ch + "' が見つかりませんでした。");
         }
         if (ch != symbol[i]) {
@@ -1885,7 +1887,6 @@ var Interpreter;
         var param_num;
         var goto_pc;
         var funccall_info;
-        var key_code;
 
         // loop_nocount_flag = true;
         // ***** シンボル取り出し *****
@@ -1902,14 +1903,14 @@ var Interpreter;
                 return true;
             case 2: // pointer
                 var_name = stack.pop();
-                var_name = String(vars.getVarValue(var_name));
+                num = String(vars.getVarValue(var_name));
                 // ***** 変数名のチェック *****
                 // (アルファベットかアンダースコアで始まらなければエラー)
-                c = var_name.charCodeAt(0);
+                c = num.charCodeAt(0);
                 if (!((c >= 0x41 && c <= 0x5A) || (c >= 0x61 && c <= 0x7A) || c == 0x5F)) {
-                    throw new Error("ポインタの指す先が不正です。('" + var_name + "')");
+                    throw new Error("ポインタの指す先が不正です。('" + num + "')");
                 }
-                stack.push(var_name);
+                stack.push(num);
                 return true;
             case 3: // array
                 num = stack.pop();
@@ -2224,10 +2225,10 @@ var Interpreter;
                 pc = func[code[pc] + "\\end"];
                 return true;
             case 49: // funcend
-                // ***** 戻り値は0とする *****
-                stack.push(0);
                 // ***** 関数内のとき *****
                 if (funccall_stack.length > 0) {
+                    // ***** 戻り値は0とする *****
+                    stack.push(0);
                     // ***** ローカル変数を解放 *****
                     vars.deleteLocalScope();
                     // ***** 呼び出し元に復帰 *****
@@ -2236,7 +2237,7 @@ var Interpreter;
                     return true;
                 }
                 // ***** 戻り先がない *****
-                throw new Error("予期しない funcend が見つかりました。");
+                throw new Error("予期しない '}' が見つかりました。");
                 // return true;
             case 50: // call
                 // ***** 引数の取得 *****
@@ -2253,7 +2254,32 @@ var Interpreter;
                 if (!func_tbl[func_name].use_retval) { num = 0; }
                 stack.push(num);
                 return true;
-            case 51: // calladdfunc
+            case 51: // callwait
+                // ***** 入力待ち状態のチェック *****
+                if (!(input_flag || keyinput_flag)) {
+                    // ***** 引数の取得 *****
+                    param_num = stack.pop();
+                    param = [];
+                    for(i = 0; i < param_num; i++) {
+                        param[param_num - i - 1] = stack.pop();
+                    }
+                }
+                // ***** 関数名の取得 *****
+                func_name = stack.pop();
+                // func_name = toglobal(func_name);
+                // ***** 組み込み関数の呼び出し *****
+                num = func_tbl[func_name].func(param);
+                if (!func_tbl[func_name].use_retval) { num = 0; }
+                // ***** 入力待ち状態でなければ完了 *****
+                if (!(input_flag || keyinput_flag)) {
+                    stack.push(num);
+                    return true;
+                }
+                // ***** 同じ命令を繰り返す *****
+                stack.push(func_name);
+                pc--;
+                return true;
+            case 52: // calladdfunc
                 // ***** 引数の取得 *****
                 param_num = stack.pop();
                 param = [];
@@ -2271,7 +2297,7 @@ var Interpreter;
                 if (!addfunc_tbl[func_name].use_retval) { num = 0; }
                 stack.push(num);
                 return true;
-            case 52: // calluser
+            case 53: // calluser
                 // ***** 引数の取得 *****
                 param_num = stack.pop();
                 param = [];
@@ -2297,7 +2323,7 @@ var Interpreter;
                 // ***** 関数の呼び出し *****
                 pc = func[func_name];
                 return true;
-            case 53: // loadparam
+            case 54: // loadparam
                 if (param.length > 0) {
                     num = param.shift();
                 } else {
@@ -2321,109 +2347,21 @@ var Interpreter;
                 }
                 vars.setVarValue(var_name, num);
                 return true;
-            case 54: // pop
+            case 55: // pop
                 stack.pop();
                 return true;
-            case 55: // dup
+            case 56: // dup
                 num = stack.pop();
                 stack.push(num);
                 stack.push(num);
                 return true;
-            case 56: // end
+            case 57: // end
                 end_flag = true;
                 return true;
-            case 57: // callinput
-                // ***** キー入力待ち(携帯互換用) *****
-                if (input_flag == false) {
-                    // ***** 引数の取得 *****
-                    param_num = stack.pop();
-                    param = [];
-                    for(i = 0; i < param_num; i++) {
-                        param[param_num - i - 1] = stack.pop();
-                    }
-                    // ***** 関数名の取得 *****
-                    func_name = stack.pop();
-                    // func_name = toglobal(func_name);
-                }
-                // ***** キー入力ありのとき *****
-                if (input_buf.length > 0) {
-                    input_flag = false;
-                    key_code = input_buf.shift();
-                    stack.push(key_code);
-                    return true;
-                }
-                // ***** キー入力なしのとき *****
-                if (input_flag == false) {
-                    if (param.length >= 1) {
-                        num = parseInt(param[0], 10);
-                        if (num > 0) {
-                            input_flag = true;
-                            sleep_flag = true;
-                            sleep_time = num;
-                            pc--;
-                            return true;
-                        }
-                        stack.push(0);
-                        return true;
-                    }
-                }
-                if (input_flag == true) {
-                    input_flag = false;
-                    stack.push(0);
-                    return true;
-                }
-                input_flag = 2;
-                sleep_flag = true;
-                sleep_time = 1000;
-                pc--;
-                return true;
-            case 58: // callkeyinput
-                // ***** キー入力待ち(PC用) *****
-                if (keyinput_flag == false) {
-                    // ***** 引数の取得 *****
-                    param_num = stack.pop();
-                    param = [];
-                    for(i = 0; i < param_num; i++) {
-                        param[param_num - i - 1] = stack.pop();
-                    }
-                    // ***** 関数名の取得 *****
-                    func_name = stack.pop();
-                    // func_name = toglobal(func_name);
-                }
-                // ***** キー入力ありのとき *****
-                if (keyinput_buf.length > 0) {
-                    keyinput_flag = false;
-                    key_code = keyinput_buf.shift();
-                    stack.push(key_code);
-                    return true;
-                }
-                // ***** キー入力なしのとき *****
-                if (keyinput_flag == false) {
-                    if (param.length >= 1) {
-                        num = parseInt(param[0], 10);
-                        if (num > 0) {
-                            keyinput_flag = true;
-                            sleep_flag = true;
-                            sleep_time = num;
-                            pc--;
-                            return true;
-                        }
-                        stack.push(0);
-                        return true;
-                    }
-                }
-                if (keyinput_flag == true) {
-                    keyinput_flag = false;
-                    stack.push(0);
-                    return true;
-                }
-                keyinput_flag = 2;
-                sleep_flag = true;
-                sleep_time = 1000;
-                pc--;
-                return true;
         }
-        return true;
+        // ***** 命令コードエラー *****
+        throw new Error("未定義の命令コード (" + sym + ") が見つかりました。");
+        // return true;
     }
 
     // ***** 変数名取得 *****
@@ -2484,10 +2422,6 @@ var Interpreter;
             // ***** 関数定義のとき *****
             if (sym == "func") {
                 func_name = code[i++];
-                if (!(isAlpha(func_name.charAt(0)) || func_name.charAt(0) == "_")) {
-                    debugpos2 = debugpos1 + 2;
-                    throw new Error("関数名が不正です。");
-                }
                 // if (func.hasOwnProperty(func_name)) {
                 if (hasOwn.call(func, func_name)) {
                     debugpos2 = debugpos1 + 2;
@@ -2496,11 +2430,7 @@ var Interpreter;
                 func[func_name] = i;
                 j = i;
                 k = 1;
-                while (true) {
-                    if (j >= code_len) {
-                        debugpos2 = debugpos1 + 2;
-                        throw new Error("funcの{}がありません。");
-                    }
+                while (j < code_len) {
                     // sym = code[j++];
                     sym = code_str[j++];
                     // if (sym == "func") { k++; }
@@ -2658,10 +2588,11 @@ var Interpreter;
                 }
                 match2("}", j++);
                 func_end = j;
-                i = func_end;
                 // ***** 文(ステートメント)のコンパイル(再帰的に実行) *****
                 c_statement(func_stm, func_end - 1, "", "");
-                code_push("funcend", debugpos1, i);
+                debugpos1 = j - 1; // エラー表示位置調整
+                code_push("funcend", debugpos1, j);
+                i = func_end;
                 continue;
             }
 
@@ -2840,9 +2771,7 @@ var Interpreter;
                 while (j < sym_end) {
                     // elsif
                     if (symbol[j] == "elsif") {
-
-                        debugpos1 = j;
-
+                        debugpos1 = j; // エラー表示位置調整
                         j++;
                         match2("(", j++);
                         // 式
@@ -2875,9 +2804,7 @@ var Interpreter;
                     }
                     // else
                     if (symbol[j] == "else") {
-
-                        debugpos1 = j;
-
+                        debugpos1 = j; // エラー表示位置調整
                         j++;
                         match2("{", j++);
                         // 文
@@ -2898,6 +2825,7 @@ var Interpreter;
                 // 終了
                 if_end = j;
                 // ***** 新しいシンボルの生成 *****
+                debugpos1 = i - 1; // エラー表示位置調整
                 // 式
                 j = c_expression2(if_exp, if_stm - 3);
                 code_push("ifnotgoto", debugpos1, j);
@@ -3527,10 +3455,8 @@ var Interpreter;
             code_push(param_num, debugpos1, i);
             // ***** 関数の呼び出し *****
             if (func_type == 1) {
-                if (func_name == "input") {
-                    code_push("callinput", debugpos1, i);
-                } else if (func_name == "keyinput") {
-                    code_push("callkeyinput", debugpos1, i);
+                if (func_name == "input" || func_name == "keyinput") {
+                    code_push("callwait", debugpos1, i);
                 } else {
                     code_push("call", debugpos1, i);
                 }
@@ -5371,22 +5297,38 @@ var Interpreter;
             return num;
         });
         make_one_func_tbl_B("input", 0, function (param) {
-            // (これは未使用)
-            // var num;
-            // var a1;
-            //
-            // if (param.length <= 0) {
-            //     a1 = 0;
-            // } else {
-            //     a1 = parseInt(param[0], 10);
-            // }
-            // // ***** キー入力待ちはしない *****
-            // if (input_buf.length > 0) {
-            //     num = input_buf.shift();
-            // } else {
-            //     num = 0;
-            // }
-            // return num;
+            var num;
+            var a1;
+            var repeat_flag;
+
+            if (param.length <= 0) {
+                a1 = 0;
+                repeat_flag = true;
+            } else {
+                a1 = parseInt(param[0], 10);
+                repeat_flag = false;
+            }
+            // ***** キー入力ありのとき *****
+            if (input_buf.length > 0) {
+                input_flag = false;
+                num = input_buf.shift();
+                return num;
+            }
+            // ***** キー入力なしのとき *****
+            if (repeat_flag) {
+                input_flag = true;
+                sleep_flag = true;
+                sleep_time = 1000;
+                return 0;
+            }
+            if (a1 > 0 && !input_flag) {
+                input_flag = true;
+                sleep_flag = true;
+                sleep_time = a1;
+                return 0;
+            }
+            input_flag = false;
+            return 0;
         });
         make_one_func_tbl_B("inputdlg", 1, function (param) {
             var num;
@@ -5475,22 +5417,38 @@ var Interpreter;
             return num;
         });
         make_one_func_tbl_B("keyinput", 0, function (param) {
-            // (これは未使用)
-            // var num;
-            // var a1;
-            //
-            // if (param.length <= 0) {
-            //     a1 = 0;
-            // } else {
-            //     a1 = parseInt(param[0], 10);
-            // }
-            // // ***** キー入力待ちはしない *****
-            // if (keyinput_buf.length > 0) {
-            //     num = keyinput_buf.shift();
-            // } else {
-            //     num = 0;
-            // }
-            // return num;
+            var num;
+            var a1;
+            var repeat_flag;
+
+            if (param.length <= 0) {
+                a1 = 0;
+                repeat_flag = true;
+            } else {
+                a1 = parseInt(param[0], 10);
+                repeat_flag = false;
+            }
+            // ***** キー入力ありのとき *****
+            if (keyinput_buf.length > 0) {
+                keyinput_flag = false;
+                num = keyinput_buf.shift();
+                return num;
+            }
+            // ***** キー入力なしのとき *****
+            if (repeat_flag) {
+                keyinput_flag = true;
+                sleep_flag = true;
+                sleep_time = 1000;
+                return 0;
+            }
+            if (a1 > 0 && !keyinput_flag) {
+                keyinput_flag = true;
+                sleep_flag = true;
+                sleep_time = a1;
+                return 0;
+            }
+            keyinput_flag = false;
+            return 0;
         });
         make_one_func_tbl_B("keyscan", 1, function (param) {
             var num;
