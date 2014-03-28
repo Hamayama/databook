@@ -1,7 +1,7 @@
 // This file is encoded with UTF-8 without BOM.
 
 // sp_interpreter.js
-// 2014-3-28 v3.08
+// 2014-3-29 v3.09
 
 
 // SPALM Web Interpreter
@@ -1477,13 +1477,12 @@ var Interpreter;
     }
     // ***** 文字チェック *****
     function match2(ch, i) {
-        // if (i >= symbol_len) {
-        if (i >= symbol_len - 4) { // 終端の分を引いて判定
-            debugpos2 = symbol_len - 4;
+        if (i >= symbol_len) {
+            debugpos2 = symbol_len;
             throw new Error("'" + ch + "' が見つかりませんでした。");
         }
         if (ch != symbol[i]) {
-            debugpos2 = i;
+            debugpos2 = i + 1;
             throw new Error("'" + ch + "' があるべき所に '" + symbol[i] + "' が見つかりました。");
         }
         // ***** 加算されないので注意 *****
@@ -1682,6 +1681,11 @@ var Interpreter;
         try {
             compile();
         } catch (ex2) {
+            if (debug_mode == 0) {
+                DebugShow("symbol:(" + symbol_len + "個): ");
+                msg = symbol.join(" ");
+                DebugShow(msg + "\n");
+            }
             DebugShow("code  :(" + code_len + "個): ");
             msg = code_str.join(" ");
             DebugShow(msg + "\n");
@@ -3642,14 +3646,14 @@ var Interpreter;
         } else {
             // ***** 変数名のチェック *****
             if (!(isAlpha(var_name.charAt(0)) || var_name.charAt(0) == "_")) {
-                debugpos2 = i + 1;
+                debugpos2 = i;
                 throw new Error("変数名が不正です。('" + var_name + "')");
             }
             // ***** 接頭語のチェック *****
             if (var_name == "global" || var_name == "glb" || var_name == "local" || var_name == "loc") {
                 var_name2 = symbol[i++];
                 if (!(isAlpha(var_name2.charAt(0)) || var_name2.charAt(0) == "_")) {
-                    debugpos2 = i + 1;
+                    debugpos2 = i;
                     throw new Error("変数名が不正です。('" + var_name2 + "')");
                 }
                 var_name = var_name.charAt(0) + "\\" + var_name2;
@@ -3696,14 +3700,14 @@ var Interpreter;
         }
         // ***** 変数名のチェック *****
         if (!(isAlpha(var_name.charAt(0)) || var_name.charAt(0) == "_")) {
-            debugpos2 = i + 1;
+            debugpos2 = i;
             throw new Error("変数名が不正です。('" + var_name + "')");
         }
         // ***** 接頭語のチェック *****
         if (var_name == "global" || var_name == "glb" || var_name == "local" || var_name == "loc") {
             var_name2 = symbol[i++];
             if (!(isAlpha(var_name2.charAt(0)) || var_name2.charAt(0) == "_")) {
-                debugpos2 = i + 1;
+                debugpos2 = i;
                 throw new Error("変数名が不正です。('" + var_name2 + "')");
             }
             var_name = var_name.charAt(0) + "\\" + var_name2;
@@ -5838,29 +5842,29 @@ var Interpreter;
 
     // ***** 組み込み関数(戻り値なし)の定義情報1個の生成 *****
     function make_one_func_tbl_A(name, param_num, func) {
-        // ***** 定義情報1個の生成 *****
+        // (定義情報1個の生成)
         if (!func_tbl[name]) { func_tbl[name] = {}; }
-        // ***** 引数の数を設定(ただし省略可能な引数は数に入れない) *****
+        // (引数の数を設定(ただし省略可能な引数は数に入れない))
         func_tbl[name].param_num = param_num;
-        // ***** 「変数名をとる引数」の指定フラグを生成 *****
+        // (「変数名をとる引数」の指定フラグを生成)
         if (!func_tbl[name].param_varname) { func_tbl[name].param_varname = {}; }
-        // ***** 戻り値の有無を設定 *****
+        // (戻り値の有無を設定)
         func_tbl[name].use_retval = false;
-        // ***** 関数の本体を設定 *****
+        // (関数の本体を設定)
         func_tbl[name].func = func;
     }
     // ***** 組み込み関数(戻り値あり)の定義情報1個の生成 *****
     function make_one_func_tbl_B(name, param_num, func) {
-        // ***** 定義情報1個の生成 *****
+        // (定義情報1個の生成)
         if (!func_tbl[name]) { func_tbl[name] = {}; }
-        // ***** 引数の数を設定(ただし省略可能な引数は数に入れない) *****
-        // ***** (-1にすると組み込み変数になり、()なしで呼び出せる) *****
+        // (引数の数を設定(ただし省略可能な引数は数に入れない))
+        // (これを-1にすると組み込み変数になり、()なしで呼び出せる)
         func_tbl[name].param_num = param_num;
-        // ***** 「変数名をとる引数」の指定フラグを生成 *****
+        // (「変数名をとる引数」の指定フラグを生成)
         if (!func_tbl[name].param_varname) { func_tbl[name].param_varname = {}; }
-        // ***** 戻り値の有無を設定 *****
+        // (戻り値の有無を設定)
         func_tbl[name].use_retval = true;
-        // ***** 関数の本体を設定 *****
+        // (関数の本体を設定)
         func_tbl[name].func = func;
     }
     // ***** 組み込み関数のx番目の引数が「変数名をとる引数」であることを指定する *****
@@ -5881,29 +5885,29 @@ var Interpreter;
 
     // ***** 追加の組み込み関数(戻り値なし)の定義情報1個の生成 *****
     function add_one_func_tbl_A(name, param_num, func) {
-        // ***** 定義情報1個の生成 *****
+        // (定義情報1個の生成)
         if (!addfunc_tbl[name]) { addfunc_tbl[name] = {}; }
-        // ***** 引数の数を設定(ただし省略可能な引数は数に入れない) *****
+        // (引数の数を設定(ただし省略可能な引数は数に入れない))
         addfunc_tbl[name].param_num = param_num;
-        // ***** 「変数名をとる引数」の指定フラグを生成 *****
+        // (「変数名をとる引数」の指定フラグを生成)
         if (!addfunc_tbl[name].param_varname) { addfunc_tbl[name].param_varname = {}; }
-        // ***** 戻り値の有無を設定 *****
+        // (戻り値の有無を設定)
         addfunc_tbl[name].use_retval = false;
-        // ***** 関数の本体を設定 *****
+        // (関数の本体を設定)
         addfunc_tbl[name].func = func;
     }
     // ***** 追加の組み込み関数(戻り値あり)の定義情報1個の生成 *****
     function add_one_func_tbl_B(name, param_num, func) {
-        // ***** 定義情報1個の生成 *****
+        // (定義情報1個の生成)
         if (!addfunc_tbl[name]) { addfunc_tbl[name] = {}; }
-        // ***** 引数の数を設定(ただし省略可能な引数は数に入れない) *****
-        // ***** (-1にすると組み込み変数になり、()なしで呼び出せる) *****
+        // (引数の数を設定(ただし省略可能な引数は数に入れない))
+        // (これを-1にすると組み込み変数になり、()なしで呼び出せる)
         addfunc_tbl[name].param_num = param_num;
-        // ***** 「変数名をとる引数」の指定フラグを生成 *****
+        // (「変数名をとる引数」の指定フラグを生成)
         if (!addfunc_tbl[name].param_varname) { addfunc_tbl[name].param_varname = {}; }
-        // ***** 戻り値の有無を設定 *****
+        // (戻り値の有無を設定)
         addfunc_tbl[name].use_retval = true;
-        // ***** 関数の本体を設定 *****
+        // (関数の本体を設定)
         addfunc_tbl[name].func = func;
     }
     // ***** 追加の組み込み関数のx番目の引数が「変数名をとる引数」であることを指定する *****
