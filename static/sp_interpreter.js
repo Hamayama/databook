@@ -1,7 +1,7 @@
 // This file is encoded with UTF-8 without BOM.
 
 // sp_interpreter.js
-// 2014-3-28 v3.07
+// 2014-3-28 v3.08
 
 
 // SPALM Web Interpreter
@@ -2553,6 +2553,7 @@ var Interpreter;
                 i++;
                 code_push("func", debugpos1, i);
                 func_name = symbol[i++];
+                // ***** 関数名のチェック *****
                 if (!(isAlpha(func_name.charAt(0)) || func_name.charAt(0) == "_")) {
                     debugpos2 = i;
                     throw new Error("関数名が不正です。");
@@ -3334,7 +3335,6 @@ var Interpreter;
         var i, j;
         var ch;
         var sym;
-        var pre_inc;
         var func_type;
         var func_name;
         var param_num;
@@ -3398,6 +3398,19 @@ var Interpreter;
             } else {
                 i = c_getvarname(i, sym_end);
             }
+            return i;
+        }
+        // ***** プレインクリメント(「++」「--」)のとき *****
+        if (sym == "++") {
+            i++;
+            i = c_getvarname(i, sym_end);
+            code_push("preinc", debugpos1, i);
+            return i;
+        }
+        if (sym == "--") {
+            i++;
+            i = c_getvarname(i, sym_end);
+            code_push("predec", debugpos1, i);
             return i;
         }
 
@@ -3467,21 +3480,6 @@ var Interpreter;
             return i;
         }
 
-        // ***** プレインクリメント(「++」「--」)のとき *****
-        pre_inc = 0;
-        if (sym == "++") {
-            i++;
-            pre_inc = 1;
-            // ***** シンボル取り出し *****
-            sym = symbol[i];
-        }
-        if (sym == "--") {
-            i++;
-            pre_inc = -1;
-            // ***** シンボル取り出し *****
-            sym = symbol[i];
-        }
-
         // ***** 1文字取り出す *****
         ch = sym.charAt(0);
         // ***** 文字列のとき *****
@@ -3535,16 +3533,6 @@ var Interpreter;
             }
 
             // ***** 変数の処理 *****
-
-            // ***** プレインクリメント(「++」「--」)のとき *****
-            if (pre_inc == 1) {
-                code_push("preinc", debugpos1, i);
-                return i;
-            }
-            if (pre_inc == -1) {
-                code_push("predec", debugpos1, i);
-                return i;
-            }
 
             // ***** シンボル取り出し *****
             sym = symbol[i];
@@ -3840,14 +3828,14 @@ var Interpreter;
             // ***** 10進数のとき *****
             if (isDigit(ch)) {
                 dot_count = 0;
-                zero_flag = 0;
-                if (ch == "0" && isDigit(ch2)) { sym_start = i; } else { zero_flag = 1; } // 先頭の0をカット
+                zero_flag = true;
+                if (ch == "0" && isDigit(ch2)) { sym_start = i; } else { zero_flag = false; } // 先頭の0をカット
                 while (i < src_len) {
                     ch = src.charAt(i);
                     ch2 = src.charAt(i + 1);
-                    if (ch == "." && isDigit(ch2)) { dot_count++; } // 小数点チェック
-                    if (isDigit(ch) || (ch == "." && isDigit(ch2))) { i++; } else { break; } // 小数点対応
-                    if (zero_flag == 0 && ch == "0" && isDigit(ch2)) { sym_start = i; } else { zero_flag = 1; } // 先頭の0をカット
+                    if (ch == "." && isDigit(ch2)) { i++; dot_count++; continue; } // 小数点チェック
+                    if (isDigit(ch)) { i++; } else { break; }
+                    if (zero_flag && ch == "0" && isDigit(ch2)) { sym_start = i; } else { zero_flag = false; } // 先頭の0をカット
                 }
                 if (dot_count >= 2) { throw new Error("数値の小数点重複エラー"); }
                 symbol_push(src.substring(sym_start, i), line_no);
