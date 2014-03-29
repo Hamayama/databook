@@ -1,7 +1,7 @@
 // This file is encoded with UTF-8 without BOM.
 
 // sp_interpreter.js
-// 2014-3-29 v3.09
+// 2014-3-30 v3.10
 
 
 // SPALM Web Interpreter
@@ -180,7 +180,6 @@ function get_prog_id(list_st) {
 // ***** リストファイルの読み込み *****
 function load_listfile(fname, error_show_flag) {
     var ret;
-    var http_obj;
 
     // ***** 戻り値の初期化 *****
     ret = false;
@@ -191,50 +190,23 @@ function load_listfile(fname, error_show_flag) {
     // ***** 要素の存在チェック *****
     if (!document.getElementById("prog_sel1")) { Alm("load_listfile:0004"); return ret; }
     // ***** ファイルの読み込み *****
-    http_obj = createXMLHttpObject();
-    if (!http_obj) {
-        if (error_show_flag) { Alm2("load_listfile:-:リストファイル読み込みエラー"); }
-        return ret;
-    }
-    http_obj.onreadystatechange = function () {
-        var i, list_st, prog_id, elm;
-        // ***** IE8対策 *****
-        // if (http_obj.readyState == 4 && http_obj.status == 200) {
-        if (http_obj.readyState == 4) {
-            if (http_obj.status == 200 || http_obj.status == 0) {
-                list_st = http_obj.responseText;
-                if (list_st) {
-                    // ***** プログラムID(複数)の取得 *****
-                    prog_id = get_prog_id(list_st);
-                    // ***** プログラムリストに追加 *****
-                    elm = document.getElementById("prog_sel1");
-                    elm.length = 0;
-                    for (i = 0; i < prog_id.length; i++) {
-                        if (check_id(prog_id[i], 8)) {
-                            elm.length++;
-                            elm.options[elm.length - 1].value = prog_id[i];
-                            elm.options[elm.length - 1].text  = prog_id[i];
-                        }
-                    }
-                } else {
-                    if (error_show_flag) { Alm2("load_listfile:+:リストファイル読み込みエラー"); }
-                }
-            } else {
-                if (error_show_flag) { Alm2("load_listfile:*:リストファイル読み込みエラー"); }
+    load_textfile(fname, function (list_st) {
+        var i, prog_id, elm;
+        // ***** プログラムID(複数)の取得 *****
+        prog_id = get_prog_id(list_st);
+        // ***** プログラムリストに追加 *****
+        elm = document.getElementById("prog_sel1");
+        elm.length = 0;
+        for (i = 0; i < prog_id.length; i++) {
+            if (check_id(prog_id[i], 8)) {
+                elm.length++;
+                elm.options[elm.length - 1].value = prog_id[i];
+                elm.options[elm.length - 1].text  = prog_id[i];
             }
         }
-    };
-    http_obj.open("GET", fname, true);
-    // HTTP/1.0 における汎用のヘッダフィールド
-    http_obj.setRequestHeader("Pragma", "no-cache");
-    // HTTP/1.1 におけるキャッシュ制御のヘッダフィールド
-    http_obj.setRequestHeader("Cache-Control", "no-cache");
-    // 指定日時以降に更新があれば内容を返し、更新がなければ304ステータスを返す
-    // ヘッダフィールド。古い日時を指定すれば、必ず内容を返す。
-    http_obj.setRequestHeader("If-Modified-Since", "Thu, 01 Jun 1970 00:00:00 GMT");
-    // ***** IE8対策 *****
-    // http_obj.send(null);
-    try { http_obj.send(null); } catch (ex) { }
+    }, function (err_st) {
+        if (error_show_flag) { Alm2("load_listfile:" + err_st + ":リストファイル読み込みエラー"); }
+    });
     // ***** 戻り値を返す *****
     ret = true;
     return ret;
@@ -243,7 +215,6 @@ function load_listfile(fname, error_show_flag) {
 // ***** ソースファイルの読み込み *****
 function load_srcfile(fname, auto_run_flag) {
     var ret;
-    var http_obj;
 
     // ***** 戻り値の初期化 *****
     ret = false;
@@ -256,36 +227,52 @@ function load_srcfile(fname, auto_run_flag) {
     // ***** ロード中にする *****
     Interpreter.setloadstat(true);
     // ***** ファイルの読み込み *****
+    load_textfile(fname, function (src_st) {
+        // ***** ロード中を解除(ロード完了) *****
+        Interpreter.setloadstat(2);
+        // ***** テキストボックスにセット *****
+        document.getElementById("src_text1").value = src_st;
+        // ***** スクロールを先頭に移動 *****
+        if (document.getElementById("src_text1").scrollTop) {
+            document.getElementById("src_text1").scrollTop = 0;
+        }
+        // ***** 自動実行 *****
+        if (auto_run_flag) { run_button(); }
+    }, function (err_st) {
+        Alm2("load_srcfile:" + err_st + ":ソースファイル読み込みエラー");
+        // ***** ロード中を解除 *****
+        Interpreter.setloadstat(false);
+    });
+    // ***** 戻り値を返す *****
+    ret = true;
+    return ret;
+}
+
+// ***** テキストファイルの読み込み *****
+function load_textfile(fname, ok_func, ng_func) {
+    var ret;
+    var http_obj;
+
+    // ***** 戻り値の初期化 *****
+    ret = false;
+    // ***** 引数のチェック *****
+    if (fname == null) { Alm("load_textfile:0001"); return ret; }
+    if (fname == "") { Alm("load_textfile:0002"); return ret; }
+    if (typeof (ok_func) != "function") { Alm("load_textfile:0003"); return ret; }
+    if (typeof (ng_func) != "function") { Alm("load_textfile:0004"); return ret; }
+    // ***** ファイルの読み込み *****
     http_obj = createXMLHttpObject();
-    if (!http_obj) { Alm2("load_srcfile:-:ソースファイル読み込みエラー"); return ret; }
+    if (!http_obj) { ng_func("-"); return ret; }
     http_obj.onreadystatechange = function () {
-        var src_st;
+        var data_st;
         // ***** IE8対策 *****
         // if (http_obj.readyState == 4 && http_obj.status == 200) {
         if (http_obj.readyState == 4) {
             if (http_obj.status == 200 || http_obj.status == 0) {
-                src_st = http_obj.responseText;
-                if (src_st) {
-                    // ***** ロード中を解除(ロード完了) *****
-                    Interpreter.setloadstat(2);
-                    // ***** テキストボックスにセット *****
-                    document.getElementById("src_text1").value = src_st;
-                    // ***** スクロールを先頭に移動 *****
-                    if (document.getElementById("src_text1").scrollTop) {
-                        document.getElementById("src_text1").scrollTop = 0;
-                    }
-                    // ***** 自動実行 *****
-                    if (auto_run_flag) { run_button(); }
-                } else {
-                    Alm2("load_srcfile:+:ソースファイル読み込みエラー");
-                    // ***** ロード中を解除 *****
-                    Interpreter.setloadstat(false);
-                }
-            } else {
-                Alm2("load_srcfile:*:ソースファイル読み込みエラー");
-                // ***** ロード中を解除 *****
-                Interpreter.setloadstat(false);
-            }
+                data_st = http_obj.responseText;
+                if (data_st) { ok_func(data_st); }
+                else { ng_func("+"); }
+            } else { ng_func("*"); }
         }
     };
     http_obj.open("GET", fname, true);
@@ -517,11 +504,11 @@ var Interpreter;
 
     var src;                    // ソース
     var symbol = [];            // シンボル          (配列)
-    var symbol_line = [];       // シンボルが何行目か(配列)
+    var symbol_line = [];       // シンボルが何行目か(配列)(エラー表示用)
     var symbol_len = 0;         // シンボル数        (symbol.lengthのキャッシュ用)
     var code = [];              // コード            (配列)
-    var code_info = [];         // コード情報        (配列)
-    var code_str = [];          // コード表示用      (配列)(ラベル設定時にも使用)
+    var code_info = [];         // コード情報        (配列)(エラー表示用)
+    var code_str = [];          // コード文字列      (配列)(表示用とラベル設定用)
     var code_len = 0;           // コード数          (code.lengthのキャッシュ用)
     var vars = {};              // 変数用            (Varsクラスのインスタンス)
     var imgvars = {};           // 画像変数用        (連想配列オブジェクト)
@@ -3610,6 +3597,7 @@ var Interpreter;
         // (一部の構文エラーを発生させない(過去との互換性維持のため))
         if (sym == ")") {
             i++;
+            code_push("store0", debugpos1, i);
             return i;
         }
         debugpos2 = i + 1;
@@ -3733,16 +3721,25 @@ var Interpreter;
 
     // ***** コード追加 *****
     function code_push(sym, pos1, pos2) {
+        // (命令コードは数値に変換)
         if (opecode.hasOwnProperty(sym)) {
             code[code_len] = opecode[sym];
+        // (文字列はダブルクォートを外す)
         } else if (sym.charAt && sym.charAt(0) == '"') {
-            code[code_len] = sym.substring(1, sym.length - 1);
+            if (sym.length >= 2 && sym.charAt(sym.length - 1) == '"') {
+                code[code_len] = sym.substring(1, sym.length - 1);
+            } else {
+                code[code_len] = sym.substring(1);
+            }
+        // (その他のときはそのまま格納)
         } else {
             code[code_len] = sym;
         }
+        // (コード情報にはデバッグ位置の情報を格納)
         code_info[code_len] = {};
         code_info[code_len].pos1 = pos1;
         code_info[code_len].pos2 = pos2;
+        // (コード文字列にはそのまま格納)
         code_str[code_len++] = sym;
     }
 
