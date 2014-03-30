@@ -1,7 +1,7 @@
 // This file is encoded with UTF-8 without BOM.
 
 // sp_interpreter.js
-// 2014-3-30 v3.10
+// 2014-3-30 v3.11
 
 
 // SPALM Web Interpreter
@@ -977,9 +977,9 @@ var Interpreter;
                 // 配列のグローバル変数(番号は異なる)が存在するか
                 array_name = var_name.substring(0, i);
                 if (Vars.KeysAvailable) {
-                    if (Object.keys(this.globalvars).some(
-                        function (v) { return (v.substring(0, i) == array_name); }
-                    )) {
+                    if (Object.keys(this.globalvars).some(function (v) {
+                        return (v.substring(0, i) == array_name);
+                    })) {
                         this.globalvars[var_name] = 0;
                         return 0;
                     }
@@ -1053,9 +1053,9 @@ var Interpreter;
                 // 配列のグローバル変数(番号は異なる)が存在するか
                 array_name = var_name.substring(0, i);
                 if (Vars.KeysAvailable) {
-                    if (Object.keys(this.globalvars).some(
-                        function (v) { return (v.substring(0, i) == array_name); }
-                    )) {
+                    if (Object.keys(this.globalvars).some(function (v) {
+                        return (v.substring(0, i) == array_name);
+                    })) {
                         this.globalvars[var_name] = var_value;
                         return true;
                     }
@@ -1124,14 +1124,12 @@ var Interpreter;
                 // ***** ローカル変数の存在チェック *****
                 var_name_to = "";
                 if (Vars.KeysAvailable) {
-                    Object.keys(localvars).filter(
-                        function (v) { return (v.substring(0, var_name_len) == var_name); }
-                    ).forEach(
-                        function (v) {
-                            var_name_to = var_name2 + v.substring(var_name_len);
-                            self.setVarValue(var_name_to, localvars[v]);
-                        }
-                    );
+                    Object.keys(localvars).filter(function (v) {
+                        return (v.substring(0, var_name_len) == var_name);
+                    }).forEach(function (v) {
+                        var_name_to = var_name2 + v.substring(var_name_len);
+                        self.setVarValue(var_name_to, localvars[v]);
+                    });
                 } else {
                     for (var_name_from in localvars) {
                         if (var_name_from.substring(0, var_name_len) == var_name) {
@@ -1149,14 +1147,12 @@ var Interpreter;
             }
             // ***** グローバル変数の存在チェック *****
             if (Vars.KeysAvailable) {
-                Object.keys(this.globalvars).filter(
-                    function (v) { return (v.substring(0, var_name_len) == var_name); }
-                ).forEach(
-                    function (v) {
-                        var_name_to = var_name2 + v.substring(var_name_len);
-                        self.setVarValue(var_name_to, self.globalvars[v]);
-                    }
-                );
+                Object.keys(this.globalvars).filter(function (v) {
+                    return (v.substring(0, var_name_len) == var_name);
+                }).forEach(function (v) {
+                    var_name_to = var_name2 + v.substring(var_name_len);
+                    self.setVarValue(var_name_to, self.globalvars[v]);
+                });
             } else {
                 for (var_name_from in this.globalvars) {
                     if (var_name_from.substring(0, var_name_len) == var_name) {
@@ -1208,14 +1204,12 @@ var Interpreter;
                 // ***** ローカル変数の存在チェック *****
                 delete_flag = false;
                 if (Vars.KeysAvailable) {
-                    Object.keys(localvars).filter(
-                        function (v) { return (v.substring(0, var_name_len) == var_name); }
-                    ).forEach(
-                        function (v) {
-                            delete localvars[v];
-                            delete_flag = true;
-                        }
-                    );
+                    Object.keys(localvars).filter(function (v) {
+                        return (v.substring(0, var_name_len) == var_name);
+                    }).forEach(function (v) {
+                        delete localvars[v];
+                        delete_flag = true;
+                    });
                 } else {
                     for (var_name2 in localvars) {
                         if (var_name2.substring(0, var_name_len) == var_name) {
@@ -1233,13 +1227,11 @@ var Interpreter;
             }
             // ***** グローバル変数の存在チェック *****
             if (Vars.KeysAvailable) {
-                Object.keys(this.globalvars).filter(
-                    function (v) { return (v.substring(0, var_name_len) == var_name); }
-                ).forEach(
-                    function (v) {
-                        delete self.globalvars[v];
-                    }
-                );
+                Object.keys(this.globalvars).filter(function (v) {
+                    return (v.substring(0, var_name_len) == var_name);
+                }).forEach(function (v) {
+                    delete self.globalvars[v];
+                });
             } else {
                 for (var_name2 in this.globalvars) {
                     if (var_name2.substring(0, var_name_len) == var_name) {
@@ -1657,22 +1649,15 @@ var Interpreter;
             DebugShow("実行終了\n");
             return ret;
         }
-        if (debug_mode == 1) {
-            DebugShow("symbol:(" + symbol_len + "個): ");
-            msg = symbol.join(" ");
-            DebugShow(msg + "\n");
-        }
         // ***** コンパイル *****
         debugpos1 = 0;
         debugpos2 = 0;
         try {
             compile();
         } catch (ex2) {
-            if (debug_mode == 0) {
-                DebugShow("symbol:(" + symbol_len + "個): ");
-                msg = symbol.join(" ");
-                DebugShow(msg + "\n");
-            }
+            DebugShow("symbol:(" + symbol_len + "個): ");
+            msg = symbol.join(" ");
+            DebugShow(msg + "\n");
             DebugShow("code  :(" + code_len + "個): ");
             msg = code_str.join(" ");
             DebugShow(msg + "\n");
@@ -1682,6 +1667,9 @@ var Interpreter;
             return ret;
         }
         if (debug_mode == 1) {
+            DebugShow("symbol:(" + symbol_len + "個): ");
+            msg = symbol.join(" ");
+            DebugShow(msg + "\n");
             DebugShow("code  :(" + code_len + "個): ");
             msg = code_str.join(" ");
             DebugShow(msg + "\n");
@@ -1799,16 +1787,17 @@ var Interpreter;
             // DebugShow(pc + "\n");
         } catch (ex4) {
             if (prof_obj) { prof_obj.stop("result"); }
-            debugpos1 = code_info[debugpc].pos1;
-            debugpos2 = code_info[debugpc].pos2;
-            DebugShow("execcode: " + ex4.message + ": debugpos=" + debugpos1 + ", debugpc=" + debugpc + "\n");
-            show_err_place(debugpos1, debugpos2);
             // ***** プラグイン用の実行後処理 *****
             for (name in after_run_funcs) {
                 if (after_run_funcs.hasOwnProperty(name)) {
                     after_run_funcs[name]();
                 }
             }
+            // ***** エラー表示 *****
+            debugpos1 = code_info[debugpc].pos1;
+            debugpos2 = code_info[debugpc].pos2;
+            DebugShow("execcode: " + ex4.message + ": debugpos=" + debugpos1 + ", debugpc=" + debugpc + "\n");
+            show_err_place(debugpos1, debugpos2);
             // ***** エラー終了 *****
             running_flag = false; runstatchanged();
             DebugShow("実行終了\n");
@@ -3823,7 +3812,12 @@ var Interpreter;
                 // ***** NaN対策 *****
                 temp_no = temp_no | 0;
 
-                symbol_push(String(temp_no), line_no); // 文字列にする
+                if (temp_no < 0) { // 負のときは符号を分離する
+                    symbol_push("-", line_no);
+                    symbol_push(String(-temp_no), line_no);
+                } else {
+                    symbol_push(String(temp_no), line_no);
+                }
                 continue;
             }
             // ***** 10進数のとき *****
