@@ -1,7 +1,7 @@
 // This file is encoded with UTF-8 without BOM.
 
 // sp_interpreter.js
-// 2014-3-30 v3.11
+// 2014-3-31 v3.12
 
 
 // SPALM Web Interpreter
@@ -2536,7 +2536,20 @@ var Interpreter;
                 // ***** 関数名のチェック *****
                 if (!(isAlpha(func_name.charAt(0)) || func_name.charAt(0) == "_")) {
                     debugpos2 = i;
-                    throw new Error("関数名が不正です。");
+                    throw new Error("関数名が不正です。('" + func_name + "')");
+                }
+                if (func_tbl.hasOwnProperty(func_name) || addfunc_tbl.hasOwnProperty(func_name) ||
+                    func_name == "label"  || func_name == "goto"     || func_name == "gosub"    ||
+                    func_name == "return" || func_name == "end"      || func_name == "func"     ||
+                    func_name == "break"  || func_name == "continue" ||
+                    func_name == "switch" || func_name == "case"     || func_name == "default"  ||
+                    func_name == "if"     || func_name == "elsif"    || func_name == "else"     ||
+                    func_name == "for"    || func_name == "while"    || func_name == "do") {
+                    // (一部の関数定義エラーを発生させない(過去との互換性維持のため))
+                    if (func_name != "int") {
+                        debugpos2 = i;
+                        throw new Error("名前 '" + func_name + "' は予約されています。関数の定義に失敗しました。");
+                    }
                 }
                 code_push('"' + func_name + '"', debugpos1, i);
                 // ***** 仮引数 *****
