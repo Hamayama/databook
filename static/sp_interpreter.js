@@ -1,7 +1,7 @@
 // This file is encoded with UTF-8 without BOM.
 
 // sp_interpreter.js
-// 2014-3-31 v3.12
+// 2014-3-31 v3.13
 
 
 // SPALM Web Interpreter
@@ -189,7 +189,7 @@ function load_listfile(fname, error_show_flag) {
     if (error_show_flag == null) { Alm("load_listfile:0003"); return ret; }
     // ***** 要素の存在チェック *****
     if (!document.getElementById("prog_sel1")) { Alm("load_listfile:0004"); return ret; }
-    // ***** ファイルの読み込み *****
+    // ***** テキストファイルの読み込み *****
     load_textfile(fname, function (list_st) {
         var i, prog_id, elm;
         // ***** プログラムID(複数)の取得 *****
@@ -226,7 +226,7 @@ function load_srcfile(fname, auto_run_flag) {
     if (!document.getElementById("src_text1")) { Alm("load_srcfile:0004"); return ret; }
     // ***** ロード中にする *****
     Interpreter.setloadstat(true);
-    // ***** ファイルの読み込み *****
+    // ***** テキストファイルの読み込み *****
     load_textfile(fname, function (src_st) {
         // ***** ロード中を解除(ロード完了) *****
         Interpreter.setloadstat(2);
@@ -260,7 +260,7 @@ function load_textfile(fname, ok_func, ng_func) {
     if (fname == "") { Alm("load_textfile:0002"); return ret; }
     if (typeof (ok_func) != "function") { Alm("load_textfile:0003"); return ret; }
     if (typeof (ng_func) != "function") { Alm("load_textfile:0004"); return ret; }
-    // ***** ファイルの読み込み *****
+    // ***** テキストファイルの読み込み *****
     http_obj = createXMLHttpObject();
     if (!http_obj) { ng_func("-"); return ret; }
     http_obj.onreadystatechange = function () {
@@ -1634,7 +1634,6 @@ var Interpreter;
         // ***** 実行開始 *****
         DebugShow("実行開始\n");
         // ***** シンボル初期化 *****
-        debugpos1 = 0;
         try {
             initsymbol();
         } catch (ex1) {
@@ -1872,7 +1871,7 @@ var Interpreter;
         // ***** シンボル取り出し *****
         debugpc = pc;
         sym = code[pc++];
-        // ***** 命令コードの処理 *****
+        // ***** スタックマシンのコードを実行 *****
         switch (sym) {
             // ( case opecode.load: が遅かったので数値を直接指定する)
             case 1: // load
@@ -2544,7 +2543,9 @@ var Interpreter;
                     func_name == "break"  || func_name == "continue" ||
                     func_name == "switch" || func_name == "case"     || func_name == "default"  ||
                     func_name == "if"     || func_name == "elsif"    || func_name == "else"     ||
-                    func_name == "for"    || func_name == "while"    || func_name == "do") {
+                    func_name == "for"    || func_name == "while"    || func_name == "do"       ||
+                    func_name == "global" || func_name == "glb"      || func_name == "local"    ||
+                    func_name == "loc") {
                     // (一部の関数定義エラーを発生させない(過去との互換性維持のため))
                     if (func_name != "int") {
                         debugpos2 = i;
@@ -3454,7 +3455,7 @@ var Interpreter;
             if ((func_type == 1 && param_num < func_tbl[func_name].param_num) ||
                 (func_type == 2 && param_num < addfunc_tbl[func_name].param_num)) {
                 debugpos2 = i;
-                throw new Error("引数の数が足りません。");
+                throw new Error(func_name + "() の引数の数が足りません。");
             }
             // ***** 引数の数を設定 *****
             code_push("storenum", debugpos1, i);
@@ -3747,7 +3748,7 @@ var Interpreter;
 
 
     // ===== 以下はシンボル初期化処理 =====
-    // (ソースを解析してシンボルを生成する)
+    // (ソースの文字列を解析してシンボルを生成する)
 
 
     // ***** シンボル追加 *****
