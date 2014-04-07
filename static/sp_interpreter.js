@@ -1,7 +1,7 @@
 // This file is encoded with UTF-8 without BOM.
 
 // sp_interpreter.js
-// 2014-4-7 v3.16
+// 2014-4-8 v3.17
 
 
 // SPALM Web Interpreter
@@ -602,7 +602,14 @@ var Interpreter;
         label:41,       "goto":42,      ifgoto:43,      ifnotgoto:44,   gotostack:45,
         gosubstack:46,  "return":47,    func:48,        funcend:49,     call:50,
         callwait:51,    calladdfunc:52, calluser:53,    gotouser:54,    loadparam:55,
-        pop:56,         dup:57,         end:58          };
+        pop:56,         dup:57,         end:58 };
+
+    var reserved = {            // 予約名
+        "label":1,      "goto":2,       "gosub":3,      "return":4,     "end":5,
+        "func":6,       "funcgoto":7,   "break":8,      "continue":9,   "switch":10,
+        "case":11,      "default":12,   "if":13,        "elsif":14,     "else":15,
+        "for":16,       "while":17,     "do":18,        "global":19,    "glb":20,
+        "local":21,     "loc":22 };
 
     // ***** hasOwnPropertyをプロパティ名に使うかもしれない場合の対策 *****
     // (変数名、関数名、ラベル名、画像変数名について、
@@ -1725,15 +1732,9 @@ var Interpreter;
                     debugpos2 = i;
                     throw new Error("関数名が不正です。('" + func_name + "')");
                 }
-                if (func_tbl.hasOwnProperty(func_name) || addfunc_tbl.hasOwnProperty(func_name) ||
-                    func_name == "label"    || func_name == "goto"   || func_name == "gosub"    ||
-                    func_name == "return"   || func_name == "end"    || func_name == "func"     ||
-                    func_name == "funcgoto" || func_name == "break"  || func_name == "continue" ||
-                    func_name == "switch"   || func_name == "case"   || func_name == "default"  ||
-                    func_name == "if"       || func_name == "elsif"  || func_name == "else"     ||
-                    func_name == "for"      || func_name == "while"  || func_name == "do"       ||
-                    func_name == "global"   || func_name == "glb"    || func_name == "local"    ||
-                    func_name == "loc") {
+                if (reserved.hasOwnProperty(func_name) ||
+                    func_tbl.hasOwnProperty(func_name) ||
+                    addfunc_tbl.hasOwnProperty(func_name)) {
                     // (一部の関数定義エラーを発生させない(過去との互換性維持のため))
                     if (func_name != "int") {
                         debugpos2 = i;
