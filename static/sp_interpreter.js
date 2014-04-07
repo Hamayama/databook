@@ -1726,13 +1726,13 @@ var Interpreter;
                     throw new Error("関数名が不正です。('" + func_name + "')");
                 }
                 if (func_tbl.hasOwnProperty(func_name) || addfunc_tbl.hasOwnProperty(func_name) ||
-                    func_name == "label"  || func_name == "goto"     || func_name == "gosub"    ||
-                    func_name == "return" || func_name == "end"      || func_name == "func"     ||
-                    func_name == "break"  || func_name == "continue" ||
-                    func_name == "switch" || func_name == "case"     || func_name == "default"  ||
-                    func_name == "if"     || func_name == "elsif"    || func_name == "else"     ||
-                    func_name == "for"    || func_name == "while"    || func_name == "do"       ||
-                    func_name == "global" || func_name == "glb"      || func_name == "local"    ||
+                    func_name == "label"    || func_name == "goto"   || func_name == "gosub"    ||
+                    func_name == "return"   || func_name == "end"    || func_name == "func"     ||
+                    func_name == "funcgoto" || func_name == "break"  || func_name == "continue" ||
+                    func_name == "switch"   || func_name == "case"   || func_name == "default"  ||
+                    func_name == "if"       || func_name == "elsif"  || func_name == "else"     ||
+                    func_name == "for"      || func_name == "while"  || func_name == "do"       ||
+                    func_name == "global"   || func_name == "glb"    || func_name == "local"    ||
                     func_name == "loc") {
                     // (一部の関数定義エラーを発生させない(過去との互換性維持のため))
                     if (func_name != "int") {
