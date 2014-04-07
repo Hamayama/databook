@@ -1,7 +1,7 @@
 // This file is encoded with UTF-8 without BOM.
 
 // sp_interpreter.js
-// 2014-4-5 v3.15
+// 2014-4-7 v3.16
 
 
 // SPALM Web Interpreter
@@ -601,8 +601,8 @@ var Interpreter;
         cmpne:36,       cmplt:37,       cmple:38,       cmpgt:39,       cmpge:40,
         label:41,       "goto":42,      ifgoto:43,      ifnotgoto:44,   gotostack:45,
         gosubstack:46,  "return":47,    func:48,        funcend:49,     call:50,
-        callwait:51,    calladdfunc:52, calluser:53,    loadparam:54,   pop:55,
-        dup:56,         end:57          };
+        callwait:51,    calladdfunc:52, calluser:53,    gotouser:54,    loadparam:55,
+        pop:56,         dup:57,         end:58          };
 
     // ***** hasOwnPropertyをプロパティ名に使うかもしれない場合の対策 *****
     // (変数名、関数名、ラベル名、画像変数名について、
@@ -1451,7 +1451,47 @@ var Interpreter;
                     // ***** 関数の呼び出し *****
                     pc = func[func_name];
                     break;
-                case 54: // loadparam
+                case 54: // gotouser
+                    // ***** 引数の取得 *****
+                    param_num = stack.pop();
+                    param = [];
+                    for(i = 0; i < param_num; i++) {
+                        param[param_num - i - 1] = stack.pop();
+                    }
+                    // ***** 関数名の取得 *****
+                    func_name = stack.pop();
+                    func_name = toglobal(func_name);
+                    // ***** 関数の存在チェック *****
+                    // if (!func.hasOwnProperty(func_name)) {
+                    if (!hasOwn.call(func, func_name)) {
+                        throw new Error("関数 '" + func_name + "' の呼び出しに失敗しました(関数が未定義です)。");
+                    }
+                    // ***** 関数内のとき *****
+                    if (funccall_stack.length > 0) {
+
+                        // (コールスタックを増加させないで関数を呼び出す)
+
+                        // ***** ローカル変数をクリア *****
+                        vars.localvars = {};
+                        // ***** 関数呼び出し情報を更新 *****
+                        funccall_stack[funccall_stack.length - 1].func_start = func[func_name];
+                        funccall_stack[funccall_stack.length - 1].func_end = func[func_name + "\\end"];
+                        // ***** 関数の呼び出し *****
+                        pc = func[func_name];
+                        break;
+                    }
+                    // ***** ローカル変数を生成 *****
+                    vars.makeLocalScope();
+                    // ***** 関数呼び出し情報の生成 *****
+                    funccall_info = {};
+                    funccall_info.func_back = pc;
+                    funccall_info.func_start = func[func_name];
+                    funccall_info.func_end = func[func_name + "\\end"];
+                    funccall_stack.push(funccall_info);
+                    // ***** 関数の呼び出し *****
+                    pc = func[func_name];
+                    break;
+                case 55: // loadparam
                     if (param.length > 0) {
                         num = param.shift();
                     } else {
@@ -1475,15 +1515,15 @@ var Interpreter;
                     }
                     vars.setVarValue(var_name, num);
                     break;
-                case 55: // pop
+                case 56: // pop
                     stack.pop();
                     break;
-                case 56: // dup
+                case 57: // dup
                     num = stack.pop();
                     stack.push(num);
                     stack.push(num);
                     break;
-                case 57: // end
+                case 58: // end
                     end_flag = true;
                     break;
                 default:
@@ -1598,6 +1638,7 @@ var Interpreter;
         var sym;
 
         var func_name, func_stm, func_end;
+        var param_num;
 
         var switch_exp, switch_stm, switch_default_stm, switch_end;
         var switch_case_no;
@@ -1735,6 +1776,38 @@ var Interpreter;
                 debugpos1 = j - 1; // エラー表示位置調整
                 code_push("funcend", debugpos1, j);
                 i = func_end;
+                continue;
+            }
+
+            // ***** funcgoto文のとき *****
+            if (sym == "funcgoto") {
+                i++;
+                match2("(", i++);
+                // ***** 変数名のコンパイル *****
+                i = c_getvarname(i, sym_end);
+                // ***** 引数の取得 *****
+                match2("(", i++);
+                param_num = 0;
+                if (symbol[i] == ")") {
+                    i++;
+                } else {
+                    while (i < sym_end) {
+                        i = c_expression(i, sym_end);
+                        param_num++;
+                        if (symbol[i] == ",") {
+                            i++;
+                            continue;
+                        }
+                        break;
+                    }
+                    match2(")", i++);
+                }
+                // ***** 引数の数を設定 *****
+                code_push("storenum", debugpos1, i);
+                code_push(param_num, debugpos1, i);
+                // ***** 関数の呼び出し *****
+                code_push("gotouser", debugpos1, i);
+                match2(")", i++);
                 continue;
             }
 

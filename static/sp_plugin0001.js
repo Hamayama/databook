@@ -1605,97 +1605,225 @@ var Plugin0001;
         add_one_func_tbl_B("intstradd", 2, function (param, vars, can, ctx) {
             var num;
             var a1, a2;
-            var reg_exp;
-            var ret;
             var i;
-            var x_sign, y_sign, z_sign;
-            var x_str, y_str, z_str;
-            var x_digit = [];
-            var y_digit = [];
-            var z_digit = [];
-            var z_digit_len;
-            var x_diginum, y_diginum;
+            var x = {};
+            var y = {};
+            var z = {};
 
             a1 = String(param[0]); // 数値の文字列1
             a2 = String(param[1]); // 数値の文字列2
 
             // ***** 数値を各桁に分解する *****
-            reg_exp = /^([+\-]?)(\d*)/;
-            ret = reg_exp.exec(a1);
-            if (ret) {
-                if (ret[1]) { x_sign = ret[1]; } else { x_sign = "+"; }
-                if (ret[2]) { x_str = ret[2]; } else { x_str = "0"; }
-            } else { x_sign = "+"; x_str = "0"; }
-            x_digit = x_str.split("").reverse();
-            ret = reg_exp.exec(a2);
-            if (ret) {
-                if (ret[1]) { y_sign = ret[1]; } else { y_sign = "+"; }
-                if (ret[2]) { y_str = ret[2]; } else { y_str = "0"; }
-            } else { y_sign = "+"; y_str = "0"; }
-            y_digit = y_str.split("").reverse();
+            make_digit_obj(x, a1, true);
+            make_digit_obj(y, a2, true);
             // ***** 各桁を加算する *****
-            if (x_digit.length >= y_digit.length) {
-                z_digit_len = x_digit.length + 1;
+            if (x.digit_len >= y.digit_len) {
+                z.digit_len = x.digit_len + 1;
+                z.digit = [];
+                for (i = 0; i < y.digit_len; i++) {
+                    z.digit[i] = x.digit[i] + y.digit[i];
+                }
+                for (i = y.digit_len; i < x.digit_len; i++) {
+                    z.digit[i] = x.digit[i];
+                }
             } else {
-                z_digit_len = y_digit.length + 1;
-            }
-            for (i = 0; i < z_digit_len; i++) {
-                if (i < x_digit.length) {
-                    x_diginum = parseInt(x_sign + x_digit[i], 10);
-                } else {
-                    x_diginum = 0;
+                z.digit_len = y.digit_len + 1;
+                z.digit = [];
+                for (i = 0; i < x.digit_len; i++) {
+                    z.digit[i] = y.digit[i] + x.digit[i];
                 }
-                if (i < y_digit.length) {
-                    y_diginum = parseInt(y_sign + y_digit[i], 10);
-                } else {
-                    y_diginum = 0;
+                for (i = x.digit_len; i < y.digit_len; i++) {
+                    z.digit[i] = y.digit[i];
                 }
-                z_digit[i] = x_diginum + y_diginum;
             }
+            z.digit[z.digit_len - 1] = 0;
             // ***** 各桁の桁あふれを処理する *****
-            for (i = 0; i < z_digit_len - 1; i++) {
-                if (z_digit[i] >= 10) {
-                    z_digit[i] = z_digit[i] - 10;
-                    z_digit[i + 1] = z_digit[i + 1] + 1;
-                } else if (z_digit[i] <= -10) {
-                    z_digit[i] = z_digit[i] + 10;
-                    z_digit[i + 1] = z_digit[i + 1] - 1;
+            for (i = 0; i < z.digit_len - 1; i++) {
+                if (z.digit[i] >= 10) {
+                    z.digit[i] -= 10;
+                    z.digit[i + 1]++;
+                } else if (z.digit[i] <= -10) {
+                    z.digit[i] += 10;
+                    z.digit[i + 1]--;
                 }
             }
             // ***** 結果の符号を求める *****
-            z_sign = "+";
-            for (i = z_digit_len - 1; i >= 0; i--) {
-                if (z_digit[i] < 0) { z_sign = "-"; break; }
-                if (z_digit[i] > 0) { z_sign = "+"; break; }
+            z.sign = "+";
+            for (i = z.digit_len - 1; i >= 0; i--) {
+                if (z.digit[i] < 0) { z.sign = "-"; break; }
+                if (z.digit[i] > 0) { z.sign = "+"; break; }
             }
             // ***** 各桁の符号を合わせる *****
-            if (z_sign == "+") {
-                for (i = 0; i < z_digit_len - 1; i++) {
-                    if (z_digit[i] < 0) {
-                        z_digit[i] = z_digit[i] + 10;
-                        z_digit[i + 1] = z_digit[i + 1] - 1;
+            if (z.sign == "+") {
+                for (i = 0; i < z.digit_len - 1; i++) {
+                    if (z.digit[i] < 0) {
+                        z.digit[i] += 10;
+                        z.digit[i + 1]--;
                     }
                 }
             } else {
-                for (i = 0; i < z_digit_len - 1; i++) {
-                    if (z_digit[i] > 0) {
-                        z_digit[i] = z_digit[i] - 10;
-                        z_digit[i + 1] = z_digit[i + 1] + 1;
+                for (i = 0; i < z.digit_len - 1; i++) {
+                    if (z.digit[i] > 0) {
+                        z.digit[i] -= 10;
+                        z.digit[i + 1]++;
                     }
                 }
             }
             // ***** 文字列に変換して返す *****
-            for (i = 0; i < z_digit_len; i++) {
-                z_digit[i] = String(Math.abs(z_digit[i]) | 0);
+            update_digit_obj_str(z, true);
+            num = z.str;
+            return num;
+        });
+        // ***** 数値の文字列を乗算して文字列で返す命令の追加 *****
+        // (例. y=intstrmul("100","200")  を実行すると y="20000"  となる)
+        // (例. y=intstrmul("100","-200") を実行すると y="-20000" となる)
+        add_one_func_tbl_B("intstrmul", 2, function (param, vars, can, ctx) {
+            var num;
+            var a1, a2;
+            var i, j;
+            var x = {};
+            var y = {};
+            var z = {};
+            var carry_num;
+
+            a1 = String(param[0]); // 数値の文字列1
+            a2 = String(param[1]); // 数値の文字列2
+
+            // ***** 数値を各桁に分解する *****
+            make_digit_obj(x, a1, false);
+            make_digit_obj(y, a2, false);
+            // ***** 各桁を乗算する *****
+            z.digit_len = x.digit_len + y.digit_len;
+            z.digit = [];
+            for (i = 0; i < z.digit_len; i++) {
+                z.digit[i] = 0;
             }
-            z_str = z_digit.reverse().join("");
-            reg_exp = /^0*([1-9]\d*)/;
-            ret = reg_exp.exec(z_str);
-            if (ret && ret[1]) { z_str = ret[1]; } else { z_str = "0"; }
-            if (z_sign == "-") {
-                num = z_sign + z_str;
+            for (i = 0; i < x.digit_len; i++) {
+                for (j = 0; j < y.digit_len; j++) {
+                    z.digit[i + j] += x.digit[i] * y.digit[j];
+                    if (z.digit[i + j] >= 10) {
+                        carry_num = parseInt(z.digit[i + j] / 10, 10);
+                        z.digit[i + j]     -= carry_num * 10;
+                        z.digit[i + j + 1] += carry_num;
+                    }
+                }
+            }
+            // ***** 結果の符号を求める *****
+            if ((x.sign == "+" && y.sign == "+") || (x.sign == "-" && y.sign == "-")) {
+                z.sign = "+";
             } else {
-                num = z_str;
+                z.sign = "-";
+            }
+            // ***** 文字列に変換して返す *****
+            update_digit_obj_str(z, false);
+            num = z.str;
+            return num;
+        });
+        // ***** 数値の文字列を除算して文字列で返す命令の追加 *****
+        // (例. y=intstrdiv("10","3")   を実行すると y="3"   となる)
+        // (例. y=intstrdiv("10","-3")  を実行すると y="-3"  となる)
+        // (例. y=intstrdiv("10","3",1) を実行すると y="1"   となる(第3引数を1にすると余りを返す))
+        // (例. y=intstrdiv("10","3",2) を実行すると y="3,1" となる(第3引数を2にすると商と余りをカンマ区切りで返す))
+        add_one_func_tbl_B("intstrdiv", 2, function (param, vars, can, ctx) {
+            var num;
+            var a1, a2, a3;
+            var i, j;
+            var x = {};  // 被除数
+            var y = {};  // 除数
+            var z = {};  // 商
+            var z2 = {}; // 余り
+            var minus_flag;
+            var minus_count;
+
+            a1 = String(param[0]); // 数値の文字列1
+            a2 = String(param[1]); // 数値の文字列2
+            if (param.length <= 2) {
+                a3 = 0;
+            } else {
+                a3 = parseInt(param[2], 10); // 戻り値のタイプ指定
+            }
+
+            // ***** 数値を各桁に分解する *****
+            make_digit_obj(x, a1, false);
+            make_digit_obj(y, a2, false);
+            // ***** 0除算チェック *****
+            if (y.str == "0") {
+                if (x.str == "0") {
+                    z.str = "NaN";
+                } else {
+                    if ((x.sign == "+" && y.sign == "+") || (x.sign == "-" && y.sign == "-")) {
+                        z.str = "Infinity";
+                    } else {
+                        z.str = "-Infinity";
+                    }
+                }
+                z2.str = "NaN";
+                if (a3 == 1) {        // 余りを返す
+                    num = z2.str;
+                } else if (a3 == 2) { // 商と余りをカンマで区切って返す
+                    num = z.str + "," + z2.str;
+                } else {              // 商を返す
+                    num = z.str;
+                }
+                return num;
+            }
+            // ***** 除算処理 *****
+            z.digit_len = x.digit_len;
+            z2.digit_len = y.digit_len + 1;
+            z.digit = [];
+            for (i = 0; i < z.digit_len; i++) {
+                z.digit[i] = 0;
+            }
+            z2.digit = [];
+            for (i = 0; i < z2.digit_len; i++) {
+                z2.digit[i] = 0;
+            }
+            for (i = x.digit_len - 1; i >= 0; i--) {
+                // ***** 余りを左シフト *****
+                for (j = z2.digit_len - 2; j >= 0; j--) {
+                    z2.digit[j + 1] = z2.digit[j];
+                }
+                // ***** 余りの最下位桁を被除数のi桁目と同じに設定 *****
+                z2.digit[0] = x.digit[i];
+                // ***** 余りから除数を引く *****
+                minus_count = 0;
+                while (true) {
+                    minus_flag = true;
+                    if (z2.digit[z2.digit_len - 1] == 0) {
+                        for (j = z2.digit_len - 2; j >= 0; j--) {
+                            if (z2.digit[j] > y.digit[j]) { break; }
+                            if (z2.digit[j] < y.digit[j]) { minus_flag = false; break; }
+                        }
+                    }
+                    if (!minus_flag) { break; }
+                    minus_count++;
+                    for (j = 0; j < y.digit_len; j++) {
+                        z2.digit[j] = z2.digit[j] - y.digit[j];
+                        if (z2.digit[j] < 0) {
+                            z2.digit[j] += 10;
+                            z2.digit[j + 1]--;
+                        }
+                    }
+                }
+                // ***** 引けた回数を商のi桁目の値とする *****
+                z.digit[i] = minus_count;
+            }
+            // ***** 結果の符号を求める *****
+            if ((x.sign == "+" && y.sign == "+") || (x.sign == "-" && y.sign == "-")) {
+                z.sign = "+";
+            } else {
+                z.sign = "-";
+            }
+            z2.sign = x.sign;
+            // ***** 文字列に変換して返す *****
+            update_digit_obj_str(z, false);
+            update_digit_obj_str(z2, false);
+            if (a3 == 1) {        // 余りを返す
+                num = z2.str;
+            } else if (a3 == 2) { // 商と余りをカンマで区切って返す
+                num = z.str + "," + z2.str;
+            } else {              // 商を返す
+                num = z.str;
             }
             return num;
         });
@@ -2135,6 +2263,93 @@ var Plugin0001;
         }
         // ***** 戻り値を返す *****
         return ret_st;
+    }
+
+    // ***** 数値を各桁に分解したオブジェクトを作る(整数のみ対応) *****
+    // (xには空のオブジェクトを渡すこと。以下のプロパティがセットされて返る。
+    //    x.sign      : 符号文字列
+    //    x.str       : 数値文字列
+    //    x.digit[i]  : 各桁の値
+    //    x.digit_len : 桁数)
+    function make_digit_obj(x, num_st, use_minus_digit) {
+        var reg_exp;
+        var ret;
+        var i;
+        var arr_st;
+        var exp_num;
+        var int_st;
+        var frac_st;
+
+        // ***** 符号と数値(整数部のみ)を取り出す *****
+        reg_exp = /^([+\-])?(\d*)(?:\.(\d*))?(?:[eE]([+\-]?\d*))?/;
+        ret = reg_exp.exec(num_st);
+        if (ret) {
+            // (符号)
+            if (ret[1]) { x.sign = ret[1]; } else { x.sign = "+"; }
+            // (整数部)
+            if (ret[2]) { int_st = ret[2]; } else { int_st = ""; }
+            // (小数部)
+            if (ret[3]) { frac_st = ret[3]; } else { frac_st = ""; }
+            // (指数部)
+            if (ret[4]) {
+                exp_num = parseInt(ret[4], 10);
+                // (整数部に指数部を反映)
+                if (exp_num > 0) {
+                    arr_st = [];
+                    for (i = 0; i < exp_num; i++) { arr_st[i] = "0"; }
+                    frac_st += arr_st.join("");
+                    int_st += frac_st.substring(0, exp_num);
+                } else if (exp_num < 0) {
+                    int_st = int_st.substring(0, int_st.length + exp_num);
+                }
+            }
+            if (int_st != "") { x.str = int_st; } else { x.str = "0"; }
+        } else { x.sign = "+"; x.str = "0"; }
+        // ***** 数値を各桁に分解する *****
+        arr_st = x.str.split("");
+        x.digit_len = arr_st.length;
+        x.digit = [];
+        if (use_minus_digit) {
+            for (i = 0; i < x.digit_len; i++) {
+                x.digit[i] = parseInt(x.sign + arr_st[x.digit_len - i - 1], 10);
+            }
+        } else {
+            for (i = 0; i < x.digit_len; i++) {
+                x.digit[i] = parseInt(arr_st[x.digit_len - i - 1], 10);
+            }
+        }
+    }
+    // ***** 数値を各桁に分解したオブジェクトの文字列を更新する *****
+    function update_digit_obj_str(x, use_minus_digit) {
+        var reg_exp;
+        var ret;
+        var i;
+        var arr_st;
+
+        // ***** 数値の各桁を文字列に変換 *****
+        arr_st = [];
+        if (use_minus_digit) {
+            for (i = 0; i < x.digit_len; i++) {
+                if (x.digit[i] < 0) {
+                    arr_st[x.digit_len - i - 1] = String(-x.digit[i]);
+                } else {
+                    arr_st[x.digit_len - i - 1] = String(x.digit[i]);
+                }
+            }
+        } else {
+            for (i = 0; i < x.digit_len; i++) {
+                arr_st[x.digit_len - i - 1] = String(x.digit[i]);
+            }
+        }
+        x.str = arr_st.join("");
+        // ***** 先頭の0を削除 *****
+        reg_exp = /^0*([1-9]\d*)/;
+        ret = reg_exp.exec(x.str);
+        if (ret && ret[1]) { x.str = ret[1]; } else { x.str = "0"; }
+        // ***** 符号を追加 *****
+        if (x.str != "0" && x.sign == "-") {
+            x.str = x.sign + x.str;
+        }
     }
 
     // ***** 音楽全停止 *****
