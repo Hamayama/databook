@@ -1742,7 +1742,7 @@ var Plugin0001;
                 }
             }
             // ***** 結果の符号を求める *****
-            if ((x.sign == "+" && y.sign == "+") || (x.sign == "-" && y.sign == "-")) {
+            if (x.sign == y.sign) {
                 z.sign = "+";
             } else {
                 z.sign = "-";
@@ -1881,7 +1881,7 @@ var Plugin0001;
                 z.digit[i] = minus_count;
             }
             // ***** 結果の符号を求める *****
-            if ((x.sign == "+" && y.sign == "+") || (x.sign == "-" && y.sign == "-")) {
+            if (x.sign == y.sign) {
                 z.sign = "+";
             } else {
                 z.sign = "-";
