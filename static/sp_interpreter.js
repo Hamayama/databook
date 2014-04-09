@@ -1,7 +1,7 @@
 // This file is encoded with UTF-8 without BOM.
 
 // sp_interpreter.js
-// 2014-4-8 v3.17
+// 2014-4-9 v3.18
 
 
 // SPALM Web Interpreter
@@ -1509,6 +1509,8 @@ var Interpreter;
                     if (var_name.substring(0, 2) == "p\\") {
                         // (引数名から「p\」を削除)
                         var_name = var_name.substring(2);
+                        // (文字列化)
+                        num = String(num);
                         // ***** 変数名のチェック *****
                         // (アルファベットかアンダースコアで始まらなければエラー)
                         c = num.charCodeAt(0);
