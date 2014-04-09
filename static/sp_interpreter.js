@@ -1,7 +1,7 @@
 // This file is encoded with UTF-8 without BOM.
 
 // sp_interpreter.js
-// 2014-4-9 v3.18
+// 2014-4-10 v3.19
 
 
 // SPALM Web Interpreter
@@ -4050,6 +4050,7 @@ var Interpreter;
             var a1, a2, a3, a4;
             var i;
             var a, b, x0, y0;
+            var r1, c1;
 
             a1 = parseFloat(param[0]); // X
             a2 = parseFloat(param[1]); // Y
@@ -4065,8 +4066,12 @@ var Interpreter;
             y0 = a2 + b; // 中心のY座標
             ctx.beginPath();
             ctx.moveTo(a + x0, y0);
+            r1 = 0;
+            c1 = 2 * Math.PI / 100;
             for (i = 1; i < 100; i++) {
-                ctx.lineTo(a * Math.cos(2 * Math.PI * i / 100) + x0, b * Math.sin(2 * Math.PI * i / 100) + y0);
+                // ctx.lineTo(a * Math.cos(2 * Math.PI * i / 100) + x0, b * Math.sin(2 * Math.PI * i / 100) + y0);
+                ctx.lineTo(a * Math.cos(r1) + x0, b * Math.sin(r1) + y0);
+                r1 += c1;
             }
             ctx.closePath();
             ctx.stroke();
@@ -4181,14 +4186,16 @@ var Interpreter;
             }
             if (a5 <= 0) { return true; }
             // ***** コピー処理 *****
-            if (a1 == a3 && a2 > a4) { // 前から処理か後から処理か
-                i_start = 0;
-                i_end = a5 - 1;
-                i_plus = 1;
-            } else {
+            if (a1 == a3 && a2 < a4) {
+                // (後から処理)
                 i_start = a5 - 1;
                 i_end = 0;
                 i_plus = -1;
+            } else {
+                // (前から処理)
+                i_start = 0;
+                i_end = a5 - 1;
+                i_plus = 1;
             }
             i = i_start;
             while (true) {
@@ -4379,6 +4386,7 @@ var Interpreter;
             var a1, a2, a3, a4;
             var i;
             var a, b, x0, y0;
+            var r1, c1;
 
             a1 = parseFloat(param[0]); // X
             a2 = parseFloat(param[1]); // Y
@@ -4394,8 +4402,12 @@ var Interpreter;
             y0 = a2 + b; // 中心のY座標
             ctx.beginPath();
             ctx.moveTo(a + x0, y0);
+            r1 = 0;
+            c1 = 2 * Math.PI / 100;
             for (i = 1; i < 100; i++) {
-                ctx.lineTo(a * Math.cos(2 * Math.PI * i / 100) + x0, b * Math.sin(2 * Math.PI * i / 100) + y0);
+                // ctx.lineTo(a * Math.cos(2 * Math.PI * i / 100) + x0, b * Math.sin(2 * Math.PI * i / 100) + y0);
+                ctx.lineTo(a * Math.cos(r1) + x0, b * Math.sin(r1) + y0);
+                r1 += c1;
             }
             ctx.closePath();
             // 以下は不要になったもよう(Chrome v27)
@@ -4411,6 +4423,7 @@ var Interpreter;
             var i;
             var a, b, x0, y0;
             var rad1, rad2;
+            var r1, c1;
 
             a1 = parseFloat(param[0]); // X
             a2 = parseFloat(param[1]); // Y
@@ -4430,8 +4443,12 @@ var Interpreter;
             }
             ctx.beginPath();
             ctx.moveTo(x0, y0);
+            r1 = rad1;
+            c1 = rad2 / 100;
             for (i = 0; i <= 100; i++) {
-                ctx.lineTo(a * Math.cos(rad1 + rad2 * i / 100) + x0, b * Math.sin(rad1 + rad2 * i / 100) + y0);
+                // ctx.lineTo(a * Math.cos(rad1 + rad2 * i / 100) + x0, b * Math.sin(rad1 + rad2 * i / 100) + y0);
+                ctx.lineTo(a * Math.cos(r1) + x0, b * Math.sin(r1) + y0);
+                r1 += c1;
             }
             ctx.closePath();
             // 以下は不要になったもよう(Chrome v27)
@@ -4752,6 +4769,7 @@ var Interpreter;
             var i;
             var a, b, x0, y0;
             var rad1, rad2;
+            var r1, c1;
 
             a1 = parseFloat(param[0]); // X
             a2 = parseFloat(param[1]); // Y
@@ -4766,9 +4784,15 @@ var Interpreter;
             rad1 = - a5 * Math.PI / 180; // PC上の角度は逆方向なのでマイナスを付ける
             rad2 = - a6 * Math.PI / 180; // PC上の角度は逆方向なのでマイナスを付ける
             ctx.beginPath();
-            ctx.moveTo(a * Math.cos(rad1) + x0, b * Math.sin(rad1) + y0);
+            r1 = rad1;
+            c1 = rad2 / 100;
+            // ctx.moveTo(a * Math.cos(rad1) + x0, b * Math.sin(rad1) + y0);
+            ctx.moveTo(a * Math.cos(r1) + x0, b * Math.sin(r1) + y0);
+            r1 += c1;
             for (i = 1; i <= 100; i++) {
-                ctx.lineTo(a * Math.cos(rad1 + rad2 * i / 100) + x0, b * Math.sin(rad1 + rad2 * i / 100) + y0);
+                // ctx.lineTo(a * Math.cos(rad1 + rad2 * i / 100) + x0, b * Math.sin(rad1 + rad2 * i / 100) + y0);
+                ctx.lineTo(a * Math.cos(r1) + x0, b * Math.sin(r1) + y0);
+                r1 += c1;
             }
             ctx.stroke();
             // 以下は不要になったもよう(Chrome v27)

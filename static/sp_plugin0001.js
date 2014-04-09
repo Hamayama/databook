@@ -292,10 +292,16 @@ var Plugin0001;
             return true;
         });
         add_one_func_tbl_A("dbgprint", 1, function (param, vars, can, ctx) {
-            var a1;
+            var a1, a2;
 
             a1 = String(param[0]);
-            DebugShow(a1 + "\n");
+            if (param.length <= 1) {
+                a2 = 1;
+            } else {
+                a2 = parseInt(param[1], 10);
+            }
+            if (a2 != 0) { a1 = a1 + "\n"; }
+            DebugShow(a1);
             return true;
         });
         add_one_func_tbl_A("dbgstop", 0, function (param, vars, can, ctx) {
@@ -458,10 +464,10 @@ var Plugin0001;
             // if (!vars.checkVar(b1 + "[" + i + "]")) { return true; }
 
             ctx.beginPath();
-            // x0 = parseInt(vars[a1 + "[" + i + "]"], 10);
-            x0 = parseInt(vars.getVarValue(a1 + "[" + i + "]"), 10);
-            // y0 = parseInt(vars[b1 + "[" + i + "]"], 10);
-            y0 = parseInt(vars.getVarValue(b1 + "[" + i + "]"), 10);
+            // x0 = parseFloat(vars[a1 + "[" + i + "]"]);
+            x0 = parseFloat(vars.getVarValue(a1 + "[" + i + "]"));
+            // y0 = parseFloat(vars[b1 + "[" + i + "]"]);
+            y0 = parseFloat(vars.getVarValue(b1 + "[" + i + "]"));
             ctx.moveTo(x0, y0);
             for (i = a2 + 1; i <= a3; i++) {
 
@@ -469,10 +475,10 @@ var Plugin0001;
                 // if (!vars.checkVar(a1 + "[" + i + "]")) { break; }
                 // if (!vars.checkVar(b1 + "[" + i + "]")) { break; }
 
-                // x1 = parseInt(vars[a1 + "[" + i + "]"], 10);
-                x1 = parseInt(vars.getVarValue(a1 + "[" + i + "]"), 10);
-                // y1 = parseInt(vars[b1 + "[" + i + "]"], 10);
-                y1 = parseInt(vars.getVarValue(b1 + "[" + i + "]"), 10);
+                // x1 = parseFloat(vars[a1 + "[" + i + "]"]);
+                x1 = parseFloat(vars.getVarValue(a1 + "[" + i + "]"));
+                // y1 = parseFloat(vars[b1 + "[" + i + "]"]);
+                y1 = parseFloat(vars.getVarValue(b1 + "[" + i + "]"));
                 ctx.lineTo(x1, y1);
             }
             ctx.closePath();
@@ -663,10 +669,10 @@ var Plugin0001;
             // if (!vars.checkVar(b1 + "[" + i + "]")) { return true; }
 
             ctx.beginPath();
-            // x0 = parseInt(vars[a1 + "[" + i + "]"], 10);
-            x0 = parseInt(vars.getVarValue(a1 + "[" + i + "]"), 10);
-            // y0 = parseInt(vars[b1 + "[" + i + "]"], 10);
-            y0 = parseInt(vars.getVarValue(b1 + "[" + i + "]"), 10);
+            // x0 = parseFloat(vars[a1 + "[" + i + "]"]);
+            x0 = parseFloat(vars.getVarValue(a1 + "[" + i + "]"));
+            // y0 = parseFloat(vars[b1 + "[" + i + "]"]);
+            y0 = parseFloat(vars.getVarValue(b1 + "[" + i + "]"));
             ctx.moveTo(x0, y0);
             for (i = a2 + 1; i <= a3; i++) {
 
@@ -674,10 +680,10 @@ var Plugin0001;
                 // if (!vars.checkVar(a1 + "[" + i + "]")) { break; }
                 // if (!vars.checkVar(b1 + "[" + i + "]")) { break; }
 
-                // x1 = parseInt(vars[a1 + "[" + i + "]"], 10);
-                x1 = parseInt(vars.getVarValue(a1 + "[" + i + "]"), 10);
-                // y1 = parseInt(vars[b1 + "[" + i + "]"], 10);
-                y1 = parseInt(vars.getVarValue(b1 + "[" + i + "]"), 10);
+                // x1 = parseFloat(vars[a1 + "[" + i + "]"]);
+                x1 = parseFloat(vars.getVarValue(a1 + "[" + i + "]"));
+                // y1 = parseFloat(vars[b1 + "[" + i + "]"]);
+                y1 = parseFloat(vars.getVarValue(b1 + "[" + i + "]"));
                 ctx.lineTo(x1, y1);
             }
             if (a4 == 0) { ctx.closePath(); }
@@ -968,15 +974,17 @@ var Plugin0001;
             }
 
             // ***** 描画処理 *****
-            if (a1 == b1 && y1 < b2) { // 前から処理か後から処理か
-                i_start = b2;
-                i_end = b3;
-                i_plus = 1;
-            } else {
+            if (a1 == b1 && b2 < y1) {
+                // (後から処理)
                 i_start = b3;
                 i_end = b2;
                 i_plus = -1;
                 y1 = y1 + (b3 - b2);
+            } else {
+                // (前から処理)
+                i_start = b2;
+                i_end = b3;
+                i_plus = 1;
             }
             i = i_start;
             while (true) {
