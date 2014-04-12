@@ -348,54 +348,128 @@ var Plugin0001;
             // for (var prop_name in stimg) { DebugShow(prop_name + " "); } DebugShow("\n");
             return true;
         });
-        add_one_func_tbl_A("drawpyramid", 4, function (param, vars, can, ctx) {
-            var a1, a2, a3, a4;
+        add_one_func_tbl_A("drawshape", 1, function (param, vars, can, ctx) {
+            var a1, a2, a3, a4, a5, a6, a7;
+            var mode;
+            var i;
+            var a, b, x0, y0, r1, c1;
             var x1, y1, x2, y2, ox, oy;
             var alpha_old;
 
-            a1 = parseFloat(param[0]); // X
-            a2 = parseFloat(param[1]); // Y
-            a3 = parseFloat(param[2]); // W
-            a4 = parseFloat(param[3]); // H
-            // ***** 座標の取得 *****
-            x1 = a1;
-            y1 = a2;
-            x2 = a1 + a3;
-            y2 = a2 + a4;
-            ox = a1 + a3 / 2;
-            oy = a2 + a4 / 2;
-            // ***** 描画処理 *****
-            alpha_old = ctx.globalAlpha;
-            ctx.beginPath();
-            ctx.moveTo(x1, y1);
-            ctx.lineTo(ox, oy);
-            ctx.lineTo(x1, y2);
-            ctx.closePath();
-            ctx.globalAlpha = 1.0;
-            ctx.fill();
-            ctx.beginPath();
-            ctx.moveTo(x1, y1);
-            ctx.lineTo(x2, y1);
-            ctx.lineTo(ox, oy);
-            ctx.closePath();
-            // ctx.globalAlpha = 0.75;
-            ctx.globalAlpha = 0.5;
-            ctx.fill();
-            ctx.beginPath();
-            ctx.moveTo(x1, y2);
-            ctx.lineTo(ox, oy);
-            ctx.lineTo(x2, y2);
-            ctx.closePath();
-            ctx.globalAlpha = 0.5;
-            ctx.fill();
-            ctx.beginPath();
-            ctx.moveTo(x2, y1);
-            ctx.lineTo(x2, y2);
-            ctx.lineTo(ox, oy);
-            ctx.closePath();
-            ctx.globalAlpha = 0.25;
-            ctx.fill();
-            ctx.globalAlpha = alpha_old;
+            mode = parseInt(param[0], 10); // 図形の種類
+            // ***** 図形の種類で場合分け *****
+            switch (mode) {
+                case 0: // 正多角形(塗りつぶしあり)
+                case 1: // 正多角形(塗りつぶしなし)
+                    if (param.length < 8) {
+                        a1 = 0;
+                        a2 = 0;
+                        a3 = 100;
+                        a4 = 100;
+                        a5 = 0;
+                        a6 = 120;
+                        a7 = 3;
+                    } else {
+                        a1 = parseFloat(param[1]);   // X
+                        a2 = parseFloat(param[2]);   // Y
+                        a3 = parseFloat(param[3]);   // W
+                        a4 = parseFloat(param[4]);   // H
+                        a5 = parseFloat(param[5]);   // 開始角
+                        a6 = parseFloat(param[6]);   // 加算角
+                        a7 = parseInt(param[7], 10); // 頂点数
+                    }
+                    // ***** エラーチェック *****
+                    if (a7 > 1000) { a7 = 1000; }
+                    // ***** 描画処理 *****
+                    a = a3 / 2;  // X方向の半径
+                    b = a4 / 2;  // Y方向の半径
+                    x0 = a1 + a; // 中心のX座標
+                    y0 = a2 + b; // 中心のY座標
+                    ctx.beginPath();
+                    r1 = (a5 - 90) * Math.PI / 180; // 開始角は真上を0とするため90を引く
+                    c1 = a6 * Math.PI / 180;
+                    ctx.moveTo(a * Math.cos(r1) + x0, b * Math.sin(r1) + y0);
+                    for (i = 1; i < a7; i++) {
+                        r1 += c1;
+                        ctx.lineTo(a * Math.cos(r1) + x0, b * Math.sin(r1) + y0);
+                    }
+                    ctx.closePath();
+                    if ((mode % 2) == 0) {
+                        ctx.fill();
+                    } else {
+                        ctx.stroke();
+                    }
+                    break;
+                case 100: // ピラミッド表示(塗りつぶしあり)
+                case 101: // ピラミッド表示(塗りつぶしなし)
+                    if (param.length < 5) {
+                        a1 = 0;
+                        a2 = 0;
+                        a3 = 100;
+                        a4 = 100;
+                    } else {
+                        a1 = parseFloat(param[1]); // X
+                        a2 = parseFloat(param[2]); // Y
+                        a3 = parseFloat(param[3]); // W
+                        a4 = parseFloat(param[4]); // H
+                    }
+                    // ***** 座標の取得 *****
+                    x1 = a1;
+                    y1 = a2;
+                    x2 = a1 + a3;
+                    y2 = a2 + a4;
+                    ox = a1 + a3 / 2;
+                    oy = a2 + a4 / 2;
+                    // ***** 描画処理 *****
+                    ctx.beginPath(); // 左側
+                    ctx.moveTo(x1, y1);
+                    ctx.lineTo(ox, oy);
+                    ctx.lineTo(x1, y2);
+                    ctx.closePath();
+                    if ((mode % 2) == 0) {
+                        alpha_old = ctx.globalAlpha;
+                        ctx.globalAlpha = 1.0;
+                        ctx.fill();
+                    } else {
+                        ctx.stroke();
+                    }
+                    ctx.beginPath(); // 上側
+                    ctx.moveTo(x1, y1);
+                    ctx.lineTo(x2, y1);
+                    ctx.lineTo(ox, oy);
+                    ctx.closePath();
+                    if ((mode % 2) == 0) {
+                        // ctx.globalAlpha = 0.75;
+                        ctx.globalAlpha = 0.5;
+                        ctx.fill();
+                    } else {
+                        ctx.stroke();
+                    }
+                    ctx.beginPath(); // 下側
+                    ctx.moveTo(x1, y2);
+                    ctx.lineTo(ox, oy);
+                    ctx.lineTo(x2, y2);
+                    ctx.closePath();
+                    if ((mode % 2) == 0) {
+                        ctx.globalAlpha = 0.5;
+                        ctx.fill();
+                    } else {
+                        ctx.stroke();
+                    }
+                    ctx.beginPath(); // 右側
+                    ctx.moveTo(x2, y1);
+                    ctx.lineTo(x2, y2);
+                    ctx.lineTo(ox, oy);
+                    ctx.closePath();
+                    if ((mode % 2) == 0) {
+                        ctx.globalAlpha = 0.25;
+                        ctx.fill();
+                        ctx.globalAlpha = alpha_old;
+                    } else {
+                        ctx.stroke();
+                    }
+                    break;
+            }
             return true;
         });
         add_one_func_tbl_A("fillarea", 2, function (param, vars, can, ctx) {
@@ -1790,6 +1864,8 @@ var Plugin0001;
             make_digit_obj(y, a2, false);
             // ***** エラーチェック *****
             err_flag = false;
+            z2.sign = "+";
+            z2.str = "NaN";
             if (x.str == "NaN" || y.str == "NaN") {
                 err_flag = true;
                 z.sign = "+";
@@ -1811,7 +1887,7 @@ var Plugin0001;
                 }
             }
             if (!err_flag && y.str == "Infinity") {
-                err_flag = 2;
+                err_flag = true;
                 z.sign = "+";
                 z.str = "0";
                 z2.sign = x.sign;
@@ -1834,10 +1910,6 @@ var Plugin0001;
                 }
             }
             if (err_flag) {
-                if (err_flag != 2) {
-                    z2.sign = "+";
-                    z2.str = "NaN";
-                }
                 if (a3 == 1) {        // 余りを返す
                     num = get_digit_obj_signed_str(z2);
                 } else if (a3 == 2) { // 商と余りをカンマで区切って返す
