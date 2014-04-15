@@ -1,7 +1,7 @@
 // This file is encoded with UTF-8 without BOM.
 
 // sp_interpreter.js
-// 2014-4-12 v3.20
+// 2014-4-15 v3.21
 
 
 // SPALM Web Interpreter
@@ -960,6 +960,7 @@ var Interpreter;
                 return ret;
             }
         } catch (ex4) {
+            // ***** エラー終了 *****
             if (prof_obj) { prof_obj.stop("result"); }
             // ***** プラグイン用の実行後処理 *****
             for (name in after_run_funcs) {
@@ -972,7 +973,7 @@ var Interpreter;
             debugpos2 = code_info[debugpc].pos2;
             DebugShow("execcode: " + ex4.message + ": debugpos=" + debugpos1 + ", debugpc=" + debugpc + "\n");
             show_err_place(debugpos1, debugpos2);
-            // ***** エラー終了 *****
+            // ***** 終了処理 *****
             running_flag = false; runstatchanged();
             DebugShow("実行終了\n");
             DebugShow("globalvars=" + JSON.stringify(vars.globalvars) + "\n");
@@ -981,8 +982,10 @@ var Interpreter;
             DebugShow("func=" + JSON.stringify(func) + "\n");
             DebugShow("stack=" + JSON.stringify(stack) + "\n");
             if (prof_obj && Profiler.MicroSecAvailable) { DebugShow(prof_obj.getAllResult()); }
+            // ***** 戻り値を返す *****
             return ret;
         }
+        // ***** 正常終了 *****
         if (prof_obj) { prof_obj.stop("result"); }
         // ***** プラグイン用の実行後処理 *****
         for (name in after_run_funcs) {
@@ -990,7 +993,7 @@ var Interpreter;
                 after_run_funcs[name]();
             }
         }
-        // ***** 終了 *****
+        // ***** 終了処理 *****
         running_flag = false; runstatchanged();
         DebugShow("実行終了\n");
         if (debug_mode == 1) {
@@ -1445,7 +1448,7 @@ var Interpreter;
                     // ***** 関数の存在チェック *****
                     // if (!func.hasOwnProperty(func_name)) {
                     if (!hasOwn.call(func, func_name)) {
-                        throw new Error("関数 '" + func_name + "' の呼び出しに失敗しました(関数が未定義です)。");
+                        throw new Error("関数 '" + func_name + "' の呼び出しに失敗しました(関数が未定義もしくはユーザ定義関数ではない等)。");
                     }
                     // ***** ローカル変数を生成 *****
                     vars.makeLocalScope();
@@ -1471,7 +1474,7 @@ var Interpreter;
                     // ***** 関数の存在チェック *****
                     // if (!func.hasOwnProperty(func_name)) {
                     if (!hasOwn.call(func, func_name)) {
-                        throw new Error("関数 '" + func_name + "' の呼び出しに失敗しました(関数が未定義です)。");
+                        throw new Error("関数 '" + func_name + "' の呼び出しに失敗しました(関数が未定義もしくはユーザ定義関数ではない等)。");
                     }
                     // ***** 関数内のとき *****
                     if (funccall_stack.length > 0) {
@@ -1644,6 +1647,7 @@ var Interpreter;
     // ***** 文(ステートメント)のコンパイル *****
     function c_statement(sym_start, sym_end, break_lbl, continue_lbl) {
         var i, j, k, k2;
+        var ch;
         var sym;
 
         var func_name, func_stm, func_end;
@@ -1786,8 +1790,17 @@ var Interpreter;
             if (sym == "funcgoto") {
                 i++;
                 match2("(", i++);
-                // ***** 変数名のコンパイル *****
-                i = c_getvarname(i, sym_end);
+                func_name = symbol[i];
+                // ***** 1文字取り出す *****
+                ch = func_name.charAt(0);
+                // ***** アルファベットかアンダースコアかポインタのとき *****
+                if (isAlpha(ch) || ch == "_" || ch == "*") {
+                    // ***** 変数名のコンパイル *****
+                    i = c_getvarname(i, sym_end);
+                } else {
+                    debugpos2 = i + 1;
+                    throw new Error("関数名が不正です。('" + func_name + "')");
+                }
                 // ***** 引数の取得 *****
                 match2("(", i++);
                 param_num = 0;
