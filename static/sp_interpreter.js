@@ -1,7 +1,7 @@
 // This file is encoded with UTF-8 without BOM.
 
 // sp_interpreter.js
-// 2014-4-15 v3.21
+// 2014-4-18 v3.22
 
 
 // SPALM Web Interpreter
@@ -4337,12 +4337,10 @@ var Interpreter;
                 // if (a4 & 4) { }                               // 左
                 if (a4 & 8)  { a2 = a2 - can1.width; }           // 右
                 else if (a4 & 1)  { a2 = a2 - can1.width / 2; }  // 中央
-                // else { }                                      // その他
                 // ***** 垂直方向 *****
                 // if (a4 & 16) { }                              // 上
                 if (a4 & 32) { a3 = a3 - can1.height; }          // 下
                 else if (a4 & 2)  { a3 = a3 - can1.height / 2; } // 中央
-                // else { }                                      // その他
                 // ***** 画像を描画(表示画面→ターゲット) *****
                 ctx.drawImage(can1, a2, a3);
             } else {
@@ -4352,18 +4350,96 @@ var Interpreter;
                     // if (a4 & 4) { }                                          // 左
                     if (a4 & 8)  { a2 = a2 - imgvars[a1].can.width; }           // 右
                     else if (a4 & 1)  { a2 = a2 - imgvars[a1].can.width / 2; }  // 中央
-                    // else { }                                                 // その他
                     // ***** 垂直方向 *****
                     // if (a4 & 16) { }                                         // 上
                     if (a4 & 32) { a3 = a3 - imgvars[a1].can.height; }          // 下
                     else if (a4 & 2)  { a3 = a3 - imgvars[a1].can.height / 2; } // 中央
-                    // else { }                                                 // その他
                     // ***** 画像を描画(画像変数→ターゲット) *****
                     ctx.drawImage(imgvars[a1].can, a2, a3);
                 } else {
                     throw new Error("Image「" + a1 + "」がロードされていません。");
                 }
             }
+            return true;
+        });
+
+        make_one_func_tbl_param("drawimgex", 0); // 「変数名をとる引数」を指定
+        make_one_func_tbl_A("drawimgex", 9, function (param) {
+            var a1, a2, a3, a4, a5, a6, a7, a8, a9;
+            var can0;
+            var img_w, img_h;
+
+            a1 = toglobal(getvarname(param[0])); // 画像変数名取得
+            a2 = parseInt(param[1], 10); // 元X
+            a3 = parseInt(param[2], 10); // 元Y
+            a4 = parseInt(param[3], 10); // 元W
+            a5 = parseInt(param[4], 10); // 元H
+            a6 = parseInt(param[5], 10); // 変換
+            a7 = parseInt(param[6], 10); // 先X
+            a8 = parseInt(param[7], 10); // 先Y
+            a9 = parseInt(param[8], 10); // アンカー
+
+            // ***** コピー元の画像を取得 *****
+            if (a1 == "screen") {
+                // (表示画面をコピー元とする)
+                can0 = can1;
+            } else {
+                // if (imgvars.hasOwnProperty(a1)) {
+                if (hasOwn.call(imgvars, a1)) {
+                    // (画像変数をコピー元とする)
+                    can0 = imgvars[a1].can;
+                } else {
+                    throw new Error("Image「" + a1 + "」がロードされていません。");
+                }
+            }
+
+            // ***** アンカーの座標を計算 *****
+            if (a6 == 4 || a6 == 5 || a6 == 6 || a6 == 7) {
+                img_w = can0.height;
+                img_h = can0.width;
+            } else {
+                img_w = can0.width;
+                img_h = can0.height;
+            }
+            // (水平方向の座標を計算)
+            // if (a9 & 4) { }                         // 左
+            if (a9 & 8)  { a7 = a7 - img_w; }          // 右
+            else if (a9 & 1)  { a7 = a7 - img_w / 2; } // 中央
+            // (垂直方向の座標を計算)
+            // if (a9 & 16) { }                        // 上
+            if (a9 & 32) { a8 = a8 - img_h; }          // 下
+            else if (a9 & 2)  { a8 = a8 - img_h / 2; } // 中央
+
+            // ***** 描画処理 *****
+            ctx.save();
+            ctx.translate(a7, a8);
+            // if (a6 == 0) { }   // 回転なし
+            if (a6 == 1) {        // 上下反転(=左右反転+180度回転)
+                ctx.translate(0, can0.height);
+                ctx.scale(1, -1);
+            } else if (a6 == 2) { // 左右反転(=左右反転+回転なし)
+                ctx.translate(can0.width, 0);
+                ctx.scale(-1, 1);
+            } else if (a6 == 3) { // 180度回転
+                ctx.translate(can0.width, can0.height);
+                ctx.rotate(Math.PI);
+            } else if (a6 == 4) { // 左右反転+270度回転
+                ctx.rotate(-Math.PI / 2);
+                ctx.scale(-1, 1);
+            } else if (a6 == 5) { // 90度回転
+                ctx.translate(can0.height, 0);
+                ctx.rotate(Math.PI / 2);
+            } else if (a6 == 6) { // 270度回転
+                ctx.translate(0, can0.width);
+                ctx.rotate(-Math.PI / 2);
+            } else if (a6 == 7) { // 左右反転+90度回転
+                ctx.translate(can0.height, can0.width);
+                ctx.rotate(Math.PI / 2);
+                ctx.scale(-1, 1);
+            }
+            // ctx.drawImage(can0, a2, a3, a4, a5, a7, a8, a4, a5);
+            ctx.drawImage(can0, a2, a3, a4, a5, 0, 0, a4, a5);
+            ctx.restore();
             return true;
         });
 
@@ -4915,9 +4991,9 @@ var Interpreter;
                 }
             }
             // ***** エラーチェック *****
-            // if (a1 <= 0 || a1 > max_scale_size || a2 <= 0 || a2 > max_scale_size) {
-            if (!(a1 > 0 && a1 <= max_scale_size && a2 > 0 && a2 <= max_scale_size)) {
-                throw new Error("座標系の倍率の値が不正です。0より大きく" + max_scale_size + "以下の数値を指定してください。");
+            // if (a1 < -max_scale_size || a1 > max_scale_size || a2 < -max_scale_size || a2 > max_scale_size) {
+            if (!(a1 >= -max_scale_size && a1 <= max_scale_size && a2 >= -max_scale_size && a2 <= max_scale_size)) {
+                throw new Error("座標系の倍率の値が不正です。-" + max_scale_size + "から" + max_scale_size + "までの数値を指定してください。");
             }
             // ***** 座標系の倍率設定 *****
             ctx_scalex = a1;

@@ -1453,6 +1453,7 @@ var Plugin0001;
             for (i = a2; i <= a3; i++) {
                 // st1 = vars[a1 + "[" + i + "]"];
                 st1 = vars.getVarValue(a1 + "[" + i + "]");
+                st1 = String(st1);
                 st2 = st1.replace(reg_exp, rep_str);
                 // vars[a1 + "[" + i + "]"] = st2;
                 vars.setVarValue(a1 + "[" + i + "]", st2);
@@ -1506,6 +1507,7 @@ var Plugin0001;
             for (i = a2; i <= a3; i++) {
                 // st1 = vars[a1 + "[" + i + "]"];
                 st1 = vars.getVarValue(a1 + "[" + i + "]");
+                st1 = String(st1);
                 st2 = st1.replace(reg_exp, rep_func);
                 // vars[a1 + "[" + i + "]"] = st2;
                 vars.setVarValue(a1 + "[" + i + "]", st2);
