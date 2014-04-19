@@ -1,7 +1,7 @@
 // This file is encoded with UTF-8 without BOM.
 
 // sp_interpreter.js
-// 2014-4-18 v3.22
+// 2014-4-19 v3.23
 
 
 // SPALM Web Interpreter
@@ -3521,7 +3521,7 @@ var Interpreter;
         code_info[code_len] = {};
         code_info[code_len].pos1 = pos1;
         code_info[code_len].pos2 = pos2;
-        // (コード文字列にはそのまま格納)
+        // (コード文字列はそのまま格納)
         code_str[code_len++] = sym;
     }
 
@@ -4394,12 +4394,12 @@ var Interpreter;
             }
 
             // ***** アンカーの座標を計算 *****
-            if (a6 == 4 || a6 == 5 || a6 == 6 || a6 == 7) {
-                img_w = can0.height;
-                img_h = can0.width;
+            if (a6 >= 4 && a6 <= 7) { // 90度か270度回転のとき
+                img_w = a5;
+                img_h = a4;
             } else {
-                img_w = can0.width;
-                img_h = can0.height;
+                img_w = a4;
+                img_h = a5;
             }
             // (水平方向の座標を計算)
             // if (a9 & 4) { }                         // 左
@@ -4412,30 +4412,39 @@ var Interpreter;
 
             // ***** 描画処理 *****
             ctx.save();
-            ctx.translate(a7, a8);
-            // if (a6 == 0) { }   // 回転なし
-            if (a6 == 1) {        // 上下反転(=左右反転+180度回転)
-                ctx.translate(0, can0.height);
-                ctx.scale(1, -1);
-            } else if (a6 == 2) { // 左右反転(=左右反転+回転なし)
-                ctx.translate(can0.width, 0);
-                ctx.scale(-1, 1);
-            } else if (a6 == 3) { // 180度回転
-                ctx.translate(can0.width, can0.height);
-                ctx.rotate(Math.PI);
-            } else if (a6 == 4) { // 左右反転+270度回転
-                ctx.rotate(-Math.PI / 2);
-                ctx.scale(-1, 1);
-            } else if (a6 == 5) { // 90度回転
-                ctx.translate(can0.height, 0);
-                ctx.rotate(Math.PI / 2);
-            } else if (a6 == 6) { // 270度回転
-                ctx.translate(0, can0.width);
-                ctx.rotate(-Math.PI / 2);
-            } else if (a6 == 7) { // 左右反転+90度回転
-                ctx.translate(can0.height, can0.width);
-                ctx.rotate(Math.PI / 2);
-                ctx.scale(-1, 1);
+            ctx.translate(a7, a8); // 平行移動
+            switch (a6) {
+                // case 0: // 回転なし
+                //     break;
+                case 1: // 上下反転(=左右反転+180度回転)
+                    ctx.translate(0, a5);
+                    ctx.scale(1, -1);
+                    break;
+                case 2: // 左右反転(=左右反転+回転なし)
+                    ctx.translate(a4, 0);
+                    ctx.scale(-1, 1);
+                    break;
+                case 3: // 180度回転(=左右反転+上下反転)
+                    ctx.translate(a4, a5);
+                    ctx.scale(-1, -1);
+                    break;
+                case 4: // 左右反転+270度回転
+                    ctx.rotate(-Math.PI / 2);
+                    ctx.scale(-1, 1);
+                    break;
+                case 5: // 90度回転
+                    ctx.translate(a5, 0);
+                    ctx.rotate(Math.PI / 2);
+                    break;
+                case 6: // 270度回転
+                    ctx.translate(0, a4);
+                    ctx.rotate(-Math.PI / 2);
+                    break;
+                case 7: // 左右反転+90度回転
+                    ctx.translate(a5, a4);
+                    ctx.rotate(Math.PI / 2);
+                    ctx.scale(-1, 1);
+                    break;
             }
             // ctx.drawImage(can0, a2, a3, a4, a5, a7, a8, a4, a5);
             ctx.drawImage(can0, a2, a3, a4, a5, 0, 0, a4, a5);
