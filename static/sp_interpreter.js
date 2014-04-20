@@ -1,7 +1,7 @@
 // This file is encoded with UTF-8 without BOM.
 
 // sp_interpreter.js
-// 2014-4-19 v3.23
+// 2014-4-20 v3.24
 
 
 // SPALM Web Interpreter
@@ -5325,7 +5325,7 @@ var Interpreter;
         make_one_func_tbl_B("dayofweek", -1, function (param) {
             var num;
 
-            num = new Date().getDay(); // =0:日曜日,=1:月曜日 ... =6:土曜日
+            num = new Date().getDay() + 1; // =1:日曜日,=2:月曜日 ... =7:土曜日
             return num;
         });
         make_one_func_tbl_B("dcos", 1, function (param) {
@@ -6033,6 +6033,12 @@ var Interpreter;
 
             a1 = String(param[0]);
             num = a1.replace(/^\s+|\s+$/g,"");
+            return num;
+        });
+        make_one_func_tbl_B("week", -1, function (param) {
+            var num;
+
+            num = new Date().getDay() + 1; // =1:日曜日,=2:月曜日 ... =7:土曜日
             return num;
         });
         make_one_func_tbl_B("width", -1, function (param) {
