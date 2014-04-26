@@ -962,7 +962,7 @@ var Plugin0001;
         add_one_func_tbl_param("txtdrawimg", 0); // 「変数名をとる引数」を指定
         add_one_func_tbl_A("txtdrawimg", 7, function (param, vars, can, ctx) {
             var a1, a2, a3;
-            var x1, y1, x2, y2;
+            var x1, y1, x2;
             var w1, h1;
             var i, j;
             var ch;
@@ -973,8 +973,8 @@ var Plugin0001;
             a3 = parseInt(param[2], 10);
             x1 = parseInt(param[3], 10);
             y1 = parseInt(param[4], 10);
-            w1 = parseFloat(param[5]);
-            h1 = parseFloat(param[6]);
+            w1 = parseInt(param[5], 10);
+            h1 = parseInt(param[6], 10);
 
             // ***** NaN対策 *****
             a2 = a2 | 0;
@@ -995,13 +995,13 @@ var Plugin0001;
                 // st1 = vars[a1 + "[" + i + "]"];
                 st1 = vars.getVarValue(a1 + "[" + i + "]");
                 st1 = String(st1);
+                x2 = x1;
                 for (j = 0; j < st1.length; j++) {
                     ch = st1.charAt(j);
                     if (stimg.hasOwnProperty(ch)) {
-                        x2 = (x1 + (j * w1) + stimg[ch].off_x) | 0; // 整数化
-                        y2 = (y1            + stimg[ch].off_y) | 0; // 整数化
-                        ctx.drawImage(stimg[ch].img.can, x2, y2);
+                        ctx.drawImage(stimg[ch].img.can, x2 + stimg[ch].off_x, y1 + stimg[ch].off_y);
                     }
+                    x2 += w1;
                 }
                 y1 += h1;
             }
