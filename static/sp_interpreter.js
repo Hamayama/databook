@@ -1,7 +1,7 @@
 // This file is encoded with UTF-8 without BOM.
 
 // sp_interpreter.js
-// 2014-4-27 v3.25
+// 2014-5-5 v3.26
 
 
 // SPALM Web Interpreter
@@ -953,7 +953,7 @@ var Interpreter;
             execcode();
             // if (prof_obj) { prof_obj.stop("execcode"); }
             // ***** スリープ *****
-            if (sleep_flag) {
+            if (sleep_flag && !end_flag) {
                 sleep_flag = false;
                 // ***** 継続実行(再帰的に実行) *****
                 sleep_id = setTimeout(run_continuously, sleep_time);
