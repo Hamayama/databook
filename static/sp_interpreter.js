@@ -1,7 +1,7 @@
 // This file is encoded with UTF-8 without BOM.
 
 // sp_interpreter.js
-// 2014-5-5 v3.26
+// 2014-5-7 v3.27
 
 
 // SPALM Web Interpreter
@@ -1766,23 +1766,23 @@ var Interpreter;
                     match2(")", i++);
                 }
                 // ***** 本体 *****
-                j = i;
-                match2("{", j++);
-                func_stm = j;
+                // j = i;
+                match2("{", i++);
+                func_stm = i;
                 k = 1;
-                while (j < sym_end) {
-                    if (symbol[j] == "{") { k++; }
-                    if (symbol[j] == "}") { k--; }
+                while (i < sym_end) {
+                    if (symbol[i] == "{") { k++; }
+                    if (symbol[i] == "}") { k--; }
                     if (k == 0) { break; }
-                    j++;
+                    i++;
                 }
-                match2("}", j++);
-                func_end = j;
+                match2("}", i++);
+                func_end = i;
                 // ***** 文(ステートメント)のコンパイル(再帰的に実行) *****
                 c_statement(func_stm, func_end - 1, "", "");
-                debugpos1 = j - 1; // エラー表示位置調整
-                code_push("funcend", debugpos1, j);
-                i = func_end;
+                debugpos1 = i - 1; // エラー表示位置調整
+                code_push("funcend", debugpos1, i);
+                // i = func_end;
                 continue;
             }
 
@@ -1857,93 +1857,93 @@ var Interpreter;
                 i++;
                 // ***** 解析とアドレスの取得 *****
                 j = i;
-                match2("(", j++);
+                match2("(", i++);
                 // 式
-                switch_exp = j;
+                switch_exp = i;
                 k = 1;
-                if (symbol[j] == ")") {
-                    debugpos2 = j + 1;
+                if (symbol[i] == ")") {
+                    debugpos2 = i + 1;
                     throw new Error("switch文の条件式がありません。");
                 }
-                while (j < sym_end) {
-                    if (symbol[j] == "(") { k++; }
-                    if (symbol[j] == ")") { k--; }
+                while (i < sym_end) {
+                    if (symbol[i] == "(") { k++; }
+                    if (symbol[i] == ")") { k--; }
                     if (k == 0) { break; }
-                    j++;
+                    i++;
                 }
-                match2(")", j++);
-                match2("{", j++);
+                match2(")", i++);
+                match2("{", i++);
                 // 文
-                switch_stm = j;
+                switch_stm = i;
                 k = 1;
                 switch_case_exp = [];
                 switch_case_stm = [];
                 switch_default_stm = -1;
-                while (j < sym_end) {
-                    if (symbol[j] == "{") { k++; }
-                    if (symbol[j] == "}") { k--; }
+                while (i < sym_end) {
+                    if (symbol[i] == "{") { k++; }
+                    if (symbol[i] == "}") { k--; }
                     if (k == 0) { break; }
                     if (k == 1) {
-                        if (symbol[j] == "case") {
-                            j++;
+                        if (symbol[i] == "case") {
+                            i++;
                             // 式
-                            switch_case_exp.push(j);
-                            if (symbol[j] == ":") {
-                                debugpos2 = j + 1;
+                            switch_case_exp.push(i);
+                            if (symbol[i] == ":") {
+                                debugpos2 = i + 1;
                                 throw new Error("case文の値がありません。");
                             }
                             k2 = 1;                  // caseに式を可能とする
-                            while (j < sym_end) {
-                                if (symbol[j] == "?") { k2++; }
-                                if (symbol[j] == ":") { k2--; }
+                            while (i < sym_end) {
+                                if (symbol[i] == "?") { k2++; }
+                                if (symbol[i] == ":") { k2--; }
                                 if (k2 == 0) { break; }
-                                j++;
+                                i++;
                             }
-                            match2(":", j++);
+                            match2(":", i++);
                             // 文
-                            switch_case_stm.push(j);
+                            switch_case_stm.push(i);
                             continue;
                         }
-                        if (symbol[j] == "default") {
-                            j++;
-                            switch_case_exp.push(j); // caseの1個としても登録
-                            match2(":", j++);
+                        if (symbol[i] == "default") {
+                            i++;
+                            switch_case_exp.push(i); // caseの1個としても登録
+                            match2(":", i++);
                             // 文
-                            switch_default_stm = j;
-                            switch_case_stm.push(j); // caseの1個としても登録
+                            switch_default_stm = i;
+                            switch_case_stm.push(i); // caseの1個としても登録
                             continue;
                         }
                     }
-                    j++;
+                    i++;
                 }
-                match2("}", j++);
+                match2("}", i++);
                 // 終了
-                switch_end = j;
+                switch_end = i;
                 // ***** 新しいシンボルの生成 *****
                 // 式
-                j = c_expression2(switch_exp, switch_stm - 3);
+                i = c_expression2(switch_exp, switch_stm - 3);
                 for (switch_case_no = 0; switch_case_no < switch_case_exp.length; switch_case_no++) {
                     if (switch_case_stm[switch_case_no] == switch_default_stm) { continue; }
-                    code_push("dup", debugpos1, j);
-                    j = c_expression2(switch_case_exp[switch_case_no], switch_case_stm[switch_case_no] - 2);
-                    code_push("cmpeq", debugpos1, j);
-                    code_push("ifgoto", debugpos1, j);
-                    code_push('"switch_case_stm' + switch_case_no + '\\' + i + '"', debugpos1, j);
+                    code_push("dup", debugpos1, i);
+                    i = c_expression2(switch_case_exp[switch_case_no], switch_case_stm[switch_case_no] - 2);
+                    code_push("cmpeq", debugpos1, i);
+                    code_push("ifgoto", debugpos1, i);
+                    code_push('"switch_case_stm' + switch_case_no + '\\' + j + '"', debugpos1, i);
                 }
                 if (switch_default_stm >= 0) {
-                    code_push("goto", debugpos1, j);
-                    code_push('"switch_default_stm\\' + i + '"', debugpos1, j);
+                    code_push("goto", debugpos1, i);
+                    code_push('"switch_default_stm\\' + j + '"', debugpos1, i);
                 } else {
-                    code_push("goto", debugpos1, j);
-                    code_push('"switch_end\\' + i + '"', debugpos1, j);
+                    code_push("goto", debugpos1, i);
+                    code_push('"switch_end\\' + j + '"', debugpos1, i);
                 }
                 // 文
                 for (switch_case_no = 0; switch_case_no < switch_case_exp.length; switch_case_no++) {
-                    code_push("label", debugpos1, j);
+                    code_push("label", debugpos1, i);
                     if (switch_case_stm[switch_case_no] == switch_default_stm) {
-                        code_push('"switch_default_stm\\' + i + '"', debugpos1, j);
+                        code_push('"switch_default_stm\\' + j + '"', debugpos1, i);
                     } else {
-                        code_push('"switch_case_stm' + switch_case_no + '\\' + i + '"', debugpos1, j);
+                        code_push('"switch_case_stm' + switch_case_no + '\\' + j + '"', debugpos1, i);
                     }
                     if (switch_case_no < switch_case_exp.length - 1) {
                         switch_case_stm_end = switch_case_exp[switch_case_no + 1];
@@ -1951,12 +1951,12 @@ var Interpreter;
                         switch_case_stm_end = switch_end;
                     }
                     // ***** 文(ステートメント)のコンパイル(再帰的に実行) *****
-                    c_statement(switch_case_stm[switch_case_no], switch_case_stm_end - 1, '"switch_end\\' + i + '"', continue_lbl);
+                    c_statement(switch_case_stm[switch_case_no], switch_case_stm_end - 1, '"switch_end\\' + j + '"', continue_lbl);
                 }
                 // 終了
-                code_push("label", debugpos1, j);
-                code_push('"switch_end\\' + i + '"', debugpos1, j);
-                code_push("pop", debugpos1, j);
+                code_push("label", debugpos1, i);
+                code_push('"switch_end\\' + j + '"', debugpos1, i);
+                code_push("pop", debugpos1, i);
                 i = switch_end;
                 continue;
             }
@@ -1967,146 +1967,146 @@ var Interpreter;
                 i++;
                 // ***** 解析とアドレスの取得 *****
                 j = i;
-                match2("(", j++);
+                match2("(", i++);
                 // 式
-                if_exp = j;
+                if_exp = i;
                 k = 1;
-                if (symbol[j] == ")") {
-                    debugpos2 = j + 1;
+                if (symbol[i] == ")") {
+                    debugpos2 = i + 1;
                     throw new Error("if文の条件式がありません。");
                 }
-                while (j < sym_end) {
-                    if (symbol[j] == "(") { k++; }
-                    if (symbol[j] == ")") { k--; }
+                while (i < sym_end) {
+                    if (symbol[i] == "(") { k++; }
+                    if (symbol[i] == ")") { k--; }
                     if (k == 0) { break; }
-                    j++;
+                    i++;
                 }
-                match2(")", j++);
-                match2("{", j++);
+                match2(")", i++);
+                match2("{", i++);
                 // 文
-                if_stm = j;
+                if_stm = i;
                 k = 1;
-                while (j < sym_end) {
-                    if (symbol[j] == "{") { k++; }
-                    if (symbol[j] == "}") { k--; }
+                while (i < sym_end) {
+                    if (symbol[i] == "{") { k++; }
+                    if (symbol[i] == "}") { k--; }
                     if (k == 0) { break; }
-                    j++;
+                    i++;
                 }
-                match2("}", j++);
-                if_stm_end = j;
+                match2("}", i++);
+                if_stm_end = i;
                 // elsifまたはelse
                 elsif_exp = [];
                 elsif_stm = [];
                 elsif_stm_end = [];
                 else_stm = -1;
-                while (j < sym_end) {
+                while (i < sym_end) {
                     // elsif
-                    if (symbol[j] == "elsif") {
-                        debugpos1 = j; // エラー表示位置調整
-                        j++;
-                        match2("(", j++);
+                    if (symbol[i] == "elsif") {
+                        debugpos1 = i; // エラー表示位置調整
+                        i++;
+                        match2("(", i++);
                         // 式
-                        elsif_exp.push(j);
+                        elsif_exp.push(i);
                         k = 1;
-                        if (symbol[j] == ")") {
-                            debugpos2 = j + 1;
+                        if (symbol[i] == ")") {
+                            debugpos2 = i + 1;
                             throw new Error("elsif文の条件式がありません。");
                         }
-                        while (j < sym_end) {
-                            if (symbol[j] == "(") { k++; }
-                            if (symbol[j] == ")") { k--; }
+                        while (i < sym_end) {
+                            if (symbol[i] == "(") { k++; }
+                            if (symbol[i] == ")") { k--; }
                             if (k == 0) { break; }
-                            j++;
+                            i++;
                         }
-                        match2(")", j++);
-                        match2("{", j++);
+                        match2(")", i++);
+                        match2("{", i++);
                         // 文
-                        elsif_stm.push(j);
+                        elsif_stm.push(i);
                         k = 1;
-                        while (j < sym_end) {
-                            if (symbol[j] == "{") { k++; }
-                            if (symbol[j] == "}") { k--; }
+                        while (i < sym_end) {
+                            if (symbol[i] == "{") { k++; }
+                            if (symbol[i] == "}") { k--; }
                             if (k == 0) { break; }
-                            j++;
+                            i++;
                         }
-                        match2("}", j++);
-                        elsif_stm_end.push(j);
+                        match2("}", i++);
+                        elsif_stm_end.push(i);
                         continue;
                     }
                     // else
-                    if (symbol[j] == "else") {
-                        debugpos1 = j; // エラー表示位置調整
-                        j++;
-                        match2("{", j++);
+                    if (symbol[i] == "else") {
+                        debugpos1 = i; // エラー表示位置調整
+                        i++;
+                        match2("{", i++);
                         // 文
-                        else_stm = j;
+                        else_stm = i;
                         k = 1;
-                        while (j < sym_end) {
-                            if (symbol[j] == "{") { k++; }
-                            if (symbol[j] == "}") { k--; }
+                        while (i < sym_end) {
+                            if (symbol[i] == "{") { k++; }
+                            if (symbol[i] == "}") { k--; }
                             if (k == 0) { break; }
-                            j++;
+                            i++;
                         }
-                        match2("}", j++);
+                        match2("}", i++);
                         break;
                     }
                     // その他
                     break;
                 }
                 // 終了
-                if_end = j;
+                if_end = i;
                 // ***** 新しいシンボルの生成 *****
-                debugpos1 = i - 1; // エラー表示位置調整
+                debugpos1 = j - 1; // エラー表示位置調整
                 // 式
-                j = c_expression2(if_exp, if_stm - 3);
-                code_push("ifnotgoto", debugpos1, j);
+                i = c_expression2(if_exp, if_stm - 3);
+                code_push("ifnotgoto", debugpos1, i);
                 if (elsif_exp.length > 0) {
-                    code_push('"elsif_exp0\\' + i + '"', debugpos1, j);
+                    code_push('"elsif_exp0\\' + j + '"', debugpos1, i);
                 } else if (else_stm >= 0) {
-                    code_push('"else_stm\\' + i + '"', debugpos1, j);
+                    code_push('"else_stm\\' + j + '"', debugpos1, i);
                 } else {
-                    code_push('"if_end\\' + i + '"', debugpos1, j);
+                    code_push('"if_end\\' + j + '"', debugpos1, i);
                 }
                 // 文
                 // ***** 文(ステートメント)のコンパイル(再帰的に実行) *****
                 c_statement(if_stm, if_stm_end - 1, break_lbl, continue_lbl);
                 if (elsif_exp.length > 0 || else_stm >=0) {
-                    code_push("goto", debugpos1, j);
-                    code_push('"if_end\\' + i + '"', debugpos1, j);
+                    code_push("goto", debugpos1, i);
+                    code_push('"if_end\\' + j + '"', debugpos1, i);
                 }
                 // elsif
                 for (elsif_no = 0; elsif_no < elsif_exp.length; elsif_no++) {
                     // 式
-                    code_push("label", debugpos1, j);
-                    code_push('"elsif_exp' + elsif_no + '\\' + i + '"', debugpos1, j);
-                    j = c_expression2(elsif_exp[elsif_no], elsif_stm[elsif_no] - 3);
-                    code_push("ifnotgoto", debugpos1, j);
+                    code_push("label", debugpos1, i);
+                    code_push('"elsif_exp' + elsif_no + '\\' + j + '"', debugpos1, i);
+                    i = c_expression2(elsif_exp[elsif_no], elsif_stm[elsif_no] - 3);
+                    code_push("ifnotgoto", debugpos1, i);
                     if (elsif_exp.length > elsif_no + 1) {
-                        code_push('"elsif_exp' + (elsif_no + 1) + '\\' + i + '"', debugpos1, j);
+                        code_push('"elsif_exp' + (elsif_no + 1) + '\\' + j + '"', debugpos1, i);
                     } else if (else_stm >= 0) {
-                        code_push('"else_stm\\' + i + '"', debugpos1, j);
+                        code_push('"else_stm\\' + j + '"', debugpos1, i);
                     } else {
-                        code_push('"if_end\\' + i + '"', debugpos1, j);
+                        code_push('"if_end\\' + j + '"', debugpos1, i);
                     }
                     // 文
                     // ***** 文(ステートメント)のコンパイル(再帰的に実行) *****
                     c_statement(elsif_stm[elsif_no], elsif_stm_end[elsif_no] - 1, break_lbl, continue_lbl);
                     if (elsif_exp.length > elsif_no + 1 || else_stm >=0) {
-                        code_push("goto", debugpos1, j);
-                        code_push('"if_end\\' + i + '"', debugpos1, j);
+                        code_push("goto", debugpos1, i);
+                        code_push('"if_end\\' + j + '"', debugpos1, i);
                     }
                 }
                 // else
                 if (else_stm >= 0) {
                     // 文
-                    code_push("label", debugpos1, j);
-                    code_push('"else_stm\\' + i + '"', debugpos1, j);
+                    code_push("label", debugpos1, i);
+                    code_push('"else_stm\\' + j + '"', debugpos1, i);
                     // ***** 文(ステートメント)のコンパイル(再帰的に実行) *****
                     c_statement(else_stm, if_end - 1, break_lbl, continue_lbl);
                 }
                 // 終了
-                code_push("label", debugpos1, j);
-                code_push('"if_end\\' + i + '"', debugpos1, j);
+                code_push("label", debugpos1, i);
+                code_push('"if_end\\' + j + '"', debugpos1, i);
                 i = if_end;
                 continue;
             }
@@ -2117,86 +2117,86 @@ var Interpreter;
                 i++;
                 // ***** 解析とアドレスの取得 *****
                 j = i;
-                match2("(", j++);
+                match2("(", i++);
                 // 式1
-                for_exp1 = j;
+                for_exp1 = i;
                 k = 1;
-                while (j < sym_end) {
-                    if (symbol[j] == "?") { k++; }
-                    if (symbol[j] == ";") { k--; }
+                while (i < sym_end) {
+                    if (symbol[i] == "?") { k++; }
+                    if (symbol[i] == ";") { k--; }
                     if (k == 0) { break; }
-                    j++;
+                    i++;
                 }
-                match2(";", j++);
+                match2(";", i++);
                 // 式2
-                for_exp2 = j;
+                for_exp2 = i;
                 k = 1;
-                while (j < sym_end) {
-                    if (symbol[j] == "?") { k++; }
-                    if (symbol[j] == ";") { k--; }
+                while (i < sym_end) {
+                    if (symbol[i] == "?") { k++; }
+                    if (symbol[i] == ";") { k--; }
                     if (k == 0) { break; }
-                    j++;
+                    i++;
                 }
-                match2(";", j++);
+                match2(";", i++);
                 // 式3
-                for_exp3 = j;
+                for_exp3 = i;
                 k = 1;
-                while (j < sym_end) {
-                    if (symbol[j] == "(") { k++; }
-                    if (symbol[j] == ")") { k--; }
+                while (i < sym_end) {
+                    if (symbol[i] == "(") { k++; }
+                    if (symbol[i] == ")") { k--; }
                     if (k == 0) { break; }
-                    j++;
+                    i++;
                 }
-                match2(")", j++);
-                match2("{", j++);
+                match2(")", i++);
+                match2("{", i++);
                 // 文
-                for_stm = j;
+                for_stm = i;
                 k = 1;
-                while (j < sym_end) {
-                    if (symbol[j] == "{") { k++; }
-                    if (symbol[j] == "}") { k--; }
+                while (i < sym_end) {
+                    if (symbol[i] == "{") { k++; }
+                    if (symbol[i] == "}") { k--; }
                     if (k == 0) { break; }
-                    j++;
+                    i++;
                 }
-                match2("}", j++);
+                match2("}", i++);
                 // 終了
-                for_end = j;
+                for_end = i;
                 // ***** 新しいシンボルの生成 *****
                 // 式1
                 if (for_exp1 < for_exp2 - 1) {
-                    j = c_expression2(for_exp1, for_exp2 - 2);
-                    code_push("pop", debugpos1, j);
+                    i = c_expression2(for_exp1, for_exp2 - 2);
+                    code_push("pop", debugpos1, i);
                 }
-                code_push("goto", debugpos1, j);
-                code_push('"for_exp2\\' + i + '"', debugpos1, j);
+                code_push("goto", debugpos1, i);
+                code_push('"for_exp2\\' + j + '"', debugpos1, i);
                 // 式3
-                code_push("label", debugpos1, j);
-                code_push('"for_exp3\\' + i + '"', debugpos1, j);
+                code_push("label", debugpos1, i);
+                code_push('"for_exp3\\' + j + '"', debugpos1, i);
                 if (for_exp3 < for_stm - 2) {
-                    j = c_expression2(for_exp3, for_stm - 3);
-                    code_push("pop", debugpos1, j);
+                    i = c_expression2(for_exp3, for_stm - 3);
+                    code_push("pop", debugpos1, i);
                 }
                 // 式2
-                code_push("label", debugpos1, j);
-                code_push('"for_exp2\\' + i + '"', debugpos1, j);
+                code_push("label", debugpos1, i);
+                code_push('"for_exp2\\' + j + '"', debugpos1, i);
                 if (for_exp2 < for_exp3 - 1) {
-                    j = c_expression2(for_exp2, for_exp3 - 2);
+                    i = c_expression2(for_exp2, for_exp3 - 2);
                 } else {
-                    code_push("store1", debugpos1, j); // 式2が空なら無限ループ
+                    code_push("store1", debugpos1, i); // 式2が空なら無限ループ
                 }
-                code_push("ifnotgoto", debugpos1, j);
-                code_push('"for_end\\' + i + '"', debugpos1, j);
+                code_push("ifnotgoto", debugpos1, i);
+                code_push('"for_end\\' + j + '"', debugpos1, i);
                 // 文
                 // ***** 文(ステートメント)のコンパイル(再帰的に実行) *****
-                c_statement(for_stm, for_end - 1, '"for_end\\' + i + '"', '"for_exp3\\' + i + '"');
-                // for (j = for_stm; j < for_end - 1; j++) {
-                //     code_push(symbol[j], debugpos1, j);
+                c_statement(for_stm, for_end - 1, '"for_end\\' + j + '"', '"for_exp3\\' + j + '"');
+                // for (i = for_stm; i < for_end - 1; i++) {
+                //     code_push(symbol[i], debugpos1, i);
                 // }
-                code_push("goto", debugpos1, j);
-                code_push('"for_exp3\\' + i + '"', debugpos1, j);
+                code_push("goto", debugpos1, i);
+                code_push('"for_exp3\\' + j + '"', debugpos1, i);
                 // 終了
-                code_push("label", debugpos1, j);
-                code_push('"for_end\\' + i + '"', debugpos1, j);
+                code_push("label", debugpos1, i);
+                code_push('"for_end\\' + j + '"', debugpos1, i);
                 i = for_end;
                 continue;
             }
@@ -2207,49 +2207,49 @@ var Interpreter;
                 i++;
                 // ***** 解析とアドレスの取得 *****
                 j = i;
-                match2("(", j++);
+                match2("(", i++);
                 // 式
-                while_exp = j;
+                while_exp = i;
                 k = 1;
-                if (symbol[j] == ")") {
-                    debugpos2 = j + 1;
+                if (symbol[i] == ")") {
+                    debugpos2 = i + 1;
                     throw new Error("while文の条件式がありません。");
                 }
-                while (j < sym_end) {
-                    if (symbol[j] == "(") { k++; }
-                    if (symbol[j] == ")") { k--; }
+                while (i < sym_end) {
+                    if (symbol[i] == "(") { k++; }
+                    if (symbol[i] == ")") { k--; }
                     if (k == 0) { break; }
-                    j++;
+                    i++;
                 }
-                match2(")", j++);
-                match2("{", j++);
+                match2(")", i++);
+                match2("{", i++);
                 // 文
-                while_stm = j;
+                while_stm = i;
                 k = 1;
-                while (j < sym_end) {
-                    if (symbol[j] == "{") { k++; }
-                    if (symbol[j] == "}") { k--; }
+                while (i < sym_end) {
+                    if (symbol[i] == "{") { k++; }
+                    if (symbol[i] == "}") { k--; }
                     if (k == 0) { break; }
-                    j++;
+                    i++;
                 }
-                match2("}", j++);
+                match2("}", i++);
                 // 終了
-                while_end = j;
+                while_end = i;
                 // ***** 新しいシンボルの生成 *****
                 // 式
-                code_push("label", debugpos1, j);
-                code_push('"while_exp\\' + i + '"', debugpos1, j);
-                j = c_expression2(while_exp, while_stm - 3);
-                code_push("ifnotgoto", debugpos1, j);
-                code_push('"while_end\\' + i + '"', debugpos1, j);
+                code_push("label", debugpos1, i);
+                code_push('"while_exp\\' + j + '"', debugpos1, i);
+                i = c_expression2(while_exp, while_stm - 3);
+                code_push("ifnotgoto", debugpos1, i);
+                code_push('"while_end\\' + j + '"', debugpos1, i);
                 // 文
                 // ***** 文(ステートメント)のコンパイル(再帰的に実行) *****
-                c_statement(while_stm, while_end - 1, '"while_end\\' + i + '"', '"while_exp\\' + i + '"');
-                code_push("goto", debugpos1, j);
-                code_push('"while_exp\\' + i + '"', debugpos1, j);
+                c_statement(while_stm, while_end - 1, '"while_end\\' + j + '"', '"while_exp\\' + j + '"');
+                code_push("goto", debugpos1, i);
+                code_push('"while_exp\\' + j + '"', debugpos1, i);
                 // 終了
-                code_push("label", debugpos1, j);
-                code_push('"while_end\\' + i + '"', debugpos1, j);
+                code_push("label", debugpos1, i);
+                code_push('"while_end\\' + j + '"', debugpos1, i);
                 i = while_end;
                 continue;
             }
@@ -2260,52 +2260,52 @@ var Interpreter;
                 i++;
                 // ***** 解析とアドレスの取得 *****
                 j = i;
-                match2("{", j++);
+                match2("{", i++);
                 // 文
-                do_stm = j;
+                do_stm = i;
                 k = 1;
-                while (j < sym_end) {
-                    if (symbol[j] == "{") { k++; }
-                    if (symbol[j] == "}") { k--; }
+                while (i < sym_end) {
+                    if (symbol[i] == "{") { k++; }
+                    if (symbol[i] == "}") { k--; }
                     if (k == 0) { break; }
-                    j++;
+                    i++;
                 }
-                match2("}", j++);
-                if (symbol[j] != "while") {
-                    debugpos2 = j + 1;
+                match2("}", i++);
+                if (symbol[i] != "while") {
+                    debugpos2 = i + 1;
                     throw new Error("do文のwhileがありません。");
                 }
-                j++;
-                match2("(", j++);
+                i++;
+                match2("(", i++);
                 // 式
-                do_exp = j;
+                do_exp = i;
                 k = 1;
-                if (symbol[j] == ")") {
-                    debugpos2 = j + 1;
+                if (symbol[i] == ")") {
+                    debugpos2 = i + 1;
                     throw new Error("do文の条件式がありません。");
                 }
-                while (j < sym_end) {
-                    if (symbol[j] == "(") { k++; }
-                    if (symbol[j] == ")") { k--; }
+                while (i < sym_end) {
+                    if (symbol[i] == "(") { k++; }
+                    if (symbol[i] == ")") { k--; }
                     if (k == 0) { break; }
-                    j++;
+                    i++;
                 }
-                match2(")", j++);
+                match2(")", i++);
                 // 終了
-                do_end = j;
+                do_end = i;
                 // ***** 新しいシンボルの生成 *****
                 // 文
-                code_push("label", debugpos1, j);
-                code_push('"do_stm\\' + i + '"', debugpos1, j);
+                code_push("label", debugpos1, i);
+                code_push('"do_stm\\' + j + '"', debugpos1, i);
                 // ***** 文(ステートメント)のコンパイル(再帰的に実行) *****
-                c_statement(do_stm, do_exp - 3, '"do_end\\' + i + '"', '"do_stm\\' + i + '"');
+                c_statement(do_stm, do_exp - 3, '"do_end\\' + j + '"', '"do_stm\\' + j + '"');
                 // 式
-                j = c_expression2(do_exp, do_end - 2);
-                code_push("ifgoto", debugpos1, j);
-                code_push('"do_stm\\' + i + '"', debugpos1, j);
+                i = c_expression2(do_exp, do_end - 2);
+                code_push("ifgoto", debugpos1, i);
+                code_push('"do_stm\\' + j + '"', debugpos1, i);
                 // 終了
-                code_push("label", debugpos1, j);
-                code_push('"do_end\\' + i + '"', debugpos1, j);
+                code_push("label", debugpos1, i);
+                code_push('"do_end\\' + j + '"', debugpos1, i);
                 i = do_end;
                 continue;
             }
