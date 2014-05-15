@@ -12,7 +12,7 @@ from google.appengine.ext import ndb
 from google.appengine.api import search
 
 # databook.py
-# 2013-11-28 v1.25
+# 2014-5-15 v1.26
 
 # Google App Engine / Python による データベース アプリケーション1
 
@@ -20,31 +20,10 @@ from google.appengine.api import search
 #               初期設定等
 # ****************************************
 
-# ***** jinja2ライブラリの環境設定 *****
-jinja_environment = jinja2.Environment(
-    loader=jinja2.FileSystemLoader(os.path.dirname(__file__)),
-    extensions=['jinja2.ext.autoescape'])
-
-
-# ***** ローカル日時変換用(日本は+9時間) *****
-class UTC(datetime.tzinfo):
-    def tzname(self, dt):
-        return 'UTC'
-    def utcoffset(self, dt):
-        return datetime.timedelta(0)
-    def dst(self, dt):
-        return datetime.timedelta(0)
-class JapanTZ(datetime.tzinfo):
-    def tzname(self, dt):
-        return 'JST'
-    def utcoffset(self, dt):
-        return datetime.timedelta(hours=9)
-    def dst(self, dt):
-        return datetime.timedelta(0)
-
-
-# ***** メインページの表示件数の設定 *****
-mainpage_show_num = 50
+# ***** 定数の設定 *****
+mainpage_show_num = 50 # メインページの表示件数
+backup_num = 10        # 記事のバックアップ件数
+backup_time = 10       # 記事のバックアップを1件に統合する時間(分)
 
 # ***** URLの設定 *****
 mainpage_url  = '/databook'
@@ -122,6 +101,29 @@ class Article(ndb.Model):
     search_doc_id = ndb.StringProperty()
     # 表示フラグ
     show_flag = ndb.IntegerProperty()
+
+
+# ***** jinja2ライブラリの環境設定 *****
+jinja_environment = jinja2.Environment(
+    loader=jinja2.FileSystemLoader(os.path.dirname(__file__)),
+    extensions=['jinja2.ext.autoescape'])
+
+
+# ***** ローカル日時変換用(日本は+9時間) *****
+class UTC(datetime.tzinfo):
+    def tzname(self, dt):
+        return 'UTC'
+    def utcoffset(self, dt):
+        return datetime.timedelta(0)
+    def dst(self, dt):
+        return datetime.timedelta(0)
+class JapanTZ(datetime.tzinfo):
+    def tzname(self, dt):
+        return 'JST'
+    def utcoffset(self, dt):
+        return datetime.timedelta(hours=9)
+    def dst(self, dt):
+        return datetime.timedelta(0)
 
 
 # ****************************************
@@ -271,7 +273,8 @@ class MainPage(webapp2.RequestHandler):
                                                 admin_login=admin_login,
                                                 admin_message=admin_message,
                                                 login_url=login_url,
-                                                login_text=login_text))
+                                                login_text=login_text,
+                                                mainpage_show_num=mainpage_show_num))
 
 
 # ***** 実行ページの表示 *****
@@ -513,11 +516,11 @@ class Databook(webapp2.RequestHandler):
         # バックアップの保存
         # (10分以内のときは、バックアップを追加しないで上書きとする)
         if rename_flag == 0:
-            time_diff_minutes = 10000
+            time_diff_minutes = -1
             if article.bkup_lastupdate:
                 time_diff = datetime.datetime.now() - article.bkup_lastupdate
                 time_diff_minutes = time_diff.days * 24 * 60 + time_diff.seconds / 60
-            if time_diff_minutes <= 10:
+            if time_diff_minutes >= 0 and time_diff_minutes <= backup_time:
                 # 最新のバックアップを上書き
                 article.bkup_authors[0] = article.author
                 article.bkup_contents[0] = article.content
@@ -529,11 +532,11 @@ class Databook(webapp2.RequestHandler):
                 article.bkup_contents.insert(0, article.content)
                 article.bkup_sources.insert(0, article.source)
                 article.bkup_dates.insert(0, article.date)
-                if len(article.bkup_dates) > 10:
-                    article.bkup_authors = article.bkup_authors[:10]
-                    article.bkup_contents = article.bkup_contents[:10]
-                    article.bkup_sources = article.bkup_sources[:10]
-                    article.bkup_dates = article.bkup_dates[:10]
+                if len(article.bkup_dates) > backup_num:
+                    article.bkup_authors = article.bkup_authors[:backup_num]
+                    article.bkup_contents = article.bkup_contents[:backup_num]
+                    article.bkup_sources = article.bkup_sources[:backup_num]
+                    article.bkup_dates = article.bkup_dates[:backup_num]
                 article.bkup_lastupdate = datetime.datetime.now()
 
 
