@@ -3294,7 +3294,7 @@ var MMLPlayer = (function () {
     // ***** 再生 *****
     // (引数を非0にするとループ再生)
     MMLPlayer.prototype.play = function (repeat_flag) {
-        var self;        // this保存用
+        var self; // this保存用
 
         // ***** Web Audio APIの存在チェック *****
         if (!MMLPlayer.AudioContext) { return false; }
@@ -3401,11 +3401,11 @@ var MMLPlayer = (function () {
     //  ので注意)
     MMLPlayer.prototype.setAUDData = function (aud_data_st) {
         var i;
-        var bin_st;      // バイナリデータ文字列
-        var bin_st_len;  // バイナリデータ文字列の長さ
-        // var mime_st;     // MIME文字列
-        var uint8_arr;   // バイナリデータ(型付配列)
-        var self;        // this保存用
+        var bin_st;     // バイナリデータ文字列
+        var bin_st_len; // バイナリデータ文字列の長さ
+        // var mime_st;    // MIME文字列
+        var uint8_arr;  // バイナリデータ(型付配列)
+        var self;       // this保存用
 
         // ***** Web Audio APIの存在チェック *****
         if (!MMLPlayer.AudioContext) { return false; }

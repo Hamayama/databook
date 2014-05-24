@@ -1,7 +1,7 @@
 // This file is encoded with UTF-8 without BOM.
 
 // sp_interpreter.js
-// 2014-5-24 v3.28
+// 2014-5-25 v3.29
 
 
 // SPALM Web Interpreter
@@ -2627,7 +2627,7 @@ var Interpreter;
         if (sym == "&") {
             i++;
             if (symbol[i] == "(") {
-                match2("(", i++);
+                i++;
                 i = c_getvarname(i, sym_end);
                 match2(")", i++);
             } else {
@@ -2866,7 +2866,7 @@ var Interpreter;
         // ***** (変数の内容を変数名にする) *****
         if (var_name == "*") {
             if (symbol[i] == "(") {
-                match2("(", i++);
+                i++;
                 i = c_getvarname(i, sym_end);
                 match2(")", i++);
                 code_push("pointer", debugpos1, i);
@@ -2930,7 +2930,7 @@ var Interpreter;
         // ***** (実際は*を削っているだけ) *****
         if (var_name == "*") {
             if (symbol[i] == "(") {
-                match2("(", i++);
+                i++;
                 i = c_getvarname2(i, sym_end, true);
                 match2(")", i++);
             } else {
@@ -3586,7 +3586,7 @@ var Interpreter;
     var Vars = (function () {
         // ***** コンストラクタ *****
         function Vars() {
-            this.vars_stack = [];    // ローカル/グローバル変数のスタック(配列)
+            this.vars_stack = [];    // ローカル/グローバル変数のスコープ(配列)
                                      //   (配列の0はグローバル変数用)
                                      //   (配列の1以後はローカル変数用)
             this.vars_stack[0] = {}; // グローバル変数用(連想配列オブジェクト)
@@ -3650,8 +3650,7 @@ var Interpreter;
             // if (var_name == "") { return true; }
 
             // ***** 関数の引数のポインタ対応 *****
-            // ***** ローカル変数のスコープを取得する *****
-            // (変数名の「a\」の後の数字により、ローカル変数のスコープをさかのぼる)
+            // (変数名の「a\」の後の数字により、ローカル/グローバル変数のスコープを指定)
             pre_word = var_name.substring(0, 2);
             if (pre_word == "a\\") {
                 i = var_name.indexOf("\\", 2) + 1;
@@ -3700,8 +3699,7 @@ var Interpreter;
             // if (var_name == "") { return true; }
 
             // ***** 関数の引数のポインタ対応 *****
-            // ***** ローカル変数のスコープを取得する *****
-            // (変数名の「a\」の後の数字により、ローカル変数のスコープをさかのぼる)
+            // (変数名の「a\」の後の数字により、ローカル/グローバル変数のスコープを指定)
             pre_word = var_name.substring(0, 2);
             if (pre_word == "a\\") {
                 i = var_name.indexOf("\\", 2) + 1;
@@ -3751,8 +3749,7 @@ var Interpreter;
             // if (var_name == "") { return true; }
 
             // ***** 関数の引数のポインタ対応 *****
-            // ***** ローカル変数のスコープを取得する *****
-            // (変数名の「a\」の後の数字により、ローカル変数のスコープをさかのぼる)
+            // (変数名の「a\」の後の数字により、ローカル/グローバル変数のスコープを指定)
             pre_word = var_name.substring(0, 2);
             if (pre_word == "a\\") {
                 i = var_name.indexOf("\\", 2) + 1;
@@ -3829,8 +3826,7 @@ var Interpreter;
             // if (var_name == "") { return true; }
 
             // ***** 関数の引数のポインタ対応 *****
-            // ***** ローカル変数のスコープを取得する *****
-            // (変数名の「a\」の後の数字により、ローカル変数のスコープをさかのぼる)
+            // (変数名の「a\」の後の数字により、ローカル/グローバル変数のスコープを指定)
             pre_word = var_name.substring(0, 2);
             if (pre_word == "a\\") {
                 i = var_name.indexOf("\\", 2) + 1;
@@ -3912,8 +3908,7 @@ var Interpreter;
             // if (var_name2 == "") { return true; }
 
             // ***** 関数の引数のポインタ対応 *****
-            // ***** ローカル変数のスコープを取得する *****
-            // (変数名の「a\」の後の数字により、ローカル変数のスコープをさかのぼる)
+            // (変数名の「a\」の後の数字により、ローカル/グローバル変数のスコープを指定)
             pre_word = var_name.substring(0, 2);
             if (pre_word == "a\\") {
                 i = var_name.indexOf("\\", 2) + 1;
@@ -3929,8 +3924,8 @@ var Interpreter;
             if (!use_local_vars) { now_index = 0; }
 
             // ***** 変数に[を付加 *****
-            var_name = var_name + "[";
-            var_name2 = var_name2 + "[";
+            var_name  += "[";
+            var_name2 += "[";
 
             // ***** コピー元とコピー先の変数名が一致するときはエラーにする *****
             // (例えば、a[]をa[1][]にコピーすると無限ループのおそれがある)
@@ -4009,8 +4004,7 @@ var Interpreter;
             // if (var_name == "") { return true; }
 
             // ***** 関数の引数のポインタ対応 *****
-            // ***** ローカル変数のスコープを取得する *****
-            // (変数名の「a\」の後の数字により、ローカル変数のスコープをさかのぼる)
+            // (変数名の「a\」の後の数字により、ローカル/グローバル変数のスコープを指定)
             pre_word = var_name.substring(0, 2);
             if (pre_word == "a\\") {
                 i = var_name.indexOf("\\", 2) + 1;
@@ -4026,7 +4020,7 @@ var Interpreter;
             if (!use_local_vars) { now_index = 0; }
 
             // ***** 変数に[を付加 *****
-            var_name = var_name + "[";
+            var_name += "[";
             // ***** 変数の長さを取得 *****
             var_name_len = var_name.length;
             // ***** ローカル/グローバル変数のスコープを取得 *****
@@ -6292,9 +6286,9 @@ var Download = (function () {
         var link_download_flag;
         var i;
         var data_url;
-        var bin_st;      // バイナリデータ文字列
-        var bin_st_len;  // バイナリデータ文字列の長さ
-        var uint8_arr;   // バイナリデータ(型付配列)
+        var bin_st;     // バイナリデータ文字列
+        var bin_st_len; // バイナリデータ文字列の長さ
+        var uint8_arr;  // バイナリデータ(型付配列)
 
         // ***** 引数のチェック *****
         if (!can) { return false; }
@@ -6433,8 +6427,8 @@ var Profiler = (function () {
             time_max = Math.round(time_max * 1000) / 1000;
             time_min = Math.round(time_min * 1000) / 1000;
             ret = key_name + ": count=" + rec.length +
-                " total="       + time_total + "(msec) mean=" + time_mean +
-                "(msec) max="   + time_max   + "(msec) min="  + time_min  + "(msec)";
+                " total="     + time_total + "(msec) mean=" + time_mean +
+                "(msec) max=" + time_max   + "(msec) min="  + time_min  + "(msec)";
         }
         return ret;
     };
