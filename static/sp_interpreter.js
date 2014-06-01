@@ -1,7 +1,7 @@
 // This file is encoded with UTF-8 without BOM.
 
 // sp_interpreter.js
-// 2014-5-25 v3.29
+// 2014-6-1 v3.30
 
 
 // SPALM Web Interpreter
@@ -2678,8 +2678,8 @@ var Interpreter;
             } else {
                 while (i < sym_end) {
                     // ***** 「変数名をとる引数」のとき *****
-                    if ((func_type == 1 && func_tbl[func_name].param_varname.hasOwnProperty(param_num)) ||
-                        (func_type == 2 && addfunc_tbl[func_name].param_varname.hasOwnProperty(param_num))) {
+                    if ((func_type == 1 && func_tbl[func_name].param_varname_flag.hasOwnProperty(param_num)) ||
+                        (func_type == 2 && addfunc_tbl[func_name].param_varname_flag.hasOwnProperty(param_num))) {
                         i = c_getvarname(i, sym_end);
                     } else {
                         i = c_expression(i, sym_end);
@@ -4081,7 +4081,8 @@ var Interpreter;
     function make_func_tbl_A() {
         // ***** 組み込み関数(戻り値なし)の定義情報を1個ずつ生成 *****
         // (第2引数は関数の引数の数を指定する(ただし省略可能な引数は数に入れない))
-        make_one_func_tbl_A("addfunc", 1, function (param) {
+        // (第3引数は「変数名をとる引数」がある場合にその引数番号を配列で指定する)
+        make_one_func_tbl_A("addfunc", 1, [], function (param) {
             var a1;
 
             a1 = parseInt(param[0], 10);
@@ -4092,7 +4093,7 @@ var Interpreter;
             }
             return true;
         });
-        make_one_func_tbl_A("arc", 3, function (param) {
+        make_one_func_tbl_A("arc", 3, [], function (param) {
             var a1, a2, a3, a4;
             var i;
             var a, b, x0, y0;
@@ -4126,7 +4127,7 @@ var Interpreter;
             // ctx.fillRect(a + x0, y0, 0.5, 0.5);
             return true;
         });
-        make_one_func_tbl_A("clear", 4, function (param) {
+        make_one_func_tbl_A("clear", 4, [], function (param) {
             var a1, a2, a3, a4;
 
             a1 = parseInt(param[0], 10); // X
@@ -4136,12 +4137,12 @@ var Interpreter;
             ctx.clearRect(a1, a2, a3, a4);
             return true;
         });
-        make_one_func_tbl_A("clearkey", 0, function (param) {
+        make_one_func_tbl_A("clearkey", 0, [], function (param) {
             input_buf = [];
             keyinput_buf = [];
             return true;
         });
-        make_one_func_tbl_A("clearvar", 0, function (param) {
+        make_one_func_tbl_A("clearvar", 0, [], function (param) {
             var name;
 
             // vars = {};
@@ -4155,7 +4156,7 @@ var Interpreter;
             }
             return true;
         });
-        make_one_func_tbl_A("clip", 4, function (param) {
+        make_one_func_tbl_A("clip", 4, [], function (param) {
             var a1, a2, a3, a4;
 
             a1 = parseInt(param[0], 10); // X
@@ -4171,7 +4172,7 @@ var Interpreter;
             ctx.clip();
             return true;
         });
-        make_one_func_tbl_A("cls", 0, function (param) {
+        make_one_func_tbl_A("cls", 0, [], function (param) {
             // ***** 画面クリア *****
             // ctx.clearRect(-ctx_originx, -ctx_originy, can.width, can.height);
             ctx.setTransform(1, 0, 0, 1, 0, 0);      // 座標系を元に戻す
@@ -4179,7 +4180,7 @@ var Interpreter;
             set_canvas_axis(ctx);                    // 座標系を再設定
             return true;
         });
-        make_one_func_tbl_A("col", 1, function (param) {
+        make_one_func_tbl_A("col", 1, [], function (param) {
             var a1;
             var col_r, col_g, col_b;
 
@@ -4192,7 +4193,7 @@ var Interpreter;
             ctx.fillStyle = color_val;
             return true;
         });
-        make_one_func_tbl_A("color", 3, function (param) {
+        make_one_func_tbl_A("color", 3, [], function (param) {
             var a1, a2, a3;
             var col_r, col_g, col_b;
 
@@ -4207,9 +4208,7 @@ var Interpreter;
             ctx.fillStyle = color_val;
             return true;
         });
-
-        make_one_func_tbl_param("copy", 0, 2); // 「変数名をとる引数」を指定
-        make_one_func_tbl_A("copy", 5, function (param) {
+        make_one_func_tbl_A("copy", 5, [0, 2], function (param) {
             var a1, a2, a3, a4, a5, a6;
             var i;
             var i_start, i_end, i_plus;
@@ -4260,9 +4259,7 @@ var Interpreter;
             }
             return true;
         });
-
-        make_one_func_tbl_param("copyall", 0, 1); // 「変数名をとる引数」を指定
-        make_one_func_tbl_A("copyall", 2, function (param) {
+        make_one_func_tbl_A("copyall", 2, [0, 1], function (param) {
             var a1, a2;
 
             a1 = getvarname(param[0]);
@@ -4271,9 +4268,7 @@ var Interpreter;
             vars.copyArray(a1, a2);
             return true;
         });
-
-        make_one_func_tbl_param("disarray", 0); // 「変数名をとる引数」を指定
-        make_one_func_tbl_A("disarray", 1, function (param) {
+        make_one_func_tbl_A("disarray", 1, [0], function (param) {
             var a1, a2, a3;
             var i;
 
@@ -4307,9 +4302,7 @@ var Interpreter;
             }
             return true;
         });
-
-        make_one_func_tbl_param("disimg", 0); // 「変数名をとる引数」を指定
-        make_one_func_tbl_A("disimg", 1, function (param) {
+        make_one_func_tbl_A("disimg", 1, [0], function (param) {
             var a1;
 
             a1 = toglobal(getvarname(param[0])); // 画像変数名取得
@@ -4320,9 +4313,7 @@ var Interpreter;
             // for (var prop_name in imgvars) { DebugShow(prop_name + " "); } DebugShow("\n");
             return true;
         });
-
-        make_one_func_tbl_param("disvar", 0); // 「変数名をとる引数」を指定
-        make_one_func_tbl_A("disvar", 1, function (param) {
+        make_one_func_tbl_A("disvar", 1, [0], function (param) {
             var a1;
 
             a1 = getvarname(param[0]);
@@ -4330,9 +4321,7 @@ var Interpreter;
             vars.deleteVar(a1);
             return true;
         });
-
-        make_one_func_tbl_param("drawarea", 0); // 「変数名をとる引数」を指定
-        make_one_func_tbl_A("drawarea", 7, function (param) {
+        make_one_func_tbl_A("drawarea", 7, [0], function (param) {
             var a1, a2, a3, a4, a5, a6, a7;
 
             a1 = toglobal(getvarname(param[0])); // 画像変数名取得
@@ -4356,9 +4345,7 @@ var Interpreter;
             }
             return true;
         });
-
-        make_one_func_tbl_param("drawimg", 0); // 「変数名をとる引数」を指定
-        make_one_func_tbl_A("drawimg", 4, function (param) {
+        make_one_func_tbl_A("drawimg", 4, [0], function (param) {
             var a1, a2, a3, a4;
 
             a1 = toglobal(getvarname(param[0])); // 画像変数名取得
@@ -4395,9 +4382,7 @@ var Interpreter;
             }
             return true;
         });
-
-        make_one_func_tbl_param("drawimgex", 0); // 「変数名をとる引数」を指定
-        make_one_func_tbl_A("drawimgex", 9, function (param) {
+        make_one_func_tbl_A("drawimgex", 9, [0], function (param) {
             var a1, a2, a3, a4, a5, a6, a7, a8, a9;
             var can0;
             var img_w, img_h;
@@ -4484,9 +4469,7 @@ var Interpreter;
             ctx.restore();
             return true;
         });
-
-        make_one_func_tbl_param("drawscaledimg", 0); // 「変数名をとる引数」を指定
-        make_one_func_tbl_A("drawscaledimg", 9, function (param) {
+        make_one_func_tbl_A("drawscaledimg", 9, [0], function (param) {
             var a1, a2, a3, a4, a5, a6, a7, a8, a9;
 
             a1 = toglobal(getvarname(param[0])); // 画像変数名取得
@@ -4512,8 +4495,7 @@ var Interpreter;
             }
             return true;
         });
-
-        make_one_func_tbl_A("farc", 3, function (param) {
+        make_one_func_tbl_A("farc", 3, [], function (param) {
             var a1, a2, a3, a4;
             var i;
             var a, b, x0, y0;
@@ -4549,7 +4531,7 @@ var Interpreter;
             // ctx.fillRect(x0, y0, 1, 1); // 反転して抜けた真ん中の小さな四角をさらに塗りつぶす
             return true;
         });
-        make_one_func_tbl_A("foval", 6, function (param) {
+        make_one_func_tbl_A("foval", 6, [], function (param) {
             var a1, a2, a3, a4, a5, a6;
             var i;
             var a, b, x0, y0;
@@ -4590,7 +4572,7 @@ var Interpreter;
             // ctx.fillRect(x0, y0, 1, 1); // 反転して抜けた真ん中の小さな四角をさらに塗りつぶす
             return true;
         });
-        make_one_func_tbl_A("frect", 4, function (param) {
+        make_one_func_tbl_A("frect", 4, [], function (param) {
             var a1, a2, a3, a4;
 
             a1 = parseFloat(param[0]); // X
@@ -4600,7 +4582,7 @@ var Interpreter;
             ctx.fillRect(a1, a2, a3, a4);
             return true;
         });
-        make_one_func_tbl_A("fround", 6, function (param) {
+        make_one_func_tbl_A("fround", 6, [], function (param) {
             var a1, a2, a3, a4, a5, a6;
             var rx, ry;
 
@@ -4632,9 +4614,7 @@ var Interpreter;
             // set_canvas_axis(ctx);                    // 座標系を再設定
             return true;
         });
-
-        make_one_func_tbl_param("funccall", 1); // 「変数名をとる引数」を指定
-        make_one_func_tbl_A("funccall", 1, function (param) {
+        make_one_func_tbl_A("funccall", 1, [1], function (param) {
             var a1, a2;
 
             a1 = param[0];
@@ -4645,12 +4625,11 @@ var Interpreter;
             }
             return true;
         });
-
-        make_one_func_tbl_A("gc", 0, function (param) {
+        make_one_func_tbl_A("gc", 0, [], function (param) {
             // ***** NOP *****
             return true;
         });
-        make_one_func_tbl_A("line", 4, function (param) {
+        make_one_func_tbl_A("line", 4, [], function (param) {
             var a1, a2, a3, a4;
 
             a1 = parseFloat(param[0]); // X1
@@ -4663,7 +4642,7 @@ var Interpreter;
             ctx.stroke();
             return true;
         });
-        make_one_func_tbl_A("linewidth", 1, function (param) {
+        make_one_func_tbl_A("linewidth", 1, [], function (param) {
             var a1;
 
             a1 = parseFloat(param[0]); // W
@@ -4671,9 +4650,7 @@ var Interpreter;
             ctx.lineWidth = line_width;
             return true;
         });
-
-        make_one_func_tbl_param("loadimg", 0); // 「変数名をとる引数」を指定
-        make_one_func_tbl_A("loadimg", 2, function (param) {
+        make_one_func_tbl_A("loadimg", 2, [0], function (param) {
             var a1, a2;
             var i, j, k;
             var g_data = [];
@@ -4748,9 +4725,7 @@ var Interpreter;
             imgvars[a1].ctx.putImageData(img_data, 0, 0);
             return true;
         });
-
-        make_one_func_tbl_param("loadimgdata", 0); // 「変数名をとる引数」を指定
-        make_one_func_tbl_A("loadimgdata", 2, function (param) {
+        make_one_func_tbl_A("loadimgdata", 2, [0], function (param) {
             var a1, a2;
             var img_obj = {};
 
@@ -4792,14 +4767,11 @@ var Interpreter;
             img_obj.src = a2; // 常にonloadより後にsrcをセットすること
             return true;
         });
-
-        make_one_func_tbl_A("lock", 0, function (param) {
+        make_one_func_tbl_A("lock", 0, [], function (param) {
             // ***** NOP *****
             return true;
         });
-
-        make_one_func_tbl_param("makearray", 0); // 「変数名をとる引数」を指定
-        make_one_func_tbl_A("makearray", 2, function (param) {
+        make_one_func_tbl_A("makearray", 2, [0], function (param) {
             var a1, a2, a3, a4;
             var i;
 
@@ -4830,9 +4802,7 @@ var Interpreter;
             }
             return true;
         });
-
-        make_one_func_tbl_param("makeimg", 0); // 「変数名をとる引数」を指定
-        make_one_func_tbl_A("makeimg", 3, function (param) {
+        make_one_func_tbl_A("makeimg", 3, [0], function (param) {
             var a1, a2, a3;
 
             a1 = toglobal(getvarname(param[0])); // 画像変数名取得
@@ -4861,8 +4831,7 @@ var Interpreter;
             init_canvas_setting(imgvars[a1].ctx);
             return true;
         });
-
-        make_one_func_tbl_A("msgdlg", 1, function (param) {
+        make_one_func_tbl_A("msgdlg", 1, [], function (param) {
             var a1;
 
             a1 = String(param[0]);
@@ -4875,15 +4844,15 @@ var Interpreter;
             loop_nocount_flag = true;
             return true;
         });
-        make_one_func_tbl_A("onlocal", 0, function (param) {
+        make_one_func_tbl_A("onlocal", 0, [], function (param) {
             use_local_vars = true;
             return true;
         });
-        make_one_func_tbl_A("offlocal", 0, function (param) {
+        make_one_func_tbl_A("offlocal", 0, [], function (param) {
             use_local_vars = false;
             return true;
         });
-        make_one_func_tbl_A("origin", 2, function (param) {
+        make_one_func_tbl_A("origin", 2, [], function (param) {
             var a1, a2;
 
             a1 = parseInt(param[0], 10); // X
@@ -4895,7 +4864,7 @@ var Interpreter;
             set_canvas_axis(ctx);                    // 座標系を再設定
             return true;
         });
-        make_one_func_tbl_A("oval", 6, function (param) {
+        make_one_func_tbl_A("oval", 6, [], function (param) {
             var a1, a2, a3, a4, a5, a6;
             var i;
             var a, b, x0, y0;
@@ -4931,7 +4900,7 @@ var Interpreter;
             // ctx.fillRect(a * Math.cos(rad1) + x0, b * Math.sin(rad1) + y0, 0.5, 0.5);
             return true;
         });
-        make_one_func_tbl_A("point", 2, function (param) {
+        make_one_func_tbl_A("point", 2, [], function (param) {
             var a1, a2;
 
             a1 = parseFloat(param[0]); // X
@@ -4939,7 +4908,7 @@ var Interpreter;
             ctx.fillRect(a1, a2, 1, 1);
             return true;
         });
-        make_one_func_tbl_A("rect", 4, function (param) {
+        make_one_func_tbl_A("rect", 4, [], function (param) {
             var a1, a2, a3, a4;
 
             a1 = parseFloat(param[0]); // X
@@ -4951,7 +4920,7 @@ var Interpreter;
             ctx.stroke();
             return true;
         });
-        make_one_func_tbl_A("rotate", 1, function (param) {
+        make_one_func_tbl_A("rotate", 1, [], function (param) {
             var a1, a2, a3;
 
             a1 = parseFloat(param[0]); // 角度
@@ -4970,7 +4939,7 @@ var Interpreter;
             set_canvas_axis(ctx);                    // 座標系を再設定
             return true;
         });
-        make_one_func_tbl_A("round", 6, function (param) {
+        make_one_func_tbl_A("round", 6, [], function (param) {
             var a1, a2, a3, a4, a5, a6;
             var rx, ry;
 
@@ -5002,7 +4971,7 @@ var Interpreter;
             // set_canvas_axis(ctx);                    // 座標系を再設定
             return true;
         });
-        make_one_func_tbl_A("save", 1, function (param) {
+        make_one_func_tbl_A("save", 1, [], function (param) {
             var a1, a2;
 
             a1 = String(param[0]);
@@ -5014,7 +4983,7 @@ var Interpreter;
             save_data[a2] = a1;
             return true;
         });
-        make_one_func_tbl_A("scale", 1, function (param) {
+        make_one_func_tbl_A("scale", 1, [], function (param) {
             var a1, a2, a3, a4;
 
             a1 = parseFloat(param[0]); // X方向倍率
@@ -5046,7 +5015,7 @@ var Interpreter;
             set_canvas_axis(ctx);                    // 座標系を再設定
             return true;
         });
-        make_one_func_tbl_A("setfont", 1, function (param) {
+        make_one_func_tbl_A("setfont", 1, [], function (param) {
             var a1;
 
             a1 = String(param[0]).toUpperCase();
@@ -5060,7 +5029,7 @@ var Interpreter;
             ctx.font = font_size + "px " + font_family;
             return true;
         });
-        make_one_func_tbl_A("setoutdata", 2, function (param) {
+        make_one_func_tbl_A("setoutdata", 2, [], function (param) {
             var a1, a2;
 
             a1 = parseInt(param[0], 10);
@@ -5068,7 +5037,7 @@ var Interpreter;
             out_data[a1] = a2;
             return true;
         });
-        make_one_func_tbl_A("setpixel", 3, function (param) {
+        make_one_func_tbl_A("setpixel", 3, [], function (param) {
             var a1, a2, a3;
             var col_r, col_g, col_b;
 
@@ -5083,7 +5052,7 @@ var Interpreter;
             ctx.fillStyle = color_val;
             return true;
         });
-        make_one_func_tbl_A("setscsize", 2, function (param) {
+        make_one_func_tbl_A("setscsize", 2, [], function (param) {
             var a1, a2, a3, a4;
 
             a1 = parseInt(param[0], 10); // W
@@ -5111,7 +5080,7 @@ var Interpreter;
             reset_canvas_setting(ctx1);
             return true;
         });
-        make_one_func_tbl_A("sleep", 1, function (param) {
+        make_one_func_tbl_A("sleep", 1, [], function (param) {
             var a1;
 
             a1 = parseInt(param[0], 10);
@@ -5119,7 +5088,7 @@ var Interpreter;
             sleep_time = a1;
             return true;
         });
-        make_one_func_tbl_A("soft1", 1, function (param) {
+        make_one_func_tbl_A("soft1", 1, [], function (param) {
             var a1;
 
             a1 = String(param[0]);
@@ -5127,7 +5096,7 @@ var Interpreter;
             disp_softkey();
             return true;
         });
-        make_one_func_tbl_A("soft2", 1, function (param) {
+        make_one_func_tbl_A("soft2", 1, [], function (param) {
             var a1;
 
             a1 = String(param[0]);
@@ -5135,7 +5104,7 @@ var Interpreter;
             disp_softkey();
             return true;
         });
-        make_one_func_tbl_A("spmode", 1, function (param) {
+        make_one_func_tbl_A("spmode", 1, [], function (param) {
             var a1;
 
             a1 = parseInt(param[0], 10);
@@ -5147,7 +5116,7 @@ var Interpreter;
             }
             return true;
         });
-        make_one_func_tbl_A("text", 1, function (param) {
+        make_one_func_tbl_A("text", 1, [], function (param) {
             var a1, a2, a3, a4;
 
             // ***** 文字列に変換 *****
@@ -5179,9 +5148,7 @@ var Interpreter;
             ctx.fillText(a1, a2, a3);
             return true;
         });
-
-        make_one_func_tbl_param("trgt", 0); // 「変数名をとる引数」を指定
-        make_one_func_tbl_A("trgt", 1, function (param) {
+        make_one_func_tbl_A("trgt", 1, [0], function (param) {
             var a1;
 
             a1 = toglobal(getvarname(param[0])); // 画像変数名取得
@@ -5199,8 +5166,7 @@ var Interpreter;
             reset_canvas_setting(ctx);
             return true;
         });
-
-        make_one_func_tbl_A("unlock", 0, function (param) {
+        make_one_func_tbl_A("unlock", 0, [], function (param) {
             var a1;
 
             if (param.length <= 0) {
@@ -5211,9 +5177,7 @@ var Interpreter;
             // ***** NOP *****
             return true;
         });
-
-        make_one_func_tbl_param("@", 0); // 「変数名をとる引数」を指定
-        make_one_func_tbl_A("@", 1, function (param) {
+        make_one_func_tbl_A("@", 1, [0], function (param) {
             var a1, a2;
             var i;
 
@@ -5233,7 +5197,8 @@ var Interpreter;
         // ***** 組み込み関数(戻り値あり)の定義情報を1個ずつ生成 *****
         // (第2引数は関数の引数の数を指定する(ただし省略可能な引数は数に入れない))
         // (第2引数を-1にすると組み込み変数になり、()なしで呼び出せる)
-        make_one_func_tbl_B("abs", 1, function (param) {
+        // (第3引数は「変数名をとる引数」がある場合にその引数番号を配列で指定する)
+        make_one_func_tbl_B("abs", 1, [], function (param) {
             var num;
             var a1;
 
@@ -5241,7 +5206,7 @@ var Interpreter;
             num = Math.abs(a1);
             return num;
         });
-        make_one_func_tbl_B("acos", 1, function (param) {
+        make_one_func_tbl_B("acos", 1, [], function (param) {
             var num;
             var a1;
 
@@ -5249,9 +5214,7 @@ var Interpreter;
             num = Math.acos(a1) * 180 / Math.PI;
             return num;
         });
-
-        make_one_func_tbl_param("arraylen", 0); // 「変数名をとる引数」を指定
-        make_one_func_tbl_B("arraylen", 1, function (param) {
+        make_one_func_tbl_B("arraylen", 1, [0], function (param) {
             var num;
             var a1, a2, a3;
             var i;
@@ -5292,7 +5255,7 @@ var Interpreter;
             } while (a3 == null || i <= a3);
             return num;
         });
-        make_one_func_tbl_B("asin", 1, function (param) {
+        make_one_func_tbl_B("asin", 1, [], function (param) {
             var num;
             var a1;
 
@@ -5300,7 +5263,7 @@ var Interpreter;
             num = Math.asin(a1) * 180 / Math.PI;
             return num;
         });
-        make_one_func_tbl_B("atan", 1, function (param) {
+        make_one_func_tbl_B("atan", 1, [], function (param) {
             var num;
             var a1;
 
@@ -5308,7 +5271,7 @@ var Interpreter;
             num = Math.atan(a1) * 180 / Math.PI;
             return num;
         });
-        make_one_func_tbl_B("atan2", 2, function (param) {
+        make_one_func_tbl_B("atan2", 2, [], function (param) {
             var num;
             var a1, a2;
 
@@ -5318,7 +5281,7 @@ var Interpreter;
             num = Math.atan2(a1, a2) * 180 / Math.PI;
             return num;
         });
-        make_one_func_tbl_B("ceil", 1, function (param) {
+        make_one_func_tbl_B("ceil", 1, [], function (param) {
             var num;
             var a1;
 
@@ -5326,9 +5289,7 @@ var Interpreter;
             num = Math.ceil(a1);
             return num;
         });
-
-        make_one_func_tbl_param("chkvar", 0); // 「変数名をとる引数」を指定
-        make_one_func_tbl_B("chkvar", 1, function (param) {
+        make_one_func_tbl_B("chkvar", 1, [0], function (param) {
             var num;
             var a1;
 
@@ -5336,8 +5297,7 @@ var Interpreter;
             if (vars.checkVar(a1)) { num = 1; } else { num = 0; }
             return num;
         });
-
-        make_one_func_tbl_B("cos", 1, function (param) {
+        make_one_func_tbl_B("cos", 1, [], function (param) {
             var num;
             var a1;
 
@@ -5349,19 +5309,19 @@ var Interpreter;
             }
             return num;
         });
-        make_one_func_tbl_B("day", -1, function (param) {
+        make_one_func_tbl_B("day", -1, [], function (param) {
             var num;
 
             num = new Date().getDate();
             return num;
         });
-        make_one_func_tbl_B("dayofweek", -1, function (param) {
+        make_one_func_tbl_B("dayofweek", -1, [], function (param) {
             var num;
 
             num = new Date().getDay() + 1; // =1:日曜日,=2:月曜日 ... =7:土曜日
             return num;
         });
-        make_one_func_tbl_B("dcos", 1, function (param) {
+        make_one_func_tbl_B("dcos", 1, [], function (param) {
             var num;
             var a1;
 
@@ -5369,7 +5329,7 @@ var Interpreter;
             num = Math.cos(a1 * Math.PI / 180);
             return num;
         });
-        make_one_func_tbl_B("download", 1, function (param) {
+        make_one_func_tbl_B("download", 1, [], function (param) {
             var num;
             var a1, a2, a3;
 
@@ -5395,7 +5355,7 @@ var Interpreter;
             num = "data:text/plain;charset=utf-8," + encodeURIComponent(a1);
             return num;
         });
-        make_one_func_tbl_B("downloadimg", 0, function (param) {
+        make_one_func_tbl_B("downloadimg", 0, [], function (param) {
             var num;
             var a1, a2;
 
@@ -5420,7 +5380,7 @@ var Interpreter;
             num = can.toDataURL("image/png");
             return num;
         });
-        make_one_func_tbl_B("dpow", 2, function (param) {
+        make_one_func_tbl_B("dpow", 2, [], function (param) {
             var num;
             var a1, a2;
 
@@ -5429,7 +5389,7 @@ var Interpreter;
             num = Math.pow(a1, a2);
             return num;
         });
-        make_one_func_tbl_B("dsin", 1, function (param) {
+        make_one_func_tbl_B("dsin", 1, [], function (param) {
             var num;
             var a1;
 
@@ -5437,7 +5397,7 @@ var Interpreter;
             num = Math.sin(a1 * Math.PI / 180);
             return num;
         });
-        make_one_func_tbl_B("dtan", 1, function (param) {
+        make_one_func_tbl_B("dtan", 1, [], function (param) {
             var num;
             var a1;
 
@@ -5445,7 +5405,7 @@ var Interpreter;
             num = Math.tan(a1 * Math.PI / 180);
             return num;
         });
-        make_one_func_tbl_B("exp", 1, function (param) {
+        make_one_func_tbl_B("exp", 1, [], function (param) {
             var num;
             var a1;
 
@@ -5453,7 +5413,7 @@ var Interpreter;
             num = Math.exp(a1);
             return num;
         });
-        make_one_func_tbl_B("floor", 1, function (param) {
+        make_one_func_tbl_B("floor", 1, [], function (param) {
             var num;
             var a1;
 
@@ -5461,7 +5421,7 @@ var Interpreter;
             num = Math.floor(a1);
             return num;
         });
-        make_one_func_tbl_B("getoutdata", 1, function (param) {
+        make_one_func_tbl_B("getoutdata", 1, [], function (param) {
             var num;
             var a1;
 
@@ -5469,7 +5429,7 @@ var Interpreter;
             if (out_data.hasOwnProperty(a1)) { num = out_data[a1]; } else { num = ""; }
             return num;
         });
-        make_one_func_tbl_B("getpixel", 2, function (param) {
+        make_one_func_tbl_B("getpixel", 2, [], function (param) {
             var num;
             var a1, a2;
             var x1, y1;
@@ -5492,21 +5452,19 @@ var Interpreter;
             num = (img_data.data[0] << 16) | (img_data.data[1] << 8) | img_data.data[2];
             return num;
         });
-        make_one_func_tbl_B("height", -1, function (param) {
+        make_one_func_tbl_B("height", -1, [], function (param) {
             var num;
 
             num = can1.height;
             return num;
         });
-        make_one_func_tbl_B("hour", -1, function (param) {
+        make_one_func_tbl_B("hour", -1, [], function (param) {
             var num;
 
             num = new Date().getHours();
             return num;
         });
-
-        make_one_func_tbl_param("imgheight", 0); // 「変数名をとる引数」を指定
-        make_one_func_tbl_B("imgheight", 1, function (param) {
+        make_one_func_tbl_B("imgheight", 1, [0], function (param) {
             var num;
             var a1;
 
@@ -5517,9 +5475,7 @@ var Interpreter;
             } else { num = 0; }
             return num;
         });
-
-        make_one_func_tbl_param("imgwidth", 0); // 「変数名をとる引数」を指定
-        make_one_func_tbl_B("imgwidth", 1, function (param) {
+        make_one_func_tbl_B("imgwidth", 1, [0], function (param) {
             var num;
             var a1;
 
@@ -5530,8 +5486,7 @@ var Interpreter;
             } else { num = 0; }
             return num;
         });
-
-        make_one_func_tbl_B("index", 2, function (param) {
+        make_one_func_tbl_B("index", 2, [], function (param) {
             var num;
             var a1, a2, a3;
 
@@ -5545,7 +5500,7 @@ var Interpreter;
             num = a1.indexOf(a2, a3);
             return num;
         });
-        make_one_func_tbl_B("input", 0, function (param) {
+        make_one_func_tbl_B("input", 0, [], function (param) {
             var num;
             var a1;
             var repeat_flag;
@@ -5579,7 +5534,7 @@ var Interpreter;
             input_flag = false;
             return 0;
         });
-        make_one_func_tbl_B("inputdlg", 1, function (param) {
+        make_one_func_tbl_B("inputdlg", 1, [], function (param) {
             var num;
             var a1, a2, a3, a4;
 
@@ -5601,7 +5556,7 @@ var Interpreter;
             loop_nocount_flag = true;
             return num;
         });
-        make_one_func_tbl_B("int", 1, function (param) {
+        make_one_func_tbl_B("int", 1, [], function (param) {
             var num;
             var a1;
 
@@ -5609,9 +5564,7 @@ var Interpreter;
             num = a1;
             return num;
         });
-
-        make_one_func_tbl_param("join", 0); // 「変数名をとる引数」を指定
-        make_one_func_tbl_B("join", 2, function (param) {
+        make_one_func_tbl_B("join", 2, [0], function (param) {
             var num;
             var a1, a2, a3, a4;
             var i;
@@ -5657,15 +5610,14 @@ var Interpreter;
             } while (a4 == null || i <= a4);
             return num;
         });
-
-        // make_one_func_tbl_B("keydown", -1, function (param) { // 名前がキー定数とかぶったため変更
-        make_one_func_tbl_B("keydowncode", -1, function (param) {
+        // make_one_func_tbl_B("keydown", -1, [], function (param) { // 名前がキー定数とかぶったため変更
+        make_one_func_tbl_B("keydowncode", -1, [], function (param) {
             var num;
 
             num = key_down_code;
             return num;
         });
-        make_one_func_tbl_B("keyinput", 0, function (param) {
+        make_one_func_tbl_B("keyinput", 0, [], function (param) {
             var num;
             var a1;
             var repeat_flag;
@@ -5699,7 +5651,7 @@ var Interpreter;
             keyinput_flag = false;
             return 0;
         });
-        make_one_func_tbl_B("keyscan", 1, function (param) {
+        make_one_func_tbl_B("keyscan", 1, [], function (param) {
             var num;
             var a1;
 
@@ -5707,13 +5659,13 @@ var Interpreter;
             if (key_down_stat[a1] == true) { num = 1; } else { num = 0; }
             return num;
         });
-        make_one_func_tbl_B("keypress", -1, function (param) {
+        make_one_func_tbl_B("keypress", -1, [], function (param) {
             var num;
 
             num = key_press_code;
             return num;
         });
-        make_one_func_tbl_B("load", 0, function (param) {
+        make_one_func_tbl_B("load", 0, [], function (param) {
             var num;
             var a1;
 
@@ -5733,9 +5685,7 @@ var Interpreter;
             }
             return num;
         });
-
-        make_one_func_tbl_param("loadimgstat", 0); // 「変数名をとる引数」を指定
-        make_one_func_tbl_B("loadimgstat", 1, function (param) {
+        make_one_func_tbl_B("loadimgstat", 1, [0], function (param) {
             var num;
             var a1;
 
@@ -5752,8 +5702,7 @@ var Interpreter;
             }
             return num;
         });
-
-        make_one_func_tbl_B("log", 1, function (param) {
+        make_one_func_tbl_B("log", 1, [], function (param) {
             var num;
             var a1, a2;
 
@@ -5770,7 +5719,7 @@ var Interpreter;
             }
             return num;
         });
-        make_one_func_tbl_B("max", 2, function (param) {
+        make_one_func_tbl_B("max", 2, [], function (param) {
             var num;
             var a1, a2, a3;
             var i;
@@ -5784,13 +5733,13 @@ var Interpreter;
             }
             return num;
         });
-        make_one_func_tbl_B("millisecond", -1, function (param) {
+        make_one_func_tbl_B("millisecond", -1, [], function (param) {
             var num;
 
             num = new Date().getMilliseconds();
             return num;
         });
-        make_one_func_tbl_B("min", 2, function (param) {
+        make_one_func_tbl_B("min", 2, [], function (param) {
             var num;
             var a1, a2, a3;
             var i;
@@ -5804,31 +5753,31 @@ var Interpreter;
             }
             return num;
         });
-        make_one_func_tbl_B("minute", -1, function (param) {
+        make_one_func_tbl_B("minute", -1, [], function (param) {
             var num;
 
             num = new Date().getMinutes();
             return num;
         });
-        make_one_func_tbl_B("month", -1, function (param) {
+        make_one_func_tbl_B("month", -1, [], function (param) {
             var num;
 
             num = new Date().getMonth() + 1; // 1から12にするため1を加算
             return num;
         });
-        make_one_func_tbl_B("mousex", -1, function (param) {
+        make_one_func_tbl_B("mousex", -1, [], function (param) {
             var num;
 
             num = mousex;
             return num;
         });
-        make_one_func_tbl_B("mousey", -1, function (param) {
+        make_one_func_tbl_B("mousey", -1, [], function (param) {
             var num;
 
             num = mousey;
             return num;
         });
-        make_one_func_tbl_B("mousebtn", -1, function (param) {
+        make_one_func_tbl_B("mousebtn", -1, [], function (param) {
             var num;
 
             num = 0;
@@ -5837,7 +5786,7 @@ var Interpreter;
             if (mouse_btn_stat[2] == true) { num = num | (1 << 1); } // 右ボタン(シフト値2でないので注意)
             return num;
         });
-        make_one_func_tbl_B("pow", 2, function (param) {
+        make_one_func_tbl_B("pow", 2, [], function (param) {
             var num;
             var a1, a2;
 
@@ -5846,13 +5795,13 @@ var Interpreter;
             num = Math.pow(a1, a2);
             return num;
         });
-        make_one_func_tbl_B("PI", -1, function (param) {
+        make_one_func_tbl_B("PI", -1, [], function (param) {
             var num;
 
             num = Math.PI;
             return num;
         });
-        make_one_func_tbl_B("rand", -1, function (param) {
+        make_one_func_tbl_B("rand", -1, [], function (param) {
             var num;
 
             // min から max までの整数の乱数を返す
@@ -5861,13 +5810,13 @@ var Interpreter;
             num = Math.floor(Math.random() * (2147483647 - (-2147483648) + 1)) + (-2147483648);
             return num;
         });
-        make_one_func_tbl_B("random", -1, function (param) {
+        make_one_func_tbl_B("random", -1, [], function (param) {
             var num;
 
             num = Math.random();
             return num;
         });
-        make_one_func_tbl_B("replace", 3, function (param) {
+        make_one_func_tbl_B("replace", 3, [], function (param) {
             var num;
             var a1, a2, a3, a4, a5;
             var i, j, k;
@@ -5906,19 +5855,19 @@ var Interpreter;
             }
             return num;
         });
-        make_one_func_tbl_B("scan", -1, function (param) {
+        make_one_func_tbl_B("scan", -1, [], function (param) {
             var num;
 
             num = key_scan_stat;
             return num;
         });
-        make_one_func_tbl_B("second", -1, function (param) {
+        make_one_func_tbl_B("second", -1, [], function (param) {
             var num;
 
             num = new Date().getSeconds();
             return num;
         });
-        make_one_func_tbl_B("setscl", 1, function (param) {
+        make_one_func_tbl_B("setscl", 1, [], function (param) {
             var num;
             var a1, a2, a3;
 
@@ -5932,7 +5881,7 @@ var Interpreter;
             num = Math.round(a1 * a3) / a3;
             return num;
         });
-        make_one_func_tbl_B("sin", 1, function (param) {
+        make_one_func_tbl_B("sin", 1, [], function (param) {
             var num;
             var a1;
 
@@ -5944,9 +5893,7 @@ var Interpreter;
             }
             return num;
         });
-
-        make_one_func_tbl_param("split", 0); // 「変数名をとる引数」を指定
-        make_one_func_tbl_B("split", 3, function (param) {
+        make_one_func_tbl_B("split", 3, [0], function (param) {
             var num;
             var a1, a2, a3, a4;
             var i, j, k;
@@ -5981,14 +5928,13 @@ var Interpreter;
             }
             return num;
         });
-
-        make_one_func_tbl_B("spweb", -1, function (param) {
+        make_one_func_tbl_B("spweb", -1, [], function (param) {
             var num;
 
             num = 1;
             return num;
         });
-        make_one_func_tbl_B("sqrt", 1, function (param) {
+        make_one_func_tbl_B("sqrt", 1, [], function (param) {
             var num;
             var a1;
 
@@ -5996,13 +5942,13 @@ var Interpreter;
             num = Math.sqrt(a1);
             return num;
         });
-        make_one_func_tbl_B("sthigh", -1, function (param) {
+        make_one_func_tbl_B("sthigh", -1, [], function (param) {
             var num;
 
             num = font_size;
             return num;
         });
-        make_one_func_tbl_B("strat", 2, function (param) {
+        make_one_func_tbl_B("strat", 2, [], function (param) {
             var num;
             var a1, a2;
 
@@ -6011,7 +5957,7 @@ var Interpreter;
             num = a1.charAt(a2);
             return num;
         });
-        make_one_func_tbl_B("strlen", 1, function (param) {
+        make_one_func_tbl_B("strlen", 1, [], function (param) {
             var num;
             var a1;
 
@@ -6019,7 +5965,7 @@ var Interpreter;
             num = a1.length;
             return num;
         });
-        make_one_func_tbl_B("stwide", 1, function (param) {
+        make_one_func_tbl_B("stwide", 1, [], function (param) {
             var num;
             var a1;
 
@@ -6027,7 +5973,7 @@ var Interpreter;
             num = ctx.measureText(a1).width;
             return num;
         });
-        make_one_func_tbl_B("substr", 2, function (param) {
+        make_one_func_tbl_B("substr", 2, [], function (param) {
             var num;
             var a1, a2, a3;
 
@@ -6041,7 +5987,7 @@ var Interpreter;
             num = a1.substring(a2, a2 + a3);
             return num;
         });
-        make_one_func_tbl_B("tan", 1, function (param) {
+        make_one_func_tbl_B("tan", 1, [], function (param) {
             var num;
             var a1;
 
@@ -6053,14 +5999,14 @@ var Interpreter;
             }
             return num;
         });
-        make_one_func_tbl_B("tick", -1, function (param) {
+        make_one_func_tbl_B("tick", -1, [], function (param) {
             var num;
 
             // num = new Date().getTime();
             num = Date.now();
             return num;
         });
-        make_one_func_tbl_B("trim", 1, function (param) {
+        make_one_func_tbl_B("trim", 1, [], function (param) {
             var num;
             var a1;
 
@@ -6068,25 +6014,25 @@ var Interpreter;
             num = a1.replace(/^\s+|\s+$/g,"");
             return num;
         });
-        make_one_func_tbl_B("week", -1, function (param) {
+        make_one_func_tbl_B("week", -1, [], function (param) {
             var num;
 
             num = new Date().getDay() + 1; // =1:日曜日,=2:月曜日 ... =7:土曜日
             return num;
         });
-        make_one_func_tbl_B("width", -1, function (param) {
+        make_one_func_tbl_B("width", -1, [], function (param) {
             var num;
 
             num = can1.width;
             return num;
         });
-        make_one_func_tbl_B("year", -1, function (param) {
+        make_one_func_tbl_B("year", -1, [], function (param) {
             var num;
 
             num = new Date().getFullYear();
             return num;
         });
-        make_one_func_tbl_B("yndlg", 1, function (param) {
+        make_one_func_tbl_B("yndlg", 1, [], function (param) {
             var num;
             var a1;
 
@@ -6103,41 +6049,45 @@ var Interpreter;
     }
 
     // ***** 組み込み関数(戻り値なし)の定義情報1個の生成 *****
-    function make_one_func_tbl_A(name, param_num, func) {
+    function make_one_func_tbl_A(name, param_num, param_varname_indexes, func) {
+        var i;
+
         // (定義情報1個の生成)
-        if (!func_tbl[name]) { func_tbl[name] = {}; }
+        func_tbl[name] = {};
         // (引数の数を設定(ただし省略可能な引数は数に入れない))
         func_tbl[name].param_num = param_num;
         // (「変数名をとる引数」の指定フラグを生成)
-        if (!func_tbl[name].param_varname) { func_tbl[name].param_varname = {}; }
+        func_tbl[name].param_varname_flag = {};
+        if (param_varname_indexes && param_varname_indexes.length) {
+            for (i = 0; i < param_varname_indexes.length; i++) {
+                func_tbl[name].param_varname_flag[param_varname_indexes[i]] = true;
+            }
+        }
         // (戻り値の有無を設定)
         func_tbl[name].use_retval = false;
         // (関数の本体を設定)
         func_tbl[name].func = func;
     }
     // ***** 組み込み関数(戻り値あり)の定義情報1個の生成 *****
-    function make_one_func_tbl_B(name, param_num, func) {
+    function make_one_func_tbl_B(name, param_num, param_varname_indexes, func) {
+        var i;
+
         // (定義情報1個の生成)
-        if (!func_tbl[name]) { func_tbl[name] = {}; }
+        func_tbl[name] = {};
         // (引数の数を設定(ただし省略可能な引数は数に入れない))
         // (これを-1にすると組み込み変数になり、()なしで呼び出せる)
         func_tbl[name].param_num = param_num;
         // (「変数名をとる引数」の指定フラグを生成)
-        if (!func_tbl[name].param_varname) { func_tbl[name].param_varname = {}; }
+        func_tbl[name].param_varname_flag = {};
+        if (param_varname_indexes && param_varname_indexes.length) {
+            for (i = 0; i < param_varname_indexes.length; i++) {
+                func_tbl[name].param_varname_flag[param_varname_indexes[i]] = true;
+            }
+        }
         // (戻り値の有無を設定)
         func_tbl[name].use_retval = true;
         // (関数の本体を設定)
         func_tbl[name].func = func;
-    }
-    // ***** 組み込み関数のx番目の引数が「変数名をとる引数」であることを指定する *****
-    // ***** (xは第2引数で指定する(複数あるときは第3引数以後も使って指定する)) *****
-    function make_one_func_tbl_param(name) {
-        var i;
-        if (!func_tbl[name]) { func_tbl[name] = {}; }
-        func_tbl[name].param_varname = {};
-        for (i = 1; i < arguments.length; i++) {
-            func_tbl[name].param_varname[arguments[i]] = true;
-        }
     }
 
     // ****************************************
@@ -6145,41 +6095,45 @@ var Interpreter;
     // ****************************************
 
     // ***** 追加の組み込み関数(戻り値なし)の定義情報1個の生成 *****
-    function add_one_func_tbl_A(name, param_num, func) {
+    function add_one_func_tbl_A(name, param_num, param_varname_indexes, func) {
+        var i;
+
         // (定義情報1個の生成)
-        if (!addfunc_tbl[name]) { addfunc_tbl[name] = {}; }
+        addfunc_tbl[name] = {};
         // (引数の数を設定(ただし省略可能な引数は数に入れない))
         addfunc_tbl[name].param_num = param_num;
         // (「変数名をとる引数」の指定フラグを生成)
-        if (!addfunc_tbl[name].param_varname) { addfunc_tbl[name].param_varname = {}; }
+        addfunc_tbl[name].param_varname_flag = {};
+        if (param_varname_indexes && param_varname_indexes.length) {
+            for (i = 0; i < param_varname_indexes.length; i++) {
+                addfunc_tbl[name].param_varname_flag[param_varname_indexes[i]] = true;
+            }
+        }
         // (戻り値の有無を設定)
         addfunc_tbl[name].use_retval = false;
         // (関数の本体を設定)
         addfunc_tbl[name].func = func;
     }
     // ***** 追加の組み込み関数(戻り値あり)の定義情報1個の生成 *****
-    function add_one_func_tbl_B(name, param_num, func) {
+    function add_one_func_tbl_B(name, param_num, param_varname_indexes, func) {
+        var i;
+
         // (定義情報1個の生成)
-        if (!addfunc_tbl[name]) { addfunc_tbl[name] = {}; }
+        addfunc_tbl[name] = {};
         // (引数の数を設定(ただし省略可能な引数は数に入れない))
         // (これを-1にすると組み込み変数になり、()なしで呼び出せる)
         addfunc_tbl[name].param_num = param_num;
         // (「変数名をとる引数」の指定フラグを生成)
-        if (!addfunc_tbl[name].param_varname) { addfunc_tbl[name].param_varname = {}; }
+        addfunc_tbl[name].param_varname_flag = {};
+        if (param_varname_indexes && param_varname_indexes.length) {
+            for (i = 0; i < param_varname_indexes.length; i++) {
+                addfunc_tbl[name].param_varname_flag[param_varname_indexes[i]] = true;
+            }
+        }
         // (戻り値の有無を設定)
         addfunc_tbl[name].use_retval = true;
         // (関数の本体を設定)
         addfunc_tbl[name].func = func;
-    }
-    // ***** 追加の組み込み関数のx番目の引数が「変数名をとる引数」であることを指定する *****
-    // ***** (xは第2引数で指定する(複数あるときは第3引数以後も使って指定する)) *****
-    function add_one_func_tbl_param(name) {
-        var i;
-        if (!addfunc_tbl[name]) { addfunc_tbl[name] = {}; }
-        addfunc_tbl[name].param_varname = {};
-        for (i = 1; i < arguments.length; i++) {
-            addfunc_tbl[name].param_varname[arguments[i]] = true;
-        }
     }
 
     // ***** プラグイン用 *****
@@ -6189,7 +6143,6 @@ var Interpreter;
     Interpreter.add_clear_var_funcs = function (name, func) { clear_var_funcs[name] = func; };
     Interpreter.add_one_func_tbl_A = add_one_func_tbl_A;
     Interpreter.add_one_func_tbl_B = add_one_func_tbl_B;
-    Interpreter.add_one_func_tbl_param = add_one_func_tbl_param;
     Interpreter.getvarname = getvarname;
     Interpreter.toglobal = toglobal;
     Interpreter.set_canvas_axis = set_canvas_axis;

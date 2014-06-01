@@ -41,7 +41,6 @@ var Plugin0001;
     var add_clear_var_funcs = Interpreter.add_clear_var_funcs;
     var add_one_func_tbl_A = Interpreter.add_one_func_tbl_A;
     var add_one_func_tbl_B = Interpreter.add_one_func_tbl_B;
-    var add_one_func_tbl_param = Interpreter.add_one_func_tbl_param;
     var getvarname = Interpreter.getvarname;
     var toglobal = Interpreter.toglobal;
     var set_canvas_axis = Interpreter.set_canvas_axis;
@@ -105,14 +104,15 @@ var Plugin0001;
     function add_func_tbl_A() {
         // ***** 追加の組み込み関数(戻り値なし)の定義情報を1個ずつ生成 *****
         // (第2引数は関数の引数の数を指定する(ただし省略可能な引数は数に入れない))
-        add_one_func_tbl_A("audmode", 1, function (param, vars, can, ctx) {
+        // (第3引数は「変数名をとる引数」がある場合にその引数番号を配列で指定する)
+        add_one_func_tbl_A("audmode", 1, [], function (param, vars, can, ctx) {
             var a1;
 
             a1 = parseInt(param[0], 10);
             aud_mode = a1;
             return true;
         });
-        add_one_func_tbl_A("audmake", 2, function (param, vars, can, ctx) {
+        add_one_func_tbl_A("audmake", 2, [], function (param, vars, can, ctx) {
             var a1, a2;
 
             a1 = parseInt(param[0], 10);
@@ -138,7 +138,7 @@ var Plugin0001;
             set_loop_nocount();
             return true;
         });
-        add_one_func_tbl_A("audmakedata", 2, function (param, vars, can, ctx) {
+        add_one_func_tbl_A("audmakedata", 2, [], function (param, vars, can, ctx) {
             var a1, a2;
 
             a1 = parseInt(param[0], 10);
@@ -164,7 +164,7 @@ var Plugin0001;
             set_loop_nocount();
             return true;
         });
-        add_one_func_tbl_A("audplay", 1, function (param, vars, can, ctx) {
+        add_one_func_tbl_A("audplay", 1, [], function (param, vars, can, ctx) {
             var a1, a2;
 
             a1 = parseInt(param[0], 10);
@@ -190,7 +190,7 @@ var Plugin0001;
             }
             return true;
         });
-        add_one_func_tbl_A("audspeedrate", 2, function (param, vars, can, ctx) {
+        add_one_func_tbl_A("audspeedrate", 2, [], function (param, vars, can, ctx) {
             var a1, a2;
 
             a1 = parseInt(param[0], 10);
@@ -212,7 +212,7 @@ var Plugin0001;
             }
             return true;
         });
-        add_one_func_tbl_A("audstop", 1, function (param, vars, can, ctx) {
+        add_one_func_tbl_A("audstop", 1, [], function (param, vars, can, ctx) {
             var a1;
 
             a1 = parseInt(param[0], 10);
@@ -233,7 +233,7 @@ var Plugin0001;
             }
             return true;
         });
-        add_one_func_tbl_A("audvolume", 2, function (param, vars, can, ctx) {
+        add_one_func_tbl_A("audvolume", 2, [], function (param, vars, can, ctx) {
             var a1, a2;
 
             a1 = parseInt(param[0], 10);
@@ -255,7 +255,7 @@ var Plugin0001;
             }
             return true;
         });
-        add_one_func_tbl_A("colalpha", 2, function (param, vars, can, ctx) {
+        add_one_func_tbl_A("colalpha", 2, [], function (param, vars, can, ctx) {
             var a1, a2;
             var col_r, col_g, col_b, alpha;
             var color_val;
@@ -272,7 +272,7 @@ var Plugin0001;
             set_color_val(color_val);
             return true;
         });
-        add_one_func_tbl_A("coloralpha", 4, function (param, vars, can, ctx) {
+        add_one_func_tbl_A("coloralpha", 4, [], function (param, vars, can, ctx) {
             var a1, a2, a3 ,a4;
             var col_r, col_g, col_b, alpha;
             var color_val;
@@ -291,7 +291,7 @@ var Plugin0001;
             set_color_val(color_val);
             return true;
         });
-        add_one_func_tbl_A("dbgprint", 1, function (param, vars, can, ctx) {
+        add_one_func_tbl_A("dbgprint", 1, [], function (param, vars, can, ctx) {
             var a1, a2;
 
             a1 = String(param[0]);
@@ -304,7 +304,7 @@ var Plugin0001;
             DebugShow(a1);
             return true;
         });
-        add_one_func_tbl_A("dbgstop", 0, function (param, vars, can, ctx) {
+        add_one_func_tbl_A("dbgstop", 0, [], function (param, vars, can, ctx) {
             var a1;
 
             a1 = "";
@@ -315,7 +315,7 @@ var Plugin0001;
             throw new Error("dbgstop命令で停止しました。" + a1);
             // return true;
         });
-        add_one_func_tbl_A("disaud", 1, function (param, vars, can, ctx) {
+        add_one_func_tbl_A("disaud", 1, [], function (param, vars, can, ctx) {
             var a1;
 
             a1 = parseInt(param[0], 10);
@@ -325,7 +325,7 @@ var Plugin0001;
             }
             return true;
         });
-        add_one_func_tbl_A("dismis", 1, function (param, vars, can, ctx) {
+        add_one_func_tbl_A("dismis", 1, [], function (param, vars, can, ctx) {
             var a1;
 
             a1 = parseInt(param[0], 10);
@@ -335,7 +335,7 @@ var Plugin0001;
             // for (var prop_name in missile) { DebugShow(prop_name + " "); } DebugShow("\n");
             return true;
         });
-        add_one_func_tbl_A("disstrimg", 1, function (param, vars, can, ctx) {
+        add_one_func_tbl_A("disstrimg", 1, [], function (param, vars, can, ctx) {
             var a1;
             var ch;
 
@@ -348,7 +348,7 @@ var Plugin0001;
             // for (var prop_name in stimg) { DebugShow(prop_name + " "); } DebugShow("\n");
             return true;
         });
-        add_one_func_tbl_A("drawshape", 1, function (param, vars, can, ctx) {
+        add_one_func_tbl_A("drawshape", 1, [], function (param, vars, can, ctx) {
             var a1, a2, a3, a4, a5, a6, a7;
             var mode;
             var i;
@@ -472,7 +472,7 @@ var Plugin0001;
             }
             return true;
         });
-        add_one_func_tbl_A("fillarea", 2, function (param, vars, can, ctx) {
+        add_one_func_tbl_A("fillarea", 2, [], function (param, vars, can, ctx) {
             var a1, a2;
             var x1, y1;
             var ret_obj = {};
@@ -507,9 +507,7 @@ var Plugin0001;
             set_canvas_axis(ctx);                    // 座標系を再設定
             return true;
         });
-
-        add_one_func_tbl_param("fpoly", 0, 1); // 「変数名をとる引数」を指定
-        add_one_func_tbl_A("fpoly", 4, function (param, vars, can, ctx) {
+        add_one_func_tbl_A("fpoly", 4, [0, 1], function (param, vars, can, ctx) {
             var a1, a2, a3;
             var b1;
             var i;
@@ -559,9 +557,7 @@ var Plugin0001;
             ctx.fill();
             return true;
         });
-
-        add_one_func_tbl_param("mismake", 1, 2, 3, 4, 5, 6); // 「変数名をとる引数」を指定
-        add_one_func_tbl_A("mismake", 13, function (param, vars, can, ctx) {
+        add_one_func_tbl_A("mismake", 13, [1, 2, 3, 4, 5, 6], function (param, vars, can, ctx) {
             var ch;
             var no, useflag, x100, y100, degree, speed100;
             var useflag_var_name, x100_var_name, y100_var_name;
@@ -594,8 +590,7 @@ var Plugin0001;
                 degree_var_name, speed100_var_name, ch_var_name);
             return true;
         });
-
-        add_one_func_tbl_A("mismove", 0, function (param, vars, can, ctx) {
+        add_one_func_tbl_A("mismove", 0, [], function (param, vars, can, ctx) {
             var mis, mis_no;
             var range_use, min_no, max_no;
 
@@ -633,9 +628,7 @@ var Plugin0001;
             }
             return true;
         });
-
-        add_one_func_tbl_param("mistext", 0); // 「変数名をとる引数」を指定
-        add_one_func_tbl_A("mistext", 3, function (param, vars, can, ctx) {
+        add_one_func_tbl_A("mistext", 3, [0], function (param, vars, can, ctx) {
             var a1, a2, a3;
             var i;
             var x1, y1;
@@ -707,9 +700,7 @@ var Plugin0001;
             }
             return true;
         });
-
-        add_one_func_tbl_param("poly", 0, 1); // 「変数名をとる引数」を指定
-        add_one_func_tbl_A("poly", 4, function (param, vars, can, ctx) {
+        add_one_func_tbl_A("poly", 4, [0, 1], function (param, vars, can, ctx) {
             var a1, a2, a3, a4;
             var b1;
             var i;
@@ -764,8 +755,7 @@ var Plugin0001;
             ctx.stroke();
             return true;
         });
-
-        add_one_func_tbl_A("sandmake", 10, function (param, vars, can, ctx) {
+        add_one_func_tbl_A("sandmake", 10, [], function (param, vars, can, ctx) {
             var a1, a2, a3, a4;
             var x1, y1;
             var w1, h1;
@@ -792,11 +782,11 @@ var Plugin0001;
             set_loop_nocount();
             return true;
         });
-        add_one_func_tbl_A("sandmove", 0, function (param, vars, can, ctx) {
+        add_one_func_tbl_A("sandmove", 0, [], function (param, vars, can, ctx) {
             if (sand_obj) { sand_obj.move(); }
             return true;
         });
-        add_one_func_tbl_A("sanddraw", 0, function (param, vars, can, ctx) {
+        add_one_func_tbl_A("sanddraw", 0, [], function (param, vars, can, ctx) {
             if (sand_obj) {
                 ctx.setTransform(1, 0, 0, 1, 0, 0);      // 座標系を元に戻す
                 sand_obj.draw();
@@ -804,9 +794,7 @@ var Plugin0001;
             }
             return true;
         });
-
-        add_one_func_tbl_param("setstrimg", 1); // 「変数名をとる引数」を指定
-        add_one_func_tbl_A("setstrimg", 2, function (param, vars, can, ctx) {
+        add_one_func_tbl_A("setstrimg", 2, [1], function (param, vars, can, ctx) {
             var a1, a2, a3, a4;
             var ch;
             var imgvars = get_imgvars();
@@ -834,9 +822,7 @@ var Plugin0001;
             }
             return true;
         });
-
-        add_one_func_tbl_param("transimg", 0); // 「変数名をとる引数」を指定
-        add_one_func_tbl_A("transimg", 2, function (param, vars, can, ctx) {
+        add_one_func_tbl_A("transimg", 2, [0], function (param, vars, can, ctx) {
             var a1, a2;
             var i;
             var col_r, col_g, col_b;
@@ -870,9 +856,7 @@ var Plugin0001;
             }
             return true;
         });
-
-        add_one_func_tbl_param("txtmake", 0); // 「変数名をとる引数」を指定
-        add_one_func_tbl_A("txtmake", 5, function (param, vars, can, ctx) {
+        add_one_func_tbl_A("txtmake", 5, [0], function (param, vars, can, ctx) {
             var a1, a2, a3, a4, a5;
             var i;
             var st1;
@@ -905,9 +889,7 @@ var Plugin0001;
             }
             return true;
         });
-
-        add_one_func_tbl_param("txtdraw", 0); // 「変数名をとる引数」を指定
-        add_one_func_tbl_A("txtdraw", 3, function (param, vars, can, ctx) {
+        add_one_func_tbl_A("txtdraw", 3, [0], function (param, vars, can, ctx) {
             var a1, a2, a3;
             var x1, y1;
             var i;
@@ -958,9 +940,7 @@ var Plugin0001;
             }
             return true;
         });
-
-        add_one_func_tbl_param("txtdrawimg", 0); // 「変数名をとる引数」を指定
-        add_one_func_tbl_A("txtdrawimg", 7, function (param, vars, can, ctx) {
+        add_one_func_tbl_A("txtdrawimg", 7, [0], function (param, vars, can, ctx) {
             var a1, a2, a3;
             var x1, y1, x2;
             var w1, h1;
@@ -1007,9 +987,7 @@ var Plugin0001;
             }
             return true;
         });
-
-        add_one_func_tbl_param("txtovr", 0, 5); // 「変数名をとる引数」を指定
-        add_one_func_tbl_A("txtovr", 8, function (param, vars, can, ctx) {
+        add_one_func_tbl_A("txtovr", 8, [0, 5], function (param, vars, can, ctx) {
             var a1, a2, a3, a4;
             var b1, b2, b3;
             var x1, y1;
@@ -1092,9 +1070,7 @@ var Plugin0001;
             }
             return true;
         });
-
-        add_one_func_tbl_param("txtpset", 0); // 「変数名をとる引数」を指定
-        add_one_func_tbl_A("txtpset", 6, function (param, vars, can, ctx) {
+        add_one_func_tbl_A("txtpset", 6, [0], function (param, vars, can, ctx) {
             var a1, a2, a3, a4;
             var x1, y1;
 
@@ -1120,9 +1096,7 @@ var Plugin0001;
             txtovrsub(vars, a1, a2, a3, x1, y1, a4);
             return true;
         });
-
-        add_one_func_tbl_param("txtline", 0); // 「変数名をとる引数」を指定
-        add_one_func_tbl_A("txtline", 8, function (param, vars, can, ctx) {
+        add_one_func_tbl_A("txtline", 8, [0], function (param, vars, can, ctx) {
             var a1, a2, a3, a4;
             var x1, y1, x2, y2, x3, y3;
             var dx1, dy1, sx1, sy1, e1;
@@ -1200,9 +1174,7 @@ var Plugin0001;
             }
             return true;
         });
-
-        add_one_func_tbl_param("txtbox", 0); // 「変数名をとる引数」を指定
-        add_one_func_tbl_A("txtbox", 8, function (param, vars, can, ctx) {
+        add_one_func_tbl_A("txtbox", 8, [0], function (param, vars, can, ctx) {
             var a1, a2, a3, a4, a5;
             var x1, y1, x2, y2, x3, y3, x4, y4;
             var i;
@@ -1246,9 +1218,7 @@ var Plugin0001;
             }
             return true;
         });
-
-        add_one_func_tbl_param("txtfbox", 0); // 「変数名をとる引数」を指定
-        add_one_func_tbl_A("txtfbox", 8, function (param, vars, can, ctx) {
+        add_one_func_tbl_A("txtfbox", 8, [0], function (param, vars, can, ctx) {
             var a1, a2, a3, a4, a5;
             var x1, y1, x2, y2, x3, y3, x4, y4;
             var i;
@@ -1289,9 +1259,7 @@ var Plugin0001;
             }
             return true;
         });
-
-        add_one_func_tbl_param("txtcircle", 0); // 「変数名をとる引数」を指定
-        add_one_func_tbl_A("txtcircle", 9, function (param, vars, can, ctx) {
+        add_one_func_tbl_A("txtcircle", 9, [0], function (param, vars, can, ctx) {
             var a1, a2, a3, a4;
             var x1, y1, x2, y2;
             var r1, a, b;
@@ -1362,9 +1330,7 @@ var Plugin0001;
             }
             return true;
         });
-
-        add_one_func_tbl_param("txtfcircle", 0); // 「変数名をとる引数」を指定
-        add_one_func_tbl_A("txtfcircle", 9, function (param, vars, can, ctx) {
+        add_one_func_tbl_A("txtfcircle", 9, [0], function (param, vars, can, ctx) {
             var a1, a2, a3, a4;
             var x1, y1, x2, y2;
             var r1, a, b;
@@ -1411,9 +1377,7 @@ var Plugin0001;
             }
             return true;
         });
-
-        add_one_func_tbl_param("txtreplace", 0); // 「変数名をとる引数」を指定
-        add_one_func_tbl_A("txtreplace", 5, function (param, vars, can, ctx) {
+        add_one_func_tbl_A("txtreplace", 5, [0], function (param, vars, can, ctx) {
             var a1, a2, a3, a4, a5;
             var i;
             var st1, st2;
@@ -1460,9 +1424,7 @@ var Plugin0001;
             }
             return true;
         });
-
-        add_one_func_tbl_param("txtreplace2", 0); // 「変数名をとる引数」を指定
-        add_one_func_tbl_A("txtreplace2", 5, function (param, vars, can, ctx) {
+        add_one_func_tbl_A("txtreplace2", 5, [0], function (param, vars, can, ctx) {
             var a1, a2, a3, a4, a5;
             var i;
             var st1, st2;
@@ -1522,7 +1484,8 @@ var Plugin0001;
         // ***** 追加の組み込み関数(戻り値あり)の定義情報を1個ずつ生成 *****
         // (第2引数は関数の引数の数を指定する(ただし省略可能な引数は数に入れない))
         // (第2引数を-1にすると組み込み変数になり、()なしで呼び出せる)
-        add_one_func_tbl_B("audmakestat", 1, function (param, vars, can, ctx) {
+        // (第3引数は「変数名をとる引数」がある場合にその引数番号を配列で指定する)
+        add_one_func_tbl_B("audmakestat", 1, [], function (param, vars, can, ctx) {
             var num;
             var a1;
 
@@ -1545,7 +1508,7 @@ var Plugin0001;
             }
             return num;
         });
-        add_one_func_tbl_B("audstat", 1, function (param, vars, can, ctx) {
+        add_one_func_tbl_B("audstat", 1, [], function (param, vars, can, ctx) {
             var num;
             var a1;
 
@@ -1567,7 +1530,7 @@ var Plugin0001;
             if (num == 1 || num == 2) { num = 1; } else { num = 0; }
             return num;
         });
-        add_one_func_tbl_B("calcfractal", 8, function (param, vars, can, ctx) {
+        add_one_func_tbl_B("calcfractal", 8, [], function (param, vars, can, ctx) {
             var num;
             var x1, y1;
             var dr, di, mr, mi, cr, ci, tr, ti, zr, zi, rep, norm2;
@@ -1606,7 +1569,7 @@ var Plugin0001;
             }
             return num;
         });
-        add_one_func_tbl_B("charcode", 1, function (param, vars, can, ctx) {
+        add_one_func_tbl_B("charcode", 1, [], function (param, vars, can, ctx) {
             var num;
             var a1, a2;
 
@@ -1619,7 +1582,7 @@ var Plugin0001;
             num = a1.charCodeAt(a2);
             return num;
         });
-        add_one_func_tbl_B("charfrom", 1, function (param, vars, can, ctx) {
+        add_one_func_tbl_B("charfrom", 1, [], function (param, vars, can, ctx) {
             var num;
             var a1, a2, a3, a4;
             var pair_flag;
@@ -1648,7 +1611,7 @@ var Plugin0001;
             }
             return num;
         });
-        add_one_func_tbl_B("fboxchk", 8, function (param, vars, can, ctx) {
+        add_one_func_tbl_B("fboxchk", 8, [], function (param, vars, can, ctx) {
             var num;
             var x1, y1, x2, y2;
             var w1, h1, w2, h2;
@@ -1668,7 +1631,7 @@ var Plugin0001;
             }
             return num;
         });
-        add_one_func_tbl_B("frombinstr", 1, function (param, vars, can, ctx) {
+        add_one_func_tbl_B("frombinstr", 1, [], function (param, vars, can, ctx) {
             var num;
             var a1;
 
@@ -1676,7 +1639,7 @@ var Plugin0001;
             num = parseInt(a1, 2);
             return num;
         });
-        add_one_func_tbl_B("fromhexstr", 1, function (param, vars, can, ctx) {
+        add_one_func_tbl_B("fromhexstr", 1, [], function (param, vars, can, ctx) {
             var num;
             var a1;
 
@@ -1687,7 +1650,7 @@ var Plugin0001;
         // ***** 数値の文字列を加算して文字列で返す命令の追加 *****
         // (例. y=intstradd("100","200")  を実行すると y="300"  となる)
         // (例. y=intstradd("100","-200") を実行すると y="-100" となる)
-        add_one_func_tbl_B("intstradd", 2, function (param, vars, can, ctx) {
+        add_one_func_tbl_B("intstradd", 2, [], function (param, vars, can, ctx) {
             var num;
             var a1, a2;
             var i;
@@ -1775,7 +1738,7 @@ var Plugin0001;
         // ***** 数値の文字列を乗算して文字列で返す命令の追加 *****
         // (例. y=intstrmul("100","200")  を実行すると y="20000"  となる)
         // (例. y=intstrmul("100","-200") を実行すると y="-20000" となる)
-        add_one_func_tbl_B("intstrmul", 2, function (param, vars, can, ctx) {
+        add_one_func_tbl_B("intstrmul", 2, [], function (param, vars, can, ctx) {
             var num;
             var a1, a2;
             var i, j;
@@ -1841,7 +1804,7 @@ var Plugin0001;
         // (例. y=intstrdiv("10","-3")  を実行すると y="-3"  となる)
         // (例. y=intstrdiv("10","3",1) を実行すると y="1"   となる(第3引数を1にすると余りを返す))
         // (例. y=intstrdiv("10","3",2) を実行すると y="3,1" となる(第3引数を2にすると商と余りをカンマ区切りで返す))
-        add_one_func_tbl_B("intstrdiv", 2, function (param, vars, can, ctx) {
+        add_one_func_tbl_B("intstrdiv", 2, [], function (param, vars, can, ctx) {
             var num;
             var a1, a2, a3;
             var i, j;
@@ -1981,7 +1944,7 @@ var Plugin0001;
             }
             return num;
         });
-        add_one_func_tbl_B("misfreeno", 0, function (param, vars, can, ctx) {
+        add_one_func_tbl_B("misfreeno", 0, [], function (param, vars, can, ctx) {
             var num;
             var mis, mis_no;
             var range_use, min_no, max_no;
@@ -2010,7 +1973,7 @@ var Plugin0001;
             }
             return num;
         });
-        add_one_func_tbl_B("randint", 2, function (param, vars, can, ctx) {
+        add_one_func_tbl_B("randint", 2, [], function (param, vars, can, ctx) {
             var num;
             var a1, a2, a3;
 
@@ -2023,7 +1986,7 @@ var Plugin0001;
             num = Math.floor(Math.random() * (a2 - a1 + 1)) + a1;
             return num;
         });
-        add_one_func_tbl_B("strmake", 2, function (param, vars, can, ctx) {
+        add_one_func_tbl_B("strmake", 2, [], function (param, vars, can, ctx) {
             var num;
             var a1, a2;
 
@@ -2039,7 +2002,7 @@ var Plugin0001;
             num = strrepeatsub(a1, a2);
             return num;
         });
-        add_one_func_tbl_B("strovr", 3, function (param, vars, can, ctx) {
+        add_one_func_tbl_B("strovr", 3, [], function (param, vars, can, ctx) {
             var num;
             var a1, a2, a3, a4;
 
@@ -2060,7 +2023,7 @@ var Plugin0001;
             }
             return num;
         });
-        add_one_func_tbl_B("tobinstr", 1, function (param, vars, can, ctx) {
+        add_one_func_tbl_B("tobinstr", 1, [], function (param, vars, can, ctx) {
             var num;
             var a1;
 
@@ -2068,7 +2031,7 @@ var Plugin0001;
             num = a1.toString(2);
             return num;
         });
-        add_one_func_tbl_B("tofloat", 1, function (param, vars, can, ctx) {
+        add_one_func_tbl_B("tofloat", 1, [], function (param, vars, can, ctx) {
             var num;
             var a1;
 
@@ -2076,7 +2039,7 @@ var Plugin0001;
             num = a1;
             return num;
         });
-        add_one_func_tbl_B("tohankaku", 1, function (param, vars, can, ctx) {
+        add_one_func_tbl_B("tohankaku", 1, [], function (param, vars, can, ctx) {
             var num;
             var a1, a2;
 
@@ -2089,7 +2052,7 @@ var Plugin0001;
             num = ConvZenHan.toHankaku(a1, a2);
             return num;
         });
-        add_one_func_tbl_B("tohexstr", 1, function (param, vars, can, ctx) {
+        add_one_func_tbl_B("tohexstr", 1, [], function (param, vars, can, ctx) {
             var num;
             var a1;
 
@@ -2097,7 +2060,7 @@ var Plugin0001;
             num = a1.toString(16);
             return num;
         });
-        add_one_func_tbl_B("toint", 1, function (param, vars, can, ctx) {
+        add_one_func_tbl_B("toint", 1, [], function (param, vars, can, ctx) {
             var num;
             var a1;
 
@@ -2105,7 +2068,7 @@ var Plugin0001;
             num = a1;
             return num;
         });
-        add_one_func_tbl_B("tolower", 1, function (param, vars, can, ctx) {
+        add_one_func_tbl_B("tolower", 1, [], function (param, vars, can, ctx) {
             var num;
             var a1;
 
@@ -2113,7 +2076,7 @@ var Plugin0001;
             num = a1.toLowerCase();
             return num;
         });
-        add_one_func_tbl_B("tostr", 1, function (param, vars, can, ctx) {
+        add_one_func_tbl_B("tostr", 1, [], function (param, vars, can, ctx) {
             var num;
             var a1;
 
@@ -2121,7 +2084,7 @@ var Plugin0001;
             num = a1;
             return num;
         });
-        add_one_func_tbl_B("toupper", 1, function (param, vars, can, ctx) {
+        add_one_func_tbl_B("toupper", 1, [], function (param, vars, can, ctx) {
             var num;
             var a1;
 
@@ -2129,7 +2092,7 @@ var Plugin0001;
             num = a1.toUpperCase();
             return num;
         });
-        add_one_func_tbl_B("tozenkaku", 1, function (param, vars, can, ctx) {
+        add_one_func_tbl_B("tozenkaku", 1, [], function (param, vars, can, ctx) {
             var num;
             var a1, a2;
 
@@ -2142,9 +2105,7 @@ var Plugin0001;
             num = ConvZenHan.toZenkaku(a1, a2);
             return num;
         });
-
-        add_one_func_tbl_param("txtbchk", 0); // 「変数名をとる引数」を指定
-        add_one_func_tbl_B("txtbchk", 8, function (param, vars, can, ctx) {
+        add_one_func_tbl_B("txtbchk", 8, [0], function (param, vars, can, ctx) {
             var num;
             var a1, a2, a3, a4;
             var x1, y1, x2, y2, x3, y3, x4, y4;
@@ -2203,9 +2164,7 @@ var Plugin0001;
             }
             return num;
         });
-
-        add_one_func_tbl_param("txtpget", 0); // 「変数名をとる引数」を指定
-        add_one_func_tbl_B("txtpget", 5, function (param, vars, can, ctx) {
+        add_one_func_tbl_B("txtpget", 5, [0], function (param, vars, can, ctx) {
             var num;
             var a1, a2, a3;
             var x1, y1;
