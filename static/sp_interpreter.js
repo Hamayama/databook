@@ -5,7 +5,7 @@
 
 
 // SPALM Web Interpreter
-// Modified for Web Application, by H.M(Hamaya Mahama)
+// Modified for Web Application, by H.H(Hamayama Hama)
 // The original of this program is SPALM for cell-phones.
 //
 // This program is free software; you can redistribute it and/or modify
