@@ -19,6 +19,7 @@
 //   の中で行うことを想定しています。
 //
 //   外部クラス一覧
+//     DigitCalc   10進数計算用クラス(staticクラス)
 //     ConvZenHan  文字列の全角半角変換用クラス(staticクラス)
 //     FloodFill   領域塗りつぶし用クラス
 //     Missile     ミサイル用クラス
@@ -27,12 +28,11 @@
 //
 var Plugin0001;
 (function (Plugin0001) {
-    var stimg = {};             // 画像文字割付用  (連想配列オブジェクト)
-    var missile = {};           // ミサイル用      (連想配列オブジェクト)
-    var audplayer = {};         // 音楽再生用      (連想配列オブジェクト)
-    var sand_obj = {};          // 砂シミュレート用(SandSimクラスのインスタンス)
-    var aud_mode;               // 音楽モード      (=0:音楽なし,=1:音楽あり,=2:音楽演奏機能有無による)
-    var max_digit_size = 10000; // 処理する数値文字列の最大桁数
+    var stimg = {};     // 画像文字割付用  (連想配列オブジェクト)
+    var missile = {};   // ミサイル用      (連想配列オブジェクト)
+    var audplayer = {}; // 音楽再生用      (連想配列オブジェクト)
+    var sand_obj = {};  // 砂シミュレート用(SandSimクラスのインスタンス)
+    var aud_mode;       // 音楽モード      (=0:音楽なし,=1:音楽あり,=2:音楽演奏機能有無による)
 
     // ***** インタープリター参照用 *****
     // (必要に応じてインタープリターの内部情報を参照する)
@@ -1653,7 +1653,6 @@ var Plugin0001;
         add_one_func_tbl_B("intstradd", 2, [], function (param, vars, can, ctx) {
             var num;
             var a1, a2;
-            var i;
             var x = {};
             var y = {};
             var z = {};
@@ -1661,78 +1660,14 @@ var Plugin0001;
             a1 = String(param[0]); // 数値の文字列1
             a2 = String(param[1]); // 数値の文字列2
 
-            // ***** 数値を各桁に分解する *****
-            make_digit_obj(x, a1, true);
-            make_digit_obj(y, a2, true);
-            // ***** エラーチェック *****
-            if (x.str == "NaN" || y.str == "NaN") {
-                return "NaN";
-            }
-            if (x.str == "Infinity" && y.str == "Infinity" && x.sign != y.sign) {
-                return "NaN";
-            }
-            if (x.str == "Infinity") {
-                return get_digit_obj_signed_str(x);
-            }
-            if (y.str == "Infinity") {
-                return get_digit_obj_signed_str(y);
-            }
-            // ***** 各桁を加算する *****
-            if (x.digit_len >= y.digit_len) {
-                z.digit_len = x.digit_len + 1;
-                z.digit = [];
-                for (i = 0; i < y.digit_len; i++) {
-                    z.digit[i] = x.digit[i] + y.digit[i];
-                }
-                for (i = y.digit_len; i < x.digit_len; i++) {
-                    z.digit[i] = x.digit[i];
-                }
-            } else {
-                z.digit_len = y.digit_len + 1;
-                z.digit = [];
-                for (i = 0; i < x.digit_len; i++) {
-                    z.digit[i] = y.digit[i] + x.digit[i];
-                }
-                for (i = x.digit_len; i < y.digit_len; i++) {
-                    z.digit[i] = y.digit[i];
-                }
-            }
-            z.digit[z.digit_len - 1] = 0;
-            // ***** 各桁の桁あふれを処理する *****
-            for (i = 0; i < z.digit_len - 1; i++) {
-                if (z.digit[i] >= 10) {
-                    z.digit[i] -= 10;
-                    z.digit[i + 1]++;
-                } else if (z.digit[i] <= -10) {
-                    z.digit[i] += 10;
-                    z.digit[i + 1]--;
-                }
-            }
-            // ***** 結果の符号を求める *****
-            z.sign = "+";
-            for (i = z.digit_len - 1; i >= 0; i--) {
-                if (z.digit[i] < 0) { z.sign = "-"; break; }
-                if (z.digit[i] > 0) { z.sign = "+"; break; }
-            }
-            // ***** 各桁の符号を合わせる *****
-            if (z.sign == "+") {
-                for (i = 0; i < z.digit_len - 1; i++) {
-                    if (z.digit[i] < 0) {
-                        z.digit[i] += 10;
-                        z.digit[i + 1]--;
-                    }
-                }
-            } else {
-                for (i = 0; i < z.digit_len - 1; i++) {
-                    if (z.digit[i] > 0) {
-                        z.digit[i] -= 10;
-                        z.digit[i + 1]++;
-                    }
-                }
-            }
-            // ***** 文字列に変換して返す *****
-            update_digit_obj_str(z, true);
-            num = get_digit_obj_signed_str(z);
+            // ***** 10進数オブジェクトの生成 *****
+            DigitCalc.make_digit_obj(x, a1, true);
+            DigitCalc.make_digit_obj(y, a2, true);
+            DigitCalc.make_digit_obj(z, "NaN", true);
+            // ***** 10進数オブジェクトの加算 *****
+            DigitCalc.add_digit_obj(x, y, z);
+            // ***** 10進数オブジェクトから符号付文字列を取得する *****
+            num = DigitCalc.get_digit_obj_signed_str(z);
             return num;
         });
         // ***** 数値の文字列を乗算して文字列で返す命令の追加 *****
@@ -1741,62 +1676,21 @@ var Plugin0001;
         add_one_func_tbl_B("intstrmul", 2, [], function (param, vars, can, ctx) {
             var num;
             var a1, a2;
-            var i, j;
             var x = {};
             var y = {};
             var z = {};
-            var carry_num;
 
             a1 = String(param[0]); // 数値の文字列1
             a2 = String(param[1]); // 数値の文字列2
 
-            // ***** 数値を各桁に分解する *****
-            make_digit_obj(x, a1, false);
-            make_digit_obj(y, a2, false);
-            // ***** エラーチェック *****
-            if (x.str == "NaN" || y.str == "NaN") {
-                return "NaN";
-            }
-            if ((x.str == "Infinity" && y.str == "0") || (x.str == "0" && y.str == "Infinity")) {
-                return "NaN";
-            }
-            if (x.str == "Infinity" || y.str == "Infinity") {
-                if (x.sign == y.sign) {
-                    return "Infinity";
-                }
-                return "-Infinity";
-            }
-            if (x.digit_len + y.digit_len - 1 > max_digit_size) {
-                if (x.sign == y.sign) {
-                    return "Infinity";
-                }
-                return "-Infinity";
-            }
-            // ***** 各桁を乗算する *****
-            z.digit_len = x.digit_len + y.digit_len;
-            z.digit = [];
-            for (i = 0; i < z.digit_len; i++) {
-                z.digit[i] = 0;
-            }
-            for (i = 0; i < x.digit_len; i++) {
-                for (j = 0; j < y.digit_len; j++) {
-                    z.digit[i + j] += x.digit[i] * y.digit[j];
-                    if (z.digit[i + j] >= 10) {
-                        carry_num = parseInt(z.digit[i + j] / 10, 10);
-                        z.digit[i + j]     -= carry_num * 10;
-                        z.digit[i + j + 1] += carry_num;
-                    }
-                }
-            }
-            // ***** 結果の符号を求める *****
-            if (x.sign == y.sign) {
-                z.sign = "+";
-            } else {
-                z.sign = "-";
-            }
-            // ***** 文字列に変換して返す *****
-            update_digit_obj_str(z, false);
-            num = get_digit_obj_signed_str(z);
+            // ***** 10進数オブジェクトの生成 *****
+            DigitCalc.make_digit_obj(x, a1, false);
+            DigitCalc.make_digit_obj(y, a2, false);
+            DigitCalc.make_digit_obj(z, "NaN", false);
+            // ***** 10進数オブジェクトの乗算 *****
+            DigitCalc.mul_digit_obj(x, y, z);
+            // ***** 10進数オブジェクトから符号付文字列を取得する *****
+            num = DigitCalc.get_digit_obj_signed_str(z);
             return num;
         });
         // ***** 数値の文字列を除算して文字列で返す命令の追加 *****
@@ -1807,14 +1701,10 @@ var Plugin0001;
         add_one_func_tbl_B("intstrdiv", 2, [], function (param, vars, can, ctx) {
             var num;
             var a1, a2, a3;
-            var i, j;
             var x = {};  // 被除数
             var y = {};  // 除数
             var z = {};  // 商
             var z2 = {}; // 余り
-            var minus_flag;
-            var minus_count;
-            var err_flag;
 
             a1 = String(param[0]); // 数値の文字列1
             a2 = String(param[1]); // 数値の文字列2
@@ -1824,123 +1714,20 @@ var Plugin0001;
                 a3 = parseInt(param[2], 10); // 戻り値のタイプ指定
             }
 
-            // ***** 数値を各桁に分解する *****
-            make_digit_obj(x, a1, false);
-            make_digit_obj(y, a2, false);
-            // ***** エラーチェック *****
-            err_flag = false;
-            z2.sign = "+";
-            z2.str = "NaN";
-            if (x.str == "NaN" || y.str == "NaN") {
-                err_flag = true;
-                z.sign = "+";
-                z.str = "NaN";
-            }
-            if (!err_flag && x.str == "Infinity" && y.str == "Infinity") {
-                err_flag = true;
-                z.sign = "+";
-                z.str = "NaN";
-            }
-            if (!err_flag && x.str == "Infinity") {
-                err_flag = true;
-                if (x.sign == y.sign) {
-                    z.sign = "+";
-                    z.str = "Infinity";
-                } else {
-                    z.sign = "-";
-                    z.str = "Infinity";
-                }
-            }
-            if (!err_flag && y.str == "Infinity") {
-                err_flag = true;
-                z.sign = "+";
-                z.str = "0";
-                z2.sign = x.sign;
-                z2.str = x.str;
-            }
-            // ***** 0除算チェック *****
-            if (!err_flag && y.str == "0") {
-                err_flag = true;
-                if (x.str == "0") {
-                    z.sign = "+";
-                    z.str = "NaN";
-                } else {
-                    if (x.sign == y.sign) {
-                        z.sign = "+";
-                        z.str = "Infinity";
-                    } else {
-                        z.sign = "-";
-                        z.str = "Infinity";
-                    }
-                }
-            }
-            if (err_flag) {
-                if (a3 == 1) {        // 余りを返す
-                    num = get_digit_obj_signed_str(z2);
-                } else if (a3 == 2) { // 商と余りをカンマで区切って返す
-                    num = get_digit_obj_signed_str(z) + "," + get_digit_obj_signed_str(z2);
-                } else {              // 商を返す
-                    num = get_digit_obj_signed_str(z);
-                }
-                return num;
-            }
-            // ***** 除算処理 *****
-            z.digit_len = x.digit_len;
-            z2.digit_len = y.digit_len + 1;
-            z.digit = [];
-            for (i = 0; i < z.digit_len; i++) {
-                z.digit[i] = 0;
-            }
-            z2.digit = [];
-            for (i = 0; i < z2.digit_len; i++) {
-                z2.digit[i] = 0;
-            }
-            for (i = x.digit_len - 1; i >= 0; i--) {
-                // ***** 余りを左シフト *****
-                for (j = z2.digit_len - 2; j >= 0; j--) {
-                    z2.digit[j + 1] = z2.digit[j];
-                }
-                // ***** 余りの最下位桁を被除数のi桁目と同じに設定 *****
-                z2.digit[0] = x.digit[i];
-                // ***** 余りから除数を引く *****
-                minus_count = 0;
-                while (true) {
-                    minus_flag = true;
-                    if (z2.digit[z2.digit_len - 1] == 0) {
-                        for (j = z2.digit_len - 2; j >= 0; j--) {
-                            if (z2.digit[j] > y.digit[j]) { break; }
-                            if (z2.digit[j] < y.digit[j]) { minus_flag = false; break; }
-                        }
-                    }
-                    if (!minus_flag) { break; }
-                    minus_count++;
-                    for (j = 0; j < y.digit_len; j++) {
-                        z2.digit[j] = z2.digit[j] - y.digit[j];
-                        if (z2.digit[j] < 0) {
-                            z2.digit[j] += 10;
-                            z2.digit[j + 1]--;
-                        }
-                    }
-                }
-                // ***** 引けた回数を商のi桁目の値とする *****
-                z.digit[i] = minus_count;
-            }
-            // ***** 結果の符号を求める *****
-            if (x.sign == y.sign) {
-                z.sign = "+";
-            } else {
-                z.sign = "-";
-            }
-            z2.sign = x.sign;
-            // ***** 文字列に変換して返す *****
-            update_digit_obj_str(z, false);
-            update_digit_obj_str(z2, false);
+            // ***** 10進数オブジェクトの生成 *****
+            DigitCalc.make_digit_obj(x, a1, false);
+            DigitCalc.make_digit_obj(y, a2, false);
+            DigitCalc.make_digit_obj(z, "NaN", false);
+            DigitCalc.make_digit_obj(z2, "NaN", false);
+            // ***** 10進数オブジェクトの除算 *****
+            DigitCalc.div_digit_obj(x, y, z, z2);
+            // ***** 10進数オブジェクトから符号付文字列を取得する *****
             if (a3 == 1) {        // 余りを返す
-                num = get_digit_obj_signed_str(z2);
+                num = DigitCalc.get_digit_obj_signed_str(z2);
             } else if (a3 == 2) { // 商と余りをカンマで区切って返す
-                num = get_digit_obj_signed_str(z) + "," + get_digit_obj_signed_str(z2);
+                num = DigitCalc.get_digit_obj_signed_str(z) + "," + DigitCalc.get_digit_obj_signed_str(z2);
             } else {              // 商を返す
-                num = get_digit_obj_signed_str(z);
+                num = DigitCalc.get_digit_obj_signed_str(z);
             }
             return num;
         });
@@ -2378,13 +2165,41 @@ var Plugin0001;
         return ret_st;
     }
 
-    // ***** 数値を各桁に分解したオブジェクトを作る(整数のみ対応) *****
+    // ***** 音楽全停止 *****
+    function audstopall() {
+        var aud_no;
+        for (aud_no in audplayer) {
+            if (audplayer.hasOwnProperty(aud_no)) {
+                audplayer[aud_no].mmlplayer.stop();
+                delete audplayer[aud_no];
+            }
+        }
+    }
+
+
+})(Plugin0001 || (Plugin0001 = {}));
+
+
+// ***** 以下は外部クラス *****
+
+
+// ***** 10進数計算用クラス(整数のみ対応)(staticクラス) *****
+var DigitCalc = (function () {
+    // ***** コンストラクタ *****
+    // ***** (staticなクラスなので未使用) *****
+    function DigitCalc() { }
+
+    // ***** 定数 *****
+    DigitCalc.MAX_DIGIT_LEN = 10000;  // 処理する10進数の最大桁数
+
+    // ***** 10進数オブジェクトの生成 *****
+    // (数値文字列num_stから10進数オブジェクトxを生成する)
     // (xには空のオブジェクトを渡すこと。以下のプロパティがセットされて返る。
     //    x.sign      : 符号文字列
     //    x.str       : 数値文字列
-    //    x.digit[i]  : 各桁の値
-    //    x.digit_len : 桁数)
-    function make_digit_obj(x, num_st, use_minus_digit) {
+    //    x.digit[i]  : 各桁の値の配列(0オリジン)
+    //    x.digit_len : 桁数 )
+    DigitCalc.make_digit_obj = function (x, num_st, use_minus_digit) {
         var reg_exp;
         var ret;
         var i;
@@ -2399,6 +2214,10 @@ var Plugin0001;
         x.digit = [];
         x.digit_len = 0;
         // ***** エラーチェック *****
+        if (num_st == "NaN") {
+            x.str = "NaN";
+            return;
+        }
         if (num_st == "Infinity" || num_st == "+Infinity") {
             x.str = "Infinity";
             return;
@@ -2406,10 +2225,6 @@ var Plugin0001;
         if (num_st == "-Infinity") {
             x.sign = "-";
             x.str = "Infinity";
-            return;
-        }
-        if (num_st == "NaN") {
-            x.str = "NaN";
             return;
         }
         // ***** 符号と数値(整数部のみ)を取り出す *****
@@ -2428,7 +2243,7 @@ var Plugin0001;
                 // (整数部に指数部を反映)
                 if (exp_num > 0) {
                     // ***** エラーチェック *****
-                    if (exp_num + int_st.length > max_digit_size) {
+                    if (exp_num + int_st.length > DigitCalc.MAX_DIGIT_LEN) {
                         x.str = "Infinity";
                         return;
                     }
@@ -2441,9 +2256,12 @@ var Plugin0001;
                 }
             }
             if (int_st != "") { x.str = int_st; } else { x.str = "0"; }
-        } else { x.sign = "+"; x.str = "0"; }
+        } else {
+            x.str = "NaN";
+            return;
+        }
         // ***** エラーチェック *****
-        if (x.str.length > max_digit_size) {
+        if (x.str.length > DigitCalc.MAX_DIGIT_LEN) {
             x.str = "Infinity";
             return;
         }
@@ -2460,14 +2278,17 @@ var Plugin0001;
                 x.digit[i] = parseInt(arr_st[x.digit_len - i - 1], 10);
             }
         }
-    }
-    // ***** 数値を各桁に分解したオブジェクトの文字列を更新する *****
-    function update_digit_obj_str(x, use_minus_digit) {
+    };
+
+    // ***** 10進数オブジェクトの文字列を更新する *****
+    DigitCalc.update_digit_obj_str = function (x, use_minus_digit) {
         var reg_exp;
         var ret;
         var i;
         var arr_st;
 
+        // ***** エラーチェック *****
+        if (!x.digit_len) { return; }
         // ***** 数値の各桁を文字列に変換 *****
         arr_st = [];
         if (use_minus_digit) {
@@ -2489,35 +2310,234 @@ var Plugin0001;
         ret = reg_exp.exec(x.str);
         if (ret && ret[1]) { x.str = ret[1]; } else { x.str = "0"; }
         // ***** エラーチェック *****
-        if (x.str.length > max_digit_size) {
+        if (x.str.length > DigitCalc.MAX_DIGIT_LEN) {
             x.str = "Infinity";
             // return;
         }
-    }
-    // ***** 数値を各桁に分解したオブジェクトから符号付文字列を取得 *****
-    function get_digit_obj_signed_str(x) {
+    };
+
+    // ***** 10進数オブジェクトから符号付文字列を取得する *****
+    DigitCalc.get_digit_obj_signed_str = function (x) {
         if (x.sign == "-" && x.str != "0" && x.str != "NaN") {
             return ("-" + x.str);
         }
         return x.str;
-    }
+    };
 
-    // ***** 音楽全停止 *****
-    function audstopall() {
-        var aud_no;
-        for (aud_no in audplayer) {
-            if (audplayer.hasOwnProperty(aud_no)) {
-                audplayer[aud_no].mmlplayer.stop();
-                delete audplayer[aud_no];
+    // ***** 10進数オブジェクトの加算 *****
+    DigitCalc.add_digit_obj = function (x, y, z) {
+        var i;
+
+        // ***** エラーチェック *****
+        if (x.str == "NaN" || y.str == "NaN") {
+            z.str = "NaN";
+            return;
+        }
+        if (x.str == "Infinity" && y.str == "Infinity" && x.sign != y.sign) {
+            z.str = "NaN";
+            return;
+        }
+        if (x.str == "Infinity") {
+            z.sign = x.sign;
+            z.str = "Infinity";
+            return;
+        }
+        if (y.str == "Infinity") {
+            z.sign = y.sign;
+            z.str = "Infinity";
+            return;
+        }
+        // ***** 各桁を加算する *****
+        if (x.digit_len >= y.digit_len) {
+            z.digit_len = x.digit_len + 1;
+            z.digit = [];
+            for (i = 0; i < y.digit_len; i++) {
+                z.digit[i] = x.digit[i] + y.digit[i];
+            }
+            for (i = y.digit_len; i < x.digit_len; i++) {
+                z.digit[i] = x.digit[i];
+            }
+        } else {
+            z.digit_len = y.digit_len + 1;
+            z.digit = [];
+            for (i = 0; i < x.digit_len; i++) {
+                z.digit[i] = y.digit[i] + x.digit[i];
+            }
+            for (i = x.digit_len; i < y.digit_len; i++) {
+                z.digit[i] = y.digit[i];
             }
         }
-    }
+        z.digit[z.digit_len - 1] = 0;
+        // ***** 各桁の桁あふれを処理する *****
+        for (i = 0; i < z.digit_len - 1; i++) {
+            if (z.digit[i] >= 10) {
+                z.digit[i] -= 10;
+                z.digit[i + 1]++;
+            } else if (z.digit[i] <= -10) {
+                z.digit[i] += 10;
+                z.digit[i + 1]--;
+            }
+        }
+        // ***** 結果の符号を求める *****
+        z.sign = "+";
+        for (i = z.digit_len - 1; i >= 0; i--) {
+            if (z.digit[i] < 0) { z.sign = "-"; break; }
+            if (z.digit[i] > 0) { z.sign = "+"; break; }
+        }
+        // ***** 各桁の符号を合わせる *****
+        if (z.sign == "+") {
+            for (i = 0; i < z.digit_len - 1; i++) {
+                if (z.digit[i] < 0) {
+                    z.digit[i] += 10;
+                    z.digit[i + 1]--;
+                }
+            }
+        } else {
+            for (i = 0; i < z.digit_len - 1; i++) {
+                if (z.digit[i] > 0) {
+                    z.digit[i] -= 10;
+                    z.digit[i + 1]++;
+                }
+            }
+        }
+        // ***** 10進数オブジェクトの文字列を更新する *****
+        DigitCalc.update_digit_obj_str(z, true);
+    };
 
+    // ***** 10進数オブジェクトの乗算 *****
+    DigitCalc.mul_digit_obj = function (x, y, z) {
+        var i, j;
+        var carry_num;
 
-})(Plugin0001 || (Plugin0001 = {}));
+        // ***** エラーチェック *****
+        if (x.str == "NaN" || y.str == "NaN") {
+            z.str = "NaN";
+            return;
+        }
+        if ((x.str == "Infinity" && y.str == "0") || (x.str == "0" && y.str == "Infinity")) {
+            z.str = "NaN";
+            return;
+        }
+        if (x.str == "Infinity" || y.str == "Infinity") {
+            if (x.sign == y.sign) { z.sign = "+"; } else { z.sign = "-"; }
+            z.str = "Infinity";
+            return;
+        }
+        if (x.digit_len + y.digit_len - 1 > DigitCalc.MAX_DIGIT_LEN) {
+            if (x.sign == y.sign) { z.sign = "+"; } else { z.sign = "-"; }
+            z.str = "Infinity";
+            return;
+        }
+        // ***** 各桁を乗算する *****
+        z.digit_len = x.digit_len + y.digit_len;
+        z.digit = [];
+        for (i = 0; i < z.digit_len; i++) {
+            z.digit[i] = 0;
+        }
+        for (i = 0; i < x.digit_len; i++) {
+            for (j = 0; j < y.digit_len; j++) {
+                z.digit[i + j] += x.digit[i] * y.digit[j];
+                if (z.digit[i + j] >= 10) {
+                    carry_num = parseInt(z.digit[i + j] / 10, 10);
+                    z.digit[i + j]     -= carry_num * 10;
+                    z.digit[i + j + 1] += carry_num;
+                }
+            }
+        }
+        // ***** 結果の符号を求める *****
+        if (x.sign == y.sign) { z.sign = "+"; } else { z.sign = "-"; }
+        // ***** 10進数オブジェクトの文字列を更新する *****
+        DigitCalc.update_digit_obj_str(z, false);
+    };
 
+    // ***** 10進数オブジェクトの除算 *****
+    DigitCalc.div_digit_obj = function (x, y, z, z2) {
+        var i, j;
+        var minus_flag;
+        var minus_count;
 
-// ***** 以下は外部クラス *****
+        // ***** エラーチェック *****
+        if (x.str == "NaN" || y.str == "NaN") {
+            z.str = "NaN";
+            return;
+        }
+        if (x.str == "Infinity" && y.str == "Infinity") {
+            z.str = "NaN";
+            return;
+        }
+        if (x.str == "Infinity") {
+            if (x.sign == y.sign) { z.sign = "+"; } else { z.sign = "-"; }
+            z.str = "Infinity";
+            return;
+        }
+        if (y.str == "Infinity") {
+            z.sign = "+";
+            z.str = "0";
+            z2.sign = x.sign;
+            z2.str = x.str;
+            return;
+        }
+        // ***** 0除算チェック *****
+        if (y.str == "0") {
+            if (x.str == "0") {
+                z.str = "NaN";
+            } else {
+                if (x.sign == y.sign) { z.sign = "+"; } else { z.sign = "-"; }
+                z.str = "Infinity";
+            }
+            return;
+        }
+        // ***** 除算処理 *****
+        z.digit_len = x.digit_len;
+        z2.digit_len = y.digit_len + 1;
+        z.digit = [];
+        for (i = 0; i < z.digit_len; i++) {
+            z.digit[i] = 0;
+        }
+        z2.digit = [];
+        for (i = 0; i < z2.digit_len; i++) {
+            z2.digit[i] = 0;
+        }
+        for (i = x.digit_len - 1; i >= 0; i--) {
+            // ***** 余りを左シフト *****
+            for (j = z2.digit_len - 2; j >= 0; j--) {
+                z2.digit[j + 1] = z2.digit[j];
+            }
+            // ***** 余りの最下位桁を被除数のi桁目と同じに設定 *****
+            z2.digit[0] = x.digit[i];
+            // ***** 余りから除数を引く *****
+            minus_count = 0;
+            while (true) {
+                minus_flag = true;
+                if (z2.digit[z2.digit_len - 1] == 0) {
+                    for (j = z2.digit_len - 2; j >= 0; j--) {
+                        if (z2.digit[j] > y.digit[j]) { break; }
+                        if (z2.digit[j] < y.digit[j]) { minus_flag = false; break; }
+                    }
+                }
+                if (!minus_flag) { break; }
+                minus_count++;
+                for (j = 0; j < y.digit_len; j++) {
+                    z2.digit[j] = z2.digit[j] - y.digit[j];
+                    if (z2.digit[j] < 0) {
+                        z2.digit[j] += 10;
+                        z2.digit[j + 1]--;
+                    }
+                }
+            }
+            // ***** 引けた回数を商のi桁目の値とする *****
+            z.digit[i] = minus_count;
+        }
+        // ***** 結果の符号を求める *****
+        if (x.sign == y.sign) { z.sign = "+"; } else { z.sign = "-"; }
+        z2.sign = x.sign;
+        // ***** 10進数オブジェクトの文字列を更新する *****
+        DigitCalc.update_digit_obj_str(z, false);
+        DigitCalc.update_digit_obj_str(z2, false);
+    };
+
+    return DigitCalc; // これがないとクラスが動かないので注意
+})();
 
 
 // ***** 文字列の全角半角変換用クラス(staticクラス) *****
