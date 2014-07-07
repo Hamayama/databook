@@ -2228,7 +2228,7 @@ var DigitCalc = (function () {
             return;
         }
         // ***** 符号と数値(整数部のみ)を取り出す *****
-        reg_exp = /^([+\-])?0*(0|[1-9]\d*)(?:\.(\d*))?(?:[eE]([+\-]?\d*))?/;
+        reg_exp = /^([+\-])?0*(\d+)(?:\.(\d*))?(?:[eE]([+\-]?\d*))?/;
         ret = reg_exp.exec(num_st);
         if (ret) {
             // (符号)
@@ -2306,7 +2306,7 @@ var DigitCalc = (function () {
         }
         x.str = arr_st.join("");
         // ***** 先頭の0を削除 *****
-        reg_exp = /^0*([1-9]\d*)/;
+        reg_exp = /^0*(\d+)/;
         ret = reg_exp.exec(x.str);
         if (ret && ret[1]) { x.str = ret[1]; } else { x.str = "0"; }
         // ***** エラーチェック *****
