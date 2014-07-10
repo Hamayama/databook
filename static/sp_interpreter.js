@@ -1,7 +1,7 @@
 // This file is encoded with UTF-8 without BOM.
 
 // sp_interpreter.js
-// 2014-7-7 v3.32
+// 2014-7-10 v3.33
 
 
 // SPALM Web Interpreter
@@ -6180,8 +6180,6 @@ var Download = (function () {
     var URL = window.URL || window.webkitURL;
 
     // ***** ファイルをダウンロードする(staticメソッド) *****
-    // ***** (staticなメソッドなのでprototype未使用) *****
-    // Download.prototype.download = function (data, fname) {
     Download.download = function (data, fname) {
         var url;
         var blob;
@@ -6231,7 +6229,6 @@ var Download = (function () {
         return true;
     };
     // ***** Canvasの画像をダウンロードする(staticメソッド) *****
-    // ***** (staticなメソッドなのでprototype未使用) *****
     Download.downloadCanvas = function (can, fname) {
         var url;
         var blob;

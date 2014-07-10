@@ -2192,7 +2192,7 @@ var DigitCalc = (function () {
     // ***** 定数 *****
     DigitCalc.MAX_DIGIT_LEN = 10000;  // 処理する10進数の最大桁数
 
-    // ***** 10進数オブジェクトの生成 *****
+    // ***** 10進数オブジェクトの生成(staticメソッド) *****
     // (数値文字列num_stから10進数オブジェクトxを生成する)
     // (xには空のオブジェクトを渡すこと。以下のプロパティがセットされて返る。
     //    x.sign      : 符号文字列
@@ -2280,7 +2280,7 @@ var DigitCalc = (function () {
         }
     };
 
-    // ***** 10進数オブジェクトの文字列を更新する *****
+    // ***** 10進数オブジェクトの文字列を更新する(staticメソッド) *****
     DigitCalc.update_digit_obj_str = function (x, use_minus_digit) {
         var reg_exp;
         var ret;
@@ -2316,7 +2316,7 @@ var DigitCalc = (function () {
         }
     };
 
-    // ***** 10進数オブジェクトから符号付文字列を取得する *****
+    // ***** 10進数オブジェクトから符号付文字列を取得する(staticメソッド) *****
     DigitCalc.get_digit_obj_signed_str = function (x) {
         if (x.sign == "-" && x.str != "0" && x.str != "NaN") {
             return ("-" + x.str);
@@ -2324,7 +2324,7 @@ var DigitCalc = (function () {
         return x.str;
     };
 
-    // ***** 10進数オブジェクトの加算 *****
+    // ***** 10進数オブジェクトの加算(staticメソッド) *****
     DigitCalc.add_digit_obj = function (x, y, z) {
         var i;
 
@@ -2404,7 +2404,7 @@ var DigitCalc = (function () {
         DigitCalc.update_digit_obj_str(z, true);
     };
 
-    // ***** 10進数オブジェクトの乗算 *****
+    // ***** 10進数オブジェクトの乗算(staticメソッド) *****
     DigitCalc.mul_digit_obj = function (x, y, z) {
         var i, j;
         var carry_num;
@@ -2450,7 +2450,7 @@ var DigitCalc = (function () {
         DigitCalc.update_digit_obj_str(z, false);
     };
 
-    // ***** 10進数オブジェクトの除算 *****
+    // ***** 10進数オブジェクトの除算(staticメソッド) *****
     DigitCalc.div_digit_obj = function (x, y, z, z2) {
         var i, j;
         var minus_flag;
@@ -2545,9 +2545,8 @@ var ConvZenHan = (function () {
     // ***** コンストラクタ *****
     // ***** (staticなクラスなので未使用) *****
     function ConvZenHan() { }
+
     // ***** 全角に変換する(staticメソッド) *****
-    // ***** (staticなメソッドなのでprototype未使用) *****
-    // ConvZenHan.prototype.toZenkaku = function (st1, mode1) {
     ConvZenHan.toZenkaku = function (st1, mode1) {
         var ret_st;
 
@@ -2651,8 +2650,8 @@ var ConvZenHan = (function () {
         // ***** 戻り値を返す *****
         return ret_st;
     };
+
     // ***** 半角に変換する(staticメソッド) *****
-    // ***** (staticなメソッドなのでprototype未使用) *****
     ConvZenHan.toHankaku = function (st1, mode1) {
         var ret_st;
 
@@ -2742,7 +2741,6 @@ var ConvZenHan = (function () {
     // ***** 以下は内部処理用 *****
 
     // ***** 変換テーブル生成(内部処理用)(staticメソッド) *****
-    // ***** (staticなメソッドなのでprototype未使用) *****
     ConvZenHan.makeTable = function () {
         var i;
         var han, zen;
