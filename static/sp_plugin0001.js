@@ -2186,7 +2186,7 @@ var Plugin0001;
 // ***** 10進数計算用クラス(整数のみ対応)(staticクラス) *****
 var DigitCalc = (function () {
     // ***** コンストラクタ *****
-    // ***** (staticなクラスなので未使用) *****
+    // ***** (staticクラスのため未使用) *****
     function DigitCalc() { }
 
     // ***** 定数 *****
@@ -2543,7 +2543,7 @@ var DigitCalc = (function () {
 // ***** 文字列の全角半角変換用クラス(staticクラス) *****
 var ConvZenHan = (function () {
     // ***** コンストラクタ *****
-    // ***** (staticなクラスなので未使用) *****
+    // ***** (staticクラスのため未使用) *****
     function ConvZenHan() { }
 
     // ***** 全角に変換する(staticメソッド) *****

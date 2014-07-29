@@ -1,7 +1,7 @@
 // This file is encoded with UTF-8 without BOM.
 
 // sp_interpreter.js
-// 2014-7-10 v3.33
+// 2014-7-29 v3.34
 
 
 // SPALM Web Interpreter
@@ -563,6 +563,8 @@ var Interpreter;
     var after_run_funcs = {};   // プラグイン用の実行後処理(連想配列オブジェクト)
     var clear_var_funcs = {};   // プラグイン用の全変数クリア時処理(連想配列オブジェクト)
 
+    var const_tbl = {};         // 定数の定義情報(連想配列オブジェクト)
+
     var constants = {           // 組み込み定数
         LEFT:4, HCENTER:1, RIGHT:8, TOP:16, VCENTER:2, BASELINE:64, BOTTOM:32,
         key0:1, key1:2, key2:4, key3:8, key4:16, key5:32, key6:64, key7:128, key8:256, key9:512,
@@ -609,7 +611,7 @@ var Interpreter;
         "func":6,       "funcgoto":7,   "break":8,      "continue":9,   "switch":10,
         "case":11,      "default":12,   "if":13,        "elsif":14,     "else":15,
         "for":16,       "while":17,     "do":18,        "global":19,    "glb":20,
-        "local":21,     "loc":22 };
+        "local":21,     "loc":22,       "defconst":23,  "defconst2":24, "disconst":25 };
 
     // ***** hasOwnPropertyをプロパティ名に使うかもしれない場合の対策 *****
     // (変数名、関数名、ラベル名、画像変数名について、
@@ -853,19 +855,31 @@ var Interpreter;
             DebugShow("実行終了\n");
             return ret;
         }
+        // ***** 定数展開 *****
+        try {
+            expandconst();
+        } catch (ex2) {
+            DebugShow("symbol:(" + symbol_len + "個): ");
+            msg = symbol.join(" ");
+            DebugShow(msg + "\n");
+            DebugShow("expandconst: " + ex2.message + ": debugpos=" + debugpos1 + "\n");
+            show_err_place(debugpos1, debugpos2);
+            DebugShow("実行終了\n");
+            return ret;
+        }
         // ***** コンパイル *****
         debugpos1 = 0;
         debugpos2 = 0;
         try {
             compile();
-        } catch (ex2) {
+        } catch (ex3) {
             DebugShow("symbol:(" + symbol_len + "個): ");
             msg = symbol.join(" ");
             DebugShow(msg + "\n");
             DebugShow("code  :(" + code_len + "個): ");
             msg = code_str.join(" ");
             DebugShow(msg + "\n");
-            DebugShow("compile: " + ex2.message + ": debugpos=" + debugpos1 + "\n");
+            DebugShow("compile: " + ex3.message + ": debugpos=" + debugpos1 + "\n");
             show_err_place(debugpos1, debugpos2);
             DebugShow("実行終了\n");
             return ret;
@@ -883,10 +897,10 @@ var Interpreter;
         debugpos2 = 0;
         try {
             setlabel();
-        } catch (ex3) {
+        } catch (ex4) {
             DebugShow("label=" + JSON.stringify(label) + "\n");
             DebugShow("func=" + JSON.stringify(func) + "\n");
-            DebugShow("setlabel: " + ex3.message + ": debugpos=" + debugpos1 + "\n");
+            DebugShow("setlabel: " + ex4.message + ": debugpos=" + debugpos1 + "\n");
             show_err_place(debugpos1, debugpos2);
             DebugShow("実行終了\n");
             return ret;
@@ -959,7 +973,7 @@ var Interpreter;
                 sleep_id = setTimeout(run_continuously, sleep_time);
                 return ret;
             }
-        } catch (ex4) {
+        } catch (ex) {
             // ***** エラー終了 *****
             if (prof_obj) { prof_obj.stop("result"); }
             // ***** プラグイン用の実行後処理 *****
@@ -971,7 +985,7 @@ var Interpreter;
             // ***** エラー表示 *****
             debugpos1 = code_info[debugpc].pos1;
             debugpos2 = code_info[debugpc].pos2;
-            DebugShow("execcode: " + ex4.message + ": debugpos=" + debugpos1 + ", debugpc=" + debugpc + "\n");
+            DebugShow("execcode: " + ex.message + ": debugpos=" + debugpos1 + ", debugpc=" + debugpc + "\n");
             show_err_place(debugpos1, debugpos2);
             // ***** 終了処理 *****
             running_flag = false; runstatchanged();
@@ -1649,7 +1663,7 @@ var Interpreter;
         var i, j, k, k2;
         var ch;
         var sym;
-
+        var lbl_name;
         var func_name, func_stm, func_end;
         var param_num;
 
@@ -1686,7 +1700,20 @@ var Interpreter;
             if (sym == "label") {
                 i++;
                 code_push("label", debugpos1, i);
-                code_push('"' + symbol[i++] + '"', debugpos1, i);
+                // (マイナス値を許可(特別扱い))
+                // lbl_name = symbol[i++];
+                if (symbol[i] == "-" && isDigit(symbol[i + 1].charAt(0))) {
+                    lbl_name = symbol[i] + symbol[i + 1];
+                    i += 2;
+                } else {
+                    lbl_name = symbol[i];
+                    i++;
+                }
+                // (文字列化)
+                if (lbl_name.charAt(0) != '"') {
+                    lbl_name = '"' + lbl_name + '"';
+                }
+                code_push(lbl_name, debugpos1, i);
                 continue;
             }
 
@@ -1823,6 +1850,31 @@ var Interpreter;
                 code_push(param_num, debugpos1, i);
                 // ***** 関数の呼び出し *****
                 code_push("gotouser", debugpos1, i);
+                match2(")", i++);
+                continue;
+            }
+
+            // ***** defconst文のとき *****
+            if (sym == "defconst" || sym == "defconst2") {
+                i++;
+                match2("(", i++);
+                i++;
+                match2(",", i++);
+                // (マイナス値を許可(特別扱い))
+                if (symbol[i] == "-" && isDigit(symbol[i + 1].charAt(0))) {
+                    i += 2;
+                } else {
+                    i++;
+                }
+                match2(")", i++);
+                continue;
+            }
+
+            // ***** disconst文のとき *****
+            if (sym == "disconst") {
+                i++;
+                match2("(", i++);
+                i++;
                 match2(")", i++);
                 continue;
             }
@@ -2726,7 +2778,9 @@ var Interpreter;
             return i;
         }
         // ***** 数値のとき *****
-        if (isDigit(ch)) {
+        // (マイナス値を許可(定数展開の関係で特別扱い))
+        // if (isDigit(ch)) {
+        if (isDigit(ch) || ch == "-") {
             i++;
             num = +sym; // 数値にする
             code_push("storenum", debugpos1, i);
@@ -2973,6 +3027,118 @@ var Interpreter;
     }
 
     // ****************************************
+    //               定数展開処理
+    // ****************************************
+    // (シンボル中の定数を実際の値に置換する)
+
+    // ***** 定数展開 *****
+    function expandconst() {
+        var i;
+        var ch;
+        var sym;
+        var cst_name;
+        var cst_value;
+
+        // ***** 定数の定義情報の生成 *****
+        make_const_tbl();
+
+        // ***** シンボル解析のループ *****
+        i = 0;
+        while (i < symbol_len - 4) { // 終端のend(4個)は対象外
+            // ***** シンボル取り出し *****
+            debugpos1 = i;
+            sym = symbol[i];
+
+            // ***** defconst文のとき *****
+            if (sym == "defconst" || sym == "defconst2") {
+                i++;
+                match2("(", i++);
+                cst_name = symbol[i++];
+                // ***** 1文字取り出す *****
+                ch = cst_name.charAt(0);
+                // ***** アルファベットかアンダースコアのとき *****
+                if (isAlpha(ch) || ch == "_") {
+                    match2(",", i++);
+                    // ***** 値の取得 *****
+                    // (マイナス値を許可(特別扱い))
+                    // cst_value = symbol[i++];
+                    if (symbol[i] == "-" && isDigit(symbol[i + 1].charAt(0))) {
+                        cst_value = symbol[i] + symbol[i + 1];
+                        i += 2;
+                    } else {
+                        cst_value = symbol[i];
+                        i++;
+                    }
+                    // ***** 定数の定義情報1個の生成 *****
+                    const_tbl[cst_name] = {};
+                    if (sym == "defconst2") {
+                        const_tbl[cst_name].type = 2;
+                    } else {
+                        const_tbl[cst_name].type = 1;
+                    }
+                    const_tbl[cst_name].value = cst_value;
+                } else {
+                    debugpos2 = i;
+                    throw new Error("定数名が不正です。('" + cst_name + "')");
+                }
+                match2(")", i++);
+                continue;
+            }
+
+            // ***** disconst文のとき *****
+            if (sym == "disconst") {
+                i++;
+                match2("(", i++);
+                cst_name = symbol[i++];
+                // ***** 1文字取り出す *****
+                ch = cst_name.charAt(0);
+                // ***** アルファベットかアンダースコアのとき *****
+                if (isAlpha(ch) || ch == "_") {
+                    // ***** 定数の定義情報1個の削除 *****
+                    delete const_tbl[cst_name];
+                } else {
+                    debugpos2 = i;
+                    throw new Error("定数名が不正です。('" + cst_name + "')");
+                }
+                match2(")", i++);
+                continue;
+            }
+
+            // ***** 定数のとき *****
+            // if (const_tbl.hasOwnProperty(sym)) {
+            if (hasOwn.call(const_tbl, sym)) {
+                i++;
+                // ***** 種別2のときは関数を対象とする *****
+                if ((const_tbl[sym].type == 1 && symbol[i] != "(") ||
+                    (const_tbl[sym].type == 2 && symbol[i] == "(")) {
+                    // ***** 定数を実際の値に置換する *****
+                    symbol[i - 1] = const_tbl[sym].value;
+                }
+                continue;
+            }
+
+            // ***** その他のとき *****
+            i++;
+        }
+    }
+
+    // ***** 定数の定義情報の生成 *****
+    function make_const_tbl() {
+        var cst_name;
+
+        // ***** 定数の定義情報の生成 *****
+        const_tbl = {};
+        for (cst_name in constants) {
+            // if (constants.hasOwnProperty(cst_name)) {
+            if (hasOwn.call(constants, cst_name)) {
+                const_tbl[cst_name] = {};
+                const_tbl[cst_name].type = 1;
+                const_tbl[cst_name].value = String(constants[cst_name]);
+            }
+        }
+    }
+
+    // ****************************************
     //            シンボル初期化処理
     // ****************************************
     // (ソースの文字列を解析してシンボルを生成する)
@@ -3073,15 +3239,7 @@ var Interpreter;
                     ch = src.charAt(i);
                     if (isAlpha(ch) || ch == "_" || isDigit(ch)) { i++; } else { break; }
                 }
-                temp_st = src.substring(sym_start, i);
-
-                // ***** 組み込み定数のとき *****
-                if (constants.hasOwnProperty(temp_st)) {
-                    // ***** 値に展開する *****
-                    temp_st = String(constants[temp_st]);
-                }
-
-                symbol_push(temp_st, line_no);
+                symbol_push(src.substring(sym_start, i), line_no);
                 continue;
             }
             // ***** 文字列のとき *****
@@ -6164,7 +6322,7 @@ var Interpreter;
 // ***** ファイルダウンロード用クラス(staticクラス) *****
 var Download = (function () {
     // ***** コンストラクタ *****
-    // ***** (staticなクラスなので未使用) *****
+    // ***** (staticクラスのため未使用) *****
     function Download() { }
 
     // ***** Blobオブジェクトの取得 *****
