@@ -291,30 +291,6 @@ var Plugin0001;
             set_color_val(color_val);
             return true;
         });
-        add_one_func_tbl_A("dbgprint", 1, [], function (param, vars, can, ctx) {
-            var a1, a2;
-
-            a1 = String(param[0]);
-            if (param.length <= 1) {
-                a2 = 1;
-            } else {
-                a2 = parseInt(param[1], 10);
-            }
-            if (a2 != 0) { a1 = a1 + "\n"; }
-            DebugShow(a1);
-            return true;
-        });
-        add_one_func_tbl_A("dbgstop", 0, [], function (param, vars, can, ctx) {
-            var a1;
-
-            a1 = "";
-            if (param.length >= 1) {
-                a1 = String(param[0]);
-            }
-            if (a1 != "") { a1 = "('" + a1 + "')"; }
-            throw new Error("dbgstop命令で停止しました。" + a1);
-            // return true;
-        });
         add_one_func_tbl_A("disaud", 1, [], function (param, vars, can, ctx) {
             var a1;
 
@@ -400,8 +376,8 @@ var Plugin0001;
                         ctx.stroke();
                     }
                     break;
-                case 100: // ピラミッド表示(塗りつぶしあり)
-                case 101: // ピラミッド表示(塗りつぶしなし)
+                case 100: // 上から見た四角すい(塗りつぶしあり)
+                case 101: // 上から見た四角すい(塗りつぶしなし)
                     if (param.length < 5) {
                         a1 = 0;
                         a2 = 0;

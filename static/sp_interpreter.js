@@ -1,7 +1,7 @@
 // This file is encoded with UTF-8 without BOM.
 
 // sp_interpreter.js
-// 2014-7-29 v3.34
+// 2014-8-6 v3.36
 
 
 // SPALM Web Interpreter
@@ -532,6 +532,7 @@ var Interpreter;
     var loop_time_start;        // ループ開始時間(msec)
     var loop_time_count;        // ループ経過時間(msec)
     var loop_nocount_flag;      // ループ時間ノーカウントフラグ
+    var loop_nocount_mode;      // ループ時間ノーカウントモード
     var input_flag;             // キー入力待ちフラグ1(携帯互換用)
     var keyinput_flag;          // キー入力待ちフラグ2(PC用)
     var funccall_stack = [];    // 関数呼び出し情報保存用(配列)
@@ -917,6 +918,7 @@ var Interpreter;
         running_flag = true; runstatchanged();
         sleep_flag = false;
         loop_nocount_flag = false;
+        loop_nocount_mode = false;
         input_flag = false;
         keyinput_flag = false;
         funccall_stack = [];
@@ -1536,7 +1538,9 @@ var Interpreter;
                         }
                         // (ローカル変数のスコープをさかのぼれるように、引数の内容に「a\」と数字を付加)
                         if (num.substring(0, 2) != "a\\") {
-                            num = "a\\" + vars.getLocalScopeNum() + "\\" + num;
+                            num2 = vars.getLocalScopeNum() - 1;
+                            // if (num2 < 0) { num2 = 0; }
+                            num = "a\\" + num2 + "\\" + num;
                         }
                     }
                     vars.setVarValue(var_name, num);
@@ -1558,11 +1562,13 @@ var Interpreter;
                     // break;
             }
             // ***** 各種フラグのチェックと処理時間の測定 *****
-            if (loop_nocount_flag) {
-                loop_nocount_flag = false;
-                // ***** ループ時間ノーカウントフラグがONのときは処理時間に含めない *****
-                // loop_time_start = new Date().getTime();
-                loop_time_start = Date.now();
+            if (loop_nocount_flag || loop_nocount_mode) {
+                if (!loop_nocount_mode) {
+                    loop_nocount_flag = false;
+                    // ***** ループ時間ノーカウントフラグがONのときは処理時間に含めない *****
+                    // loop_time_start = new Date().getTime();
+                    loop_time_start = Date.now();
+                }
             } else {
                 // (Date.now()が遅かったので10回に1回だけ測定する)
                 time_cnt++;
@@ -4426,6 +4432,43 @@ var Interpreter;
             vars.copyArray(a1, a2);
             return true;
         });
+        make_one_func_tbl_A("dbgloopset", 1, [], function (param) {
+            var a1;
+
+            a1 = parseInt(param[0], 10);
+            if (a1 == 0) {
+                loop_nocount_flag = true;
+                loop_nocount_mode = false;
+            } else {
+                loop_nocount_flag = true;
+                loop_nocount_mode = true;
+            }
+            return true;
+        });
+        add_one_func_tbl_A("dbgprint", 1, [], function (param) {
+            var a1, a2;
+
+            a1 = String(param[0]);
+            if (param.length <= 1) {
+                a2 = 1;
+            } else {
+                a2 = parseInt(param[1], 10);
+            }
+            if (a2 != 0) { a1 = a1 + "\n"; }
+            DebugShow(a1);
+            return true;
+        });
+        add_one_func_tbl_A("dbgstop", 0, [], function (param) {
+            var a1;
+
+            a1 = "";
+            if (param.length >= 1) {
+                a1 = String(param[0]);
+            }
+            if (a1 != "") { a1 = "('" + a1 + "')"; }
+            throw new Error("dbgstop命令で停止しました。" + a1);
+            // return true;
+        });
         make_one_func_tbl_A("disarray", 1, [0], function (param) {
             var a1, a2, a3;
             var i;
@@ -5223,8 +5266,8 @@ var Interpreter;
                 a4 = parseInt(param[3], 10); // H2
             }
             // ***** エラーチェック *****
-            // if (a1 <= 0 || a1 >= max_image_size || a2 <= 0 || a2 >= max_image_size ||
-            //     a3 <= 0 || a3 >= max_image_size || a4 <= 0 || a4 >= max_image_size) {
+            // if (a1 <= 0 || a1 > max_image_size || a2 <= 0 || a2 > max_image_size ||
+            //     a3 <= 0 || a3 > max_image_size || a4 <= 0 || a4 > max_image_size) {
             if (!(a1 > 0 && a1 <= max_image_size && a2 > 0 && a2 <= max_image_size &&
                   a3 > 0 && a3 <= max_image_size && a4 > 0 && a4 <= max_image_size)) {
                 throw new Error("縦横のサイズの値が不正です。1-" + max_image_size + "の範囲で指定してください。");
