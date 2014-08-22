@@ -1,7 +1,7 @@
 // This file is encoded with UTF-8 without BOM.
 
 // sp_interpreter.js
-// 2014-8-6 v3.36
+// 2014-8-22 v3.37
 
 
 // SPALM Web Interpreter
@@ -3750,10 +3750,13 @@ var Interpreter;
     var Vars = (function () {
         // ***** コンストラクタ *****
         function Vars() {
-            this.vars_stack = [];    // ローカル/グローバル変数のスコープ(配列)
-                                     //   (配列の0はグローバル変数用)
-                                     //   (配列の1以後はローカル変数用)
-            this.vars_stack[0] = {}; // グローバル変数用(連想配列オブジェクト)
+            this.vars_stack = [];     // ローカル/グローバル変数のスコープ(配列)
+                                      //   (配列の0はグローバル変数用)
+                                      //   (配列の1以後はローカル変数用)
+            this.vars_stack[0] = {};  // グローバル変数用(連想配列オブジェクト)
+
+            this.array_cache = [];    // 配列変数名キャッシュ用(検索高速化のため)(配列)
+            this.array_cache[0] = {}; // グローバル配列変数名キャッシュ用(連想配列オブジェクト)
         }
         // ***** 定数 *****
         // (Object.keysと配列操作のsome,filter,forEachがあるときは、そちらを利用する)
@@ -3777,11 +3780,17 @@ var Interpreter;
         // ***** ローカル変数のスコープを1個生成する *****
         Vars.prototype.makeLocalScope = function () {
             this.vars_stack[this.vars_stack.length++] = {};
+
+            // (配列変数名キャッシュ対応)
+            this.array_cache[this.vars_stack.length - 1] = {};
         };
         // ***** ローカル変数のスコープを1個解放する *****
         Vars.prototype.deleteLocalScope = function () {
             if (this.vars_stack.length > 1) {
                 this.vars_stack.pop();
+
+                // (配列変数名キャッシュ対応)
+                this.array_cache.pop();
             }
         };
         // ***** ローカル変数のスコープの保存数を返す *****
@@ -3793,12 +3802,18 @@ var Interpreter;
             var i;
             for (i = 0; i < this.vars_stack.length; i++) {
                 this.vars_stack[i] = {};
+
+                // (配列変数名キャッシュ対応)
+                this.array_cache[i] = {};
             }
         };
         // ***** ローカル変数を削除する *****
         Vars.prototype.clearLocalVars = function () {
             if (this.vars_stack.length > 1) {
                 this.vars_stack[this.vars_stack.length - 1] = {};
+
+                // (配列変数名キャッシュ対応)
+                this.array_cache[this.vars_stack.length - 1] = {};
             }
         };
         // ***** 変数を削除する *****
@@ -3834,6 +3849,11 @@ var Interpreter;
             // ***** ローカル/グローバル変数の存在チェック *****
             // if (now_vars.hasOwnProperty(var_name)) {
             if (hasOwn.call(now_vars, var_name)) {
+
+                // (配列変数名キャッシュ対応)
+                i = var_name.indexOf("[") + 1;
+                if (i > 0) { delete this.array_cache[now_index][var_name.substring(0, i)]; }
+
                 delete now_vars[var_name];
                 return true;
             }
@@ -3846,6 +3866,11 @@ var Interpreter;
             // ***** グローバル変数の存在チェック *****
             // if (glb_vars.hasOwnProperty(var_name)) {
             if (hasOwn.call(glb_vars, var_name)) {
+
+                // (配列変数名キャッシュ対応)
+                i = var_name.indexOf("[") + 1;
+                if (i > 0) { delete this.array_cache[0][var_name.substring(0, i)]; }
+
                 delete glb_vars[var_name];
             }
             return true;
@@ -3898,6 +3923,42 @@ var Interpreter;
             }
             return false;
         };
+        // ***** 配列変数の存在チェック(内部処理用) *****
+        Vars.prototype.checkArray = function (now_vars, now_index, array_name, i) {
+            var var_name2;
+
+            // (配列変数名キャッシュ対応)
+            if (hasOwn.call(this.array_cache[now_index], array_name)) {
+                return true;
+            }
+
+            // ***** 配列変数の存在チェック *****
+            if (Vars.KeysAvailable) {
+                if (Object.keys(now_vars).some(function (v) {
+                    return (v.substring(0, i) == array_name);
+                })) {
+
+                    // (配列変数名キャッシュ対応)
+                    this.array_cache[now_index][array_name] = true;
+
+                    return true;
+                }
+            } else {
+                for (var_name2 in now_vars) {
+                    if (var_name2.substring(0, i) == array_name) {
+                        // if (now_vars.hasOwnProperty(var_name2)) {
+                        if (hasOwn.call(now_vars, var_name2)) {
+
+                            // (配列変数名キャッシュ対応)
+                            this.array_cache[now_index][array_name] = true;
+
+                            return true;
+                        }
+                    }
+                }
+            }
+            return false;
+        };
         // ***** 変数の値を取得する *****
         Vars.prototype.getVarValue = function (var_name) {
             var i;
@@ -3907,7 +3968,6 @@ var Interpreter;
             var glb_vars;
             var loc_flag;
             var array_name;
-            var var_name2;
 
             // // ***** 引数のチェック *****
             // if (var_name == "") { return true; }
@@ -3951,25 +4011,19 @@ var Interpreter;
             i = var_name.indexOf("[") + 1;
             // 配列のとき
             if (i > 0) {
-                // 配列のグローバル変数(番号は異なる)が存在するか
+                // 配列変数名を取得する(このとき[も含める)
                 array_name = var_name.substring(0, i);
-                if (Vars.KeysAvailable) {
-                    if (Object.keys(glb_vars).some(function (v) {
-                        return (v.substring(0, i) == array_name);
-                    })) {
-                        glb_vars[var_name] = 0;
-                        return 0;
-                    }
-                } else {
-                    for (var_name2 in glb_vars) {
-                        if (var_name2.substring(0, i) == array_name) {
-                            // if (glb_vars.hasOwnProperty(var_name2)) {
-                            if (hasOwn.call(glb_vars, var_name2)) {
-                                glb_vars[var_name] = 0;
-                                return 0;
-                            }
-                        }
-                    }
+
+                // 配列のローカル変数(番号は異なる)が存在するか
+                if (this.checkArray(now_vars, now_index, array_name, i)) {
+                    now_vars[var_name] = 0;
+                    return 0;
+                }
+
+                // 配列のグローバル変数(番号は異なる)が存在するか
+                if (this.checkArray(glb_vars, 0, array_name, i)) {
+                    glb_vars[var_name] = 0;
+                    return 0;
                 }
             }
             now_vars[var_name] = 0;
@@ -3984,7 +4038,6 @@ var Interpreter;
             var glb_vars;
             var loc_flag;
             var array_name;
-            var var_name2;
 
             // // ***** 引数のチェック *****
             // if (var_name == "") { return true; }
@@ -4030,29 +4083,44 @@ var Interpreter;
             i = var_name.indexOf("[") + 1;
             // 配列のとき
             if (i > 0) {
-                // 配列のグローバル変数(番号は異なる)が存在するか
+                // 配列変数名を取得する(このとき[も含める)
                 array_name = var_name.substring(0, i);
-                if (Vars.KeysAvailable) {
-                    if (Object.keys(glb_vars).some(function (v) {
-                        return (v.substring(0, i) == array_name);
-                    })) {
-                        glb_vars[var_name] = var_value;
-                        return true;
-                    }
-                } else {
-                    for (var_name2 in glb_vars) {
-                        if (var_name2.substring(0, i) == array_name) {
-                            // if (glb_vars.hasOwnProperty(var_name2)) {
-                            if (hasOwn.call(glb_vars, var_name2)) {
-                                glb_vars[var_name] = var_value;
-                                return true;
-                            }
-                        }
-                    }
+
+                // 配列のローカル変数(番号は異なる)が存在するか
+                if (this.checkArray(now_vars, now_index, array_name, i)) {
+                    now_vars[var_name] = var_value;
+                    return 0;
+                }
+
+                // 配列のグローバル変数(番号は異なる)が存在するか
+                if (this.checkArray(glb_vars, 0, array_name, i)) {
+                    glb_vars[var_name] = var_value;
+                    return 0;
                 }
             }
             now_vars[var_name] = var_value;
             return true;
+        };
+        // ***** 配列変数の一括操作(内部処理用) *****
+        Vars.prototype.controlArray = function (now_vars, var_name, var_name_len, func) {
+            var var_name2;
+
+            // ***** 配列変数の一括操作 *****
+            // (見つかった配列変数のそれぞれについて関数funcを適用する)
+            if (Vars.KeysAvailable) {
+                Object.keys(now_vars).filter(function (v) {
+                    return (v.substring(0, var_name_len) == var_name);
+                }).forEach(func);
+            } else {
+                for (var_name2 in now_vars) {
+                    if (var_name2.substring(0, var_name_len) == var_name) {
+                        // if (now_vars.hasOwnProperty(var_name2)) {
+                        if (hasOwn.call(now_vars, var_name2)) {
+                            func(var_name2);
+                        }
+                    }
+                }
+            }
         };
         // ***** 配列変数の一括コピー *****
         Vars.prototype.copyArray = function (var_name, var_name2) {
@@ -4063,7 +4131,6 @@ var Interpreter;
             var glb_vars;
             var loc_flag;
             var var_name_len;
-            var var_name_from;
             var var_name_to;
             var self;
 
@@ -4107,24 +4174,10 @@ var Interpreter;
             // ***** ローカル/グローバル変数の存在チェック *****
             self = this;
             var_name_to = "";
-            if (Vars.KeysAvailable) {
-                Object.keys(now_vars).filter(function (v) {
-                    return (v.substring(0, var_name_len) == var_name);
-                }).forEach(function (v) {
-                    var_name_to = var_name2 + v.substring(var_name_len);
-                    self.setVarValue(var_name_to, now_vars[v]);
-                });
-            } else {
-                for (var_name_from in now_vars) {
-                    if (var_name_from.substring(0, var_name_len) == var_name) {
-                        // if (now_vars.hasOwnProperty(var_name_from)) {
-                        if (hasOwn.call(now_vars, var_name_from)) {
-                            var_name_to = var_name2 + var_name_from.substring(var_name_len);
-                            this.setVarValue(var_name_to, now_vars[var_name_from]);
-                        }
-                    }
-                }
-            }
+            this.controlArray(now_vars, var_name, var_name_len, function (v) {
+                var_name_to = var_name2 + v.substring(var_name_len);
+                self.setVarValue(var_name_to, now_vars[v]);
+            });
             // ***** これで検索完了のとき *****
             if (now_index == 0 || loc_flag || var_name_to) {
                 return true;
@@ -4132,24 +4185,10 @@ var Interpreter;
             // ***** グローバル変数のスコープを取得 *****
             glb_vars = this.vars_stack[0];
             // ***** グローバル変数の存在チェック *****
-            if (Vars.KeysAvailable) {
-                Object.keys(glb_vars).filter(function (v) {
-                    return (v.substring(0, var_name_len) == var_name);
-                }).forEach(function (v) {
-                    var_name_to = var_name2 + v.substring(var_name_len);
-                    self.setVarValue(var_name_to, glb_vars[v]);
-                });
-            } else {
-                for (var_name_from in glb_vars) {
-                    if (var_name_from.substring(0, var_name_len) == var_name) {
-                        // if (glb_vars.hasOwnProperty(var_name_from)) {
-                        if (hasOwn.call(glb_vars, var_name_from)) {
-                            var_name_to = var_name2 + var_name_from.substring(var_name_len);
-                            this.setVarValue(var_name_to, glb_vars[var_name_from]);
-                        }
-                    }
-                }
-            }
+            this.controlArray(glb_vars, var_name, var_name_len, function (v) {
+                var_name_to = var_name2 + v.substring(var_name_len);
+                self.setVarValue(var_name_to, glb_vars[v]);
+            });
             return true;
         };
         // ***** 配列変数の一括削除 *****
@@ -4161,7 +4200,6 @@ var Interpreter;
             var glb_vars;
             var loc_flag;
             var var_name_len;
-            var var_name2;
             var delete_flag;
 
             // // ***** 引数のチェック *****
@@ -4191,24 +4229,14 @@ var Interpreter;
             now_vars = this.vars_stack[now_index];
             // ***** ローカル/グローバル変数の存在チェック *****
             delete_flag = false;
-            if (Vars.KeysAvailable) {
-                Object.keys(now_vars).filter(function (v) {
-                    return (v.substring(0, var_name_len) == var_name);
-                }).forEach(function (v) {
-                    delete now_vars[v];
-                    delete_flag = true;
-                });
-            } else {
-                for (var_name2 in now_vars) {
-                    if (var_name2.substring(0, var_name_len) == var_name) {
-                        // if (now_vars.hasOwnProperty(var_name2)) {
-                        if (hasOwn.call(now_vars, var_name2)) {
-                            delete now_vars[var_name2];
-                            delete_flag = true;
-                        }
-                    }
-                }
-            }
+            this.controlArray(now_vars, var_name, var_name_len, function (v) {
+                delete now_vars[v];
+                delete_flag = true;
+            });
+
+            // (配列変数名キャッシュ対応)
+            if (delete_flag) { delete this.array_cache[now_index][var_name]; }
+
             // ***** これで検索完了のとき *****
             if (now_index == 0 || loc_flag || delete_flag) {
                 return true;
@@ -4216,22 +4244,15 @@ var Interpreter;
             // ***** グローバル変数のスコープを取得 *****
             glb_vars = this.vars_stack[0];
             // ***** グローバル変数の存在チェック *****
-            if (Vars.KeysAvailable) {
-                Object.keys(glb_vars).filter(function (v) {
-                    return (v.substring(0, var_name_len) == var_name);
-                }).forEach(function (v) {
-                    delete glb_vars[v];
-                });
-            } else {
-                for (var_name2 in glb_vars) {
-                    if (var_name2.substring(0, var_name_len) == var_name) {
-                        // if (glb_vars.hasOwnProperty(var_name2)) {
-                        if (hasOwn.call(glb_vars, var_name2)) {
-                            delete glb_vars[var_name2];
-                        }
-                    }
-                }
-            }
+            delete_flag = false;
+            this.controlArray(glb_vars, var_name, var_name_len, function (v) {
+                delete glb_vars[v];
+                delete_flag = true;
+            });
+
+            // (配列変数名キャッシュ対応)
+            if (delete_flag) { delete this.array_cache[0][var_name]; }
+
             return true;
         };
         return Vars; // これがないとクラスが動かないので注意
