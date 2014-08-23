@@ -1,7 +1,7 @@
 // This file is encoded with UTF-8 without BOM.
 
 // sp_interpreter.js
-// 2014-8-22 v3.37
+// 2014-8-23 v3.38
 
 
 // SPALM Web Interpreter
@@ -3011,6 +3011,9 @@ var Interpreter;
                 throw new Error("変数名が不正です。('" + var_name2 + "')");
             }
             var_name = var_name.charAt(0) + "\\" + var_name2;
+        } else {
+            // ***** 関数の仮引数はデフォルトでローカル変数とする *****
+            var_name = "l\\" + var_name;
         }
         // ***** ポインタ的なもののとき *****
         // (ローカル変数のスコープをさかのぼれるように「p\」を付加)
