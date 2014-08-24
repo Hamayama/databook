@@ -1461,6 +1461,15 @@ var Plugin0001;
         // (第2引数は関数の引数の数を指定する(ただし省略可能な引数は数に入れない))
         // (第2引数を-1にすると組み込み変数になり、()なしで呼び出せる)
         // (第3引数は「変数名をとる引数」がある場合にその引数番号を配列で指定する)
+        add_one_func_tbl_B("audcheck", 0, [], function (param, vars, can, ctx) {
+            var num;
+
+            // ***** 音楽モードチェック *****
+            if (!MMLPlayer.AudioContext) { return 0; }
+
+            num = 1;
+            return num;
+        });
         add_one_func_tbl_B("audmakestat", 1, [], function (param, vars, can, ctx) {
             var num;
             var a1;
