@@ -3313,7 +3313,6 @@ var MMLPlayer = (function () {
     // ***** MMLを設定してコンパイルする *****
     MMLPlayer.prototype.setMML = function (mml_st) {
         var i;
-        var tokens = []; // トークン(配列)
         var addata_len;  // 必要な音声バッファのサイズ
         var chdata_len;  // チャンネル1個の音声バッファのサイズ
 
@@ -3325,12 +3324,12 @@ var MMLPlayer = (function () {
         this.stop();
         // ***** コンパイル中にする *****
         this.compiled = 1;
-        // ***** MMLをトークン分割 *****
-        tokens = this.tokenize(mml_st);
+        // ***** MMLの前処理 *****
+        mml_st = this.preprocess(mml_st);
         // ***** コンパイル(パス1) *****
         // (テンポ変更情報を抽出して、
         //  必要な音声バッファのサイズを計算可能とする)
-        this.compile(tokens, 1);
+        this.compile(mml_st, 1);
         // ***** 実時間テーブル作成 *****
         this.makeTimeTable();
         // DebugShow("pos=" + JSON.stringify(this.pos) + "\n");
@@ -3346,11 +3345,11 @@ var MMLPlayer = (function () {
         this.addata = this.adbuf.getChannelData(0);
         // ***** コンパイル(パス2) *****
         // (音声データの値を計算して、音声バッファに格納する)
-        this.compile(tokens, 2);
+        this.compile(mml_st, 2);
         // ***** 音声データの範囲チェック *****
         for (i = 0; i < addata_len; i++) {
-            if (this.addata[i] >  1) { this.addata[i] =  1; }
             if (this.addata[i] < -1) { this.addata[i] = -1; }
+            if (this.addata[i] >  1) { this.addata[i] =  1; }
         }
         // ***** コンパイル完了 *****
         this.compiled = 2;
@@ -3460,6 +3459,7 @@ var MMLPlayer = (function () {
         // ***** 音符追加 *****
         if (pass_no == 2) {
             // ***** 音長計算 *****
+            // (音符の途中でテンポが変わることを考慮する)
             rtime1 = this.getRealTime(this.pos[ch]);
             rtime2 = this.getRealTime(this.pos[ch] + nlength1);
             nlen1 = MMLPlayer.SAMPLE_RATE * (rtime2 - rtime1);
@@ -3474,14 +3474,15 @@ var MMLPlayer = (function () {
 
             // ***** 定数を先に計算しておく *****
             PI = Math.PI;
-            phase_c = 2 * PI * freq / MMLPlayer.SAMPLE_RATE;
+            phase_c = 2 * PI * freq;
             amp_c = volume / 127 / MMLPlayer.MAX_CH;
             pos_int = parseInt(MMLPlayer.SAMPLE_RATE * rtime1, 10);
 
             // ***** 音声データの値を計算 *****
             for (i = 0; i < nlen1; i++) {
                 // phase = 2 * Math.PI * freq * i / MMLPlayer.SAMPLE_RATE;
-                phase = phase_c * i;
+                t = i / MMLPlayer.SAMPLE_RATE;
+                phase = phase_c * t;
                 switch (prog) {
                     case 0:   // 方形波
                         wave = (Math.sin(phase) > 0) ? 1 : -1;
@@ -3499,17 +3500,20 @@ var MMLPlayer = (function () {
                         wave = Math.random() * 2 - 1;
                         break;
                     case 500: // ピアノ(仮)
-                        t = i / MMLPlayer.SAMPLE_RATE;
-                        wave = ((Math.sin(phase) > 0) ? 1 : -1) * Math.exp(-5 * t);
+                        wave = 1.3 * ((Math.sin(phase) > 0) ? 1 : -1) * Math.exp(-5 * t);
                         break;
                     case 501: // オルガン(仮)
-                        t = i / MMLPlayer.SAMPLE_RATE;
                         wave = ((Math.sin(phase) > 0) ? 1 : -1) * 13 * t * Math.exp(-5 * t);
+                        break;
+                    case 502: // ギター(仮)
+                        wave = 5 * (Math.cos(phase + Math.cos(phase / 2) + Math.cos(phase * 2))) * Math.exp(-5 * t);
                         break;
                     default:  // 方形波
                         wave = (Math.sin(phase) > 0) ? 1 : -1;
                         break;
                 }
+                if (wave < -1) { wave = -1; }
+                if (wave >  1) { wave =  1; }
                 if (nlen2 == 0) {
                     fade = 1;
                 } else {
@@ -3535,8 +3539,8 @@ var MMLPlayer = (function () {
         this.pos[ch] = this.pos[ch] + nlength1;
     };
     // ***** コンパイル(内部処理用) *****
-    MMLPlayer.prototype.compile = function (tokens, pass_no) {
-        var tokens_len;     // トークン数
+    MMLPlayer.prototype.compile = function (mml_st, pass_no) {
+        var mml_st_len;     // MMLの長さ
         // ***** 全体状態 *****
         var ch;             // チャンネル選択
         var tempo;          // テンポ(1分間に演奏する4分音符の数)
@@ -3557,9 +3561,11 @@ var MMLPlayer = (function () {
         var tempo_sort = function (a,b) { return (a.pos - b.pos); }; // ソート用(比較関数)
         // ***** その他の変数 *****
         var i, j;
-        var index, note, nlength1, nlength2, val;
-        var type_chr, data_chr, data_chr2;
-        var loop_no, loop_count;
+        var val;
+        var ret = {};       // 戻り値(連想配列オブジェクト)
+        var c, c2;          // 文字
+        var note, nlength1, nlength2; // 音符用
+        var loop_no, loop_count;      // ループ用
 
         // ***** 全体状態の初期化 *****
         ch = 0;
@@ -3596,46 +3602,44 @@ var MMLPlayer = (function () {
             loop[i].counter = []; // ループ回数(配列)
             this.pos[i] = 0;      // 音声データ位置(チャンネルごと)
         }
-        // ***** トークンの解析 *****
-        index = 0;
-        tokens_len = tokens.length;
-        while (index < tokens_len) {
-            // ***** タイプとデータを取得 *****
-            type_chr = tokens[index].charAt(0);
-            data_chr = this.getTokenChar(tokens[index++]);
-            // ***** タイプによって場合分け *****
-            switch (type_chr) {
-            case "1": // 数字
-                break;
-            case "2": // 音符と休符
+
+        // ***** MMLの解析 *****
+        i = 0;
+        mml_st_len = mml_st.length;
+        while (i < mml_st_len) {
+            // ***** 1文字取り出す *****
+            c = mml_st.charAt(i);
+            i++;
+            // ***** 音符または休符のとき *****
+            if ("cdefgabr".indexOf(c) >= 0) {
                 // ***** 音の高さを計算 *****
-                if (data_chr == "r") {
+                if (c == "r") {
                     // ***** 休符は音の高さなし *****
                     note = 0;
                 } else {
                     // ***** 音符の音の高さを数値化 *****
-                    note = "c d ef g a b".indexOf(data_chr);
+                    note = "c d ef g a b".indexOf(c);
                     // ***** オクターブを加算 *****
                     note = note + (octave[ch] + 1) * 12;
                     // ***** シャープ、フラット、ナチュラルがあるときはそれを計算 *****
-                    switch (this.getTokenChar(tokens[index])) {
-                    case "+": // シャープ
-                    case "#": // シャープ
-                        index++;
-                        note++;
-                        break;
-                    case "-": // フラット
-                        index++;
-                        note--;
-                        break;
-                    case "=": // ナチュラル
-                    case "*": // ナチュラル
-                        index++;
-                        break;
-                    default:  // その他のときは調号の分を計算
-                        val = "cdefgab".indexOf(data_chr);
-                        if (val >= 0) { note = note + sharp[ch][val]; }
-                        break;
+                    switch (mml_st.charAt(i)) {
+                        case "+": // シャープ
+                        case "#": // シャープ
+                            i++;
+                            note++;
+                            break;
+                        case "-": // フラット
+                            i++;
+                            note--;
+                            break;
+                        case "=": // ナチュラル
+                        case "*": // ナチュラル
+                            i++;
+                            break;
+                        default:  // その他のときは調号の分を計算
+                            val = "cdefgab".indexOf(c);
+                            if (val >= 0) { note = note + sharp[ch][val]; }
+                            break;
                     }
                     // ***** 音の高さ範囲チェック *****
                     if (note < 0) { note = 0; }
@@ -3643,28 +3647,28 @@ var MMLPlayer = (function () {
                 }
                 // ***** 音長の計算 *****
                 // ***** 絶対音長があるときは絶対音長を取得 *****
-                if (this.getTokenChar(tokens[index]) == "%") {
-                    index++;
-                    val = this.getTokenValue(tokens[index++]);
+                if (mml_st.charAt(i) == "%") {
+                    i++;
+                    val = this.getValue(mml_st, i, 0, ret = {});
+                    i = ret.i;
                     if (val < 0) { val = 0; }
                     if (val > 1000) { val = 1000; } // エラーチェック追加
                     nlength1 = val;
                 } else {
                     // ***** 音長があるときは音長を取得 *****
-                    val = this.getTokenValueForErr(tokens[index]);
+                    val = this.getValue(mml_st, i, -1, ret = {});
+                    i = ret.i;
                     if (val > 1000) { val = 1000; } // エラーチェック追加
                     if (val == 0) {
-                        index++;
                         nlength1 = 0;
                     } else if (val > 0) {
-                        index++;
                         nlength1 = 48 * 4 / val;
                     } else {
                         nlength1 = alength[ch];
                     }
                     // ***** 付点があるときは音長を1.5倍 *****
-                    if (this.getTokenChar(tokens[index]) == ".") {
-                        index++;
+                    if (mml_st.charAt(i) == ".") {
+                        i++;
                         nlength1 = nlength1 * 3 / 2;
                     }
                 }
@@ -3687,8 +3691,8 @@ var MMLPlayer = (function () {
                     tie[ch].length = 0;
                 }
                 // ***** タイまたはスラーのとき *****
-                if (this.getTokenChar(tokens[index]) == "&") {
-                    index++;
+                if (mml_st.charAt(i) == "&") {
+                    i++;
                     // ***** タイのフラグを立てて、処理は次回にまわす *****
                     tie[ch].flag = true;
                     if (note > 0) { tie[ch].note = note; }
@@ -3716,51 +3720,54 @@ var MMLPlayer = (function () {
                         this.addRest(ch, nlength1);
                     }
                 }
-                break;
-            case "3": // その他の文字
-                switch (data_chr) { // コマンドに応じて処理
+                continue;
+            }
+            // ***** コマンドの処理 *****
+            switch (c) {
                 case "!": // 拡張コマンド
-                    data_chr2 = this.getTokenChar(tokens[index++]);
-                    switch (data_chr2) {
-                    case "c": // チャンネル切替(0-(MAX_CH-1))
-                        val = this.getTokenValue(tokens[index++]);
-                        if (val < 0) { val = 0; }
-                        if (val > (MMLPlayer.MAX_CH - 1)) { val = MMLPlayer.MAX_CH - 1; }
-                        ch = val;
-                        // ***** ループを解除 *****
-                        // ***** (今の作りではチャンネル切り替えをまたぐループは不可) *****
-                        loop[ch].begin = [];
-                        loop[ch].end = [];
-                        loop[ch].counter = [];
-                        break;
-                    case "o": // オクターブ記号変更(トグル)
-                        if (oct_chg == 0) { oct_chg = 1; } else { oct_chg = 0; }
-                        break;
-                    case "v": // ボリューム最大値(1-1000)
-                        val = this.getTokenValue(tokens[index++]);
-                        if (val < 1) { val = 1; }
-                        if (val > 1000) { val = 1000; } // エラーチェック追加
-                        vol_max = val;
-                        break;
-                    case "+": // 調号シャープ
-                    case "#": // 調号シャープ
-                    case "-": // 調号フラット
-                    case "=": // 調号ナチュラル
-                    case "*": // 調号ナチュラル
-                        do {
-                            val = "cdefgab".indexOf(this.getTokenChar(tokens[index]));
-                            if (val >= 0) {
-                                index++;
-                                if (data_chr2 == "+" || data_chr2 == "#") { sharp[ch][val] = 1; }
-                                else if (data_chr2 == "-") { sharp[ch][val] = -1; }
-                                else if (data_chr2 == "=" || data_chr2 == "*") { sharp[ch][val] = 0; }
-                            }
-                        } while (val >= 0);
-                        break;
+                    c2 = mml_st.charAt(i);
+                    switch (c2) {
+                        case "c": // チャンネル切替(0-(MAX_CH-1))
+                            i++;
+                            val = this.getValue(mml_st, i, 0, ret = {});
+                            i = ret.i;
+                            if (val < 0) { val = 0; }
+                            if (val > (MMLPlayer.MAX_CH - 1)) { val = MMLPlayer.MAX_CH; }
+                            ch = val;
+                            break;
+                        case "o": // オクターブ記号変更(トグル)
+                            i++;
+                            if (oct_chg == 0) { oct_chg = 1; } else { oct_chg = 0; }
+                            break;
+                        case "v": // ボリューム最大値(1-1000)
+                            i++;
+                            val = this.getValue(mml_st, i, 0, ret = {});
+                            i = ret.i;
+                            if (val < 1) { val = 1; }
+                            if (val > 1000) { val = 1000; } // エラーチェック追加
+                            vol_max = val;
+                            break;
+                        case "+": // 調号シャープ
+                        case "#": // 調号シャープ
+                        case "-": // 調号フラット
+                        case "=": // 調号ナチュラル
+                        case "*": // 調号ナチュラル
+                            i++;
+                            do {
+                                val = "cdefgab".indexOf(mml_st.charAt(i));
+                                if (val >= 0) {
+                                    i++;
+                                    if (c2 == "+" || c2 == "#")      { sharp[ch][val] = 1;  }
+                                    else if (c2 == "-")              { sharp[ch][val] = -1; }
+                                    else if (c2 == "=" || c2 == "*") { sharp[ch][val] = 0;  }
+                                }
+                            } while (val >= 0);
+                            break;
                     }
                     break;
                 case "t": // テンポ切替(20-300) → (20-1200)
-                    val = this.getTokenValue(tokens[index++]);
+                    val = this.getValue(mml_st, i, 0, ret = {});
+                    i = ret.i;
                     if (val < 20) { val = 20; }
                     // if (val > 300) { val = 300; }
                     if (val > 1200) { val = 1200; }
@@ -3776,20 +3783,23 @@ var MMLPlayer = (function () {
                     }
                     break;
                 case "v": // チャンネル音量(0-vol_max)
-                    val = this.getTokenValue(tokens[index++]);
+                    val = this.getValue(mml_st, i, 0, ret = {});
+                    i = ret.i;
                     if (val < 0) { val = 0; }
                     if (val > vol_max) { val = vol_max; }
                     volume[ch] = (val * 127) / vol_max; // 内部では音量は 0-127
                     // _track.setChannelVolume(ch, volume[ch]);
                     break;
                 case "k": // ベロシティ(0-127)
-                    val = this.getTokenValue(tokens[index++]);
+                    val = this.getValue(mml_st, i, 0, ret = {});
+                    i = ret.i;
                     if (val < 0) { val = 0; }
                     if (val > 127) { val = 127; }
                     velocity[ch] = val;
                     break;
                 case "@": // 音色切替(0-1000)
-                    val = this.getTokenValue(tokens[index++]);
+                    val = this.getValue(mml_st, i, 0, ret = {});
+                    i = ret.i;
                     if (val < 0) { val = 0; }
                     if (val > 1000) { val = 1000; } // エラーチェック追加
                     prog[ch] = val;
@@ -3797,15 +3807,17 @@ var MMLPlayer = (function () {
                     break;
                 case "l": // 音長指定(0-1000)
                     // ***** 絶対音長があるときは絶対音長を取得 *****
-                    if (this.getTokenChar(tokens[index]) == "%") {
-                        index++;
-                        val = this.getTokenValue(tokens[index++]);
+                    if (mml_st.charAt(i) == "%") {
+                        i++;
+                        val = this.getValue(mml_st, i, 0, ret = {});
+                        i = ret.i;
                         if (val < 0) { val = 0; }
                         if (val > 1000) { val = 1000; } // エラーチェック追加
                         alength[ch] = val;
                     } else {
                         // ***** 音長を取得 *****
-                        val = this.getTokenValue(tokens[index++]);
+                        val = this.getValue(mml_st, i, 0, ret = {});
+                        i = ret.i;
                         if (val < 0) { val = 0; }
                         if (val > 1000) { val = 1000; } // エラーチェック追加
                         if (val == 0) {
@@ -3814,20 +3826,22 @@ var MMLPlayer = (function () {
                             alength[ch] = 48 * 4 / val;
                         }
                         // ***** 付点があるときは音長を1.5倍 *****
-                        if (this.getTokenChar(tokens[index]) == ".") {
-                            index++;
+                        if (mml_st.charAt(i) == ".") {
+                            i++;
                             alength[ch] = alength[ch] * 3 / 2;
                         }
                     }
                     break;
                 case "q": // 発音割合指定(1-8)
-                    val = this.getTokenValue(tokens[index++]);
+                    val = this.getValue(mml_st, i, 0, ret = {});
+                    i = ret.i;
                     if (val < 1) { val = 1; }
                     if (val > 8) { val = 8; }
                     qtime[ch] = val;
                     break;
                 case "o": // オクターブ指定(0-8)
-                    val = this.getTokenValue(tokens[index++]);
+                    val = this.getValue(mml_st, i, 0, ret = {});
+                    i = ret.i;
                     if (val < 0) { val = 0; }
                     if (val > 8) { val = 8; }
                     octave[ch] = val;
@@ -3848,7 +3862,7 @@ var MMLPlayer = (function () {
                     break;
                 case "[": // ループ開始
                     // ***** ループ情報を生成 *****
-                    loop[ch].begin.push(index);
+                    loop[ch].begin.push(i);
                     loop[ch].end.push(0);
                     loop[ch].counter.push(-1);
                     break;
@@ -3860,7 +3874,7 @@ var MMLPlayer = (function () {
                         // ***** ループ最終回のとき *****
                         if (loop_count == -2) {
                             // ***** ループ終了位置へジャンプ *****
-                            index = loop[ch].end[loop_no];
+                            i = loop[ch].end[loop_no];
                             // ***** ループ情報を破棄 *****
                             loop[ch].begin.pop();
                             loop[ch].end.pop();
@@ -3869,18 +3883,16 @@ var MMLPlayer = (function () {
                             // ***** ループ初回のとき *****
                             if (loop_count == -1) {
                                 // ***** ループ回数取得 *****
-                                val = this.getTokenValueForErr(tokens[index]);
+                                val = this.getValue(mml_st, i, 0, ret = {});
+                                i = ret.i;
+                                if (val < 2)   { val = 2; }
                                 if (val > 100) { val = 100; } // エラーチェック追加
-                                if (val >= 0) {
-                                    index++;
-                                    loop_count = val - 1;
-                                }
-                                if (loop_count <= 0) { loop_count = 1; }
+                                loop_count = val - 1;
                                 // ***** ループ終了位置を保存 *****
-                                loop[ch].end[loop_no] = index;
+                                loop[ch].end[loop_no] = i;
                             }
                             // ***** ループ先頭位置へジャンプ *****
-                            index = loop[ch].begin[loop_no];
+                            i = loop[ch].begin[loop_no];
                             // ***** ループ回数を減らす *****
                             loop_count--;
                             if (loop_count <= 0) { loop_count = -2; }
@@ -3896,7 +3908,7 @@ var MMLPlayer = (function () {
                         // ***** ループ最終回のとき *****
                         if (loop_count == -2) {
                             // ***** ループ終了位置へジャンプ *****
-                            index = loop[ch].end[loop_no];
+                            i = loop[ch].end[loop_no];
                             // ***** ループ情報を破棄 *****
                             loop[ch].begin.pop();
                             loop[ch].end.pop();
@@ -3904,84 +3916,78 @@ var MMLPlayer = (function () {
                         }
                     }
                     break;
-                }
-                break;
             }
         }
         return true;
     };
-    // ***** トークンを数値に変換して取得(内部処理用) *****
-    MMLPlayer.prototype.getTokenValue = function (tok) {
-        if (tok.length < 2) { return 0; }
-        if (tok.charAt(0) == "1") { return parseInt(tok.substring(1), 10); }
-        return 0;
+    // ***** MML内の数値を取得(内部処理用) *****
+    MMLPlayer.prototype.getValue = function (mml_st, i, err_val, ret) {
+        var c, start;
+        c = mml_st.charCodeAt(i);
+        if (c < 0x30 || c > 0x39) {
+            ret.i = i;
+            return err_val;
+        }
+        start = i;
+        do {
+            i++;
+            c = mml_st.charCodeAt(i);
+        } while (c >= 0x30 && c <= 0x39);
+        ret.i = i;
+        return parseInt(mml_st.substring(start, i), 10);
     };
-    // ***** トークンを数値に変換して取得(エラー時は-1を返す)(内部処理用) *****
-    MMLPlayer.prototype.getTokenValueForErr = function (tok) {
-        if (tok.length < 2) { return -1; }
-        if (tok.charAt(0) == "1") { return parseInt(tok.substring(1), 10); }
-        return -1;
-    };
-    // ***** トークンを文字に変換して取得(内部処理用) *****
-    MMLPlayer.prototype.getTokenChar = function (tok) {
-        if (tok.length < 2) { return 0; }
-        return tok.charAt(1);
-    };
-    // ***** MMLをトークン分割(内部処理用) *****
-    MMLPlayer.prototype.tokenize = function (mml_st) {
-        var mml_st_len;  // MML文字列の長さ
-        var index;       // 検索位置
-        var tokens = []; // トークン(配列)
-        var ch, type, start;
+    // ***** MMLの前処理(内部処理用) *****
+    MMLPlayer.prototype.preprocess = function (mml_st) {
+        var i;
+        var val;
+        var ret = {};    // 戻り値(連想配列オブジェクト)
+        var c;           // 文字
+        var start;       // 開始点
+        var ch;          // チャンネル選択
+        var mml_st_len;  // MMLの長さ
+        var mml_ch = []; // チャンネルごとのMML(配列)
 
-        // ***** 小文字に変換 *****
+        // ***** チャンネルごとのMMLの初期化 *****
+        for (i = 0; i < MMLPlayer.MAX_CH; i++) {
+            mml_ch[i] = "";
+        }
+        // ***** MMLを小文字に変換 *****
         mml_st = mml_st.toLowerCase();
-        // ***** トークン切り出し *****
-        index = 0;
-        tokens = [];
+        // ***** MMLをチャンネルごとに分解 *****
+        i = 0;
+        ch = 0;
+        start = 0;
         mml_st_len = mml_st.length;
-        while (index < mml_st_len) {
+        while (i < mml_st_len) {
             // ***** 1文字取り出す *****
-            ch = mml_st.charAt(index);
-            // ***** タイプを取得 *****
-            if (ch == " " || ch == "\n" || ch == "\r" || ch == "\t") {
-                type = 0;  // 無効
-            } else if ("0123456789".indexOf(ch) >= 0) {
-                type = 1;  // 数字
-            } else if ("cdefgabr".indexOf(ch) >= 0) {
-                type = 2;  // 音符と休符
-            } else if (ch == "^") {
-                type = 10; // 「^」記号
-            } else {
-                type = 3;  // その他の文字
-            }
-            // ***** 切り出し開始 *****
-            start = index;
-            index++;
-            if (type == 1) { // 数字のときは数字でなくなるまで追加
-                while (index < mml_st_len) {
-                    ch = mml_st.charAt(index);
-                    if ("0123456789".indexOf(ch) >= 0) {
-                        index++;
-                    } else {
-                        break;
-                    }
-                }
-                tokens.push(String(type) + mml_st.substring(start, index));
-            } else if (type == 10) { // 「^」記号のときはタイと休符のトークンを追加
-                tokens.push("3&");
-                tokens.push("2r");
-            } else if (type > 0) { // 無効文字以外をトークンに追加
-                tokens.push(String(type) + mml_st.substring(start, index));
+            c = mml_st.charAt(i);
+            i++;
+            // ***** チャンネル切替のとき *****
+            if (c == "!" && mml_st.charAt(i) == "c") {
+                i++;
+                val = this.getValue(mml_st, i, 0, ret = {});
+                if (val < 0) { val = 0; }
+                if (val > (MMLPlayer.MAX_CH - 1)) { val = MMLPlayer.MAX_CH; }
+                mml_ch[ch] += mml_st.substring(start, i - 2);
+                ch = val;
+                start = i - 2;
+                i = ret.i;
+                continue;
             }
         }
+        mml_ch[ch] += mml_st.substring(start);
+        // ***** MMLを再構成 *****
+        mml_st = "";
+        for (i = 0; i < MMLPlayer.MAX_CH; i++) {
+            mml_st += mml_ch[i];
+        }
+        // ***** 「^」記号をタイと休符に置換 *****
+        mml_st = mml_st.replace(/\^/g, "&r");
         // ***** 末尾に無効なトークンを追加(安全のため) *****
-        tokens.push("3|");
-        tokens.push("3|");
-        tokens.push("3|");
-        tokens.push("3|");
-        // ***** トークンを返す *****
-        return tokens;
+        mml_st += "||||";
+        // ***** 戻り値を返す *****
+        // DebugShow(mml_st + "\n");
+        return mml_st;
     };
     return MMLPlayer; // これがないとクラスが動かないので注意
 })();
