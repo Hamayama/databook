@@ -3315,6 +3315,7 @@ var MMLPlayer = (function () {
         var i;
         var addata_len;  // 必要な音声バッファのサイズ
         var chdata_len;  // チャンネル1個の音声バッファのサイズ
+        var tempo_sort = function (a,b) { return (a.pos - b.pos); }; // ソート用(比較関数)
 
         // ***** Web Audio APIの存在チェック *****
         if (!MMLPlayer.AudioContext) { return false; }
@@ -3330,6 +3331,8 @@ var MMLPlayer = (function () {
         // (テンポ変更情報を抽出して、
         //  必要な音声バッファのサイズを計算可能とする)
         this.compile(mml_st, 1);
+        // ***** テンポ変更情報のソート *****
+        this.tempo_chg.sort(tempo_sort);
         // ***** 実時間テーブル作成 *****
         this.makeTimeTable();
         // DebugShow("pos=" + JSON.stringify(this.pos) + "\n");
@@ -3341,6 +3344,7 @@ var MMLPlayer = (function () {
             if (addata_len < chdata_len) { addata_len = chdata_len; }
         }
         if (addata_len == 0) { return false; } // DOMエラー対応
+        addata_len++; // 誤差対策で+1
         this.adbuf = MMLPlayer.adctx.createBuffer(1, addata_len, MMLPlayer.SAMPLE_RATE);
         this.addata = this.adbuf.getChannelData(0);
         // ***** コンパイル(パス2) *****
@@ -3477,6 +3481,7 @@ var MMLPlayer = (function () {
             phase_c = 2 * PI * freq;
             amp_c = volume / 127 / MMLPlayer.MAX_CH;
             pos_int = parseInt(MMLPlayer.SAMPLE_RATE * rtime1, 10);
+            // DebugShow(pos_int + " " + this.addata.length+ "\n");
 
             // ***** 音声データの値を計算 *****
             for (i = 0; i < nlen1; i++) {
@@ -3558,7 +3563,7 @@ var MMLPlayer = (function () {
         var loop = [];      // ループ状態(配列)
         // ***** テンポ変更情報 *****
         var tempo_obj = {}; // テンポ変更情報格納用(連想配列オブジェクト)
-        var tempo_sort = function (a,b) { return (a.pos - b.pos); }; // ソート用(比較関数)
+        // var tempo_sort = function (a,b) { return (a.pos - b.pos); }; // ソート用(比較関数)
         // ***** その他の変数 *****
         var i, j;
         var val;
@@ -3666,12 +3671,13 @@ var MMLPlayer = (function () {
                     } else {
                         nlength1 = alength[ch];
                     }
-                    // ***** 付点があるときは音長を1.5倍 *****
-                    if (mml_st.charAt(i) == ".") {
-                        i++;
-                        nlength1 = nlength1 * 3 / 2;
-                    }
                 }
+                // ***** 付点があるときは音長を1.5倍 *****
+                if (mml_st.charAt(i) == ".") {
+                    i++;
+                    nlength1 = nlength1 * 3 / 2;
+                }
+                // ***** 発音長の計算 *****
                 nlength2 = nlength1 * qtime[ch] / 8;
                 // ***** スラーの処理 *****
                 if (tie[ch].flag == true && tie[ch].note != note && note > 0) {
@@ -3732,7 +3738,7 @@ var MMLPlayer = (function () {
                             val = this.getValue(mml_st, i, 0, ret = {});
                             i = ret.i;
                             if (val < 0) { val = 0; }
-                            if (val > (MMLPlayer.MAX_CH - 1)) { val = MMLPlayer.MAX_CH; }
+                            if (val > (MMLPlayer.MAX_CH - 1)) { val = MMLPlayer.MAX_CH - 1; }
                             ch = val;
                             break;
                         case "o": // オクターブ記号変更(トグル)
@@ -3779,7 +3785,7 @@ var MMLPlayer = (function () {
                         tempo_obj.val = tempo;        // テンポ変更値(1分間に演奏する4分音符の数)
                         tempo_obj.rtime = 0;          // テンポ変更位置の実時間(sec)(これは後で計算する)
                         this.tempo_chg.push(tempo_obj);
-                        this.tempo_chg.sort(tempo_sort);
+                        // this.tempo_chg.sort(tempo_sort);
                     }
                     break;
                 case "v": // チャンネル音量(0-vol_max)
@@ -3825,11 +3831,11 @@ var MMLPlayer = (function () {
                         } else {
                             alength[ch] = 48 * 4 / val;
                         }
-                        // ***** 付点があるときは音長を1.5倍 *****
-                        if (mml_st.charAt(i) == ".") {
-                            i++;
-                            alength[ch] = alength[ch] * 3 / 2;
-                        }
+                    }
+                    // ***** 付点があるときは音長を1.5倍 *****
+                    if (mml_st.charAt(i) == ".") {
+                        i++;
+                        alength[ch] = alength[ch] * 3 / 2;
                     }
                     break;
                 case "q": // 発音割合指定(1-8)
@@ -3921,18 +3927,23 @@ var MMLPlayer = (function () {
         return true;
     };
     // ***** MML内の数値を取得(内部処理用) *****
+    // (引数の ret には、空のオブジェクトを格納した変数を渡すこと。
+    //  検索位置 i の最終位置を、ret.i に格納して返すため)
     MMLPlayer.prototype.getValue = function (mml_st, i, err_val, ret) {
-        var c, start;
+        var c, start, mml_st_len;
         c = mml_st.charCodeAt(i);
         if (c < 0x30 || c > 0x39) {
             ret.i = i;
             return err_val;
         }
         start = i;
-        do {
-            i++;
+        i++;
+        mml_st_len = mml_st.length;
+        while (i < mml_st_len) {
             c = mml_st.charCodeAt(i);
-        } while (c >= 0x30 && c <= 0x39);
+            if (c < 0x30 || c > 0x39) { break; }
+            i++;
+        }
         ret.i = i;
         return parseInt(mml_st.substring(start, i), 10);
     };
@@ -3965,18 +3976,18 @@ var MMLPlayer = (function () {
             // ***** チャンネル切替のとき *****
             if (c == "!" && mml_st.charAt(i) == "c") {
                 i++;
-                val = this.getValue(mml_st, i, 0, ret = {});
-                if (val < 0) { val = 0; }
-                if (val > (MMLPlayer.MAX_CH - 1)) { val = MMLPlayer.MAX_CH; }
                 mml_ch[ch] += mml_st.substring(start, i - 2);
-                ch = val;
                 start = i - 2;
+                val = this.getValue(mml_st, i, 0, ret = {});
                 i = ret.i;
+                if (val < 0) { val = 0; }
+                if (val > (MMLPlayer.MAX_CH - 1)) { val = MMLPlayer.MAX_CH - 1; }
+                ch = val;
                 continue;
             }
         }
         mml_ch[ch] += mml_st.substring(start);
-        // ***** MMLを再構成 *****
+        // ***** MMLを再構成(チャンネル順につなげる) *****
         mml_st = "";
         for (i = 0; i < MMLPlayer.MAX_CH; i++) {
             mml_st += mml_ch[i];
