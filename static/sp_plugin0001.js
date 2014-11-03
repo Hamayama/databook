@@ -3328,8 +3328,7 @@ var MMLPlayer = (function () {
         // ***** MMLの前処理 *****
         mml_st = this.preprocess(mml_st);
         // ***** コンパイル(パス1) *****
-        // (テンポ変更情報を抽出して、
-        //  必要な音声バッファのサイズを計算可能とする)
+        // (テンポ変更情報を抽出して、必要な音声バッファのサイズを計算可能とする)
         this.compile(mml_st, 1);
         // ***** テンポ変更情報のソート *****
         this.tempo_chg.sort(tempo_sort);
@@ -3338,6 +3337,7 @@ var MMLPlayer = (function () {
         // DebugShow("pos=" + JSON.stringify(this.pos) + "\n");
         // DebugShow("tempo_chg=" + JSON.stringify(this.tempo_chg) + "\n");
         // ***** 音声バッファの確保 *****
+        // (一番長いチャンネルのサイズを全体のサイズとする)
         addata_len = 0;
         for (i = 0; i < MMLPlayer.MAX_CH; i++) {
             chdata_len = MMLPlayer.SAMPLE_RATE * this.getRealTime(this.pos[i]);
@@ -3348,13 +3348,13 @@ var MMLPlayer = (function () {
         this.adbuf = MMLPlayer.adctx.createBuffer(1, addata_len, MMLPlayer.SAMPLE_RATE);
         this.addata = this.adbuf.getChannelData(0);
         // ***** コンパイル(パス2) *****
-        // (音声データの値を計算して、音声バッファに格納する)
+        // (実際に音声データの値を計算して、音声バッファに格納する)
         this.compile(mml_st, 2);
-        // ***** 音声データの範囲チェック *****
-        for (i = 0; i < addata_len; i++) {
-            if (this.addata[i] < -1) { this.addata[i] = -1; }
-            if (this.addata[i] >  1) { this.addata[i] =  1; }
-        }
+        // // ***** 音声データの範囲チェック *****
+        // for (i = 0; i < addata_len; i++) {
+        //     if (this.addata[i] < -1) { this.addata[i] = -1; }
+        //     if (this.addata[i] >  1) { this.addata[i] =  1; }
+        // }
         // ***** コンパイル完了 *****
         this.compiled = 2;
         return true;
@@ -3496,10 +3496,10 @@ var MMLPlayer = (function () {
                         wave = Math.sin(phase);
                         break;
                     case 2:   // のこぎり波
-                        wave = (phase % (PI * 2)) / (PI * 2) * 2 - 1;
+                        wave = (phase % (PI * 2)) / PI - 1;
                         break;
                     case 3:   // 三角波
-                        wave = Math.asin(Math.sin(phase)) / (PI / 2);
+                        wave = 2 * Math.asin(Math.sin(phase)) / PI;
                         break;
                     case 4:   // ホワイトノイズ
                         wave = Math.random() * 2 - 1;
@@ -3519,17 +3519,10 @@ var MMLPlayer = (function () {
                 }
                 if (wave < -1) { wave = -1; }
                 if (wave >  1) { wave =  1; }
-                if (nlen2 == 0) {
-                    fade = 1;
-                } else {
-                    if ((i / nlen2) < 0.8) {
-                        fade = 1;
-                    } else if (i < nlen2) {
-                        fade = (1 - (i / nlen2)) / (1 - 0.8);
-                    } else {
-                        fade = 0;
-                    }
-                }
+                if (nlen2 == 0)           { fade = 1; }
+                else if (i < 0.8 * nlen2) { fade = 1; }
+                else if (i < nlen2)       { fade = 5 * (1 - (i / nlen2)); }
+                else                      { fade = 0; }
                 // this.addata[pos_int + i] += (volume / 127) * wave * fade / MMLPlayer.MAX_CH;
                 this.addata[pos_int + i] += amp_c * wave * fade;
             }
@@ -3927,8 +3920,8 @@ var MMLPlayer = (function () {
         return true;
     };
     // ***** MML内の数値を取得(内部処理用) *****
-    // (引数の ret には、空のオブジェクトを格納した変数を渡すこと。
-    //  検索位置 i の最終位置を、ret.i に格納して返すため)
+    // (引数の ret には、空のオブジェクトを格納した変数を渡すこと
+    //  (検索位置 i の最終位置を、ret.i に格納して返すため))
     MMLPlayer.prototype.getValue = function (mml_st, i, err_val, ret) {
         var c, start, mml_st_len;
         c = mml_st.charCodeAt(i);
