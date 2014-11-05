@@ -1,7 +1,7 @@
 // This file is encoded with UTF-8 without BOM.
 
 // sp_interpreter.js
-// 2014-11-3 v3.42
+// 2014-11-6 v3.43
 
 
 // SPALM Web Interpreter

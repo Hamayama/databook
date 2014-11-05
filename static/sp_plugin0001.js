@@ -3481,7 +3481,6 @@ var MMLPlayer = (function () {
             phase_c = 2 * PI * freq;
             amp_c = volume / 127 / MMLPlayer.MAX_CH;
             pos_int = parseInt(MMLPlayer.SAMPLE_RATE * rtime1, 10);
-            // DebugShow(pos_int + " " + this.addata.length+ "\n");
 
             // ***** 音声データの値を計算 *****
             for (i = 0; i < nlen1; i++) {
@@ -3511,7 +3510,7 @@ var MMLPlayer = (function () {
                         wave = ((Math.sin(phase) > 0) ? 1 : -1) * 13 * t * Math.exp(-5 * t);
                         break;
                     case 502: // ギター(仮)
-                        wave = 5 * (Math.cos(phase + Math.cos(phase / 2) + Math.cos(phase * 2))) * Math.exp(-5 * t);
+                        wave = 5 * Math.cos(phase + Math.cos(phase / 2) + Math.cos(phase * 2)) * Math.exp(-5 * t);
                         break;
                     default:  // 方形波
                         wave = (Math.sin(phase) > 0) ? 1 : -1;
@@ -3689,6 +3688,8 @@ var MMLPlayer = (function () {
                     tie[ch].note = 0;
                     tie[ch].length = 0;
                 }
+                // ***** タイ記号(&)の前の 空白、タブ、改行 をスキップ *****
+                i = this.skipSpace(mml_st, i);
                 // ***** タイまたはスラーのとき *****
                 if (mml_st.charAt(i) == "&") {
                     i++;
@@ -3918,6 +3919,18 @@ var MMLPlayer = (function () {
             }
         }
         return true;
+    };
+    // ***** MML内の空白、タブ、改行をスキップ(内部処理用) *****
+    // (最終の検索位置を返す)
+    MMLPlayer.prototype.skipSpace = function (mml_st, i) {
+        var c, mml_st_len;
+        mml_st_len = mml_st.length;
+        while (i < mml_st_len) {
+            c = mml_st.charAt(i);
+            if (c != " " && c != "\t" && c != "\r" && c != "\n") { break; }
+            i++;
+        }
+        return i;
     };
     // ***** MML内の数値を取得(内部処理用) *****
     // (引数の ret には、空のオブジェクトを格納した変数を渡すこと
