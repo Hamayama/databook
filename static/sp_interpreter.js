@@ -1,7 +1,7 @@
 // This file is encoded with UTF-8 without BOM.
 
 // sp_interpreter.js
-// 2014-11-8 v3.44
+// 2015-1-18 v3.45
 
 
 // SPALM Web Interpreter
@@ -3163,6 +3163,7 @@ var Interpreter;
         var temp_st;
         var temp_no;
         var line_no;
+        var line_no_s;
 
         // ***** ソース解析のループ *****
         i = 0;
@@ -3174,37 +3175,52 @@ var Interpreter;
         while (i < src_len) {
             // ***** 1文字取り出す *****
             ch = src.charAt(i++);
-            ch2 = src.charAt(i);
+            if (i < src_len) { ch2 = src.charAt(i); } else { ch2 = ""; }
 
             // ***** 空白かTABのとき *****
             if (ch == " " || ch == "\t") { continue; }
             // ***** 改行のとき *****
-            if (ch == "\r" && ch2 == "\n") { i++; line_no++; continue; }
-            if (ch == "\r" || ch == "\n") { line_no++; continue; }
+            if (ch == "\r" || ch == "\n") {
+                line_no++;
+                if (ch == "\r" && ch2 == "\n") { i++; }
+                continue;
+            }
             // ***** コメント「//」のとき *****
             if (ch == "/" && ch2 == "/") {
+                i++;
                 while (i < src_len) {
+                    // ***** 1文字取り出す *****
                     ch = src.charAt(i++);
-                    ch2 = src.charAt(i);
-                    if (ch == "\r" && ch2 == "\n") { i++; line_no++; break; }
-                    if (ch == "\r" || ch == "\n") { line_no++; break; }
+                    if (i < src_len) { ch2 = src.charAt(i); } else { ch2 = ""; }
+                    // ***** 改行のとき *****
+                    if (ch == "\r" || ch == "\n") {
+                        line_no++;
+                        if (ch == "\r" && ch2 == "\n") { i++; }
+                        break;
+                    }
                 }
                 continue;
             }
             // ***** コメント「'」のとき *****
             if (ch == "'") {
                 while (i < src_len) {
+                    // ***** 1文字取り出す *****
                     ch = src.charAt(i++);
-                    ch2 = src.charAt(i);
+                    if (i < src_len) { ch2 = src.charAt(i); } else { ch2 = ""; }
+                    // ***** デリミタのとき *****
                     if (ch == "'") { break; }
-                    if (ch == "\r" && ch2 == "\n") { i++; line_no++; continue; }
-                    if (ch == "\r" || ch == "\n") { line_no++; continue; }
+                    // ***** 改行のとき *****
+                    if (ch == "\r" || ch == "\n") {
+                        line_no++;
+                        if (ch == "\r" && ch2 == "\n") { i++; }
+                    }
                 }
                 continue;
             }
 
             // ***** 有効文字のとき *****
             sym_start = i - 1;
+            line_no_s = line_no;
             // ***** 16進数のとき *****
             if (ch == "0" && ch2 == "x") {
                 i++;
@@ -3219,10 +3235,10 @@ var Interpreter;
                 temp_no = temp_no | 0;
 
                 if (temp_no < 0) { // 負のときは符号を分離する
-                    symbol_push("-", line_no);
-                    symbol_push(String(-temp_no), line_no);
+                    symbol_push("-", line_no_s);
+                    symbol_push(String(-temp_no), line_no_s);
                 } else {
-                    symbol_push(String(temp_no), line_no);
+                    symbol_push(String(temp_no), line_no_s);
                 }
                 continue;
             }
@@ -3230,16 +3246,21 @@ var Interpreter;
             if (isDigit(ch)) {
                 dot_count = 0;
                 zero_flag = true;
-                if (ch == "0" && isDigit(ch2)) { sym_start = i; } else { zero_flag = false; } // 先頭の0をカット
+                // ***** 先頭の0をカット *****
+                if (ch == "0" && isDigit(ch2)) { sym_start = i; } else { zero_flag = false; }
                 while (i < src_len) {
+                    // ***** 1文字取り出す(iの加算なし) *****
                     ch = src.charAt(i);
-                    ch2 = src.charAt(i + 1);
-                    if (ch == "." && isDigit(ch2)) { i++; dot_count++; continue; } // 小数点チェック
+                    if (i + 1 < src_len) { ch2 = src.charAt(i + 1); } else { ch2 = ""; }
+                    // ***** 少数点のチェック *****
+                    if (ch == "." && isDigit(ch2)) { i++; dot_count++; continue; }
+                    // ***** 数値のチェック *****
                     if (isDigit(ch)) { i++; } else { break; }
-                    if (zero_flag && ch == "0" && isDigit(ch2)) { sym_start = i; } else { zero_flag = false; } // 先頭の0をカット
+                    // ***** 先頭の0をカット *****
+                    if (zero_flag && ch == "0" && isDigit(ch2)) { sym_start = i; } else { zero_flag = false; }
                 }
                 if (dot_count >= 2) { throw new Error("数値の小数点重複エラー"); }
-                symbol_push(src.substring(sym_start, i), line_no);
+                symbol_push(src.substring(sym_start, i), line_no_s);
                 continue;
             }
             // ***** アルファベットかアンダースコアのとき *****
@@ -3248,14 +3269,16 @@ var Interpreter;
                     ch = src.charAt(i);
                     if (isAlpha(ch) || ch == "_" || isDigit(ch)) { i++; } else { break; }
                 }
-                symbol_push(src.substring(sym_start, i), line_no);
+                symbol_push(src.substring(sym_start, i), line_no_s);
                 continue;
             }
             // ***** 文字列のとき *****
             if (ch == '"') {
                 while (i < src_len) {
+                    // ***** 1文字取り出す *****
                     ch = src.charAt(i++);
-                    ch2 = src.charAt(i);
+                    if (i < src_len) { ch2 = src.charAt(i); } else { ch2 = ""; }
+                    // ***** エスケープのとき *****
                     if (ch == "\\") {
                         if (ch2 == "\\" || ch2 == '"') {
                             i++;
@@ -3264,58 +3287,38 @@ var Interpreter;
                             throw new Error("文字列のエスケープエラー");
                         }
                     }
+                    // ***** デリミタのとき *****
                     if (ch == '"') { break; }
-                    if (ch == "\r" && ch2 == "\n") { i++; line_no++; continue; }
-                    if (ch == "\r" || ch == "\n") { line_no++; continue; }
+                    // ***** 改行のとき *****
+                    if (ch == "\r" || ch == "\n") {
+                        line_no++;
+                        if (ch == "\r" && ch2 == "\n") { i++; }
+                    }
                 }
-                temp_st = src.substring(sym_start, i);
-                temp_st = temp_st.replace(/\\"/g, '"');   // 「"」のエスケープ
-                temp_st = temp_st.replace(/\\\\/g, "\\"); // 「\」のエスケープ ← これは最後にしないといけない
-                symbol_push(temp_st, line_no);
+                temp_st = src.substring(sym_start, i)
+                    .replace(/\\"/g,  '"')   // 「"」のエスケープ
+                    .replace(/\\\\/g, "\\"); // 「\」のエスケープ ← これは最後にしないといけない
+                symbol_push(temp_st, line_no_s);
                 continue;
             }
             // ***** 演算子その他のとき *****
-            if (ch == "<") {
-                if (ch2 == "=" || ch2 == "<") { i++; }
+            if (ch == "&" || ch == "|") {
+                if (ch2 == ch) { i++; }
+            }
+            if (ch == "+" || ch == "-" || ch == "<") {
+                if (ch2 == ch || ch2 == "=") { i++; }
             }
             if (ch == ">") {
-                if (ch2 == "=" || ch2 == ">") { i++; }
-                if (ch2 == ">" && src.charAt(i) == ">") { i++; }
+                if (ch2 == "=") { i++; }
+                if (ch2 == ">") {
+                    i++;
+                    if (i < src_len && src.charAt(i) == ">") { i++; }
+                }
             }
-            if (ch == "&") {
-                if (ch2 == "&") { i++; }
-            }
-            if (ch == "|") {
-                if (ch2 == "|") { i++; }
-            }
-            if (ch == "=") {
+            if (ch == "=" || ch == "!" || ch == "*" || ch == "/" || ch == "%" || ch == "\\" || ch == ".") {
                 if (ch2 == "=") { i++; }
             }
-            if (ch == "!") {
-                if (ch2 == "=") { i++; }
-            }
-            if (ch == "+") {
-                if (ch2 == "+" || ch2 == "=") { i++; }
-            }
-            if (ch == "-") {
-                if (ch2 == "-" || ch2 == "=") { i++; }
-            }
-            if (ch == "*") {
-                if (ch2 == "=") { i++; }
-            }
-            if (ch == "/") {
-                if (ch2 == "=") { i++; }
-            }
-            if (ch == "%") {
-                if (ch2 == "=") { i++; }
-            }
-            if (ch == "\\") {
-                if (ch2 == "=") { i++; }
-            }
-            if (ch == ".") {
-                if (ch2 == "=") { i++; }
-            }
-            symbol_push(src.substring(sym_start, i), line_no);
+            symbol_push(src.substring(sym_start, i), line_no_s);
         }
         // ***** 終端の追加(安全のため) *****
         symbol_push("end", line_no);

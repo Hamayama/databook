@@ -3924,6 +3924,7 @@ var MMLPlayer = (function () {
     // (最終の検索位置を返す)
     MMLPlayer.prototype.skipSpace = function (mml_st, i) {
         var c, mml_st_len;
+
         mml_st_len = mml_st.length;
         while (i < mml_st_len) {
             c = mml_st.charAt(i);
@@ -3937,6 +3938,12 @@ var MMLPlayer = (function () {
     //  (検索位置 i の最終位置を、ret.i に格納して返すため))
     MMLPlayer.prototype.getValue = function (mml_st, i, err_val, ret) {
         var c, start, mml_st_len;
+
+        mml_st_len = mml_st.length;
+        if (i >= mml_st_len) {
+            ret.i = i;
+            return err_val;
+        }
         c = mml_st.charCodeAt(i);
         if (c < 0x30 || c > 0x39) {
             ret.i = i;
@@ -3944,7 +3951,6 @@ var MMLPlayer = (function () {
         }
         start = i;
         i++;
-        mml_st_len = mml_st.length;
         while (i < mml_st_len) {
             c = mml_st.charCodeAt(i);
             if (c < 0x30 || c > 0x39) { break; }
@@ -3977,19 +3983,20 @@ var MMLPlayer = (function () {
         mml_st_len = mml_st.length;
         while (i < mml_st_len) {
             // ***** 1文字取り出す *****
-            c = mml_st.charAt(i);
-            i++;
+            c = mml_st.charAt(i++);
             // ***** チャンネル切替のとき *****
-            if (c == "!" && mml_st.charAt(i) == "c") {
-                i++;
-                mml_ch[ch] += mml_st.substring(start, i - 2);
-                start = i - 2;
-                val = this.getValue(mml_st, i, 0, ret = {});
-                i = ret.i;
-                if (val < 0) { val = 0; }
-                if (val > (MMLPlayer.MAX_CH - 1)) { val = MMLPlayer.MAX_CH - 1; }
-                ch = val;
-                continue;
+            if (c == "!") {
+                if (i < mml_st_len && mml_st.charAt(i) == "c") {
+                    i++;
+                    mml_ch[ch] += mml_st.substring(start, i - 2);
+                    start = i - 2;
+                    val = this.getValue(mml_st, i, 0, ret = {});
+                    i = ret.i;
+                    if (val < 0) { val = 0; }
+                    if (val > (MMLPlayer.MAX_CH - 1)) { val = MMLPlayer.MAX_CH - 1; }
+                    ch = val;
+                    continue;
+                }
             }
         }
         mml_ch[ch] += mml_st.substring(start);
