@@ -1,7 +1,7 @@
 // This file is encoded with UTF-8 without BOM.
 
 // sp_interpreter.js
-// 2015-1-18 v3.45
+// 2015-1-19 v3.46
 
 
 // SPALM Web Interpreter
@@ -128,7 +128,7 @@ function check_id(id, num) {
 // ***** プログラムID(複数)の取得 *****
 function get_prog_id(list_st) {
     var i, ch, ch2;
-    var list_len;
+    var list_st_len;
     var prog_id = [];
     var prog_id_count;
     var split_flag;
@@ -141,12 +141,12 @@ function get_prog_id(list_st) {
     if (list_st == "") { Alm("get_prog_id:0002"); return prog_id; }
     // ***** テキストの分解 *****
     split_flag = false;
-    list_len = list_st.length;
     i = 0;
-    while (i < list_len) {
+    list_st_len = list_st.length;
+    while (i < list_st_len) {
         // ***** 1文字取り出す *****
         ch = list_st.charAt(i++);
-        ch2 = list_st.charAt(i);
+        if (i < list_st_len) { ch2 = list_st.charAt(i); } else { ch2 = ""; }
         // ***** 空白かTABのとき *****
         if (ch == " " || ch == "\t") { split_flag = true; }
         // ***** 改行のとき *****
@@ -154,9 +154,11 @@ function get_prog_id(list_st) {
         else if (ch == "\r" || ch == "\n") { split_flag = true; }
         // ***** コメント「;」のとき *****
         if (ch == ";") {
-            while (i < list_len) {
+            while (i < list_st_len) {
+                // ***** 1文字取り出す *****
                 ch = list_st.charAt(i++);
-                ch2 = list_st.charAt(i);
+                if (i < list_st_len) { ch2 = list_st.charAt(i); } else { ch2 = ""; }
+                // ***** 改行のとき *****
                 if (ch == "\r" && ch2 == "\n") { i++; break; }
                 else if (ch == "\r" || ch == "\n") { break; }
             }
