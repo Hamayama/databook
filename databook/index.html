@@ -61,13 +61,17 @@
     white-space: nowrap;
 }
 
+.warn_text {
+    color: #ff0000;
+}
+
 -->
 </style>
 </head>
 
 <body class="main_container">
 <div class="main_frame">
-<div class="title_text">{{ databook_title }}</div>
+<div class="title_text">{{ databook_title }}&nbsp;&nbsp;<span class="warn_text">{{ write_disabled_message }}</span></div>
 <b>{{ admin_message }}</b> <a href="{{ login_url|safe }}">{{ login_text }}</a><br><br>
 ＜内容＞<br>
 &nbsp;&nbsp;SPALM Web Interpreter のプログラムを登録可能なデータベースです。(Google App Engine を利用しています)<br>

@@ -10,9 +10,10 @@ import jinja2
 from google.appengine.api import users
 from google.appengine.ext import ndb
 from google.appengine.api import search
+from google.appengine.api import capabilities
 
 # databook.py
-# 2014-5-15 v1.26
+# 2015-1-31 v1.27
 
 # Google App Engine / Python による データベース アプリケーション1
 
@@ -164,6 +165,11 @@ class MainPage(webapp2.RequestHandler):
             # login_text = '[ログイン]'
             login_text = '[管理]'
 
+        # 書き込み禁止の判定
+        write_disabled_message = ''
+        if not capabilities.CapabilitySet('datastore_v3', ['write']).is_enabled():
+            write_disabled_message = '【現在書き込みは禁止しています】'
+
 
         # 全文検索の単語を取得
         search_flag = False
@@ -257,6 +263,7 @@ class MainPage(webapp2.RequestHandler):
         message_data = message_data.decode('utf-8')
         admin_message = admin_message.decode('utf-8')
         login_text = login_text.decode('utf-8')
+        write_disabled_message = write_disabled_message.decode('utf-8')
 
         # メインページのテンプレートに記事データを埋め込んで表示
         template = jinja_environment.get_template(mainpage_html)
@@ -274,7 +281,8 @@ class MainPage(webapp2.RequestHandler):
                                                 admin_message=admin_message,
                                                 login_url=login_url,
                                                 login_text=login_text,
-                                                mainpage_show_num=mainpage_show_num))
+                                                mainpage_show_num=mainpage_show_num,
+                                                write_disabled_message=write_disabled_message))
 
 
 # ***** 実行ページの表示 *****
@@ -335,10 +343,16 @@ class EditPage(webapp2.RequestHandler):
         if users.is_current_user_admin():
             admin_login = True
 
+        # 書き込み禁止の判定
+        write_disabled_message = ''
+        if not capabilities.CapabilitySet('datastore_v3', ['write']).is_enabled():
+            write_disabled_message = '【現在書き込みは禁止しています】'
+
         # 日時更新のチェック(デフォルトON)
         datechg_flag = 1
         if self.request.get('datechg') == '0':
             datechg_flag = 0
+
 
         # 記事を検索(タイトルで1件だけ)
         articles_query = Article.query(Article.title == req_title, ancestor=databook_key(databook_name)).order(-Article.date)
@@ -376,8 +390,10 @@ class EditPage(webapp2.RequestHandler):
             if not article.search_doc_id:
                 message_data = message_data + '（全文検索未登録）'
 
+
         # 文字コード変換(表示用)
         message_data = message_data.decode('utf-8')
+        write_disabled_message = write_disabled_message.decode('utf-8')
 
         # ローカル日時変換(表示用)
         article.date = article.date.replace(tzinfo=UTC()).astimezone(JapanTZ())
@@ -394,7 +410,8 @@ class EditPage(webapp2.RequestHandler):
                                                 editpage_url=editpage_url,
                                                 message_data=message_data,
                                                 admin_login=admin_login,
-                                                datechg_flag=datechg_flag))
+                                                datechg_flag=datechg_flag,
+                                                write_disabled_message=write_disabled_message))
 
 
 # ***** データブックの更新 *****
@@ -418,10 +435,18 @@ class Databook(webapp2.RequestHandler):
         if users.is_current_user_admin():
             admin_login = True
 
+        # 書き込み禁止の判定
+        write_enabled = True
+        write_disabled_message = ''
+        if not capabilities.CapabilitySet('datastore_v3', ['write']).is_enabled():
+            write_enabled = False
+            write_disabled_message = '【現在書き込みは禁止しています】'
+
         # 日時更新のチェック(デフォルトOFF)
         datechg_flag = 0
         if self.request.get('datechg') == '1':
             datechg_flag = 1
+
 
         # 記事を検索(タイトルで1件だけ)
         articles_query = Article.query(Article.title == req_title, ancestor=databook_key(databook_name)).order(-Article.date)
@@ -458,14 +483,14 @@ class Databook(webapp2.RequestHandler):
 
 
         # 記事の非表示(保守用)
-        if article.author.startswith('=hide'):
+        if write_enabled and article.author.startswith('=hide'):
             article.show_flag = 0
         else:
             article.show_flag = 1
 
         # 記事の削除(保守用)
         # if article.author.startswith('=delete'):
-        if self.request.get('delete') == '1':
+        if write_enabled and self.request.get('delete') == '1':
             if admin_login and article.bkup_dates:
                 # (関連する全文検索用ドキュメントがあればそれも削除)
                 if article.search_doc_id:
@@ -475,7 +500,7 @@ class Databook(webapp2.RequestHandler):
             return
 
         # 全文検索用ドキュメントの個別削除(保守用)
-        if article.author.startswith('=index_delete'):
+        if write_enabled and article.author.startswith('=index_delete'):
             if admin_login:
                 doc_id = article.content
                 if doc_id:
@@ -484,7 +509,7 @@ class Databook(webapp2.RequestHandler):
             return
 
         # 全文検索用ドキュメントの全削除(保守用)
-        if article.author.startswith('=all_index_delete'):
+        if write_enabled and article.author.startswith('=all_index_delete'):
             if admin_login:
                 search_index = search.Index(name=databook_indexname)
                 while True:
@@ -497,7 +522,7 @@ class Databook(webapp2.RequestHandler):
 
         # 記事のタイトル変更(保守用)
         rename_flag = 0
-        if self.request.get('rename') == '1':
+        if write_enabled and self.request.get('rename') == '1':
             new_title = self.request.get('newtitle').strip()
             if admin_login and new_title and new_title != article.title and article.bkup_dates:
                 # 記事を検索(新タイトルで1件だけ)
@@ -515,7 +540,7 @@ class Databook(webapp2.RequestHandler):
 
         # バックアップの保存
         # (10分以内のときは、バックアップを追加しないで上書きとする)
-        if rename_flag == 0:
+        if write_enabled and rename_flag == 0:
             time_diff_minutes = -1
             if article.bkup_lastupdate:
                 time_diff = datetime.datetime.now() - article.bkup_lastupdate
@@ -541,7 +566,7 @@ class Databook(webapp2.RequestHandler):
 
 
         # 全文検索用ドキュメントを登録する
-        if rename_flag == 0 or rename_flag == 1:
+        if write_enabled and (rename_flag == 0 or rename_flag == 1):
             date_str = article.date.replace(tzinfo=UTC()).astimezone(JapanTZ()).strftime('%Y-%m-%d %H:%M:%S %Z')
             doc_content = article.title + ' ' + article.author + ' ' + article.content + ' ' + date_str
             if article.search_doc_id:
@@ -565,20 +590,25 @@ class Databook(webapp2.RequestHandler):
 
 
         # 記事をデータブックに登録
-        if rename_flag == 0:
-            article.put()
-            message_data = message_data + '（セーブしました）'
-        elif rename_flag == 1:
-            article.put()
-            message_data = message_data + '（タイトルを変更しました）'
+        if write_enabled:
+            if rename_flag == 0:
+                article.put()
+                message_data = message_data + '（セーブしました）'
+            elif rename_flag == 1:
+                article.put()
+                message_data = message_data + '（タイトルを変更しました）'
+            else:
+                message_data = message_data + '（タイトルを変更できません（名称が不正もしくは同名が存在する等））'
         else:
-            message_data = message_data + '（タイトルを変更できません（名称が不正もしくは同名が存在する等））'
+            message_data = message_data + '（書き込みが禁止されています）'
+
 
         # # メインページに戻る
         # self.redirect(mainpage_url + '?' + urllib.urlencode({'db': databook_name}))
 
         # 文字コード変換(表示用)
         message_data = message_data.decode('utf-8')
+        write_disabled_message = write_disabled_message.decode('utf-8')
 
         # ローカル日時変換(表示用)
         article.date = article.date.replace(tzinfo=UTC()).astimezone(JapanTZ())
@@ -595,7 +625,8 @@ class Databook(webapp2.RequestHandler):
                                                 editpage_url=editpage_url,
                                                 message_data=message_data,
                                                 admin_login=admin_login,
-                                                datechg_flag=datechg_flag))
+                                                datechg_flag=datechg_flag,
+                                                write_disabled_message=write_disabled_message))
 
 
 # ****************************************

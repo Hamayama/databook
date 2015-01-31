@@ -35,6 +35,10 @@
     white-space: nowrap;
 }
 
+.warn_text {
+    color: #ff0000;
+}
+
 -->
 </style>
 <script type="text/javascript">
@@ -76,7 +80,7 @@ function set_button_disabled(flag) {
 
 <body class="main_container">
 <div class="main_frame">
-<div class="title_text">データ編集(S)</div>
+<div class="title_text">データ編集(S)&nbsp;&nbsp;<span class="warn_text">{{ write_disabled_message }}</span></div>
 
 <div class="data_edit">
 <form action="{{ update_url }}" method="post">
