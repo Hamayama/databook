@@ -1,7 +1,7 @@
 // This file is encoded with UTF-8 without BOM.
 
 // sp_interpreter.js
-// 2015-5-15 v3.47
+// 2015-5-16 v3.48
 
 
 // SPALM Web Interpreter
@@ -277,7 +277,14 @@ function load_textfile(fname, ok_func, ng_func) {
             } else { ng_func("*"); }
         }
     };
-    http_obj.open("GET", fname, true);
+    // ***** IE11対策 *****
+    // http_obj.open("GET", fname, true);
+    try {
+        http_obj.open("GET", fname, true);
+    } catch (ex1) {
+        ng_func("=");
+        return ret;
+    }
     // HTTP/1.0 における汎用のヘッダフィールド
     http_obj.setRequestHeader("Pragma", "no-cache");
     // HTTP/1.1 におけるキャッシュ制御のヘッダフィールド
@@ -287,7 +294,7 @@ function load_textfile(fname, ok_func, ng_func) {
     http_obj.setRequestHeader("If-Modified-Since", "Thu, 01 Jun 1970 00:00:00 GMT");
     // ***** IE8対策 *****
     // http_obj.send(null);
-    try { http_obj.send(null); } catch (ex) { }
+    try { http_obj.send(null); } catch (ex2) { }
     // ***** 戻り値を返す *****
     ret = true;
     return ret;
@@ -5562,6 +5569,16 @@ var Interpreter;
 
             a1 = parseFloat(param[0]);
             num = Math.cos(a1 * Math.PI / 180);
+            return num;
+        });
+        make_one_func_tbl_B("devpixratio", -1, [], function (param) {
+            var num;
+
+            if (window.devicePixelRatio) {
+                num = window.devicePixelRatio;
+            } else {
+                num = 0;
+            }
             return num;
         });
         make_one_func_tbl_B("download", 1, [], function (param) {
