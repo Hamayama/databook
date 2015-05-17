@@ -1,7 +1,7 @@
 // This file is encoded with UTF-8 without BOM.
 
 // sp_interpreter.js
-// 2015-5-17 v3.49
+// 2015-5-17 v3.50
 
 
 // SPALM Web Interpreter
@@ -3775,7 +3775,7 @@ var Interpreter;
                                       //   (配列の0はグローバル変数用)
                                       //   (配列の1以後はローカル変数用)
             this.vars_stack[0] = {};  // グローバル変数用(連想配列オブジェクト)
-            this.vars_stack_len = 1;  // スコープ数
+            this.local_scope_num = 0; // ローカル変数のスコープ数
 
             this.array_cache = [];    // 配列変数名キャッシュ用(検索高速化のため)(配列)
             this.array_cache[0] = {}; // グローバル配列変数名キャッシュ用(連想配列オブジェクト)
@@ -3794,23 +3794,24 @@ var Interpreter;
         };
         // ***** ローカル変数を取得する(デバッグ用) *****
         Vars.prototype.getLocalVars = function () {
-            if (this.vars_stack_len > 1) {
-                return this.vars_stack[this.vars_stack_len - 1];
+            if (this.local_scope_num > 0) {
+                return this.vars_stack[this.local_scope_num];
             }
             return {};
         };
         // ***** ローカル変数のスコープを1個生成する *****
         Vars.prototype.makeLocalScope = function () {
-            this.vars_stack[this.vars_stack_len++] = {};
+            this.local_scope_num++;
+            this.vars_stack[this.local_scope_num] = {};
 
             // (配列変数名キャッシュ対応)
-            this.array_cache[this.vars_stack_len - 1] = {};
+            this.array_cache[this.local_scope_num] = {};
         };
         // ***** ローカル変数のスコープを1個解放する *****
         Vars.prototype.deleteLocalScope = function () {
-            if (this.vars_stack_len > 1) {
+            if (this.local_scope_num > 0) {
                 this.vars_stack.pop();
-                this.vars_stack_len--;
+                this.local_scope_num--;
 
                 // (配列変数名キャッシュ対応)
                 this.array_cache.pop();
@@ -3818,12 +3819,12 @@ var Interpreter;
         };
         // ***** ローカル変数のスコープの保存数を返す *****
         Vars.prototype.getLocalScopeNum = function () {
-            return this.vars_stack_len - 1;
+            return this.local_scope_num;
         };
         // ***** 全変数を削除する *****
         Vars.prototype.clearVars = function () {
             var i;
-            for (i = 0; i < this.vars_stack_len; i++) {
+            for (i = 0; i <= this.local_scope_num; i++) {
                 this.vars_stack[i] = {};
 
                 // (配列変数名キャッシュ対応)
@@ -3832,11 +3833,11 @@ var Interpreter;
         };
         // ***** ローカル変数を削除する *****
         Vars.prototype.clearLocalVars = function () {
-            if (this.vars_stack_len > 1) {
-                this.vars_stack[this.vars_stack_len - 1] = {};
+            if (this.local_scope_num > 0) {
+                this.vars_stack[this.local_scope_num] = {};
 
                 // (配列変数名キャッシュ対応)
-                this.array_cache[this.vars_stack_len - 1] = {};
+                this.array_cache[this.local_scope_num] = {};
             }
         };
         // ***** 変数のタイプチェック(内部処理用) *****
@@ -3851,7 +3852,7 @@ var Interpreter;
                 i = var_name.indexOf("\\", 2) + 1;
                 ret_obj.now_index = use_local_vars ? parseInt(var_name.substring(2, i), 10) : 0;
             } else {
-                ret_obj.now_index = use_local_vars ? this.vars_stack_len - 1 : 0;
+                ret_obj.now_index = use_local_vars ? this.local_scope_num : 0;
             }
             // ***** 接頭語のチェック *****
             pre_word = var_name.substring(i, i + 2);
@@ -3887,7 +3888,7 @@ var Interpreter;
                 now_index = ret_obj.now_index;
                 loc_flag = ret_obj.loc_flag;
             } else {
-                now_index = use_local_vars ? this.vars_stack_len - 1 : 0;
+                now_index = use_local_vars ? this.local_scope_num : 0;
                 loc_flag = false;
             }
 
@@ -3940,7 +3941,7 @@ var Interpreter;
                 now_index = ret_obj.now_index;
                 loc_flag = ret_obj.loc_flag;
             } else {
-                now_index = use_local_vars ? this.vars_stack_len - 1 : 0;
+                now_index = use_local_vars ? this.local_scope_num : 0;
                 loc_flag = false;
             }
 
@@ -4020,7 +4021,7 @@ var Interpreter;
                 now_index = ret_obj.now_index;
                 loc_flag = ret_obj.loc_flag;
             } else {
-                now_index = use_local_vars ? this.vars_stack_len - 1 : 0;
+                now_index = use_local_vars ? this.local_scope_num : 0;
                 loc_flag = false;
             }
 
@@ -4085,7 +4086,7 @@ var Interpreter;
                 now_index = ret_obj.now_index;
                 loc_flag = ret_obj.loc_flag;
             } else {
-                now_index = use_local_vars ? this.vars_stack_len - 1 : 0;
+                now_index = use_local_vars ? this.local_scope_num : 0;
                 loc_flag = false;
             }
 
@@ -4176,7 +4177,7 @@ var Interpreter;
                 now_index = ret_obj.now_index;
                 loc_flag = ret_obj.loc_flag;
             } else {
-                now_index = use_local_vars ? this.vars_stack_len - 1 : 0;
+                now_index = use_local_vars ? this.local_scope_num : 0;
                 loc_flag = false;
             }
 
@@ -4237,7 +4238,7 @@ var Interpreter;
                 now_index = ret_obj.now_index;
                 loc_flag = ret_obj.loc_flag;
             } else {
-                now_index = use_local_vars ? this.vars_stack_len - 1 : 0;
+                now_index = use_local_vars ? this.local_scope_num : 0;
                 loc_flag = false;
             }
 
