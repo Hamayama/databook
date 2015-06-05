@@ -1074,10 +1074,7 @@ var Plugin0001;
         });
         add_one_func_tbl_A("txtline", 8, [0], function (param, vars, can, ctx) {
             var a1, a2, a3, a4;
-            var x1, y1, x2, y2, x3, y3;
-            var dx1, dy1, sx1, sy1, e1;
-            var i;
-            var ch;
+            var x1, y1, x2, y2;
 
             a1 = getvarname(param[0]);
             a2 = parseInt(param[1], 10);
@@ -1097,57 +1094,17 @@ var Plugin0001;
             if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
                 throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
             }
-            // if (Math.abs(x2 - x1) + 1 > max_str_size) {
-            if (!(Math.abs(x2 - x1) + 1 <= max_str_size)) {
+            // if (x1 > max_str_size || y1 > max_str_size) {
+            if (!(x1 <= max_str_size && y1 <= max_str_size)) {
                 throw new Error("処理する文字数が不正です。" + max_str_size + "以下である必要があります。");
             }
-            // if (Math.abs(y2 - y1) + 1 > max_str_size) {
-            if (!(Math.abs(y2 - y1) + 1 <= max_str_size)) {
+            // if (x2 > max_str_size || y2 > max_str_size) {
+            if (!(x2 <= max_str_size && y2 <= max_str_size)) {
                 throw new Error("処理する文字数が不正です。" + max_str_size + "以下である必要があります。");
             }
 
             // ***** 描画処理 *****
-            if ((x2 - x1) > 0) {
-                dx1 = x2 - x1; sx1 =  1;
-            } else if ((x2 - x1) < 0) {
-                dx1 = x1 - x2; sx1 = -1;
-            } else {
-                dx1 = 0; sx1 = 0;
-            }
-            if ((y2 - y1) > 0) {
-                dy1 = y2 - y1; sy1 =  1;
-            } else if ((y2 - y1) < 0) {
-                dy1 = y1 - y2; sy1 = -1;
-            } else {
-                dy1 = 0; sy1 = 0;
-            }
-            x3 = x1;
-            y3 = y1;
-            if (dx1 >= dy1) {
-                e1 = -dx1;
-                for (i = 0; i <= dx1; i++) {
-                    ch = a4.substring(i % a4.length, (i % a4.length) + 1);
-                    txtpsetsub(vars, a1, a2, a3, x3, y3, ch);
-                    x3 = x3 + sx1;
-                    e1 = e1 + 2 * dy1;
-                    if (e1 >= 0) {
-                        y3 = y3 + sy1;
-                        e1 = e1 - 2 * dx1;
-                    }
-                }
-            } else {
-                e1 = -dy1;
-                for (i = 0; i <= dy1; i++) {
-                    ch = a4.substring(i % a4.length, (i % a4.length) + 1);
-                    txtpsetsub(vars, a1, a2, a3, x3, y3, ch);
-                    y3 = y3 + sy1;
-                    e1 = e1 + 2 * dx1;
-                    if (e1 >= 0) {
-                        x3 = x3 + sx1;
-                        e1 = e1 - 2 * dy1;
-                    }
-                }
-            }
+            txtlinesub(vars, a1, a2, a3, x1, y1, x2, y2, a4);
             return true;
         });
         add_one_func_tbl_A("txtbox", 8, [0], function (param, vars, can, ctx) {
@@ -1173,12 +1130,12 @@ var Plugin0001;
             if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
                 throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
             }
-            // if (Math.abs(x2 - x1) + 1 > max_str_size) {
-            if (!(Math.abs(x2 - x1) + 1 <= max_str_size)) {
+            // if (x1 > max_str_size || y1 > max_str_size) {
+            if (!(x1 <= max_str_size && y1 <= max_str_size)) {
                 throw new Error("処理する文字数が不正です。" + max_str_size + "以下である必要があります。");
             }
-            // if (Math.abs(y2 - y1) + 1 > max_str_size) {
-            if (!(Math.abs(y2 - y1) + 1 <= max_str_size)) {
+            // if (x2 > max_str_size || y2 > max_str_size) {
+            if (!(x2 <= max_str_size && y2 <= max_str_size)) {
                 throw new Error("処理する文字数が不正です。" + max_str_size + "以下である必要があります。");
             }
 
@@ -1217,12 +1174,12 @@ var Plugin0001;
             if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
                 throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
             }
-            // if (Math.abs(x2 - x1) + 1 > max_str_size) {
-            if (!(Math.abs(x2 - x1) + 1 <= max_str_size)) {
+            // if (x1 > max_str_size || y1 > max_str_size) {
+            if (!(x1 <= max_str_size && y1 <= max_str_size)) {
                 throw new Error("処理する文字数が不正です。" + max_str_size + "以下である必要があります。");
             }
-            // if (Math.abs(y2 - y1) + 1 > max_str_size) {
-            if (!(Math.abs(y2 - y1) + 1 <= max_str_size)) {
+            // if (x2 > max_str_size || y2 > max_str_size) {
+            if (!(x2 <= max_str_size && y2 <= max_str_size)) {
                 throw new Error("処理する文字数が不正です。" + max_str_size + "以下である必要があります。");
             }
 
@@ -1239,6 +1196,7 @@ var Plugin0001;
             var a1, a2, a3, a4;
             var x1, y1, x2, y2;
             var r1, a, b;
+            var rr, aa, bb;
             var drawflag;
             var x_old, y_old;
 
@@ -1270,13 +1228,16 @@ var Plugin0001;
             // ***** 描画処理 *****
             if (a < 1) { a = 1; }
             if (b < 1) { b = 1; }
+            aa = a * a;
+            bb = b * b;
+            rr = r1 * r1;
             x2 = r1;
             drawflag = 0;
             x_old = 0;
             y_old = 0;
             for (y2 = 0; y2 <= r1; y2++) {
                 // 円の内側になるまでループ
-                while (((a * a * x2 * x2) + (b * b * y2 * y2)) >= (r1 * r1)) {
+                while (aa * x2 * x2 + bb * y2 * y2 >= rr) {
                     x2--;
                     if (x2 < 0) { break; }
                 }
@@ -1310,6 +1271,7 @@ var Plugin0001;
             var a1, a2, a3, a4;
             var x1, y1, x2, y2;
             var r1, a, b;
+            var rr, aa, bb;
 
             a1 = getvarname(param[0]);
             a2 = parseInt(param[1], 10);
@@ -1339,10 +1301,13 @@ var Plugin0001;
             // ***** 描画処理 *****
             if (a < 1) { a = 1; }
             if (b < 1) { b = 1; }
+            aa = a * a;
+            bb = b * b;
+            rr = r1 * r1;
             x2 = r1;
             for (y2 = 0; y2 <= r1; y2++) {
                 // 円の内側になるまでループ
-                while (((a * a * x2 * x2) + (b * b * y2 * y2)) >= (r1 * r1)) {
+                while (aa * x2 * x2 + bb * y2 * y2 >= rr) {
                     x2--;
                     if (x2 < 0) { break; }
                 }
@@ -1350,6 +1315,225 @@ var Plugin0001;
                 // 両端を結ぶ水平線を表示
                 txtovrsub(vars, a1, a2, a3, x1 - x2, y1 - y2, strrepeatsub(a4, 2 * x2 + 1));
                 txtovrsub(vars, a1, a2, a3, x1 - x2, y1 + y2, strrepeatsub(a4, 2 * x2 + 1));
+            }
+            return true;
+        });
+        add_one_func_tbl_A("txtpoly", 8, [0, 3, 4], function (param, vars, can, ctx) {
+            var a1, a2, a3, a4;
+            var b1, b2, b3, b4, b5;
+            var i, j;
+            var pnum;
+            var x = [];
+            var y = [];
+
+            a1 = getvarname(param[0]);
+            a2 = parseInt(param[1], 10);
+            a3 = parseInt(param[2], 10);
+            b1 = getvarname(param[3]);
+            b2 = getvarname(param[4]);
+            b3 = parseInt(param[5], 10);
+            b4 = parseInt(param[6], 10);
+            a4 = String(param[7]);
+            if (param.length <= 8) {
+                b5 = 0;
+            } else {
+                b5 = parseInt(param[8], 10);
+            }
+
+            // ***** NaN対策 *****
+            a2 = a2 | 0;
+            a3 = a3 | 0;
+            b3 = b3 | 0;
+            b4 = b4 | 0;
+
+            // ***** エラーチェック *****
+            // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
+            if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
+                throw new Error("処理する(文字列)配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
+            }
+            // if (b4 - b3 + 1 < 1 || b4 - b3 + 1 > max_array_size) {
+            if (!(b4 - b3 + 1 >= 1 && b4 - b3 + 1 <= max_array_size)) {
+                throw new Error("処理する(頂点)配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
+            }
+
+            // ***** 多角形のライン表示処理 *****
+
+            // ***** 頂点の取得 *****
+            j = b3;
+            pnum = b4 - b3 + 1;
+            for (i = 0; i < pnum; i++) {
+                // // ***** 配列の存在チェック *****
+                // if (!vars.checkVar(b1 + "[" + j + "]")) { return true; }
+                // if (!vars.checkVar(b2 + "[" + j + "]")) { return true; }
+
+                // x[i] = parseInt(vars[b1 + "[" + j + "]"], 10);
+                x[i] = parseInt(vars.getVarValue(b1 + "[" + j + "]"), 10);
+                // y[i] = parseInt(vars[b2 + "[" + j + "]"], 10);
+                y[i] = parseInt(vars.getVarValue(b2 + "[" + j + "]"), 10);
+                j++;
+
+                // ***** エラーチェック *****
+                // if (x[i] > max_str_size || y[i] > max_str_size) {
+                if (!(x[i] <= max_str_size && y[i] <= max_str_size)) {
+                    throw new Error("処理する文字数が不正です。" + max_str_size + "以下である必要があります。");
+                }
+            }
+
+            // ***** 描画処理 *****
+            for (i = 0; i < pnum - 1; i++) {
+                if (y[i] <= y[i + 1]) {    // 左右対称になるように調整(ただし上下対称にはならない)
+                    txtlinesub(vars, a1, a2, a3, x[i], y[i], x[i + 1], y[i + 1], a4);
+                } else {
+                    txtlinesub(vars, a1, a2, a3, x[i + 1], y[i + 1], x[i], y[i], a4);
+                }
+            }
+            if (b5 == 0 && pnum >= 1) {
+                if (y[pnum - 1] <= y[0]) { // 左右対称になるように調整(ただし上下対称にはならない)
+                    txtlinesub(vars, a1, a2, a3, x[pnum - 1], y[pnum - 1], x[0], y[0], a4);
+                } else {
+                    txtlinesub(vars, a1, a2, a3, x[0], y[0], x[pnum - 1], y[pnum - 1], a4);
+                }
+            }
+            return true;
+        });
+        add_one_func_tbl_A("txtfpoly", 8, [0, 3, 4], function (param, vars, can, ctx) {
+            var a1, a2, a3, a4;
+            var b1, b2, b3, b4;
+            var i, j, i1, i2;
+            var pnum;
+            var x = [];
+            var y = [];
+            var x1, y1, x2, y2;
+            var y_min, y_max;
+            var e1 = {};
+            var edge = [];   // 辺情報
+            var edge_sort = function (a,b) { return (a.x - b.x); }; // ソート用(比較関数)
+            var edge_num;    // 辺の数
+            var wn, wn_flag; // 巻き数
+
+            a1 = getvarname(param[0]);
+            a2 = parseInt(param[1], 10);
+            a3 = parseInt(param[2], 10);
+            b1 = getvarname(param[3]);
+            b2 = getvarname(param[4]);
+            b3 = parseInt(param[5], 10);
+            b4 = parseInt(param[6], 10);
+            a4 = String(param[7]);
+
+            // ***** NaN対策 *****
+            a2 = a2 | 0;
+            a3 = a3 | 0;
+            b3 = b3 | 0;
+            b4 = b4 | 0;
+
+            // ***** エラーチェック *****
+            // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
+            if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
+                throw new Error("処理する(文字列)配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
+            }
+            // if (b4 - b3 + 1 < 1 || b4 - b3 + 1 > max_array_size) {
+            if (!(b4 - b3 + 1 >= 1 && b4 - b3 + 1 <= max_array_size)) {
+                throw new Error("処理する(頂点)配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
+            }
+
+            // ***** 多角形の塗りつぶし処理 *****
+
+            // ***** 頂点の取得 *****
+            j = b3;
+            pnum = b4 - b3 + 1;
+            for (i = 0; i < pnum; i++) {
+                // // ***** 配列の存在チェック *****
+                // if (!vars.checkVar(b1 + "[" + j + "]")) { return true; }
+                // if (!vars.checkVar(b2 + "[" + j + "]")) { return true; }
+
+                // x[i] = parseInt(vars[b1 + "[" + j + "]"], 10);
+                x[i] = parseInt(vars.getVarValue(b1 + "[" + j + "]"), 10);
+                // y[i] = parseInt(vars[b2 + "[" + j + "]"], 10);
+                y[i] = parseInt(vars.getVarValue(b2 + "[" + j + "]"), 10);
+                j++;
+
+                // ***** エラーチェック *****
+                // if (x[i] > max_str_size || y[i] > max_str_size) {
+                if (!(x[i] <= max_str_size && y[i] <= max_str_size)) {
+                    throw new Error("処理する文字数が不正です。" + max_str_size + "以下である必要があります。");
+                }
+            }
+
+            // ***** 辺情報の取得 *****
+            y_min = y[0];
+            y_max = y[0];
+            for (i = 0; i < pnum; i++) {
+                x1 = x[i];
+                y1 = y[i];
+                if (y1 < y_min) { y_min = y1; }
+                if (y1 > y_max) { y_max = y1; }
+                x2 = x[(i + 1) % pnum];
+                y2 = y[(i + 1) % pnum];
+                if (y1 == y2) { continue; }   // 水平な辺は登録しない
+                e1 = {};
+                e1.a = (x2 - x1) / (y2 - y1); // Yが1増えたときのXの増分
+                e1.downward = (y1 < y2);      // 下向きかどうか
+                if (e1.downward) {
+                    e1.x  = x1;               // 始点のX座標
+                    e1.y1 = y1;               // 始点のY座標
+                    e1.y2 = y2;               // 終点のY座標
+                } else {
+                    e1.x  = x2;               // 始点のX座標
+                    e1.y1 = y2;               // 始点のY座標
+                    e1.y2 = y1;               // 終点のY座標
+                }
+                edge.push(e1);
+            }
+            edge_num = edge.length;
+            // 各辺について、続く辺とY方向の向きが同じであるときは、Y方向の長さを1短くする
+            for (i = 0; i < edge_num; i++) {
+                if (edge[i].downward == edge[(i + 1) % edge_num].downward) {
+                    if (edge[i].downward) {
+                        edge[i].y2--;
+                    } else {
+                        edge[i].y1++;
+                        edge[i].x += edge[i].a;
+                    }
+                }
+            }
+
+            // ***** 描画処理 *****
+            for (y1 = y_min; y1 <= y_max; y1++) {
+                // 辺情報を始点のX座標でソートする
+                edge.sort(edge_sort);
+                // 水平線と各辺の交点を処理する
+                for (i = 0; i < edge_num; i++) {
+                    // 交点がなければスキップ
+                    if (y1 < edge[i].y1 || y1 > edge[i].y2) { continue; }
+                    // 辺の方向から巻き数を計算して、0になるまでの範囲を取得する
+                    i1 = i;
+                    wn = edge[i].downward ? 1 : -1;
+                    wn_flag = false;
+                    for (i++ ; i < edge_num; i++) {
+                        if (y1 < edge[i].y1 || y1 > edge[i].y2) { continue; }
+                        wn += edge[i].downward ? 1 : -1;
+                        if (wn == 0) {
+                            i2 = i;
+                            wn_flag = true;
+                            break;
+                        }
+                    }
+                    if (!wn_flag) { i2 = i1; }
+
+                    // 左右対称になるように調整
+                    // x1 = edge[i1].x | 0; // 整数化
+                    // x2 = edge[i2].x | 0; // 整数化
+                    x1 = (edge[i1].a > 0) ? Math.round(edge[i1].x) : -Math.round(-edge[i1].x); // 整数化
+                    x2 = (edge[i2].a > 0) ? Math.round(edge[i2].x) : -Math.round(-edge[i2].x); // 整数化
+
+                    // 両端を結ぶ水平線を表示
+                    txtovrsub(vars, a1, a2, a3, x1, y1, strrepeatsub(a4, x2 - x1 + 1));
+                }
+                // 各辺の始点のX座標に増分を加算してから、次の水平線の処理へ移行
+                for (i = 0; i < edge_num; i++) {
+                    if (y1 < edge[i].y1 || y1 > edge[i].y2) { continue; }
+                    edge[i].x += edge[i].a;
+                }
             }
             return true;
         });
@@ -1903,12 +2087,12 @@ var Plugin0001;
             if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
                 throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
             }
-            // if (Math.abs(x2 - x1) + 1 > max_str_size) {
-            if (!(Math.abs(x2 - x1) + 1 <= max_str_size)) {
+            // if (x1 > max_str_size || y1 > max_str_size) {
+            if (!(x1 <= max_str_size && y1 <= max_str_size)) {
                 throw new Error("処理する文字数が不正です。" + max_str_size + "以下である必要があります。");
             }
-            // if (Math.abs(y2 - y1) + 1 > max_str_size) {
-            if (!(Math.abs(y2 - y1) + 1 <= max_str_size)) {
+            // if (x2 > max_str_size || y2 > max_str_size) {
+            if (!(x2 <= max_str_size && y2 <= max_str_size)) {
                 throw new Error("処理する文字数が不正です。" + max_str_size + "以下である必要があります。");
             }
             if (a4.length == 0) { return 0; }
@@ -1980,6 +2164,56 @@ var Plugin0001;
     //                補助関数等
     // ****************************************
 
+    // ***** 文字列配列のライン表示処理サブ *****
+    function txtlinesub(vars, var_name, min_y, max_y, x1, y1, x2, y2, ch) {
+        var x3, y3;
+        var dx1, dy1, sx1, sy1, e1;
+        var i;
+        var ch1;
+
+        // ***** ライン表示処理 *****
+        if ((x2 - x1) > 0) {
+            dx1 = x2 - x1; sx1 =  1;
+        } else if ((x2 - x1) < 0) {
+            dx1 = x1 - x2; sx1 = -1;
+        } else {
+            dx1 = 0; sx1 = 0;
+        }
+        if ((y2 - y1) > 0) {
+            dy1 = y2 - y1; sy1 =  1;
+        } else if ((y2 - y1) < 0) {
+            dy1 = y1 - y2; sy1 = -1;
+        } else {
+            dy1 = 0; sy1 = 0;
+        }
+        x3 = x1;
+        y3 = y1;
+        if (dx1 >= dy1) {
+            e1 = -dx1;
+            for (i = 0; i <= dx1; i++) {
+                ch1 = ch.substring(i % ch.length, (i % ch.length) + 1);
+                txtpsetsub(vars, var_name, min_y, max_y, x3, y3, ch1);
+                x3 = x3 + sx1;
+                e1 = e1 + 2 * dy1;
+                if (e1 >= 0) {
+                    y3 = y3 + sy1;
+                    e1 = e1 - 2 * dx1;
+                }
+            }
+        } else {
+            e1 = -dy1;
+            for (i = 0; i <= dy1; i++) {
+                ch1 = ch.substring(i % ch.length, (i % ch.length) + 1);
+                txtpsetsub(vars, var_name, min_y, max_y, x3, y3, ch1);
+                y3 = y3 + sy1;
+                e1 = e1 + 2 * dx1;
+                if (e1 >= 0) {
+                    x3 = x3 + sx1;
+                    e1 = e1 - 2 * dy1;
+                }
+            }
+        }
+    }
     // ***** 文字列配列の点設定処理サブ *****
     function txtpsetsub(vars, var_name, min_y, max_y, x, y, ch) {
         var st1;
@@ -2049,7 +2283,7 @@ var Plugin0001;
             vars.setVarValue(var_name + "[" + y + "]", st1);
         }
     }
-    // ***** 文字列の繰り返し関数サブ *****
+    // ***** 文字列の繰り返し処理サブ *****
     function strrepeatsub(st1, count) {
         var ret_st;
 
@@ -2057,7 +2291,7 @@ var Plugin0001;
         ret_st = "";
         // ***** エラーチェック *****
         if (st1.length == 0 || count <= 0) { return ret_st; }
-        // ***** 作成処理 *****
+        // ***** 繰り返し処理 *****
         while (ret_st.length < count) {
             if (ret_st.length + st1.length < count) {
                 ret_st += st1;
@@ -2068,7 +2302,7 @@ var Plugin0001;
         // ***** 戻り値を返す *****
         return ret_st;
     }
-    // ***** 文字列の上書き関数サブ *****
+    // ***** 文字列の上書き処理サブ *****
     // (文字列st1の位置xから文字列st2を上書きした文字列を返す。
     //  ただし返す文字列の長さはst1の長さとする(はみ出した部分はカット)。
     //  位置xは先頭文字を0とする)
@@ -2097,8 +2331,8 @@ var Plugin0001;
         // ***** 戻り値を返す *****
         return ret_st;
     }
-    // ***** 文字列の上書き関数サブ2 *****
-    // (半角/全角スペース以外を上書きする。他は「文字列の上書き関数サブ」と同じ)
+    // ***** 文字列の上書き処理サブ2 *****
+    // (半角/全角スペース以外を上書きする。他は「文字列の上書き処理サブ」と同じ)
     function strovrsub2(st1, x, st2) {
         var i;
         var ch;
@@ -2123,8 +2357,8 @@ var Plugin0001;
         // ***** 戻り値を返す *****
         return ret_st;
     }
-    // ***** 文字列の上書き関数サブ3 *****
-    // (半角/全角スペースのみ上書きする。他は「文字列の上書き関数サブ」と同じ)
+    // ***** 文字列の上書き処理サブ3 *****
+    // (半角/全角スペースのみ上書きする。他は「文字列の上書き処理サブ」と同じ)
     function strovrsub3(st1, x, st2) {
         var i;
         var ch;
