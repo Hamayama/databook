@@ -1381,14 +1381,16 @@ var Plugin0001;
 
             // ***** 描画処理 *****
             for (i = 0; i < pnum - 1; i++) {
-                if (y[i] <= y[i + 1]) {    // 左右対称になるように調整(ただし上下対称にはならない)
+                // 左右対称になるように調整(ただし上下対称にはならない)
+                if (y[i] <= y[i + 1]) {
                     txtlinesub(vars, a1, a2, a3, x[i], y[i], x[i + 1], y[i + 1], a4);
                 } else {
                     txtlinesub(vars, a1, a2, a3, x[i + 1], y[i + 1], x[i], y[i], a4);
                 }
             }
             if (b5 == 0 && pnum >= 1) {
-                if (y[pnum - 1] <= y[0]) { // 左右対称になるように調整(ただし上下対称にはならない)
+                // 左右対称になるように調整(ただし上下対称にはならない)
+                if (y[pnum - 1] <= y[0]) {
                     txtlinesub(vars, a1, a2, a3, x[pnum - 1], y[pnum - 1], x[0], y[0], a4);
                 } else {
                     txtlinesub(vars, a1, a2, a3, x[0], y[0], x[pnum - 1], y[pnum - 1], a4);
@@ -1472,7 +1474,7 @@ var Plugin0001;
                 if (y1 == y2) { continue; }   // 水平な辺は登録しない
                 e1 = {};
                 e1.a = (x2 - x1) / (y2 - y1); // Yが1増えたときのXの増分
-                e1.downward = (y1 < y2);      // 下向きかどうか
+                e1.downward = (y1 < y2);      // Y方向の向きが下向きかどうか
                 if (e1.downward) {
                     e1.x  = x1;               // 始点のX座標
                     e1.y1 = y1;               // 始点のY座標
@@ -1505,11 +1507,11 @@ var Plugin0001;
                 for (i = 0; i < edge_num; i++) {
                     // 交点がなければスキップ
                     if (y1 < edge[i].y1 || y1 > edge[i].y2) { continue; }
-                    // 辺の方向から巻き数を計算して、0になるまでの範囲を取得する
+                    // 辺のY方向の向きから巻き数を計算して、0になるまでの範囲を取得する
                     i1 = i;
                     wn = edge[i].downward ? 1 : -1;
                     wn_flag = false;
-                    for (i++ ; i < edge_num; i++) {
+                    for (i++; i < edge_num; i++) {
                         if (y1 < edge[i].y1 || y1 > edge[i].y2) { continue; }
                         wn += edge[i].downward ? 1 : -1;
                         if (wn == 0) {
@@ -1529,7 +1531,7 @@ var Plugin0001;
                     // 両端を結ぶ水平線を表示
                     txtovrsub(vars, a1, a2, a3, x1, y1, strrepeatsub(a4, x2 - x1 + 1));
                 }
-                // 各辺の始点のX座標に増分を加算してから、次の水平線の処理へ移行
+                // 各辺の始点のX座標に増分を加算する
                 for (i = 0; i < edge_num; i++) {
                     if (y1 < edge[i].y1 || y1 > edge[i].y2) { continue; }
                     edge[i].x += edge[i].a;
