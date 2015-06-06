@@ -1401,17 +1401,18 @@ var Plugin0001;
         add_one_func_tbl_A("txtfpoly", 8, [0, 3, 4], function (param, vars, can, ctx) {
             var a1, a2, a3, a4;
             var b1, b2, b3, b4;
-            var i, j, i1, i2;
+            var i, j;
             var pnum;
             var x = [];
             var y = [];
             var x1, y1, x2, y2;
-            var y_min, y_max;
+            var y_min, y_max, ydir_old;
             var e1 = {};
-            var edge = [];   // 辺情報
+            var edge = [];  // 辺情報
             var edge_sort = function (a,b) { return (a.x - b.x); }; // ソート用(比較関数)
-            var edge_num;    // 辺の数
-            var wn, wn_flag; // 巻き数
+            var edge_num;   // 辺の数
+            var wn;         // 巻き数
+            var line_start; // 線分開始フラグ
 
             a1 = getvarname(param[0]);
             a2 = parseInt(param[1], 10);
@@ -1471,69 +1472,98 @@ var Plugin0001;
                 if (y1 > y_max) { y_max = y1; }
                 x2 = x[(i + 1) % pnum];
                 y2 = y[(i + 1) % pnum];
-                if (y1 == y2) { continue; }   // 水平な辺は登録しない
                 e1 = {};
-                e1.a = (x2 - x1) / (y2 - y1); // Yが1増えたときのXの増分
-                e1.downward = (y1 < y2);      // Y方向の向きが下向きかどうか
-                if (e1.downward) {
-                    e1.x  = x1;               // 始点のX座標
-                    e1.y1 = y1;               // 始点のY座標
-                    e1.y2 = y2;               // 終点のY座標
-                } else {
-                    e1.x  = x2;               // 始点のX座標
-                    e1.y1 = y2;               // 始点のY座標
-                    e1.y2 = y1;               // 終点のY座標
+                if (y1 == y2) { // 辺が水平のとき
+                    e1.a = 0;         // Yが1増えたときのXの増分
+                    e1.ydir = 0;      // Y方向の向き
+                    e1.y1 = y1;       // 始点のY座標
+                    e1.y2 = y2;       // 終点のY座標
+                    if (x1 <= x2) {
+                        e1.x1 = x1;   // 始点のX座標
+                        e1.x2 = x2;   // 終点のX座標
+                        e1.x  = x1;   // X座標
+                    } else {
+                        e1.x1 = x2;   // 始点のX座標
+                        e1.x2 = x1;   // 終点のX座標
+                        e1.x  = x2;   // X座標
+                    }
+                } else {        // 辺が水平でないとき
+                    e1.a = (x2 - x1) / (y2 - y1); // Yが1増えたときのXの増分
+                    if (y1 < y2) {
+                        e1.ydir = 1;  // Y方向の向き
+                        e1.y1 = y1;   // 始点のY座標
+                        e1.y2 = y2;   // 終点のY座標
+                        e1.x1 = x1;   // 始点のX座標
+                        e1.x2 = x2;   // 終点のX座標
+                        e1.x  = x1;   // X座標
+                    } else {
+                        e1.ydir = -1; // Y方向の向き
+                        e1.y1 = y2;   // 始点のY座標
+                        e1.y2 = y1;   // 終点のY座標
+                        e1.x1 = x2;   // 始点のX座標
+                        e1.x2 = x1;   // 終点のX座標
+                        e1.x  = x2;   // X座標
+                    }
                 }
                 edge.push(e1);
             }
             edge_num = edge.length;
-            // 各辺について、続く辺とY方向の向きが同じであるときは、Y方向の長さを1短くする
-            for (i = 0; i < edge_num; i++) {
-                if (edge[i].downward == edge[(i + 1) % edge_num].downward) {
-                    if (edge[i].downward) {
-                        edge[i].y2--;
+            // 前の辺とY方向の向きが等しいときは、Y方向の長さを1だけ短くする
+            // (つなぎ目を2重にカウントして描画領域が反転するのを防ぐため)
+            ydir_old = 0;
+            for (i = 0; i <= edge_num; i++) {
+                j = i % edge_num; // 1周するために剰余を使用
+                if (edge[j].ydir == 0) { continue; }
+                if (edge[j].ydir == ydir_old) {
+                    if (edge[j].ydir == 1) {
+                        edge[j].y1++;
+                        edge[j].x += e1.a;
                     } else {
-                        edge[i].y1++;
-                        edge[i].x += edge[i].a;
+                        edge[j].y2--;
                     }
                 }
+                ydir_old = edge[j].ydir;
             }
 
             // ***** 描画処理 *****
             for (y1 = y_min; y1 <= y_max; y1++) {
-                // 辺情報を始点のX座標でソートする
+                // 辺情報をX座標でソートする
                 edge.sort(edge_sort);
-                // 水平線と各辺の交点を処理する
+                // 水平線と各辺の交点を順番に処理する
+                wn = 0;
+                line_start = false;
                 for (i = 0; i < edge_num; i++) {
                     // 交点がなければスキップ
                     if (y1 < edge[i].y1 || y1 > edge[i].y2) { continue; }
-                    // 辺のY方向の向きから巻き数を計算して、0になるまでの範囲を取得する
-                    i1 = i;
-                    wn = edge[i].downward ? 1 : -1;
-                    wn_flag = false;
-                    for (i++; i < edge_num; i++) {
-                        if (y1 < edge[i].y1 || y1 > edge[i].y2) { continue; }
-                        wn += edge[i].downward ? 1 : -1;
-                        if (wn == 0) {
-                            i2 = i;
-                            wn_flag = true;
-                            break;
-                        }
+                    // 辺が水平のときはそのまま描画する
+                    // (描画しないと抜けが発生するパターンがあるため)
+                    if (edge[i].ydir == 0) {
+                        x1 = edge[i].x1 | 0; // 整数化
+                        x2 = edge[i].x2 | 0; // 整数化
+                        // 両端を結ぶ水平線を表示
+                        txtovrsub(vars, a1, a2, a3, x1, y1, strrepeatsub(a4, x2 - x1 + 1));
+                        continue;
                     }
-                    if (!wn_flag) { i2 = i1; }
+                    // 辺のY方向の向きから巻き数を計算して、0になるまでの領域を塗りつぶす
+                    wn += edge[i].ydir;
+                    if (!line_start) {
+                        line_start = true;
 
-                    // 左右対称になるように調整
-                    // x1 = edge[i1].x | 0; // 整数化
-                    // x2 = edge[i2].x | 0; // 整数化
-                    x1 = (edge[i1].a > 0) ? Math.round(edge[i1].x) : -Math.round(-edge[i1].x); // 整数化
-                    x2 = (edge[i2].a > 0) ? Math.round(edge[i2].x) : -Math.round(-edge[i2].x); // 整数化
+                        // 左右対称になるように調整
+                        // x1 = edge[i].x | 0; // 整数化
+                        x1 = (edge[i].a > 0) ? Math.round(edge[i].x) : -Math.round(-edge[i].x); // 整数化
 
-                    // 両端を結ぶ水平線を表示
-                    txtovrsub(vars, a1, a2, a3, x1, y1, strrepeatsub(a4, x2 - x1 + 1));
-                }
-                // 各辺の始点のX座標に増分を加算する
-                for (i = 0; i < edge_num; i++) {
-                    if (y1 < edge[i].y1 || y1 > edge[i].y2) { continue; }
+                    } else if (wn == 0) {
+                        line_start = false;
+
+                        // 左右対称になるように調整
+                        // x2 = edge[i].x | 0; // 整数化
+                        x2 = (edge[i].a > 0) ? Math.round(edge[i].x) : -Math.round(-edge[i].x); // 整数化
+
+                        // 両端を結ぶ水平線を表示
+                        txtovrsub(vars, a1, a2, a3, x1, y1, strrepeatsub(a4, x2 - x1 + 1));
+                    }
+                    // 辺のX座標に増分を加算する
                     edge[i].x += edge[i].a;
                 }
             }
