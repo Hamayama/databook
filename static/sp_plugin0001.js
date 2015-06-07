@@ -1472,14 +1472,22 @@ var Plugin0001;
                 e1.a = (x2 - x1) / (y2 - y1); // Yが1増えたときのXの増分
                 if (y1 < y2) {
                     e1.ydir = 1;  // Y方向の向き
-                    e1.y1 = y1;   // 始点のY座標
-                    e1.y2 = y2;   // 終点のY座標
-                    e1.x  = x1;   // X座標
+                    e1.y1  = y1;  // 始点のY座標
+                    e1.y2  = y2;  // 終点のY座標
+                    e1.x   = x1;  // X座標
+                    // e1.x1c = x1;  // 始点のX座標(保存用)
+                    // e1.y1c = y1;  // 始点のY座標(保存用)
+                    // e1.x2c = x2;  // 終点のX座標(保存用)
+                    // e1.y2c = y2;  // 終点のY座標(保存用)
                 } else {
                     e1.ydir = -1; // Y方向の向き
-                    e1.y1 = y2;   // 始点のY座標
-                    e1.y2 = y1;   // 終点のY座標
-                    e1.x  = x2;   // X座標
+                    e1.y1  = y2;  // 始点のY座標
+                    e1.y2  = y1;  // 終点のY座標
+                    e1.x   = x2;  // X座標
+                    // e1.x1c = x2;  // 始点のX座標(保存用)
+                    // e1.y1c = y2;  // 始点のY座標(保存用)
+                    // e1.x2c = x1;  // 終点のX座標(保存用)
+                    // e1.y2c = y1;  // 終点のY座標(保存用)
                 }
                 edge.push(e1);
             }
@@ -1534,8 +1542,14 @@ var Plugin0001;
                         // 両端を結ぶ水平線を表示
                         txtovrsub(vars, a1, a2, a3, x1, y1, strrepeatsub(a4, x2 - x1 + 1));
                     }
-                    // 辺のX座標に増分を加算する
+                    // 次回の水平線と辺の交点のX座標を計算
+                    // (現状程度のスケールであれば、浮動小数点の加算を繰り返しても精度は大丈夫そう)
                     edge[i].x += edge[i].a;
+                    // if (y1 + 1 == edge[i].y2c) {
+                    //     edge[i].x = edge[i].x2c;
+                    // } else {
+                    //     edge[i].x = edge[i].x1c + edge[i].a * (y1 + 1 - edge[i].y1c);
+                    // }
                 }
             }
             return true;
@@ -2170,49 +2184,41 @@ var Plugin0001;
     // ***** 文字列配列のライン表示処理サブ *****
     function txtlinesub(vars, var_name, min_y, max_y, x1, y1, x2, y2, ch) {
         var x3, y3;
-        var dx1, dy1, sx1, sy1, e1;
+        var dx, dy, sx, sy, e1;
         var i;
         var ch1;
 
         // ***** ライン表示処理 *****
-        if ((x2 - x1) > 0) {
-            dx1 = x2 - x1; sx1 =  1;
-        } else if ((x2 - x1) < 0) {
-            dx1 = x1 - x2; sx1 = -1;
-        } else {
-            dx1 = 0; sx1 = 0;
-        }
-        if ((y2 - y1) > 0) {
-            dy1 = y2 - y1; sy1 =  1;
-        } else if ((y2 - y1) < 0) {
-            dy1 = y1 - y2; sy1 = -1;
-        } else {
-            dy1 = 0; sy1 = 0;
-        }
+        if (x1 < x2)      { dx = x2 - x1; sx =  1; }
+        else if (x1 > x2) { dx = x1 - x2; sx = -1; }
+        else              { dx = 0;       sx =  0; }
+        if (y1 < y2)      { dy = y2 - y1; sy =  1; }
+        else if (y1 > y2) { dy = y1 - y2; sy = -1; }
+        else              { dy = 0;       sy =  0; }
         x3 = x1;
         y3 = y1;
-        if (dx1 >= dy1) {
-            e1 = -dx1;
-            for (i = 0; i <= dx1; i++) {
+        if (dx >= dy) {
+            e1 = -dx;
+            for (i = 0; i <= dx; i++) {
                 ch1 = ch.substring(i % ch.length, (i % ch.length) + 1);
                 txtpsetsub(vars, var_name, min_y, max_y, x3, y3, ch1);
-                x3 = x3 + sx1;
-                e1 = e1 + 2 * dy1;
+                x3 += sx;
+                e1 += 2 * dy;
                 if (e1 >= 0) {
-                    y3 = y3 + sy1;
-                    e1 = e1 - 2 * dx1;
+                    y3 += sy;
+                    e1 -= 2 * dx;
                 }
             }
         } else {
-            e1 = -dy1;
-            for (i = 0; i <= dy1; i++) {
+            e1 = -dy;
+            for (i = 0; i <= dy; i++) {
                 ch1 = ch.substring(i % ch.length, (i % ch.length) + 1);
                 txtpsetsub(vars, var_name, min_y, max_y, x3, y3, ch1);
-                y3 = y3 + sy1;
-                e1 = e1 + 2 * dx1;
+                y3 += sy;
+                e1 += 2 * dx;
                 if (e1 >= 0) {
-                    x3 = x3 + sx1;
-                    e1 = e1 - 2 * dy1;
+                    x3 += sx;
+                    e1 -= 2 * dy;
                 }
             }
         }
