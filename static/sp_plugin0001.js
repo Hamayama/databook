@@ -57,6 +57,11 @@ var Plugin0001;
     //  obj.hasOwnProperty(prop) を hasOwn.call(obj, prop) に置換した)
     var hasOwn = Object.prototype.hasOwnProperty;
 
+    // ***** 少数切り捨て関数(ES6) *****
+    Math.trunc = Math.trunc || function (x) {
+        return (x < 0) ? Math.ceil(x) : Math.floor(x);
+    }
+
     // ****************************************
     //                 公開I/F
     // ****************************************
@@ -108,14 +113,14 @@ var Plugin0001;
         add_one_func_tbl_A("audmode", 1, [], function (param, vars, can, ctx) {
             var a1;
 
-            a1 = parseInt(param[0], 10);
+            a1 = Math.trunc(+param[0]);
             aud_mode = a1;
             return true;
         });
         add_one_func_tbl_A("audmake", 2, [], function (param, vars, can, ctx) {
             var a1, a2;
 
-            a1 = parseInt(param[0], 10);
+            a1 = Math.trunc(+param[0]);
             a2 = String(param[1]);
 
             // ***** 音楽モードチェック *****
@@ -141,7 +146,7 @@ var Plugin0001;
         add_one_func_tbl_A("audmakedata", 2, [], function (param, vars, can, ctx) {
             var a1, a2;
 
-            a1 = parseInt(param[0], 10);
+            a1 = Math.trunc(+param[0]);
             a2 = String(param[1]); // 音楽データ(data URI scheme)
 
             // ***** 音楽モードチェック *****
@@ -167,11 +172,11 @@ var Plugin0001;
         add_one_func_tbl_A("audplay", 1, [], function (param, vars, can, ctx) {
             var a1, a2;
 
-            a1 = parseInt(param[0], 10);
+            a1 = Math.trunc(+param[0]);
             if (param.length <= 1) {
                 a2 = 0;
             } else {
-                a2 = parseInt(param[1], 10);
+                a2 = Math.trunc(+param[1]);
             }
 
             // ***** 音楽モードチェック *****
@@ -193,8 +198,8 @@ var Plugin0001;
         add_one_func_tbl_A("audspeedrate", 2, [], function (param, vars, can, ctx) {
             var a1, a2;
 
-            a1 = parseInt(param[0], 10);
-            a2 = parseFloat(param[1]);
+            a1 = Math.trunc(+param[0]);
+            a2 = (+param[1]);
 
             // ***** 音楽モードチェック *****
             if (aud_mode == 1) {
@@ -215,7 +220,7 @@ var Plugin0001;
         add_one_func_tbl_A("audstop", 1, [], function (param, vars, can, ctx) {
             var a1;
 
-            a1 = parseInt(param[0], 10);
+            a1 = Math.trunc(+param[0]);
 
             // ***** 音楽モードチェック *****
             if (aud_mode == 1) {
@@ -236,8 +241,8 @@ var Plugin0001;
         add_one_func_tbl_A("audvolume", 2, [], function (param, vars, can, ctx) {
             var a1, a2;
 
-            a1 = parseInt(param[0], 10);
-            a2 = parseInt(param[1], 10);
+            a1 = Math.trunc(+param[0]);
+            a2 = Math.trunc(+param[1]);
 
             // ***** 音楽モードチェック *****
             if (aud_mode == 1) {
@@ -260,8 +265,8 @@ var Plugin0001;
             var col_r, col_g, col_b, alpha;
             var color_val;
 
-            a1 = parseInt(param[0], 10); // RGB
-            a2 = parseInt(param[1], 10); // alpha
+            a1 = Math.trunc(+param[0]); // RGB
+            a2 = Math.trunc(+param[1]); // alpha
             col_r = (a1 & 0xff0000) >> 16; // R
             col_g = (a1 & 0x00ff00) >> 8;  // G
             col_b = (a1 & 0x0000ff);       // B
@@ -277,10 +282,10 @@ var Plugin0001;
             var col_r, col_g, col_b, alpha;
             var color_val;
 
-            a1 = parseInt(param[0], 10); // R
-            a2 = parseInt(param[1], 10); // G
-            a3 = parseInt(param[2], 10); // B
-            a4 = parseInt(param[3], 10); // alpha
+            a1 = Math.trunc(+param[0]); // R
+            a2 = Math.trunc(+param[1]); // G
+            a3 = Math.trunc(+param[2]); // B
+            a4 = Math.trunc(+param[3]); // alpha
             col_r = a1;
             col_g = a2;
             col_b = a3;
@@ -294,7 +299,7 @@ var Plugin0001;
         add_one_func_tbl_A("disaud", 1, [], function (param, vars, can, ctx) {
             var a1;
 
-            a1 = parseInt(param[0], 10);
+            a1 = Math.trunc(+param[0]);
             if (audplayer.hasOwnProperty(a1)) {
                 audplayer[a1].mmlplayer.stop();
                 delete audplayer[a1];
@@ -304,7 +309,7 @@ var Plugin0001;
         add_one_func_tbl_A("dismis", 1, [], function (param, vars, can, ctx) {
             var a1;
 
-            a1 = parseInt(param[0], 10);
+            a1 = Math.trunc(+param[0]);
             if (missile.hasOwnProperty(a1)) {
                 delete missile[a1];
             }
@@ -332,7 +337,7 @@ var Plugin0001;
             var x1, y1, x2, y2, ox, oy;
             var alpha_old;
 
-            mode = parseInt(param[0], 10); // 図形の種類
+            mode = Math.trunc(+param[0]); // 図形の種類
             // ***** 図形の種類で場合分け *****
             switch (mode) {
                 case 0: // 正多角形(塗りつぶしあり)
@@ -346,13 +351,13 @@ var Plugin0001;
                         a6 = 120;
                         a7 = 3;
                     } else {
-                        a1 = parseFloat(param[1]);   // X
-                        a2 = parseFloat(param[2]);   // Y
-                        a3 = parseFloat(param[3]);   // W
-                        a4 = parseFloat(param[4]);   // H
-                        a5 = parseFloat(param[5]);   // 開始角
-                        a6 = parseFloat(param[6]);   // 加算角
-                        a7 = parseInt(param[7], 10); // 頂点数
+                        a1 = (+param[1]); // X
+                        a2 = (+param[2]); // Y
+                        a3 = (+param[3]); // W
+                        a4 = (+param[4]); // H
+                        a5 = (+param[5]); // 開始角
+                        a6 = (+param[6]); // 加算角
+                        a7 = Math.trunc(+param[7]); // 頂点数
                     }
                     // ***** エラーチェック *****
                     if (a7 > 1000) { a7 = 1000; }
@@ -384,10 +389,10 @@ var Plugin0001;
                         a3 = 100;
                         a4 = 100;
                     } else {
-                        a1 = parseFloat(param[1]); // X
-                        a2 = parseFloat(param[2]); // Y
-                        a3 = parseFloat(param[3]); // W
-                        a4 = parseFloat(param[4]); // H
+                        a1 = (+param[1]); // X
+                        a2 = (+param[2]); // Y
+                        a3 = (+param[3]); // W
+                        a4 = (+param[4]); // H
                     }
                     // ***** 座標の取得 *****
                     x1 = a1;
@@ -455,19 +460,19 @@ var Plugin0001;
             var col, threshold, paint_mode;
             var ffill_obj = {};
 
-            a1 = parseFloat(param[0]); // X
-            a2 = parseFloat(param[1]); // Y
+            a1 = (+param[0]); // X
+            a2 = (+param[1]); // Y
             if (param.length <= 2) {
                 threshold = 0;
                 col = 0;
                 paint_mode = 0;
             } else {
-                threshold = parseInt(param[2], 10); // しきい値
+                threshold = Math.trunc(+param[2]); // しきい値
                 if (param.length <= 3) {
                     col = 0;
                     paint_mode = 0;
                 } else {
-                    col = parseInt(param[3], 10); // 境界色 RGB
+                    col = Math.trunc(+param[3]); // 境界色 RGB
                     paint_mode = 1;
                 }
             }
@@ -491,8 +496,8 @@ var Plugin0001;
 
             a1 = getvarname(param[0]);
             b1 = getvarname(param[1]);
-            a2 = parseInt(param[2], 10);
-            a3 = parseInt(param[3], 10);
+            a2 = Math.trunc(+param[2]);
+            a3 = Math.trunc(+param[3]);
 
             // ***** NaN対策 *****
             a2 = a2 | 0;
@@ -512,10 +517,10 @@ var Plugin0001;
             // if (!vars.checkVar(b1 + "[" + i + "]")) { return true; }
 
             ctx.beginPath();
-            // x0 = parseFloat(vars[a1 + "[" + i + "]"]);
-            x0 = parseFloat(vars.getVarValue(a1 + "[" + i + "]"));
-            // y0 = parseFloat(vars[b1 + "[" + i + "]"]);
-            y0 = parseFloat(vars.getVarValue(b1 + "[" + i + "]"));
+            // x0 = (+vars[a1 + "[" + i + "]"]);
+            x0 = (+vars.getVarValue(a1 + "[" + i + "]"));
+            // y0 = (+vars[b1 + "[" + i + "]"]);
+            y0 = (+vars.getVarValue(b1 + "[" + i + "]"));
             ctx.moveTo(x0, y0);
             for (i = a2 + 1; i <= a3; i++) {
 
@@ -523,10 +528,10 @@ var Plugin0001;
                 // if (!vars.checkVar(a1 + "[" + i + "]")) { break; }
                 // if (!vars.checkVar(b1 + "[" + i + "]")) { break; }
 
-                // x1 = parseFloat(vars[a1 + "[" + i + "]"]);
-                x1 = parseFloat(vars.getVarValue(a1 + "[" + i + "]"));
-                // y1 = parseFloat(vars[b1 + "[" + i + "]"]);
-                y1 = parseFloat(vars.getVarValue(b1 + "[" + i + "]"));
+                // x1 = (+vars[a1 + "[" + i + "]"]);
+                x1 = (+vars.getVarValue(a1 + "[" + i + "]"));
+                // y1 = (+vars[b1 + "[" + i + "]"]);
+                y1 = (+vars.getVarValue(b1 + "[" + i + "]"));
                 ctx.lineTo(x1, y1);
             }
             ctx.closePath();
@@ -540,26 +545,26 @@ var Plugin0001;
             var degree_var_name, speed100_var_name, ch_var_name;
             var min_x, max_x, min_y, max_y, div_x, div_y;
 
-            no = parseInt(param[0], 10);
+            no = Math.trunc(+param[0]);
             useflag_var_name =  getvarname(param[1]); // 制御用の変数名を取得
             x100_var_name =     getvarname(param[2]); // 制御用の変数名を取得
             y100_var_name =     getvarname(param[3]); // 制御用の変数名を取得
             degree_var_name =   getvarname(param[4]); // 制御用の変数名を取得
             speed100_var_name = getvarname(param[5]); // 制御用の変数名を取得
             ch_var_name =       getvarname(param[6]); // 制御用の変数名を取得
-            min_x = parseInt(param[7], 10);
-            max_x = parseInt(param[8], 10);
-            min_y = parseInt(param[9], 10);
-            max_y = parseInt(param[10], 10);
-            div_x = parseFloat(param[11]);
-            div_y = parseFloat(param[12]);
+            min_x = Math.trunc(+param[7]);
+            max_x = Math.trunc(+param[8]);
+            min_y = Math.trunc(+param[9]);
+            max_y = Math.trunc(+param[10]);
+            div_x = (+param[11]);
+            div_y = (+param[12]);
             // ***** ミサイル作成 *****
-            useflag =  parseInt(vars.getVarValue(useflag_var_name),  10);
-            x100 =     parseInt(vars.getVarValue(x100_var_name),     10);
-            y100 =     parseInt(vars.getVarValue(y100_var_name),     10);
-            degree =   parseFloat(vars.getVarValue(degree_var_name));
-            speed100 = parseInt(vars.getVarValue(speed100_var_name), 10);
-            ch =         String(vars.getVarValue(ch_var_name));
+            useflag =  Math.trunc(+vars.getVarValue(useflag_var_name));
+            x100 =     Math.trunc(+vars.getVarValue(x100_var_name));
+            y100 =     Math.trunc(+vars.getVarValue(y100_var_name));
+            degree =   (+vars.getVarValue(degree_var_name));
+            speed100 = Math.trunc(+vars.getVarValue(speed100_var_name));
+            ch =       String(vars.getVarValue(ch_var_name));
             missile[no] = new Missile(no, useflag, x100, y100, degree, speed100, ch,
                 min_x, max_x, min_y, max_y, div_x, div_y,
                 useflag_var_name, x100_var_name, y100_var_name,
@@ -576,21 +581,21 @@ var Plugin0001;
                 max_no = 0;
             } else {
                 range_use = true;
-                min_no = parseInt(param[0], 10);
-                max_no = parseInt(param[1], 10);
+                min_no = Math.trunc(+param[0]);
+                max_no = Math.trunc(+param[1]);
             }
             // ***** 全ミサイルを移動 *****
             for (mis_no in missile) {
                 if (missile.hasOwnProperty(mis_no)) {
                     mis = missile[mis_no];
                     if (range_use == false || (mis.no >= min_no && mis.no <= max_no)) {
-                        mis.useflag = parseInt(vars.getVarValue(mis.useflag_var_name), 10);
+                        mis.useflag = Math.trunc(+vars.getVarValue(mis.useflag_var_name));
                         if (mis.useflag != 0) {
-                            mis.x100 =     parseInt(vars.getVarValue(mis.x100_var_name),     10);
-                            mis.y100 =     parseInt(vars.getVarValue(mis.y100_var_name),     10);
-                            mis.degree =   parseFloat(vars.getVarValue(mis.degree_var_name));
-                            mis.speed100 = parseInt(vars.getVarValue(mis.speed100_var_name), 10);
-                            mis.ch =         String(vars.getVarValue(mis.ch_var_name));
+                            mis.x100 =     Math.trunc(+vars.getVarValue(mis.x100_var_name));
+                            mis.y100 =     Math.trunc(+vars.getVarValue(mis.y100_var_name));
+                            mis.degree =   (+vars.getVarValue(mis.degree_var_name));
+                            mis.speed100 = Math.trunc(+vars.getVarValue(mis.speed100_var_name));
+                            mis.ch =       String(vars.getVarValue(mis.ch_var_name));
                             mis.move();
                             vars.setVarValue(mis.useflag_var_name,  mis.useflag);
                             vars.setVarValue(mis.x100_var_name,     mis.x100);
@@ -613,16 +618,16 @@ var Plugin0001;
             var range_use, min_no, max_no;
 
             a1 = getvarname(param[0]);
-            a2 = parseInt(param[1], 10);
-            a3 = parseInt(param[2], 10);
+            a2 = Math.trunc(+param[1]);
+            a3 = Math.trunc(+param[2]);
             if (param.length <= 4) {
                 range_use = false;
                 min_no = 0;
                 max_no = 0;
             } else {
                 range_use = true;
-                min_no = parseInt(param[3], 10);
-                max_no = parseInt(param[4], 10);
+                min_no = Math.trunc(+param[3]);
+                max_no = Math.trunc(+param[4]);
             }
 
             // ***** NaN対策 *****
@@ -640,12 +645,12 @@ var Plugin0001;
                 if (missile.hasOwnProperty(mis_no)) {
                     mis = missile[mis_no];
                     if (range_use == false || (mis.no >= min_no && mis.no <= max_no)) {
-                        mis.useflag = parseInt(vars.getVarValue(mis.useflag_var_name), 10);
+                        mis.useflag = Math.trunc(+vars.getVarValue(mis.useflag_var_name));
                         // (有効フラグが0以外で1000以下のときのみ表示)
                         // if (mis.useflag != 0) {
                         if (mis.useflag != 0 && mis.useflag <= 1000) {
-                            mis.x100 = parseInt(vars.getVarValue(mis.x100_var_name), 10);
-                            mis.y100 = parseInt(vars.getVarValue(mis.y100_var_name), 10);
+                            mis.x100 = Math.trunc(+vars.getVarValue(mis.x100_var_name));
+                            mis.y100 = Math.trunc(+vars.getVarValue(mis.y100_var_name));
                             mis.ch =     String(vars.getVarValue(mis.ch_var_name));
                             x1 = (mis.x100 / 100) | 0; // 整数化
                             y1 = (mis.y100 / 100) | 0; // 整数化
@@ -684,12 +689,12 @@ var Plugin0001;
 
             a1 = getvarname(param[0]);
             b1 = getvarname(param[1]);
-            a2 = parseInt(param[2], 10);
-            a3 = parseInt(param[3], 10);
+            a2 = Math.trunc(+param[2]);
+            a3 = Math.trunc(+param[3]);
             if (param.length <= 4) {
                 a4 = 0;
             } else {
-                a4 = parseInt(param[4], 10);
+                a4 = Math.trunc(+param[4]);
             }
 
             // ***** NaN対策 *****
@@ -710,10 +715,10 @@ var Plugin0001;
             // if (!vars.checkVar(b1 + "[" + i + "]")) { return true; }
 
             ctx.beginPath();
-            // x0 = parseFloat(vars[a1 + "[" + i + "]"]);
-            x0 = parseFloat(vars.getVarValue(a1 + "[" + i + "]"));
-            // y0 = parseFloat(vars[b1 + "[" + i + "]"]);
-            y0 = parseFloat(vars.getVarValue(b1 + "[" + i + "]"));
+            // x0 = (+vars[a1 + "[" + i + "]"]);
+            x0 = (+vars.getVarValue(a1 + "[" + i + "]"));
+            // y0 = (+vars[b1 + "[" + i + "]"]);
+            y0 = (+vars.getVarValue(b1 + "[" + i + "]"));
             ctx.moveTo(x0, y0);
             for (i = a2 + 1; i <= a3; i++) {
 
@@ -721,10 +726,10 @@ var Plugin0001;
                 // if (!vars.checkVar(a1 + "[" + i + "]")) { break; }
                 // if (!vars.checkVar(b1 + "[" + i + "]")) { break; }
 
-                // x1 = parseFloat(vars[a1 + "[" + i + "]"]);
-                x1 = parseFloat(vars.getVarValue(a1 + "[" + i + "]"));
-                // y1 = parseFloat(vars[b1 + "[" + i + "]"]);
-                y1 = parseFloat(vars.getVarValue(b1 + "[" + i + "]"));
+                // x1 = (+vars[a1 + "[" + i + "]"]);
+                x1 = (+vars.getVarValue(a1 + "[" + i + "]"));
+                // y1 = (+vars[b1 + "[" + i + "]"]);
+                y1 = (+vars.getVarValue(b1 + "[" + i + "]"));
                 ctx.lineTo(x1, y1);
             }
             if (a4 == 0) { ctx.closePath(); }
@@ -737,20 +742,20 @@ var Plugin0001;
             var w1, h1;
             var col, threshold, border_mode;
 
-            x1 = parseInt(param[0], 10);
-            y1 = parseInt(param[1], 10);
-            w1 = parseInt(param[2], 10);
-            h1 = parseInt(param[3], 10);
-            a1 = parseFloat(param[4]);
-            a2 = parseFloat(param[5]);
-            a3 = parseFloat(param[6]);
-            a4 = parseFloat(param[7]);
-            col = parseInt(param[8], 10);
-            threshold = parseInt(param[9], 10);
+            x1 = Math.trunc(+param[0]);
+            y1 = Math.trunc(+param[1]);
+            w1 = Math.trunc(+param[2]);
+            h1 = Math.trunc(+param[3]);
+            a1 = (+param[4]);
+            a2 = (+param[5]);
+            a3 = (+param[6]);
+            a4 = (+param[7]);
+            col = Math.trunc(+param[8]);
+            threshold = Math.trunc(+param[9]);
             if (param.length <= 10) {
                 border_mode = 1;
             } else {
-                border_mode = parseInt(param[10], 10);
+                border_mode = Math.trunc(+param[10]);
             }
             sand_obj = new SandSim(can, ctx, x1, y1, w1, h1, a1, a2, a3, a4, col, threshold, border_mode);
             sand_obj.maketable();
@@ -781,8 +786,8 @@ var Plugin0001;
                 a3 = 0;
                 a4 = 0;
             } else {
-                a3 = parseInt(param[2], 10);
-                a4 = parseInt(param[3], 10);
+                a3 = Math.trunc(+param[2]);
+                a4 = Math.trunc(+param[3]);
             }
             // ***** 画像文字割付を格納 *****
             ch = a1.charAt(0); // 1文字だけにする
@@ -806,7 +811,7 @@ var Plugin0001;
             var imgvars = get_imgvars();
 
             a1 = toglobal(getvarname(param[0])); // 画像変数名取得
-            a2 = parseInt(param[1], 10); // RGB
+            a2 = Math.trunc(+param[1]); // RGB
             // if (imgvars.hasOwnProperty(a1)) {
             if (hasOwn.call(imgvars, a1)) {
                 col_r = (a2 & 0xff0000) >> 16; // R
@@ -838,10 +843,10 @@ var Plugin0001;
             var st1;
 
             a1 = getvarname(param[0]);
-            a2 = parseInt(param[1], 10);
-            a3 = parseInt(param[2], 10);
+            a2 = Math.trunc(+param[1]);
+            a3 = Math.trunc(+param[2]);
             a4 = String(param[3]);
-            a5 = parseInt(param[4], 10);
+            a5 = Math.trunc(+param[4]);
 
             // ***** NaN対策 *****
             a2 = a2 | 0;
@@ -873,14 +878,14 @@ var Plugin0001;
             var font_size = get_font_size();
 
             a1 = getvarname(param[0]);
-            a2 = parseInt(param[1], 10);
-            a3 = parseInt(param[2], 10);
+            a2 = Math.trunc(+param[1]);
+            a3 = Math.trunc(+param[2]);
             if (param.length <= 4) {
                 x1 = 0;
                 y1 = 0;
             } else {
-                x1 = parseInt(param[3], 10);
-                y1 = parseInt(param[4], 10);
+                x1 = Math.trunc(+param[3]);
+                y1 = Math.trunc(+param[4]);
             }
 
             // ***** NaN対策 *****
@@ -925,12 +930,12 @@ var Plugin0001;
             var st1;
 
             a1 = getvarname(param[0]);
-            a2 = parseInt(param[1], 10);
-            a3 = parseInt(param[2], 10);
-            x1 = parseInt(param[3], 10);
-            y1 = parseInt(param[4], 10);
-            w1 = parseInt(param[5], 10);
-            h1 = parseInt(param[6], 10);
+            a2 = Math.trunc(+param[1]);
+            a3 = Math.trunc(+param[2]);
+            x1 = Math.trunc(+param[3]);
+            y1 = Math.trunc(+param[4]);
+            w1 = Math.trunc(+param[5]);
+            h1 = Math.trunc(+param[6]);
 
             // ***** NaN対策 *****
             a2 = a2 | 0;
@@ -972,17 +977,17 @@ var Plugin0001;
             var st1, st2;
 
             a1 = getvarname(param[0]);
-            a2 = parseInt(param[1], 10);
-            a3 = parseInt(param[2], 10);
-            x1 = parseInt(param[3], 10);
-            y1 = parseInt(param[4], 10);
+            a2 = Math.trunc(+param[1]);
+            a3 = Math.trunc(+param[2]);
+            x1 = Math.trunc(+param[3]);
+            y1 = Math.trunc(+param[4]);
             b1 = getvarname(param[5]);
-            b2 = parseInt(param[6], 10);
-            b3 = parseInt(param[7], 10);
+            b2 = Math.trunc(+param[6]);
+            b3 = Math.trunc(+param[7]);
             if (param.length <= 8) {
                 a4 = 0;
             } else {
-                a4 = parseInt(param[8], 10);
+                a4 = Math.trunc(+param[8]);
             }
 
             // ***** NaN対策 *****
@@ -1051,10 +1056,10 @@ var Plugin0001;
             var x1, y1;
 
             a1 = getvarname(param[0]);
-            a2 = parseInt(param[1], 10);
-            a3 = parseInt(param[2], 10);
-            x1 = parseInt(param[3], 10);
-            y1 = parseInt(param[4], 10);
+            a2 = Math.trunc(+param[1]);
+            a3 = Math.trunc(+param[2]);
+            x1 = Math.trunc(+param[3]);
+            y1 = Math.trunc(+param[4]);
             a4 = String(param[5]);
 
             // ***** NaN対策 *****
@@ -1077,12 +1082,12 @@ var Plugin0001;
             var x1, y1, x2, y2;
 
             a1 = getvarname(param[0]);
-            a2 = parseInt(param[1], 10);
-            a3 = parseInt(param[2], 10);
-            x1 = parseInt(param[3], 10);
-            y1 = parseInt(param[4], 10);
-            x2 = parseInt(param[5], 10);
-            y2 = parseInt(param[6], 10);
+            a2 = Math.trunc(+param[1]);
+            a3 = Math.trunc(+param[2]);
+            x1 = Math.trunc(+param[3]);
+            y1 = Math.trunc(+param[4]);
+            x2 = Math.trunc(+param[5]);
+            y2 = Math.trunc(+param[6]);
             a4 = String(param[7]);
 
             // ***** NaN対策 *****
@@ -1113,12 +1118,12 @@ var Plugin0001;
             var i;
 
             a1 = getvarname(param[0]);
-            a2 = parseInt(param[1], 10);
-            a3 = parseInt(param[2], 10);
-            x1 = parseInt(param[3], 10);
-            y1 = parseInt(param[4], 10);
-            x2 = parseInt(param[5], 10);
-            y2 = parseInt(param[6], 10);
+            a2 = Math.trunc(+param[1]);
+            a3 = Math.trunc(+param[2]);
+            x1 = Math.trunc(+param[3]);
+            y1 = Math.trunc(+param[4]);
+            x2 = Math.trunc(+param[5]);
+            y2 = Math.trunc(+param[6]);
             a4 = String(param[7]);
 
             // ***** NaN対策 *****
@@ -1157,12 +1162,12 @@ var Plugin0001;
             var i;
 
             a1 = getvarname(param[0]);
-            a2 = parseInt(param[1], 10);
-            a3 = parseInt(param[2], 10);
-            x1 = parseInt(param[3], 10);
-            y1 = parseInt(param[4], 10);
-            x2 = parseInt(param[5], 10);
-            y2 = parseInt(param[6], 10);
+            a2 = Math.trunc(+param[1]);
+            a3 = Math.trunc(+param[2]);
+            x1 = Math.trunc(+param[3]);
+            y1 = Math.trunc(+param[4]);
+            x2 = Math.trunc(+param[5]);
+            y2 = Math.trunc(+param[6]);
             a4 = String(param[7]);
 
             // ***** NaN対策 *****
@@ -1201,13 +1206,13 @@ var Plugin0001;
             var x_old, y_old;
 
             a1 = getvarname(param[0]);
-            a2 = parseInt(param[1], 10);
-            a3 = parseInt(param[2], 10);
-            x1 = parseInt(param[3], 10);
-            y1 = parseInt(param[4], 10);
-            r1 = parseInt(param[5], 10);
-            a = parseFloat(param[6]);
-            b = parseFloat(param[7]);
+            a2 = Math.trunc(+param[1]);
+            a3 = Math.trunc(+param[2]);
+            x1 = Math.trunc(+param[3]);
+            y1 = Math.trunc(+param[4]);
+            r1 = Math.trunc(+param[5]);
+            a = (+param[6]);
+            b = (+param[7]);
             a4 = String(param[8]);
 
             // ***** NaN対策 *****
@@ -1274,13 +1279,13 @@ var Plugin0001;
             var rr, aa, bb;
 
             a1 = getvarname(param[0]);
-            a2 = parseInt(param[1], 10);
-            a3 = parseInt(param[2], 10);
-            x1 = parseInt(param[3], 10);
-            y1 = parseInt(param[4], 10);
-            r1 = parseInt(param[5], 10);
-            a = parseFloat(param[6]);
-            b = parseFloat(param[7]);
+            a2 = Math.trunc(+param[1]);
+            a3 = Math.trunc(+param[2]);
+            x1 = Math.trunc(+param[3]);
+            y1 = Math.trunc(+param[4]);
+            r1 = Math.trunc(+param[5]);
+            a = (+param[6]);
+            b = (+param[7]);
             a4 = String(param[8]);
 
             // ***** NaN対策 *****
@@ -1328,17 +1333,17 @@ var Plugin0001;
             var line_num;
 
             a1 = getvarname(param[0]);
-            a2 = parseInt(param[1], 10);
-            a3 = parseInt(param[2], 10);
+            a2 = Math.trunc(+param[1]);
+            a3 = Math.trunc(+param[2]);
             b1 = getvarname(param[3]);
             b2 = getvarname(param[4]);
-            b3 = parseInt(param[5], 10);
-            b4 = parseInt(param[6], 10);
+            b3 = Math.trunc(+param[5]);
+            b4 = Math.trunc(+param[6]);
             a4 = String(param[7]);
             if (param.length <= 8) {
                 b5 = 0;
             } else {
-                b5 = parseInt(param[8], 10);
+                b5 = Math.trunc(+param[8]);
             }
 
             // ***** NaN対策 *****
@@ -1367,10 +1372,10 @@ var Plugin0001;
                 // if (!vars.checkVar(b1 + "[" + j + "]")) { return true; }
                 // if (!vars.checkVar(b2 + "[" + j + "]")) { return true; }
 
-                // x[i] = parseInt(vars[b1 + "[" + j + "]"], 10);
-                x[i] = parseInt(vars.getVarValue(b1 + "[" + j + "]"), 10);
-                // y[i] = parseInt(vars[b2 + "[" + j + "]"], 10);
-                y[i] = parseInt(vars.getVarValue(b2 + "[" + j + "]"), 10);
+                // x[i] = Math.trunc(+vars[b1 + "[" + j + "]"]);
+                x[i] = Math.trunc(+vars.getVarValue(b1 + "[" + j + "]"));
+                // y[i] = Math.trunc(+vars[b2 + "[" + j + "]"]);
+                y[i] = Math.trunc(+vars.getVarValue(b2 + "[" + j + "]"));
                 j++;
 
                 // ***** エラーチェック *****
@@ -1410,12 +1415,12 @@ var Plugin0001;
             var line_start; // 線分開始フラグ
 
             a1 = getvarname(param[0]);
-            a2 = parseInt(param[1], 10);
-            a3 = parseInt(param[2], 10);
+            a2 = Math.trunc(+param[1]);
+            a3 = Math.trunc(+param[2]);
             b1 = getvarname(param[3]);
             b2 = getvarname(param[4]);
-            b3 = parseInt(param[5], 10);
-            b4 = parseInt(param[6], 10);
+            b3 = Math.trunc(+param[5]);
+            b4 = Math.trunc(+param[6]);
             a4 = String(param[7]);
 
             // ***** NaN対策 *****
@@ -1444,10 +1449,10 @@ var Plugin0001;
                 // if (!vars.checkVar(b1 + "[" + j + "]")) { return true; }
                 // if (!vars.checkVar(b2 + "[" + j + "]")) { return true; }
 
-                // x[i] = parseInt(vars[b1 + "[" + j + "]"], 10);
-                x[i] = parseInt(vars.getVarValue(b1 + "[" + j + "]"), 10);
-                // y[i] = parseInt(vars[b2 + "[" + j + "]"], 10);
-                y[i] = parseInt(vars.getVarValue(b2 + "[" + j + "]"), 10);
+                // x[i] = Math.trunc(+vars[b1 + "[" + j + "]"]);
+                x[i] = Math.trunc(+vars.getVarValue(b1 + "[" + j + "]"));
+                // y[i] = Math.trunc(+vars[b2 + "[" + j + "]"]);
+                y[i] = Math.trunc(+vars.getVarValue(b2 + "[" + j + "]"));
                 j++;
 
                 // ***** エラーチェック *****
@@ -1563,8 +1568,8 @@ var Plugin0001;
             var reg_exp;
 
             a1 = getvarname(param[0]);
-            a2 = parseInt(param[1], 10);
-            a3 = parseInt(param[2], 10);
+            a2 = Math.trunc(+param[1]);
+            a3 = Math.trunc(+param[2]);
             a4 = String(param[3]);
             a5 = String(param[4]);
 
@@ -1611,8 +1616,8 @@ var Plugin0001;
             var ch_tbl;
 
             a1 = getvarname(param[0]);
-            a2 = parseInt(param[1], 10);
-            a3 = parseInt(param[2], 10);
+            a2 = Math.trunc(+param[1]);
+            a3 = Math.trunc(+param[2]);
             a4 = String(param[3]);
             a5 = String(param[4]);
 
@@ -1675,7 +1680,7 @@ var Plugin0001;
             var num;
             var a1;
 
-            a1 = parseInt(param[0], 10);
+            a1 = Math.trunc(+param[0]);
 
             // ***** 音楽モードチェック *****
             if (aud_mode == 1 || aud_mode == 2) {
@@ -1698,7 +1703,7 @@ var Plugin0001;
             var num;
             var a1;
 
-            a1 = parseInt(param[0], 10);
+            a1 = Math.trunc(+param[0]);
 
             // ***** 音楽モードチェック *****
             if (aud_mode == 1 || aud_mode == 2) {
@@ -1721,23 +1726,23 @@ var Plugin0001;
             var x1, y1;
             var dr, di, mr, mi, cr, ci, tr, ti, zr, zi, rep, norm2;
 
-            x1 = parseFloat(param[0]);
-            y1 = parseFloat(param[1]);
-            dr = parseFloat(param[2]);
-            di = parseFloat(param[3]);
-            mr = parseFloat(param[4]);
-            mi = parseFloat(param[5]);
-            cr = parseFloat(param[6]);
-            ci = parseFloat(param[7]);
+            x1 = (+param[0]);
+            y1 = (+param[1]);
+            dr = (+param[2]);
+            di = (+param[3]);
+            mr = (+param[4]);
+            mi = (+param[5]);
+            cr = (+param[6]);
+            ci = (+param[7]);
             if (param.length <= 8) {
                 rep = 50;
                 norm2 = 4;
             } else {
-                rep = parseInt(param[8], 10);
+                rep = Math.trunc(+param[8]);
                 if (param.length <= 9) {
                     norm2 = 4;
                 } else {
-                    norm2 = parseFloat(param[9]);
+                    norm2 = (+param[9]);
                 }
             }
 
@@ -1763,7 +1768,7 @@ var Plugin0001;
             if (param.length <= 1) {
                 a2 = 0;
             } else {
-                a2 = parseInt(param[1], 10);
+                a2 = Math.trunc(+param[1]);
             }
             num = a1.charCodeAt(a2);
             return num;
@@ -1773,12 +1778,12 @@ var Plugin0001;
             var a1, a2, a3, a4;
             var pair_flag;
 
-            a1 = parseInt(param[0], 10);
+            a1 = Math.trunc(+param[0]);
             if (param.length <= 1) {
                 a2 = 0;
                 pair_flag = false;
             } else {
-                a2 = parseInt(param[1], 10);
+                a2 = Math.trunc(+param[1]);
                 pair_flag = true;
             }
             if (pair_flag) {
@@ -1802,14 +1807,14 @@ var Plugin0001;
             var x1, y1, x2, y2;
             var w1, h1, w2, h2;
 
-            x1 = parseFloat(param[0]);
-            y1 = parseFloat(param[1]);
-            w1 = parseFloat(param[2]);
-            h1 = parseFloat(param[3]);
-            x2 = parseFloat(param[4]);
-            y2 = parseFloat(param[5]);
-            w2 = parseFloat(param[6]);
-            h2 = parseFloat(param[7]);
+            x1 = (+param[0]);
+            y1 = (+param[1]);
+            w1 = (+param[2]);
+            h1 = (+param[3]);
+            x2 = (+param[4]);
+            y2 = (+param[5]);
+            w2 = (+param[6]);
+            h2 = (+param[7]);
             if (x1 < x2 + w2 && x2 < x1 + w1 && y1 < y2 + h2 && y2 < y1 + h1) {
                 num = 1;
             } else {
@@ -1847,9 +1852,9 @@ var Plugin0001;
             a2 = String(param[1]); // 数値の文字列2
 
             // ***** 10進数オブジェクトの生成 *****
-            DigitCalc.make_digit_obj(x, a1, true);
-            DigitCalc.make_digit_obj(y, a2, true);
-            DigitCalc.make_digit_obj(z, "NaN", true);
+            DigitCalc.make_digit_obj(x, a1);
+            DigitCalc.make_digit_obj(y, a2);
+            DigitCalc.make_digit_obj(z, "NaN");
             // ***** 10進数オブジェクトの加算 *****
             DigitCalc.add_digit_obj(x, y, z);
             // ***** 10進数オブジェクトから符号付文字列を取得する *****
@@ -1870,9 +1875,9 @@ var Plugin0001;
             a2 = String(param[1]); // 数値の文字列2
 
             // ***** 10進数オブジェクトの生成 *****
-            DigitCalc.make_digit_obj(x, a1, false);
-            DigitCalc.make_digit_obj(y, a2, false);
-            DigitCalc.make_digit_obj(z, "NaN", false);
+            DigitCalc.make_digit_obj(x, a1);
+            DigitCalc.make_digit_obj(y, a2);
+            DigitCalc.make_digit_obj(z, "NaN");
             // ***** 10進数オブジェクトの乗算 *****
             DigitCalc.mul_digit_obj(x, y, z);
             // ***** 10進数オブジェクトから符号付文字列を取得する *****
@@ -1897,14 +1902,14 @@ var Plugin0001;
             if (param.length <= 2) {
                 a3 = 0;
             } else {
-                a3 = parseInt(param[2], 10); // 戻り値のタイプ指定
+                a3 = Math.trunc(+param[2]); // 戻り値のタイプ指定
             }
 
             // ***** 10進数オブジェクトの生成 *****
-            DigitCalc.make_digit_obj(x, a1, false);
-            DigitCalc.make_digit_obj(y, a2, false);
-            DigitCalc.make_digit_obj(z, "NaN", false);
-            DigitCalc.make_digit_obj(z2, "NaN", false);
+            DigitCalc.make_digit_obj(x, a1);
+            DigitCalc.make_digit_obj(y, a2);
+            DigitCalc.make_digit_obj(z, "NaN");
+            DigitCalc.make_digit_obj(z2, "NaN");
             // ***** 10進数オブジェクトの除算 *****
             DigitCalc.div_digit_obj(x, y, z, z2);
             // ***** 10進数オブジェクトから符号付文字列を取得する *****
@@ -1928,8 +1933,8 @@ var Plugin0001;
                 max_no = 0;
             } else {
                 range_use = true;
-                min_no = parseInt(param[0], 10);
-                max_no = parseInt(param[1], 10);
+                min_no = Math.trunc(+param[0]);
+                max_no = Math.trunc(+param[1]);
             }
             // ***** ミサイル空番号を検索 *****
             num = -1;
@@ -1937,7 +1942,7 @@ var Plugin0001;
                 if (missile.hasOwnProperty(mis_no)) {
                     mis = missile[mis_no];
                     if (range_use == false || (mis.no >= min_no && mis.no <= max_no)) {
-                        mis.useflag = parseInt(vars.getVarValue(mis.useflag_var_name), 10);
+                        mis.useflag = Math.trunc(+vars.getVarValue(mis.useflag_var_name));
                         if (mis.useflag == 0) {
                             num = mis.no;
                         }
@@ -1950,8 +1955,8 @@ var Plugin0001;
             var num;
             var a1, a2, a3;
 
-            a1 = parseInt(param[0], 10);
-            a2 = parseInt(param[1], 10);
+            a1 = Math.trunc(+param[0]);
+            a2 = Math.trunc(+param[1]);
             if (a1 > a2) { a3 = a2; a2 = a1; a1 = a3; }
             // min から max までの整数の乱数を返す
             // (Math.round() を用いると、非一様分布になるのでNG)
@@ -1964,7 +1969,7 @@ var Plugin0001;
             var a1, a2;
 
             a1 = String(param[0]);
-            a2 = parseInt(param[1], 10);
+            a2 = Math.trunc(+param[1]);
 
             // ***** エラーチェック *****
             // if (a2 > max_str_size) {
@@ -1980,12 +1985,12 @@ var Plugin0001;
             var a1, a2, a3, a4;
 
             a1 = String(param[0]);
-            a2 = parseInt(param[1], 10);
+            a2 = Math.trunc(+param[1]);
             a3 = String(param[2]);
             if (param.length <= 3) {
                 a4 = 0;
             } else {
-                a4 = parseInt(param[3], 10);
+                a4 = Math.trunc(+param[3]);
             }
             if (a4 == 1) {
                 num = strovrsub2(a1, a2, a3);
@@ -2000,7 +2005,7 @@ var Plugin0001;
             var num;
             var a1;
 
-            a1 = parseInt(param[0], 10);
+            a1 = Math.trunc(+param[0]);
             num = a1.toString(2);
             return num;
         });
@@ -2008,7 +2013,7 @@ var Plugin0001;
             var num;
             var a1;
 
-            a1 = parseFloat(param[0]);
+            a1 = (+param[0]);
             num = a1;
             return num;
         });
@@ -2029,7 +2034,7 @@ var Plugin0001;
             var num;
             var a1;
 
-            a1 = parseInt(param[0], 10);
+            a1 = Math.trunc(+param[0]);
             num = a1.toString(16);
             return num;
         });
@@ -2037,8 +2042,8 @@ var Plugin0001;
             var num;
             var a1;
 
-            a1 = parseInt(param[0], 10);
-            num = a1;
+            a1 = (+param[0]);
+            num = Math.trunc(+a1);
             return num;
         });
         add_one_func_tbl_B("tolower", 1, [], function (param, vars, can, ctx) {
@@ -2087,12 +2092,12 @@ var Plugin0001;
             var st1;
 
             a1 = getvarname(param[0]);
-            a2 = parseInt(param[1], 10);
-            a3 = parseInt(param[2], 10);
-            x1 = parseInt(param[3], 10);
-            y1 = parseInt(param[4], 10);
-            x2 = parseInt(param[5], 10);
-            y2 = parseInt(param[6], 10);
+            a2 = Math.trunc(+param[1]);
+            a3 = Math.trunc(+param[2]);
+            x1 = Math.trunc(+param[3]);
+            y1 = Math.trunc(+param[4]);
+            x2 = Math.trunc(+param[5]);
+            y2 = Math.trunc(+param[6]);
             a4 = String(param[7]);
 
             // ***** NaN対策 *****
@@ -2144,10 +2149,10 @@ var Plugin0001;
             var st1;
 
             a1 = getvarname(param[0]);
-            a2 = parseInt(param[1], 10);
-            a3 = parseInt(param[2], 10);
-            x1 = parseInt(param[3], 10);
-            y1 = parseInt(param[4], 10);
+            a2 = Math.trunc(+param[1]);
+            a3 = Math.trunc(+param[2]);
+            x1 = Math.trunc(+param[3]);
+            y1 = Math.trunc(+param[4]);
 
             // ***** NaN対策 *****
             a2 = a2 | 0;
@@ -2427,7 +2432,7 @@ var DigitCalc = (function () {
     //    x.str       : 数値文字列
     //    x.digit[i]  : 各桁の値の配列(0オリジン)
     //    x.digit_len : 桁数 )
-    DigitCalc.make_digit_obj = function (x, num_st, use_minus_digit) {
+    DigitCalc.make_digit_obj = function (x, num_st) {
         var reg_exp;
         var ret;
         var i;
@@ -2467,7 +2472,7 @@ var DigitCalc = (function () {
             if (ret[3]) { frac_st = ret[3]; } else { frac_st = ""; }
             // (指数部)
             if (ret[4]) {
-                exp_num = parseInt(ret[4], 10);
+                exp_num = Math.trunc(+ret[4]);
                 // (整数部に指数部を反映)
                 if (exp_num > 0) {
                     // ***** エラーチェック *****
@@ -2497,19 +2502,13 @@ var DigitCalc = (function () {
         arr_st = x.str.split("");
         x.digit_len = arr_st.length;
         // x.digit = [];
-        if (use_minus_digit) {
-            for (i = 0; i < x.digit_len; i++) {
-                x.digit[i] = parseInt(x.sign + arr_st[x.digit_len - i - 1], 10);
-            }
-        } else {
-            for (i = 0; i < x.digit_len; i++) {
-                x.digit[i] = parseInt(arr_st[x.digit_len - i - 1], 10);
-            }
+        for (i = 0; i < x.digit_len; i++) {
+            x.digit[i] = Math.trunc(+arr_st[x.digit_len - i - 1]);
         }
     };
 
     // ***** 10進数オブジェクトの文字列を更新する(staticメソッド) *****
-    DigitCalc.update_digit_obj_str = function (x, use_minus_digit) {
+    DigitCalc.update_digit_obj_str = function (x) {
         var reg_exp;
         var ret;
         var i;
@@ -2519,18 +2518,8 @@ var DigitCalc = (function () {
         if (!x.digit_len) { return; }
         // ***** 数値の各桁を文字列に変換 *****
         arr_st = [];
-        if (use_minus_digit) {
-            for (i = 0; i < x.digit_len; i++) {
-                if (x.digit[i] < 0) {
-                    arr_st[x.digit_len - i - 1] = String(-x.digit[i]);
-                } else {
-                    arr_st[x.digit_len - i - 1] = String(x.digit[i]);
-                }
-            }
-        } else {
-            for (i = 0; i < x.digit_len; i++) {
-                arr_st[x.digit_len - i - 1] = String(x.digit[i]);
-            }
+        for (i = 0; i < x.digit_len; i++) {
+            arr_st[x.digit_len - i - 1] = String(x.digit[i]);
         }
         x.str = arr_st.join("");
         // ***** 先頭の0を削除 *****
@@ -2574,6 +2563,17 @@ var DigitCalc = (function () {
             z.sign = y.sign;
             z.str = "Infinity";
             return;
+        }
+        // ***** 計算の簡略化のため各桁に符号を付ける *****
+        if (x.sign == "-") {
+            for (i = 0; i < x.digit_len; i++) {
+                x.digit[i] = -x.digit[i];
+            }
+        }
+        if (y.sign == "-") {
+            for (i = 0; i < y.digit_len; i++) {
+                y.digit[i] = -y.digit[i];
+            }
         }
         // ***** 各桁を加算する *****
         if (x.digit_len >= y.digit_len) {
@@ -2628,8 +2628,24 @@ var DigitCalc = (function () {
                 }
             }
         }
+        // ***** 各桁の符号を除去 *****
+        if (x.sign == "-") {
+            for (i = 0; i < x.digit_len; i++) {
+                x.digit[i] = -x.digit[i];
+            }
+        }
+        if (y.sign == "-") {
+            for (i = 0; i < y.digit_len; i++) {
+                y.digit[i] = -y.digit[i];
+            }
+        }
+        if (z.sign == "-") {
+            for (i = 0; i < z.digit_len; i++) {
+                z.digit[i] = -z.digit[i];
+            }
+        }
         // ***** 10進数オブジェクトの文字列を更新する *****
-        DigitCalc.update_digit_obj_str(z, true);
+        DigitCalc.update_digit_obj_str(z);
     };
 
     // ***** 10進数オブジェクトの乗算(staticメソッド) *****
@@ -2666,7 +2682,7 @@ var DigitCalc = (function () {
             for (j = 0; j < y.digit_len; j++) {
                 z.digit[i + j] += x.digit[i] * y.digit[j];
                 if (z.digit[i + j] >= 10) {
-                    carry_num = parseInt(z.digit[i + j] / 10, 10);
+                    carry_num = Math.trunc(+z.digit[i + j] / 10);
                     z.digit[i + j]     -= carry_num * 10;
                     z.digit[i + j + 1] += carry_num;
                 }
@@ -2675,7 +2691,7 @@ var DigitCalc = (function () {
         // ***** 結果の符号を求める *****
         if (x.sign == y.sign) { z.sign = "+"; } else { z.sign = "-"; }
         // ***** 10進数オブジェクトの文字列を更新する *****
-        DigitCalc.update_digit_obj_str(z, false);
+        DigitCalc.update_digit_obj_str(z);
     };
 
     // ***** 10進数オブジェクトの除算(staticメソッド) *****
@@ -2760,8 +2776,8 @@ var DigitCalc = (function () {
         if (x.sign == y.sign) { z.sign = "+"; } else { z.sign = "-"; }
         z2.sign = x.sign;
         // ***** 10進数オブジェクトの文字列を更新する *****
-        DigitCalc.update_digit_obj_str(z, false);
-        DigitCalc.update_digit_obj_str(z2, false);
+        DigitCalc.update_digit_obj_str(z);
+        DigitCalc.update_digit_obj_str(z2);
     };
 
     return DigitCalc; // これがないとクラスが動かないので注意
@@ -3723,7 +3739,7 @@ var MMLPlayer = (function () {
             PI = Math.PI;
             phase_c = 2 * PI * freq;
             amp_c = volume / 127 / MMLPlayer.MAX_CH;
-            pos_int = parseInt(MMLPlayer.SAMPLE_RATE * rtime1, 10);
+            pos_int = Math.trunc(+MMLPlayer.SAMPLE_RATE * rtime1);
 
             // ***** 音声データの値を計算 *****
             for (i = 0; i < nlen1; i++) {
@@ -4200,7 +4216,7 @@ var MMLPlayer = (function () {
             i++;
         }
         ret.i = i;
-        return parseInt(mml_st.substring(start, i), 10);
+        return Math.trunc(+mml_st.substring(start, i));
     };
     // ***** MMLの前処理(内部処理用) *****
     MMLPlayer.prototype.preprocess = function (mml_st) {
