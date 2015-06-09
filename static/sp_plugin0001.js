@@ -2472,7 +2472,7 @@ var DigitCalc = (function () {
             if (ret[3]) { frac_st = ret[3]; } else { frac_st = ""; }
             // (指数部)
             if (ret[4]) {
-                exp_num = Math.trunc(+ret[4]);
+                exp_num = (+ret[4]);
                 // (整数部に指数部を反映)
                 if (exp_num > 0) {
                     // ***** エラーチェック *****
@@ -2503,7 +2503,7 @@ var DigitCalc = (function () {
         x.digit_len = arr_st.length;
         // x.digit = [];
         for (i = 0; i < x.digit_len; i++) {
-            x.digit[i] = Math.trunc(+arr_st[x.digit_len - i - 1]);
+            x.digit[i] = (+arr_st[x.digit_len - i - 1]);
         }
     };
 
@@ -2682,7 +2682,7 @@ var DigitCalc = (function () {
             for (j = 0; j < y.digit_len; j++) {
                 z.digit[i + j] += x.digit[i] * y.digit[j];
                 if (z.digit[i + j] >= 10) {
-                    carry_num = Math.trunc(+z.digit[i + j] / 10);
+                    carry_num = Math.floor(z.digit[i + j] / 10);
                     z.digit[i + j]     -= carry_num * 10;
                     z.digit[i + j + 1] += carry_num;
                 }
@@ -3739,7 +3739,7 @@ var MMLPlayer = (function () {
             PI = Math.PI;
             phase_c = 2 * PI * freq;
             amp_c = volume / 127 / MMLPlayer.MAX_CH;
-            pos_int = Math.trunc(+MMLPlayer.SAMPLE_RATE * rtime1);
+            pos_int = Math.floor(MMLPlayer.SAMPLE_RATE * rtime1);
 
             // ***** 音声データの値を計算 *****
             for (i = 0; i < nlen1; i++) {
@@ -4216,7 +4216,7 @@ var MMLPlayer = (function () {
             i++;
         }
         ret.i = i;
-        return Math.trunc(+mml_st.substring(start, i));
+        return (+mml_st.substring(start, i));
     };
     // ***** MMLの前処理(内部処理用) *****
     MMLPlayer.prototype.preprocess = function (mml_st) {
@@ -4360,8 +4360,8 @@ var SandSim = (function () {
         // ***** テーブルのシャッフル(動きの偏りをなくすため) *****
         sand_buf_len = this.sand_buf.length;
         for (i = 0; i < sand_buf_len; i++) {
-            j = Math.random() * sand_buf_len | 0;
-            k = Math.random() * sand_buf_len | 0;
+            j = (Math.random() * sand_buf_len) | 0;
+            k = (Math.random() * sand_buf_len) | 0;
             sand = this.sand_buf[j];
             this.sand_buf[j] = this.sand_buf[k];
             this.sand_buf[k] = sand;
@@ -4426,21 +4426,23 @@ var SandSim = (function () {
             for (j = 0; j < rnum; j++) {
                 if (rnd < rp[j]) {
                     this.img_buf[this.sand_buf[i].x + this.sand_buf[i].y * this.width] = 0;
-                    if (rk[j] == 0) {
-                        this.sand_buf[i].y--;
-                        if (this.sand_buf[i].y < 0)            { this.sand_buf[i].y = this.over_top; }
-                    }
-                    if (rk[j] == 1) {
-                        this.sand_buf[i].y++;
-                        if (this.sand_buf[i].y >= this.height) { this.sand_buf[i].y = this.over_bottom; }
-                    }
-                    if (rk[j] == 2) {
-                        this.sand_buf[i].x--;
-                        if (this.sand_buf[i].x < 0)            { this.sand_buf[i].x = this.over_left; }
-                    }
-                    if (rk[j] == 3) {
-                        this.sand_buf[i].x++;
-                        if (this.sand_buf[i].x >= this.width)  { this.sand_buf[i].x = this.over_right; }
+                    switch (rk[j]) {
+                        case 0:
+                            this.sand_buf[i].y--;
+                            if (this.sand_buf[i].y < 0)            { this.sand_buf[i].y = this.over_top; }
+                            break;
+                        case 1:
+                            this.sand_buf[i].y++;
+                            if (this.sand_buf[i].y >= this.height) { this.sand_buf[i].y = this.over_bottom; }
+                            break;
+                        case 2:
+                            this.sand_buf[i].x--;
+                            if (this.sand_buf[i].x < 0)            { this.sand_buf[i].x = this.over_left; }
+                            break;
+                        case 3:
+                            this.sand_buf[i].x++;
+                            if (this.sand_buf[i].x >= this.width)  { this.sand_buf[i].x = this.over_right; }
+                            break;
                     }
                     this.img_buf[this.sand_buf[i].x + this.sand_buf[i].y * this.width] = 1;
                     break;
