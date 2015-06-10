@@ -1,7 +1,7 @@
 // This file is encoded with UTF-8 without BOM.
 
 // sp_interpreter.js
-// 2015-6-9 v3.57
+// 2015-6-10 v3.58
 
 
 // SPALM Web Interpreter
@@ -636,7 +636,7 @@ var Interpreter;
     // ***** 少数切り捨て関数(ES6) *****
     Math.trunc = Math.trunc || function (x) {
         return (x < 0) ? Math.ceil(x) : Math.floor(x);
-    }
+    };
 
     // ****************************************
     //                 公開I/F
@@ -1158,7 +1158,7 @@ var Interpreter;
                     num = stack.pop();
                     var_name = stack.pop();
                     if (sp_compati_mode == 1) {
-                        num = Math.trunc(+vars.getVarValue(var_name) / num);
+                        num = Math.trunc(vars.getVarValue(var_name) / num);
                     } else {
                         num = vars.getVarValue(var_name) / num;
                     }
@@ -1168,7 +1168,7 @@ var Interpreter;
                 case 17: // loaddivint
                     num = stack.pop();
                     var_name = stack.pop();
-                    num = Math.trunc(+vars.getVarValue(var_name) / num);
+                    num = Math.trunc(vars.getVarValue(var_name) / num);
                     vars.setVarValue(var_name, num);
                     stack.push(num);
                     break;
@@ -1214,7 +1214,7 @@ var Interpreter;
                     num2 = stack.pop();
                     num = stack.pop();
                     if (sp_compati_mode == 1) {
-                        num = Math.trunc(+num / num2);
+                        num = Math.trunc(num / num2);
                     } else {
                         num = num / num2;
                     }
@@ -1223,7 +1223,7 @@ var Interpreter;
                 case 25: // divint
                     num2 = stack.pop();
                     num = stack.pop();
-                    num = Math.trunc(+num / num2);
+                    num = Math.trunc(num / num2);
                     stack.push(num);
                     break;
                 case 26: // mod
@@ -2952,7 +2952,7 @@ var Interpreter;
             // ***** 配列変数のとき *****
             while (symbol[i] == "[") {
                 i++;
-                // i = Math.trunc(+c_expression(i, sym_end));
+                // i = Math.trunc(c_expression(i, sym_end));
                 i = c_expression(i, sym_end); // 配列の添字に文字列もあり
                 match2("]", i++);
                 code_push("array", debugpos1, i);
@@ -2979,7 +2979,7 @@ var Interpreter;
         // ***** 配列変数のとき *****
         while (symbol[i] == "[") {
             i++;
-            // i = Math.trunc(+c_expression(i, sym_end));
+            // i = Math.trunc(c_expression(i, sym_end));
             i = c_expression(i, sym_end); // 配列の添字に文字列もあり
             match2("]", i++);
             code_push("array", debugpos1, i);
@@ -3041,7 +3041,7 @@ var Interpreter;
         // ***** 配列変数のとき *****
         while (symbol[i] == "[") {
             i++;
-            // i = Math.trunc(+c_expression(i, sym_end));
+            // i = Math.trunc(c_expression(i, sym_end));
             i = c_expression(i, sym_end); // 配列の添字に文字列もあり
             match2("]", i++);
             code_push("array", debugpos1, i);
@@ -3855,7 +3855,7 @@ var Interpreter;
             // (変数名の「a\」の後の数字により、ローカル/グローバル変数のスコープを指定)
             if (var_name.substring(0, 2) == "a\\") {
                 i = var_name.indexOf("\\", 2) + 1;
-                ret_obj.now_index = use_local_vars ? Math.trunc(+var_name.substring(2, i - 1)) : 0;
+                ret_obj.now_index = use_local_vars ? Math.trunc(var_name.substring(2, i - 1)) : 0;
             } else {
                 ret_obj.now_index = use_local_vars ? this.local_scope_num : 0;
             }
@@ -4296,7 +4296,7 @@ var Interpreter;
         make_one_func_tbl_A("addfunc", 1, [], function (param) {
             var a1;
 
-            a1 = Math.trunc(+param[0]);
+            a1 = Math.trunc(param[0]);
             if (a1 == 0) {
                 use_addfunc = false;
             } else {
@@ -4341,10 +4341,10 @@ var Interpreter;
         make_one_func_tbl_A("clear", 4, [], function (param) {
             var a1, a2, a3, a4;
 
-            a1 = Math.trunc(+param[0]); // X
-            a2 = Math.trunc(+param[1]); // Y
-            a3 = Math.trunc(+param[2]); // W
-            a4 = Math.trunc(+param[3]); // H
+            a1 = Math.trunc(param[0]); // X
+            a2 = Math.trunc(param[1]); // Y
+            a3 = Math.trunc(param[2]); // W
+            a4 = Math.trunc(param[3]); // H
             ctx.clearRect(a1, a2, a3, a4);
             return true;
         });
@@ -4370,10 +4370,10 @@ var Interpreter;
         make_one_func_tbl_A("clip", 4, [], function (param) {
             var a1, a2, a3, a4;
 
-            a1 = Math.trunc(+param[0]); // X
-            a2 = Math.trunc(+param[1]); // Y
-            a3 = Math.trunc(+param[2]); // W
-            a4 = Math.trunc(+param[3]); // H
+            a1 = Math.trunc(param[0]); // X
+            a2 = Math.trunc(param[1]); // Y
+            a3 = Math.trunc(param[2]); // W
+            a4 = Math.trunc(param[3]); // H
 
             // ***** Canvasの各設定のリセット2 *****
             reset_canvas_setting2(ctx); // clipを解除する方法がrestoreしかない
@@ -4395,7 +4395,7 @@ var Interpreter;
             var a1;
             var col_r, col_g, col_b;
 
-            a1 = Math.trunc(+param[0]); // RGB
+            a1 = Math.trunc(param[0]); // RGB
             col_r = (a1 & 0xff0000) >> 16; // R
             col_g = (a1 & 0x00ff00) >> 8;  // G
             col_b = (a1 & 0x0000ff);       // B
@@ -4408,9 +4408,9 @@ var Interpreter;
             var a1, a2, a3;
             var col_r, col_g, col_b;
 
-            a1 = Math.trunc(+param[0]); // R
-            a2 = Math.trunc(+param[1]); // G
-            a3 = Math.trunc(+param[2]); // B
+            a1 = Math.trunc(param[0]); // R
+            a2 = Math.trunc(param[1]); // G
+            a3 = Math.trunc(param[2]); // B
             col_r = a1;
             col_g = a2;
             col_b = a3;
@@ -4425,10 +4425,10 @@ var Interpreter;
             var i_start, i_end, i_plus;
 
             a1 = getvarname(param[0]);
-            a2 = Math.trunc(+param[1]);
+            a2 = Math.trunc(param[1]);
             a3 = getvarname(param[2]);
-            a4 = Math.trunc(+param[3]);
-            a5 = Math.trunc(+param[4]);
+            a4 = Math.trunc(param[3]);
+            a5 = Math.trunc(param[4]);
 
             // ***** NaN対策 *****
             a2 = a2 | 0;
@@ -4482,7 +4482,7 @@ var Interpreter;
         make_one_func_tbl_A("dbgloopset", 1, [], function (param) {
             var a1;
 
-            a1 = Math.trunc(+param[0]);
+            a1 = Math.trunc(param[0]);
             if (a1 == 0) {
                 loop_nocount_flag = true;
                 loop_nocount_mode = false;
@@ -4499,7 +4499,7 @@ var Interpreter;
             if (param.length <= 1) {
                 a2 = 1;
             } else {
-                a2 = Math.trunc(+param[1]);
+                a2 = Math.trunc(param[1]);
             }
             if (a2 != 0) { a1 = a1 + "\n"; }
             DebugShow(a1);
@@ -4525,12 +4525,12 @@ var Interpreter;
                 a2 = null;
                 a3 = 0;
             } else {
-                a2 = Math.trunc(+param[1]);
+                a2 = Math.trunc(param[1]);
                 if (param.length <= 2) {
                     a3 = a2 - 1;
                     a2 = 0;
                 } else {
-                    a3 = Math.trunc(+param[2]);
+                    a3 = Math.trunc(param[2]);
                 }
             }
 
@@ -4573,12 +4573,12 @@ var Interpreter;
             var a1, a2, a3, a4, a5, a6, a7;
 
             a1 = toglobal(getvarname(param[0])); // 画像変数名取得
-            a2 = Math.trunc(+param[1]); // 先X
-            a3 = Math.trunc(+param[2]); // 先Y
-            a4 = Math.trunc(+param[3]); // 元X
-            a5 = Math.trunc(+param[4]); // 元Y
-            a6 = Math.trunc(+param[5]); // W
-            a7 = Math.trunc(+param[6]); // H
+            a2 = Math.trunc(param[1]); // 先X
+            a3 = Math.trunc(param[2]); // 先Y
+            a4 = Math.trunc(param[3]); // 元X
+            a5 = Math.trunc(param[4]); // 元Y
+            a6 = Math.trunc(param[5]); // W
+            a7 = Math.trunc(param[6]); // H
             if (a1 == "screen") {
                 // ***** 画像を描画(表示画面→ターゲット) *****
                 ctx.drawImage(can1, a4, a5, a6, a7, a2, a3, a6, a7);
@@ -4597,9 +4597,9 @@ var Interpreter;
             var a1, a2, a3, a4;
 
             a1 = toglobal(getvarname(param[0])); // 画像変数名取得
-            a2 = Math.trunc(+param[1]); // X
-            a3 = Math.trunc(+param[2]); // Y
-            a4 = Math.trunc(+param[3]); // アンカー
+            a2 = Math.trunc(param[1]); // X
+            a3 = Math.trunc(param[2]); // Y
+            a4 = Math.trunc(param[3]); // アンカー
             if (a1 == "screen") {
                 // ***** 水平方向 *****
                 // if (a4 & 4) { }                               // 左
@@ -4636,14 +4636,14 @@ var Interpreter;
             var img_w, img_h;
 
             a1 = toglobal(getvarname(param[0])); // 画像変数名取得
-            a2 = Math.trunc(+param[1]); // 元X
-            a3 = Math.trunc(+param[2]); // 元Y
-            a4 = Math.trunc(+param[3]); // 元W
-            a5 = Math.trunc(+param[4]); // 元H
-            a6 = Math.trunc(+param[5]); // 変換
-            a7 = Math.trunc(+param[6]); // 先X
-            a8 = Math.trunc(+param[7]); // 先Y
-            a9 = Math.trunc(+param[8]); // アンカー
+            a2 = Math.trunc(param[1]); // 元X
+            a3 = Math.trunc(param[2]); // 元Y
+            a4 = Math.trunc(param[3]); // 元W
+            a5 = Math.trunc(param[4]); // 元H
+            a6 = Math.trunc(param[5]); // 変換
+            a7 = Math.trunc(param[6]); // 先X
+            a8 = Math.trunc(param[7]); // 先Y
+            a9 = Math.trunc(param[8]); // アンカー
 
             // ***** コピー元の画像を取得 *****
             if (a1 == "screen") {
@@ -4721,14 +4721,14 @@ var Interpreter;
             var a1, a2, a3, a4, a5, a6, a7, a8, a9;
 
             a1 = toglobal(getvarname(param[0])); // 画像変数名取得
-            a2 = Math.trunc(+param[1]); // 先X
-            a3 = Math.trunc(+param[2]); // 先Y
-            a4 = Math.trunc(+param[3]); // 先W
-            a5 = Math.trunc(+param[4]); // 先H
-            a6 = Math.trunc(+param[5]); // 元X
-            a7 = Math.trunc(+param[6]); // 元Y
-            a8 = Math.trunc(+param[7]); // 元W
-            a9 = Math.trunc(+param[8]); // 元H
+            a2 = Math.trunc(param[1]); // 先X
+            a3 = Math.trunc(param[2]); // 先Y
+            a4 = Math.trunc(param[3]); // 先W
+            a5 = Math.trunc(param[4]); // 先H
+            a6 = Math.trunc(param[5]); // 元X
+            a7 = Math.trunc(param[6]); // 元Y
+            a8 = Math.trunc(param[7]); // 元W
+            a9 = Math.trunc(param[8]); // 元H
             if (a1 == "screen") {
                 // ***** 画像を描画(表示画面→ターゲット) *****
                 ctx.drawImage(can1, a6, a7, a8, a9, a2, a3, a4, a5);
@@ -4916,17 +4916,17 @@ var Interpreter;
             // ***** 画像データの取得 *****
             g_data = a2.split(",");
             i = 0;
-            col_num = Math.trunc(+g_data[i++]);
+            col_num = Math.trunc(g_data[i++]);
             col_data = [];
             for (j = 0; j < col_num; j++) {
                 col_data[j] = {};
-                col_data[j].r = Math.trunc(+g_data[i++]);
-                col_data[j].g = Math.trunc(+g_data[i++]);
-                col_data[j].b = Math.trunc(+g_data[i++]);
+                col_data[j].r = Math.trunc(g_data[i++]);
+                col_data[j].g = Math.trunc(g_data[i++]);
+                col_data[j].b = Math.trunc(g_data[i++]);
             }
-            trans_col_no = Math.trunc(+g_data[i++]);
-            img_w = Math.trunc(+g_data[i++]);
-            img_h = Math.trunc(+g_data[i++]);
+            trans_col_no = Math.trunc(g_data[i++]);
+            img_w = Math.trunc(g_data[i++]);
+            img_h = Math.trunc(g_data[i++]);
 
             // ***** エラーチェック *****
             // if (img_w <= 0 || img_w > max_image_size || img_h <= 0 || img_h > max_image_size) {
@@ -4937,7 +4937,7 @@ var Interpreter;
             img_data = ctx.createImageData(img_w, img_h);
             k = 0;
             while (i < g_data.length) {
-                col_no = Math.trunc(+g_data[i++]);
+                col_no = Math.trunc(g_data[i++]);
                 if (col_no == trans_col_no) {
                     img_data.data[k++] = 0;
                     img_data.data[k++] = 0;
@@ -5024,13 +5024,13 @@ var Interpreter;
             var i;
 
             a1 = getvarname(param[0]);
-            a2 = Math.trunc(+param[1]);
+            a2 = Math.trunc(param[1]);
             if (param.length <= 2) {
                 a3 = a2 - 1;
                 a2 = 0;
                 a4 = 0;
             } else {
-                a3 = Math.trunc(+param[2]);
+                a3 = Math.trunc(param[2]);
                 if (param.length <= 3) {
                     a4 = 0;
                 } else {
@@ -5054,8 +5054,8 @@ var Interpreter;
             var a1, a2, a3;
 
             a1 = toglobal(getvarname(param[0])); // 画像変数名取得
-            a2 = Math.trunc(+param[1]); // W
-            a3 = Math.trunc(+param[2]); // H
+            a2 = Math.trunc(param[1]); // W
+            a3 = Math.trunc(param[2]); // H
 
             // ***** エラーチェック *****
             // if (a2 <= 0 || a2 > max_image_size || a3 <= 0 || a3 > max_image_size) {
@@ -5103,8 +5103,8 @@ var Interpreter;
         make_one_func_tbl_A("origin", 2, [], function (param) {
             var a1, a2;
 
-            a1 = Math.trunc(+param[0]); // X
-            a2 = Math.trunc(+param[1]); // Y
+            a1 = Math.trunc(param[0]); // X
+            a2 = Math.trunc(param[1]); // Y
             // ***** 座標系の原点座標設定 *****
             ctx_originx = a1;
             ctx_originy = a2;
@@ -5226,7 +5226,7 @@ var Interpreter;
             if (param.length <= 1) {
                 a2 = 0;
             } else {
-                a2 = Math.trunc(+param[0]);
+                a2 = Math.trunc(param[0]);
             }
             save_data[a2] = a1;
             return true;
@@ -5280,7 +5280,7 @@ var Interpreter;
         make_one_func_tbl_A("setoutdata", 2, [], function (param) {
             var a1, a2;
 
-            a1 = Math.trunc(+param[0]);
+            a1 = Math.trunc(param[0]);
             a2 = String(param[1]);
             out_data[a1] = a2;
             return true;
@@ -5291,7 +5291,7 @@ var Interpreter;
 
             a1 = (+param[0]);   // X
             a2 = (+param[1]);   // Y
-            a3 = Math.trunc(+param[2]); // RGB
+            a3 = Math.trunc(param[2]); // RGB
             col_r = (a3 & 0xff0000) >> 16; // R
             col_g = (a3 & 0x00ff00) >> 8;  // G
             col_b = (a3 & 0x0000ff);       // B
@@ -5303,14 +5303,14 @@ var Interpreter;
         make_one_func_tbl_A("setscsize", 2, [], function (param) {
             var a1, a2, a3, a4;
 
-            a1 = Math.trunc(+param[0]); // W
-            a2 = Math.trunc(+param[1]); // H
+            a1 = Math.trunc(param[0]); // W
+            a2 = Math.trunc(param[1]); // H
             if (param.length <= 3) {
                 a3 = a1;
                 a4 = a2;
             } else {
-                a3 = Math.trunc(+param[2]); // W2
-                a4 = Math.trunc(+param[3]); // H2
+                a3 = Math.trunc(param[2]); // W2
+                a4 = Math.trunc(param[3]); // H2
             }
             // ***** エラーチェック *****
             // if (a1 <= 0 || a1 > max_image_size || a2 <= 0 || a2 > max_image_size ||
@@ -5331,7 +5331,7 @@ var Interpreter;
         make_one_func_tbl_A("sleep", 1, [], function (param) {
             var a1;
 
-            a1 = Math.trunc(+param[0]);
+            a1 = Math.trunc(param[0]);
             sleep_flag = true;
             sleep_time = a1;
             return true;
@@ -5355,7 +5355,7 @@ var Interpreter;
         make_one_func_tbl_A("spmode", 1, [], function (param) {
             var a1;
 
-            a1 = Math.trunc(+param[0]);
+            a1 = Math.trunc(param[0]);
             sp_compati_mode = a1;
             if (sp_compati_mode == 1) {
                 font_size = 12;
@@ -5377,9 +5377,9 @@ var Interpreter;
             if (param.length <= 3) {
                 a2 = a3 = a4 = 0;
             } else {
-                a2 = Math.trunc(+param[1]); // X
-                a3 = Math.trunc(+param[2]); // Y
-                a4 = Math.trunc(+param[3]); // アンカー
+                a2 = Math.trunc(param[1]); // X
+                a3 = Math.trunc(param[2]); // Y
+                a4 = Math.trunc(param[3]); // アンカー
             }
             // ***** 水平方向 *****
             if (a4 & 4)       { ctx.textAlign = "left"; }    // 左
@@ -5420,7 +5420,7 @@ var Interpreter;
             if (param.length <= 0) {
                 a1 = 0;
             } else {
-                a1 = Math.trunc(+param[0]);
+                a1 = Math.trunc(param[0]);
             }
             // ***** NOP *****
             return true;
@@ -5472,11 +5472,11 @@ var Interpreter;
                 a2 = 0;
                 a3 = null;
             } else {
-                a2 = Math.trunc(+param[1]);
+                a2 = Math.trunc(param[1]);
                 if (param.length <= 2) {
                     a3 = null;
                 } else {
-                    a3 = Math.trunc(+param[2]);
+                    a3 = Math.trunc(param[2]);
                 }
             }
 
@@ -5551,7 +5551,7 @@ var Interpreter;
 
             a1 = (+param[0]);
             if (sp_compati_mode == 1) {
-                num = Math.trunc(+Math.cos(a1 * Math.PI / 180) * 100);
+                num = Math.trunc(Math.cos(a1 * Math.PI / 180) * 100);
             } else {
                 num = Math.cos(a1 * Math.PI / 180);
             }
@@ -5600,7 +5600,7 @@ var Interpreter;
                 if (param.length <= 2) {
                     a3 = 0;
                 } else {
-                    a3 = Math.trunc(+param[2]);
+                    a3 = Math.trunc(param[2]);
                 }
             }
             if (a3 != 1) {
@@ -5625,7 +5625,7 @@ var Interpreter;
                 if (param.length <= 1) {
                     a2 = 0;
                 } else {
-                    a2 = Math.trunc(+param[1]);
+                    a2 = Math.trunc(param[1]);
                 }
             }
             if (a2 != 1) {
@@ -5683,7 +5683,7 @@ var Interpreter;
             var num;
             var a1;
 
-            a1 = Math.trunc(+param[0]);
+            a1 = Math.trunc(param[0]);
             if (out_data.hasOwnProperty(a1)) { num = out_data[a1]; } else { num = ""; }
             return num;
         });
@@ -5753,7 +5753,7 @@ var Interpreter;
             if (param.length <= 2) {
                 a3 = 0;
             } else {
-                a3 = Math.trunc(+param[2]);
+                a3 = Math.trunc(param[2]);
             }
             num = a1.indexOf(a2, a3);
             return num;
@@ -5767,7 +5767,7 @@ var Interpreter;
                 a1 = 0;
                 repeat_flag = true;
             } else {
-                a1 = Math.trunc(+param[0]);
+                a1 = Math.trunc(param[0]);
                 repeat_flag = false;
             }
             // ***** キー入力ありのとき *****
@@ -5804,8 +5804,8 @@ var Interpreter;
                 if (param.length <= 3) {
                     a3 = a4 = 0;
                 } else {
-                    a3 = Math.trunc(+param[2]); // 未使用
-                    a4 = Math.trunc(+param[3]); // 未使用
+                    a3 = Math.trunc(param[2]); // 未使用
+                    a4 = Math.trunc(param[3]); // 未使用
                 }
             }
             num = prompt(a1, a2) || ""; // nullのときは空文字列にする
@@ -5819,7 +5819,7 @@ var Interpreter;
             var a1;
 
             a1 = (+param[0]);
-            num = Math.trunc(+a1);
+            num = Math.trunc(a1);
             return num;
         });
         make_one_func_tbl_B("join", 2, [0], function (param) {
@@ -5833,11 +5833,11 @@ var Interpreter;
                 a3 = 0;
                 a4 = null;
             } else {
-                a3 = Math.trunc(+param[2]);
+                a3 = Math.trunc(param[2]);
                 if (param.length <= 3) {
                     a4 = null;
                 } else {
-                    a4 = Math.trunc(+param[3]);
+                    a4 = Math.trunc(param[3]);
                 }
             }
 
@@ -5884,7 +5884,7 @@ var Interpreter;
                 a1 = 0;
                 repeat_flag = true;
             } else {
-                a1 = Math.trunc(+param[0]);
+                a1 = Math.trunc(param[0]);
                 repeat_flag = false;
             }
             // ***** キー入力ありのとき *****
@@ -5913,7 +5913,7 @@ var Interpreter;
             var num;
             var a1;
 
-            a1 = Math.trunc(+param[0]);
+            a1 = Math.trunc(param[0]);
             if (key_down_stat[a1] == true) { num = 1; } else { num = 0; }
             return num;
         });
@@ -5930,7 +5930,7 @@ var Interpreter;
             if (param.length <= 0) {
                 a1 = 0;
             } else {
-                a1 = Math.trunc(+param[0]);
+                a1 = Math.trunc(param[0]);
             }
             if (!save_data.hasOwnProperty(a1)) {
                 num = "0";
@@ -6086,11 +6086,11 @@ var Interpreter;
                 a4 = 0;
                 a5 = -1;
             } else {
-                a4 = Math.trunc(+param[3]);
+                a4 = Math.trunc(param[3]);
                 if (param.length <= 4) {
                     a5 = -1;
                 } else {
-                    a5 = Math.trunc(+param[4]);
+                    a5 = Math.trunc(param[4]);
                 }
             }
             if (a1.length == 0 || a2.length == 0) {
@@ -6145,7 +6145,7 @@ var Interpreter;
 
             a1 = (+param[0]);
             if (sp_compati_mode == 1) {
-                num = Math.trunc(+Math.sin(a1 * Math.PI / 180) * 100);
+                num = Math.trunc(Math.sin(a1 * Math.PI / 180) * 100);
             } else {
                 num = Math.sin(a1 * Math.PI / 180);
             }
@@ -6162,7 +6162,7 @@ var Interpreter;
             if (param.length <= 3) {
                 a4 = 0;
             } else {
-                a4 = Math.trunc(+param[3]);
+                a4 = Math.trunc(param[3]);
             }
             if (a2.length == 0 || a3.length == 0) {
                 num = 0;
@@ -6211,7 +6211,7 @@ var Interpreter;
             var a1, a2;
 
             a1 = String(param[0]);
-            a2 = Math.trunc(+param[1]);
+            a2 = Math.trunc(param[1]);
             num = a1.charAt(a2);
             return num;
         });
@@ -6236,11 +6236,11 @@ var Interpreter;
             var a1, a2, a3;
 
             a1 = String(param[0]);
-            a2 = Math.trunc(+param[1]);
+            a2 = Math.trunc(param[1]);
             if (param.length <= 2) {
                 a3 = a1.length - a2;
             } else {
-                a3 = Math.trunc(+param[2]);
+                a3 = Math.trunc(param[2]);
             }
             num = a1.substring(a2, a2 + a3);
             return num;
@@ -6251,7 +6251,7 @@ var Interpreter;
 
             a1 = (+param[0]);
             if (sp_compati_mode == 1) {
-                num = Math.trunc(+Math.tan(a1 * Math.PI / 180) * 100);
+                num = Math.trunc(Math.tan(a1 * Math.PI / 180) * 100);
             } else {
                 num = Math.tan(a1 * Math.PI / 180);
             }

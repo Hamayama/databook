@@ -60,7 +60,7 @@ var Plugin0001;
     // ***** 少数切り捨て関数(ES6) *****
     Math.trunc = Math.trunc || function (x) {
         return (x < 0) ? Math.ceil(x) : Math.floor(x);
-    }
+    };
 
     // ****************************************
     //                 公開I/F
@@ -113,14 +113,14 @@ var Plugin0001;
         add_one_func_tbl_A("audmode", 1, [], function (param, vars, can, ctx) {
             var a1;
 
-            a1 = Math.trunc(+param[0]);
+            a1 = Math.trunc(param[0]);
             aud_mode = a1;
             return true;
         });
         add_one_func_tbl_A("audmake", 2, [], function (param, vars, can, ctx) {
             var a1, a2;
 
-            a1 = Math.trunc(+param[0]);
+            a1 = Math.trunc(param[0]);
             a2 = String(param[1]);
 
             // ***** 音楽モードチェック *****
@@ -146,7 +146,7 @@ var Plugin0001;
         add_one_func_tbl_A("audmakedata", 2, [], function (param, vars, can, ctx) {
             var a1, a2;
 
-            a1 = Math.trunc(+param[0]);
+            a1 = Math.trunc(param[0]);
             a2 = String(param[1]); // 音楽データ(data URI scheme)
 
             // ***** 音楽モードチェック *****
@@ -172,11 +172,11 @@ var Plugin0001;
         add_one_func_tbl_A("audplay", 1, [], function (param, vars, can, ctx) {
             var a1, a2;
 
-            a1 = Math.trunc(+param[0]);
+            a1 = Math.trunc(param[0]);
             if (param.length <= 1) {
                 a2 = 0;
             } else {
-                a2 = Math.trunc(+param[1]);
+                a2 = Math.trunc(param[1]);
             }
 
             // ***** 音楽モードチェック *****
@@ -198,7 +198,7 @@ var Plugin0001;
         add_one_func_tbl_A("audspeedrate", 2, [], function (param, vars, can, ctx) {
             var a1, a2;
 
-            a1 = Math.trunc(+param[0]);
+            a1 = Math.trunc(param[0]);
             a2 = (+param[1]);
 
             // ***** 音楽モードチェック *****
@@ -220,7 +220,7 @@ var Plugin0001;
         add_one_func_tbl_A("audstop", 1, [], function (param, vars, can, ctx) {
             var a1;
 
-            a1 = Math.trunc(+param[0]);
+            a1 = Math.trunc(param[0]);
 
             // ***** 音楽モードチェック *****
             if (aud_mode == 1) {
@@ -241,8 +241,8 @@ var Plugin0001;
         add_one_func_tbl_A("audvolume", 2, [], function (param, vars, can, ctx) {
             var a1, a2;
 
-            a1 = Math.trunc(+param[0]);
-            a2 = Math.trunc(+param[1]);
+            a1 = Math.trunc(param[0]);
+            a2 = Math.trunc(param[1]);
 
             // ***** 音楽モードチェック *****
             if (aud_mode == 1) {
@@ -265,8 +265,8 @@ var Plugin0001;
             var col_r, col_g, col_b, alpha;
             var color_val;
 
-            a1 = Math.trunc(+param[0]); // RGB
-            a2 = Math.trunc(+param[1]); // alpha
+            a1 = Math.trunc(param[0]); // RGB
+            a2 = Math.trunc(param[1]); // alpha
             col_r = (a1 & 0xff0000) >> 16; // R
             col_g = (a1 & 0x00ff00) >> 8;  // G
             col_b = (a1 & 0x0000ff);       // B
@@ -282,10 +282,10 @@ var Plugin0001;
             var col_r, col_g, col_b, alpha;
             var color_val;
 
-            a1 = Math.trunc(+param[0]); // R
-            a2 = Math.trunc(+param[1]); // G
-            a3 = Math.trunc(+param[2]); // B
-            a4 = Math.trunc(+param[3]); // alpha
+            a1 = Math.trunc(param[0]); // R
+            a2 = Math.trunc(param[1]); // G
+            a3 = Math.trunc(param[2]); // B
+            a4 = Math.trunc(param[3]); // alpha
             col_r = a1;
             col_g = a2;
             col_b = a3;
@@ -299,7 +299,7 @@ var Plugin0001;
         add_one_func_tbl_A("disaud", 1, [], function (param, vars, can, ctx) {
             var a1;
 
-            a1 = Math.trunc(+param[0]);
+            a1 = Math.trunc(param[0]);
             if (audplayer.hasOwnProperty(a1)) {
                 audplayer[a1].mmlplayer.stop();
                 delete audplayer[a1];
@@ -309,7 +309,7 @@ var Plugin0001;
         add_one_func_tbl_A("dismis", 1, [], function (param, vars, can, ctx) {
             var a1;
 
-            a1 = Math.trunc(+param[0]);
+            a1 = Math.trunc(param[0]);
             if (missile.hasOwnProperty(a1)) {
                 delete missile[a1];
             }
@@ -337,7 +337,7 @@ var Plugin0001;
             var x1, y1, x2, y2, ox, oy;
             var alpha_old;
 
-            mode = Math.trunc(+param[0]); // 図形の種類
+            mode = Math.trunc(param[0]); // 図形の種類
             // ***** 図形の種類で場合分け *****
             switch (mode) {
                 case 0: // 正多角形(塗りつぶしあり)
@@ -357,7 +357,7 @@ var Plugin0001;
                         a4 = (+param[4]); // H
                         a5 = (+param[5]); // 開始角
                         a6 = (+param[6]); // 加算角
-                        a7 = Math.trunc(+param[7]); // 頂点数
+                        a7 = Math.trunc(param[7]); // 頂点数
                     }
                     // ***** エラーチェック *****
                     if (a7 > 1000) { a7 = 1000; }
@@ -467,12 +467,12 @@ var Plugin0001;
                 col = 0;
                 paint_mode = 0;
             } else {
-                threshold = Math.trunc(+param[2]); // しきい値
+                threshold = Math.trunc(param[2]); // しきい値
                 if (param.length <= 3) {
                     col = 0;
                     paint_mode = 0;
                 } else {
-                    col = Math.trunc(+param[3]); // 境界色 RGB
+                    col = Math.trunc(param[3]); // 境界色 RGB
                     paint_mode = 1;
                 }
             }
@@ -496,8 +496,8 @@ var Plugin0001;
 
             a1 = getvarname(param[0]);
             b1 = getvarname(param[1]);
-            a2 = Math.trunc(+param[2]);
-            a3 = Math.trunc(+param[3]);
+            a2 = Math.trunc(param[2]);
+            a3 = Math.trunc(param[3]);
 
             // ***** NaN対策 *****
             a2 = a2 | 0;
@@ -545,25 +545,25 @@ var Plugin0001;
             var degree_var_name, speed100_var_name, ch_var_name;
             var min_x, max_x, min_y, max_y, div_x, div_y;
 
-            no = Math.trunc(+param[0]);
+            no = Math.trunc(param[0]);
             useflag_var_name =  getvarname(param[1]); // 制御用の変数名を取得
             x100_var_name =     getvarname(param[2]); // 制御用の変数名を取得
             y100_var_name =     getvarname(param[3]); // 制御用の変数名を取得
             degree_var_name =   getvarname(param[4]); // 制御用の変数名を取得
             speed100_var_name = getvarname(param[5]); // 制御用の変数名を取得
             ch_var_name =       getvarname(param[6]); // 制御用の変数名を取得
-            min_x = Math.trunc(+param[7]);
-            max_x = Math.trunc(+param[8]);
-            min_y = Math.trunc(+param[9]);
-            max_y = Math.trunc(+param[10]);
+            min_x = Math.trunc(param[7]);
+            max_x = Math.trunc(param[8]);
+            min_y = Math.trunc(param[9]);
+            max_y = Math.trunc(param[10]);
             div_x = (+param[11]);
             div_y = (+param[12]);
             // ***** ミサイル作成 *****
-            useflag =  Math.trunc(+vars.getVarValue(useflag_var_name));
-            x100 =     Math.trunc(+vars.getVarValue(x100_var_name));
-            y100 =     Math.trunc(+vars.getVarValue(y100_var_name));
+            useflag =  Math.trunc(vars.getVarValue(useflag_var_name));
+            x100 =     Math.trunc(vars.getVarValue(x100_var_name));
+            y100 =     Math.trunc(vars.getVarValue(y100_var_name));
             degree =   (+vars.getVarValue(degree_var_name));
-            speed100 = Math.trunc(+vars.getVarValue(speed100_var_name));
+            speed100 = Math.trunc(vars.getVarValue(speed100_var_name));
             ch =       String(vars.getVarValue(ch_var_name));
             missile[no] = new Missile(no, useflag, x100, y100, degree, speed100, ch,
                 min_x, max_x, min_y, max_y, div_x, div_y,
@@ -581,20 +581,20 @@ var Plugin0001;
                 max_no = 0;
             } else {
                 range_use = true;
-                min_no = Math.trunc(+param[0]);
-                max_no = Math.trunc(+param[1]);
+                min_no = Math.trunc(param[0]);
+                max_no = Math.trunc(param[1]);
             }
             // ***** 全ミサイルを移動 *****
             for (mis_no in missile) {
                 if (missile.hasOwnProperty(mis_no)) {
                     mis = missile[mis_no];
                     if (range_use == false || (mis.no >= min_no && mis.no <= max_no)) {
-                        mis.useflag = Math.trunc(+vars.getVarValue(mis.useflag_var_name));
+                        mis.useflag = Math.trunc(vars.getVarValue(mis.useflag_var_name));
                         if (mis.useflag != 0) {
-                            mis.x100 =     Math.trunc(+vars.getVarValue(mis.x100_var_name));
-                            mis.y100 =     Math.trunc(+vars.getVarValue(mis.y100_var_name));
+                            mis.x100 =     Math.trunc(vars.getVarValue(mis.x100_var_name));
+                            mis.y100 =     Math.trunc(vars.getVarValue(mis.y100_var_name));
                             mis.degree =   (+vars.getVarValue(mis.degree_var_name));
-                            mis.speed100 = Math.trunc(+vars.getVarValue(mis.speed100_var_name));
+                            mis.speed100 = Math.trunc(vars.getVarValue(mis.speed100_var_name));
                             mis.ch =       String(vars.getVarValue(mis.ch_var_name));
                             mis.move();
                             vars.setVarValue(mis.useflag_var_name,  mis.useflag);
@@ -618,16 +618,16 @@ var Plugin0001;
             var range_use, min_no, max_no;
 
             a1 = getvarname(param[0]);
-            a2 = Math.trunc(+param[1]);
-            a3 = Math.trunc(+param[2]);
+            a2 = Math.trunc(param[1]);
+            a3 = Math.trunc(param[2]);
             if (param.length <= 4) {
                 range_use = false;
                 min_no = 0;
                 max_no = 0;
             } else {
                 range_use = true;
-                min_no = Math.trunc(+param[3]);
-                max_no = Math.trunc(+param[4]);
+                min_no = Math.trunc(param[3]);
+                max_no = Math.trunc(param[4]);
             }
 
             // ***** NaN対策 *****
@@ -645,12 +645,12 @@ var Plugin0001;
                 if (missile.hasOwnProperty(mis_no)) {
                     mis = missile[mis_no];
                     if (range_use == false || (mis.no >= min_no && mis.no <= max_no)) {
-                        mis.useflag = Math.trunc(+vars.getVarValue(mis.useflag_var_name));
+                        mis.useflag = Math.trunc(vars.getVarValue(mis.useflag_var_name));
                         // (有効フラグが0以外で1000以下のときのみ表示)
                         // if (mis.useflag != 0) {
                         if (mis.useflag != 0 && mis.useflag <= 1000) {
-                            mis.x100 = Math.trunc(+vars.getVarValue(mis.x100_var_name));
-                            mis.y100 = Math.trunc(+vars.getVarValue(mis.y100_var_name));
+                            mis.x100 = Math.trunc(vars.getVarValue(mis.x100_var_name));
+                            mis.y100 = Math.trunc(vars.getVarValue(mis.y100_var_name));
                             mis.ch =     String(vars.getVarValue(mis.ch_var_name));
                             x1 = (mis.x100 / 100) | 0; // 整数化
                             y1 = (mis.y100 / 100) | 0; // 整数化
@@ -689,12 +689,12 @@ var Plugin0001;
 
             a1 = getvarname(param[0]);
             b1 = getvarname(param[1]);
-            a2 = Math.trunc(+param[2]);
-            a3 = Math.trunc(+param[3]);
+            a2 = Math.trunc(param[2]);
+            a3 = Math.trunc(param[3]);
             if (param.length <= 4) {
                 a4 = 0;
             } else {
-                a4 = Math.trunc(+param[4]);
+                a4 = Math.trunc(param[4]);
             }
 
             // ***** NaN対策 *****
@@ -742,20 +742,20 @@ var Plugin0001;
             var w1, h1;
             var col, threshold, border_mode;
 
-            x1 = Math.trunc(+param[0]);
-            y1 = Math.trunc(+param[1]);
-            w1 = Math.trunc(+param[2]);
-            h1 = Math.trunc(+param[3]);
+            x1 = Math.trunc(param[0]);
+            y1 = Math.trunc(param[1]);
+            w1 = Math.trunc(param[2]);
+            h1 = Math.trunc(param[3]);
             a1 = (+param[4]);
             a2 = (+param[5]);
             a3 = (+param[6]);
             a4 = (+param[7]);
-            col = Math.trunc(+param[8]);
-            threshold = Math.trunc(+param[9]);
+            col = Math.trunc(param[8]);
+            threshold = Math.trunc(param[9]);
             if (param.length <= 10) {
                 border_mode = 1;
             } else {
-                border_mode = Math.trunc(+param[10]);
+                border_mode = Math.trunc(param[10]);
             }
             sand_obj = new SandSim(can, ctx, x1, y1, w1, h1, a1, a2, a3, a4, col, threshold, border_mode);
             sand_obj.maketable();
@@ -786,8 +786,8 @@ var Plugin0001;
                 a3 = 0;
                 a4 = 0;
             } else {
-                a3 = Math.trunc(+param[2]);
-                a4 = Math.trunc(+param[3]);
+                a3 = Math.trunc(param[2]);
+                a4 = Math.trunc(param[3]);
             }
             // ***** 画像文字割付を格納 *****
             ch = a1.charAt(0); // 1文字だけにする
@@ -811,7 +811,7 @@ var Plugin0001;
             var imgvars = get_imgvars();
 
             a1 = toglobal(getvarname(param[0])); // 画像変数名取得
-            a2 = Math.trunc(+param[1]); // RGB
+            a2 = Math.trunc(param[1]); // RGB
             // if (imgvars.hasOwnProperty(a1)) {
             if (hasOwn.call(imgvars, a1)) {
                 col_r = (a2 & 0xff0000) >> 16; // R
@@ -843,10 +843,10 @@ var Plugin0001;
             var st1;
 
             a1 = getvarname(param[0]);
-            a2 = Math.trunc(+param[1]);
-            a3 = Math.trunc(+param[2]);
+            a2 = Math.trunc(param[1]);
+            a3 = Math.trunc(param[2]);
             a4 = String(param[3]);
-            a5 = Math.trunc(+param[4]);
+            a5 = Math.trunc(param[4]);
 
             // ***** NaN対策 *****
             a2 = a2 | 0;
@@ -878,14 +878,14 @@ var Plugin0001;
             var font_size = get_font_size();
 
             a1 = getvarname(param[0]);
-            a2 = Math.trunc(+param[1]);
-            a3 = Math.trunc(+param[2]);
+            a2 = Math.trunc(param[1]);
+            a3 = Math.trunc(param[2]);
             if (param.length <= 4) {
                 x1 = 0;
                 y1 = 0;
             } else {
-                x1 = Math.trunc(+param[3]);
-                y1 = Math.trunc(+param[4]);
+                x1 = Math.trunc(param[3]);
+                y1 = Math.trunc(param[4]);
             }
 
             // ***** NaN対策 *****
@@ -930,12 +930,12 @@ var Plugin0001;
             var st1;
 
             a1 = getvarname(param[0]);
-            a2 = Math.trunc(+param[1]);
-            a3 = Math.trunc(+param[2]);
-            x1 = Math.trunc(+param[3]);
-            y1 = Math.trunc(+param[4]);
-            w1 = Math.trunc(+param[5]);
-            h1 = Math.trunc(+param[6]);
+            a2 = Math.trunc(param[1]);
+            a3 = Math.trunc(param[2]);
+            x1 = Math.trunc(param[3]);
+            y1 = Math.trunc(param[4]);
+            w1 = Math.trunc(param[5]);
+            h1 = Math.trunc(param[6]);
 
             // ***** NaN対策 *****
             a2 = a2 | 0;
@@ -977,17 +977,17 @@ var Plugin0001;
             var st1, st2;
 
             a1 = getvarname(param[0]);
-            a2 = Math.trunc(+param[1]);
-            a3 = Math.trunc(+param[2]);
-            x1 = Math.trunc(+param[3]);
-            y1 = Math.trunc(+param[4]);
+            a2 = Math.trunc(param[1]);
+            a3 = Math.trunc(param[2]);
+            x1 = Math.trunc(param[3]);
+            y1 = Math.trunc(param[4]);
             b1 = getvarname(param[5]);
-            b2 = Math.trunc(+param[6]);
-            b3 = Math.trunc(+param[7]);
+            b2 = Math.trunc(param[6]);
+            b3 = Math.trunc(param[7]);
             if (param.length <= 8) {
                 a4 = 0;
             } else {
-                a4 = Math.trunc(+param[8]);
+                a4 = Math.trunc(param[8]);
             }
 
             // ***** NaN対策 *****
@@ -1056,10 +1056,10 @@ var Plugin0001;
             var x1, y1;
 
             a1 = getvarname(param[0]);
-            a2 = Math.trunc(+param[1]);
-            a3 = Math.trunc(+param[2]);
-            x1 = Math.trunc(+param[3]);
-            y1 = Math.trunc(+param[4]);
+            a2 = Math.trunc(param[1]);
+            a3 = Math.trunc(param[2]);
+            x1 = Math.trunc(param[3]);
+            y1 = Math.trunc(param[4]);
             a4 = String(param[5]);
 
             // ***** NaN対策 *****
@@ -1082,12 +1082,12 @@ var Plugin0001;
             var x1, y1, x2, y2;
 
             a1 = getvarname(param[0]);
-            a2 = Math.trunc(+param[1]);
-            a3 = Math.trunc(+param[2]);
-            x1 = Math.trunc(+param[3]);
-            y1 = Math.trunc(+param[4]);
-            x2 = Math.trunc(+param[5]);
-            y2 = Math.trunc(+param[6]);
+            a2 = Math.trunc(param[1]);
+            a3 = Math.trunc(param[2]);
+            x1 = Math.trunc(param[3]);
+            y1 = Math.trunc(param[4]);
+            x2 = Math.trunc(param[5]);
+            y2 = Math.trunc(param[6]);
             a4 = String(param[7]);
 
             // ***** NaN対策 *****
@@ -1118,12 +1118,12 @@ var Plugin0001;
             var i;
 
             a1 = getvarname(param[0]);
-            a2 = Math.trunc(+param[1]);
-            a3 = Math.trunc(+param[2]);
-            x1 = Math.trunc(+param[3]);
-            y1 = Math.trunc(+param[4]);
-            x2 = Math.trunc(+param[5]);
-            y2 = Math.trunc(+param[6]);
+            a2 = Math.trunc(param[1]);
+            a3 = Math.trunc(param[2]);
+            x1 = Math.trunc(param[3]);
+            y1 = Math.trunc(param[4]);
+            x2 = Math.trunc(param[5]);
+            y2 = Math.trunc(param[6]);
             a4 = String(param[7]);
 
             // ***** NaN対策 *****
@@ -1162,12 +1162,12 @@ var Plugin0001;
             var i;
 
             a1 = getvarname(param[0]);
-            a2 = Math.trunc(+param[1]);
-            a3 = Math.trunc(+param[2]);
-            x1 = Math.trunc(+param[3]);
-            y1 = Math.trunc(+param[4]);
-            x2 = Math.trunc(+param[5]);
-            y2 = Math.trunc(+param[6]);
+            a2 = Math.trunc(param[1]);
+            a3 = Math.trunc(param[2]);
+            x1 = Math.trunc(param[3]);
+            y1 = Math.trunc(param[4]);
+            x2 = Math.trunc(param[5]);
+            y2 = Math.trunc(param[6]);
             a4 = String(param[7]);
 
             // ***** NaN対策 *****
@@ -1206,11 +1206,11 @@ var Plugin0001;
             var x_old, y_old;
 
             a1 = getvarname(param[0]);
-            a2 = Math.trunc(+param[1]);
-            a3 = Math.trunc(+param[2]);
-            x1 = Math.trunc(+param[3]);
-            y1 = Math.trunc(+param[4]);
-            r1 = Math.trunc(+param[5]);
+            a2 = Math.trunc(param[1]);
+            a3 = Math.trunc(param[2]);
+            x1 = Math.trunc(param[3]);
+            y1 = Math.trunc(param[4]);
+            r1 = Math.trunc(param[5]);
             a = (+param[6]);
             b = (+param[7]);
             a4 = String(param[8]);
@@ -1228,7 +1228,7 @@ var Plugin0001;
             if (!(r1 <= max_str_size)) {
                 throw new Error("処理する文字数が不正です。" + max_str_size + "以下である必要があります。");
             }
-            if (r1 < 0) { return true; }
+            if (r1 <= 0) { return true; }
 
             // ***** 描画処理 *****
             if (a < 1) { a = 1; }
@@ -1237,7 +1237,7 @@ var Plugin0001;
             bb = b * b;
             rr = r1 * r1;
             x2 = r1;
-            drawflag = 0;
+            drawflag = false;
             x_old = 0;
             y_old = 0;
             for (y2 = 0; y2 <= r1; y2++) {
@@ -1247,7 +1247,7 @@ var Plugin0001;
                     if (x2 < 0) { break; }
                 }
                 if (x2 < 0) {
-                    if (drawflag == 1) {
+                    if (drawflag) {
                         // 上下の最後の部分を水平線で追加表示
                         txtovrsub(vars, a1, a2, a3, x1 - x_old, y1 - y_old, strrepeatsub(a4, 2 * x_old + 1));
                         txtovrsub(vars, a1, a2, a3, x1 - x_old, y1 + y_old, strrepeatsub(a4, 2 * x_old + 1));
@@ -1259,14 +1259,14 @@ var Plugin0001;
                 txtpsetsub(vars, a1, a2, a3, x1 + x2, y1 - y2, a4);
                 txtpsetsub(vars, a1, a2, a3, x1 - x2, y1 + y2, a4);
                 txtpsetsub(vars, a1, a2, a3, x1 + x2, y1 + y2, a4);
-                if (drawflag == 1) {
+                if (drawflag) {
                     // 前回の足りない部分を水平線で追加表示
                     txtovrsub(vars, a1, a2, a3, x1 - x_old , y1 - y_old, strrepeatsub(a4, x_old - x2));
                     txtovrsub(vars, a1, a2, a3, x1 + x2 + 1, y1 - y_old, strrepeatsub(a4, x_old - x2));
                     txtovrsub(vars, a1, a2, a3, x1 - x_old , y1 + y_old, strrepeatsub(a4, x_old - x2));
                     txtovrsub(vars, a1, a2, a3, x1 + x2 + 1, y1 + y_old, strrepeatsub(a4, x_old - x2));
                 }
-                drawflag = 1;
+                drawflag = true;
                 x_old = x2;
                 y_old = y2;
             }
@@ -1279,11 +1279,11 @@ var Plugin0001;
             var rr, aa, bb;
 
             a1 = getvarname(param[0]);
-            a2 = Math.trunc(+param[1]);
-            a3 = Math.trunc(+param[2]);
-            x1 = Math.trunc(+param[3]);
-            y1 = Math.trunc(+param[4]);
-            r1 = Math.trunc(+param[5]);
+            a2 = Math.trunc(param[1]);
+            a3 = Math.trunc(param[2]);
+            x1 = Math.trunc(param[3]);
+            y1 = Math.trunc(param[4]);
+            r1 = Math.trunc(param[5]);
             a = (+param[6]);
             b = (+param[7]);
             a4 = String(param[8]);
@@ -1301,7 +1301,7 @@ var Plugin0001;
             if (!(r1 <= max_str_size)) {
                 throw new Error("処理する文字数が不正です。" + max_str_size + "以下である必要があります。");
             }
-            if (r1 < 0) { return true; }
+            if (r1 <= 0) { return true; }
 
             // ***** 描画処理 *****
             if (a < 1) { a = 1; }
@@ -1333,17 +1333,17 @@ var Plugin0001;
             var line_num;
 
             a1 = getvarname(param[0]);
-            a2 = Math.trunc(+param[1]);
-            a3 = Math.trunc(+param[2]);
+            a2 = Math.trunc(param[1]);
+            a3 = Math.trunc(param[2]);
             b1 = getvarname(param[3]);
             b2 = getvarname(param[4]);
-            b3 = Math.trunc(+param[5]);
-            b4 = Math.trunc(+param[6]);
+            b3 = Math.trunc(param[5]);
+            b4 = Math.trunc(param[6]);
             a4 = String(param[7]);
             if (param.length <= 8) {
                 b5 = 0;
             } else {
-                b5 = Math.trunc(+param[8]);
+                b5 = Math.trunc(param[8]);
             }
 
             // ***** NaN対策 *****
@@ -1372,10 +1372,10 @@ var Plugin0001;
                 // if (!vars.checkVar(b1 + "[" + j + "]")) { return true; }
                 // if (!vars.checkVar(b2 + "[" + j + "]")) { return true; }
 
-                // x[i] = Math.trunc(+vars[b1 + "[" + j + "]"]);
-                x[i] = Math.trunc(+vars.getVarValue(b1 + "[" + j + "]"));
-                // y[i] = Math.trunc(+vars[b2 + "[" + j + "]"]);
-                y[i] = Math.trunc(+vars.getVarValue(b2 + "[" + j + "]"));
+                // x[i] = Math.trunc(vars[b1 + "[" + j + "]"]);
+                x[i] = Math.trunc(vars.getVarValue(b1 + "[" + j + "]"));
+                // y[i] = Math.trunc(vars[b2 + "[" + j + "]"]);
+                y[i] = Math.trunc(vars.getVarValue(b2 + "[" + j + "]"));
                 j++;
 
                 // ***** エラーチェック *****
@@ -1415,12 +1415,12 @@ var Plugin0001;
             var line_start; // 線分開始フラグ
 
             a1 = getvarname(param[0]);
-            a2 = Math.trunc(+param[1]);
-            a3 = Math.trunc(+param[2]);
+            a2 = Math.trunc(param[1]);
+            a3 = Math.trunc(param[2]);
             b1 = getvarname(param[3]);
             b2 = getvarname(param[4]);
-            b3 = Math.trunc(+param[5]);
-            b4 = Math.trunc(+param[6]);
+            b3 = Math.trunc(param[5]);
+            b4 = Math.trunc(param[6]);
             a4 = String(param[7]);
 
             // ***** NaN対策 *****
@@ -1449,10 +1449,10 @@ var Plugin0001;
                 // if (!vars.checkVar(b1 + "[" + j + "]")) { return true; }
                 // if (!vars.checkVar(b2 + "[" + j + "]")) { return true; }
 
-                // x[i] = Math.trunc(+vars[b1 + "[" + j + "]"]);
-                x[i] = Math.trunc(+vars.getVarValue(b1 + "[" + j + "]"));
-                // y[i] = Math.trunc(+vars[b2 + "[" + j + "]"]);
-                y[i] = Math.trunc(+vars.getVarValue(b2 + "[" + j + "]"));
+                // x[i] = Math.trunc(vars[b1 + "[" + j + "]"]);
+                x[i] = Math.trunc(vars.getVarValue(b1 + "[" + j + "]"));
+                // y[i] = Math.trunc(vars[b2 + "[" + j + "]"]);
+                y[i] = Math.trunc(vars.getVarValue(b2 + "[" + j + "]"));
                 j++;
 
                 // ***** エラーチェック *****
@@ -1568,8 +1568,8 @@ var Plugin0001;
             var reg_exp;
 
             a1 = getvarname(param[0]);
-            a2 = Math.trunc(+param[1]);
-            a3 = Math.trunc(+param[2]);
+            a2 = Math.trunc(param[1]);
+            a3 = Math.trunc(param[2]);
             a4 = String(param[3]);
             a5 = String(param[4]);
 
@@ -1616,8 +1616,8 @@ var Plugin0001;
             var ch_tbl;
 
             a1 = getvarname(param[0]);
-            a2 = Math.trunc(+param[1]);
-            a3 = Math.trunc(+param[2]);
+            a2 = Math.trunc(param[1]);
+            a3 = Math.trunc(param[2]);
             a4 = String(param[3]);
             a5 = String(param[4]);
 
@@ -1680,7 +1680,7 @@ var Plugin0001;
             var num;
             var a1;
 
-            a1 = Math.trunc(+param[0]);
+            a1 = Math.trunc(param[0]);
 
             // ***** 音楽モードチェック *****
             if (aud_mode == 1 || aud_mode == 2) {
@@ -1703,7 +1703,7 @@ var Plugin0001;
             var num;
             var a1;
 
-            a1 = Math.trunc(+param[0]);
+            a1 = Math.trunc(param[0]);
 
             // ***** 音楽モードチェック *****
             if (aud_mode == 1 || aud_mode == 2) {
@@ -1738,7 +1738,7 @@ var Plugin0001;
                 rep = 50;
                 norm2 = 4;
             } else {
-                rep = Math.trunc(+param[8]);
+                rep = Math.trunc(param[8]);
                 if (param.length <= 9) {
                     norm2 = 4;
                 } else {
@@ -1768,7 +1768,7 @@ var Plugin0001;
             if (param.length <= 1) {
                 a2 = 0;
             } else {
-                a2 = Math.trunc(+param[1]);
+                a2 = Math.trunc(param[1]);
             }
             num = a1.charCodeAt(a2);
             return num;
@@ -1778,12 +1778,12 @@ var Plugin0001;
             var a1, a2, a3, a4;
             var pair_flag;
 
-            a1 = Math.trunc(+param[0]);
+            a1 = Math.trunc(param[0]);
             if (param.length <= 1) {
                 a2 = 0;
                 pair_flag = false;
             } else {
-                a2 = Math.trunc(+param[1]);
+                a2 = Math.trunc(param[1]);
                 pair_flag = true;
             }
             if (pair_flag) {
@@ -1902,7 +1902,7 @@ var Plugin0001;
             if (param.length <= 2) {
                 a3 = 0;
             } else {
-                a3 = Math.trunc(+param[2]); // 戻り値のタイプ指定
+                a3 = Math.trunc(param[2]); // 戻り値のタイプ指定
             }
 
             // ***** 10進数オブジェクトの生成 *****
@@ -1933,8 +1933,8 @@ var Plugin0001;
                 max_no = 0;
             } else {
                 range_use = true;
-                min_no = Math.trunc(+param[0]);
-                max_no = Math.trunc(+param[1]);
+                min_no = Math.trunc(param[0]);
+                max_no = Math.trunc(param[1]);
             }
             // ***** ミサイル空番号を検索 *****
             num = -1;
@@ -1942,7 +1942,7 @@ var Plugin0001;
                 if (missile.hasOwnProperty(mis_no)) {
                     mis = missile[mis_no];
                     if (range_use == false || (mis.no >= min_no && mis.no <= max_no)) {
-                        mis.useflag = Math.trunc(+vars.getVarValue(mis.useflag_var_name));
+                        mis.useflag = Math.trunc(vars.getVarValue(mis.useflag_var_name));
                         if (mis.useflag == 0) {
                             num = mis.no;
                         }
@@ -1955,8 +1955,8 @@ var Plugin0001;
             var num;
             var a1, a2, a3;
 
-            a1 = Math.trunc(+param[0]);
-            a2 = Math.trunc(+param[1]);
+            a1 = Math.trunc(param[0]);
+            a2 = Math.trunc(param[1]);
             if (a1 > a2) { a3 = a2; a2 = a1; a1 = a3; }
             // min から max までの整数の乱数を返す
             // (Math.round() を用いると、非一様分布になるのでNG)
@@ -1969,7 +1969,7 @@ var Plugin0001;
             var a1, a2;
 
             a1 = String(param[0]);
-            a2 = Math.trunc(+param[1]);
+            a2 = Math.trunc(param[1]);
 
             // ***** エラーチェック *****
             // if (a2 > max_str_size) {
@@ -1985,12 +1985,12 @@ var Plugin0001;
             var a1, a2, a3, a4;
 
             a1 = String(param[0]);
-            a2 = Math.trunc(+param[1]);
+            a2 = Math.trunc(param[1]);
             a3 = String(param[2]);
             if (param.length <= 3) {
                 a4 = 0;
             } else {
-                a4 = Math.trunc(+param[3]);
+                a4 = Math.trunc(param[3]);
             }
             if (a4 == 1) {
                 num = strovrsub2(a1, a2, a3);
@@ -2005,7 +2005,7 @@ var Plugin0001;
             var num;
             var a1;
 
-            a1 = Math.trunc(+param[0]);
+            a1 = Math.trunc(param[0]);
             num = a1.toString(2);
             return num;
         });
@@ -2034,7 +2034,7 @@ var Plugin0001;
             var num;
             var a1;
 
-            a1 = Math.trunc(+param[0]);
+            a1 = Math.trunc(param[0]);
             num = a1.toString(16);
             return num;
         });
@@ -2043,7 +2043,7 @@ var Plugin0001;
             var a1;
 
             a1 = (+param[0]);
-            num = Math.trunc(+a1);
+            num = Math.trunc(a1);
             return num;
         });
         add_one_func_tbl_B("tolower", 1, [], function (param, vars, can, ctx) {
@@ -2092,12 +2092,12 @@ var Plugin0001;
             var st1;
 
             a1 = getvarname(param[0]);
-            a2 = Math.trunc(+param[1]);
-            a3 = Math.trunc(+param[2]);
-            x1 = Math.trunc(+param[3]);
-            y1 = Math.trunc(+param[4]);
-            x2 = Math.trunc(+param[5]);
-            y2 = Math.trunc(+param[6]);
+            a2 = Math.trunc(param[1]);
+            a3 = Math.trunc(param[2]);
+            x1 = Math.trunc(param[3]);
+            y1 = Math.trunc(param[4]);
+            x2 = Math.trunc(param[5]);
+            y2 = Math.trunc(param[6]);
             a4 = String(param[7]);
 
             // ***** NaN対策 *****
@@ -2149,10 +2149,10 @@ var Plugin0001;
             var st1;
 
             a1 = getvarname(param[0]);
-            a2 = Math.trunc(+param[1]);
-            a3 = Math.trunc(+param[2]);
-            x1 = Math.trunc(+param[3]);
-            y1 = Math.trunc(+param[4]);
+            a2 = Math.trunc(param[1]);
+            a3 = Math.trunc(param[2]);
+            x1 = Math.trunc(param[3]);
+            y1 = Math.trunc(param[4]);
 
             // ***** NaN対策 *****
             a2 = a2 | 0;
@@ -2423,7 +2423,7 @@ var DigitCalc = (function () {
     function DigitCalc() { }
 
     // ***** 定数 *****
-    DigitCalc.MAX_DIGIT_LEN = 10000;  // 処理する10進数の最大桁数
+    DigitCalc.MAX_DIGIT_LEN = 10000; // 処理する10進数の最大桁数
 
     // ***** 10進数オブジェクトの生成(staticメソッド) *****
     // (数値文字列num_stから10進数オブジェクトxを生成する)
