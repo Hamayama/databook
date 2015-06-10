@@ -1,7 +1,7 @@
 // This file is encoded with UTF-8 without BOM.
 
 // sp_interpreter.js
-// 2015-6-10 v3.58
+// 2015-6-10 v3.59
 
 
 // SPALM Web Interpreter
@@ -633,7 +633,7 @@ var Interpreter;
     //  Date.now() が存在しないブラウザもあるのでその対策)
     if (!Date.now) { Date.now = function () { return new Date().getTime(); }; }
 
-    // ***** 少数切り捨て関数(ES6) *****
+    // ***** 小数切り捨て関数(ES6) *****
     Math.trunc = Math.trunc || function (x) {
         return (x < 0) ? Math.ceil(x) : Math.floor(x);
     };
@@ -3267,7 +3267,7 @@ var Interpreter;
                     // ***** 1文字取り出す(iの加算なし) *****
                     ch = src.charAt(i);
                     if (i + 1 < src_len) { ch2 = src.charAt(i + 1); } else { ch2 = ""; }
-                    // ***** 少数点のチェック *****
+                    // ***** 小数点のチェック *****
                     if (ch == "." && isDigit(ch2)) { i++; dot_count++; continue; }
                     // ***** 数値のチェック *****
                     if (isDigit(ch)) { i++; } else { break; }

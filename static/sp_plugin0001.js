@@ -57,7 +57,7 @@ var Plugin0001;
     //  obj.hasOwnProperty(prop) を hasOwn.call(obj, prop) に置換した)
     var hasOwn = Object.prototype.hasOwnProperty;
 
-    // ***** 少数切り捨て関数(ES6) *****
+    // ***** 小数切り捨て関数(ES6) *****
     Math.trunc = Math.trunc || function (x) {
         return (x < 0) ? Math.ceil(x) : Math.floor(x);
     };
