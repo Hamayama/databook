@@ -1,7 +1,7 @@
 // This file is encoded with UTF-8 without BOM.
 
 // sp_interpreter.js
-// 2015-6-10 v3.59
+// 2015-6-12 v3.60
 
 
 // SPALM Web Interpreter
@@ -1409,9 +1409,10 @@ var Interpreter;
                     // break;
                 case 50: // call
                     // ***** 引数の取得 *****
-                    param_num = stack.pop();
+                    param_num = code[pc++];
+                    // param = stack.splice(stack.length - param_num, param_num);
                     param = [];
-                    for(i = 0; i < param_num; i++) {
+                    for (i = 0; i < param_num; i++) {
                         param[param_num - i - 1] = stack.pop();
                     }
                     // ***** 関数名の取得 *****
@@ -1426,11 +1427,14 @@ var Interpreter;
                     // ***** 入力待ち状態のチェック *****
                     if (!(input_flag || keyinput_flag)) {
                         // ***** 引数の取得 *****
-                        param_num = stack.pop();
+                        param_num = code[pc++];
+                        // param = stack.splice(stack.length - param_num, param_num);
                         param = [];
-                        for(i = 0; i < param_num; i++) {
+                        for (i = 0; i < param_num; i++) {
                             param[param_num - i - 1] = stack.pop();
                         }
+                    } else {
+                        pc++;
                     }
                     // ***** 関数名の取得 *****
                     func_name = stack.pop();
@@ -1445,13 +1449,14 @@ var Interpreter;
                     }
                     // ***** 同じ命令を繰り返す *****
                     stack.push(func_name);
-                    pc--;
+                    pc -= 2;
                     break;
                 case 52: // calladdfunc
                     // ***** 引数の取得 *****
-                    param_num = stack.pop();
+                    param_num = code[pc++];
+                    // param = stack.splice(stack.length - param_num, param_num);
                     param = [];
-                    for(i = 0; i < param_num; i++) {
+                    for (i = 0; i < param_num; i++) {
                         param[param_num - i - 1] = stack.pop();
                     }
                     // ***** 関数名の取得 *****
@@ -1467,9 +1472,10 @@ var Interpreter;
                     break;
                 case 53: // calluser
                     // ***** 引数の取得 *****
-                    param_num = stack.pop();
+                    param_num = code[pc++];
+                    // param = stack.splice(stack.length - param_num, param_num);
                     param = [];
-                    for(i = 0; i < param_num; i++) {
+                    for (i = 0; i < param_num; i++) {
                         param[param_num - i - 1] = stack.pop();
                     }
                     // ***** 関数名の取得 *****
@@ -1489,48 +1495,39 @@ var Interpreter;
                     funccall_info.func_end = func[func_name + "\\end"];
                     funccall_stack.push(funccall_info);
                     // ***** 関数の呼び出し *****
-                    pc = func[func_name];
+                    pc = funccall_info.func_start;
                     break;
                 case 54: // gotouser
                     // ***** 引数の取得 *****
-                    param_num = stack.pop();
+                    param_num = code[pc++];
+                    // param = stack.splice(stack.length - param_num, param_num);
                     param = [];
-                    for(i = 0; i < param_num; i++) {
+                    for (i = 0; i < param_num; i++) {
                         param[param_num - i - 1] = stack.pop();
                     }
                     // ***** 関数名の取得 *****
                     func_name = stack.pop();
                     func_name = toglobal(func_name);
-                    // ***** 関数の存在チェック *****
-                    // if (!func.hasOwnProperty(func_name)) {
-                    if (!hasOwn.call(func, func_name)) {
-                        throw new Error("関数 '" + func_name + "' の呼び出しに失敗しました(関数が未定義もしくはユーザ定義関数ではない等)。");
-                    }
                     // ***** 関数内のとき *****
                     if (funccall_stack.length > 0) {
-
-                        // (コールスタックを増加させないで関数を呼び出す)
-
+                        // ***** 関数の存在チェック *****
+                        // if (!func.hasOwnProperty(func_name)) {
+                        if (!hasOwn.call(func, func_name)) {
+                            throw new Error("関数 '" + func_name + "' の呼び出しに失敗しました(関数が未定義もしくはユーザ定義関数ではない等)。");
+                        }
+                        // ***** コールスタックを増加させないで関数を呼び出す *****
                         // ***** ローカル変数をクリア *****
                         vars.clearLocalVars();
                         // ***** 関数呼び出し情報を更新 *****
                         funccall_stack[funccall_stack.length - 1].func_start = func[func_name];
                         funccall_stack[funccall_stack.length - 1].func_end = func[func_name + "\\end"];
                         // ***** 関数の呼び出し *****
-                        pc = func[func_name];
+                        pc = funccall_stack[funccall_stack.length - 1].func_start;
                         break;
                     }
-                    // ***** ローカル変数を生成 *****
-                    vars.makeLocalScope();
-                    // ***** 関数呼び出し情報の生成 *****
-                    funccall_info = {};
-                    funccall_info.func_back = pc;
-                    funccall_info.func_start = func[func_name];
-                    funccall_info.func_end = func[func_name + "\\end"];
-                    funccall_stack.push(funccall_info);
-                    // ***** 関数の呼び出し *****
-                    pc = func[func_name];
-                    break;
+                    // ***** ここでは使用不可 *****
+                    throw new Error("funcgoto はユーザ定義の関数内でなければ使用できません。");
+                    // break;
                 case 55: // loadparam
                     if (param.length > 0) {
                         num = param.shift();
@@ -1866,11 +1863,10 @@ var Interpreter;
                     }
                     match2(")", i++);
                 }
-                // ***** 引数の数を設定 *****
-                code_push("storenum", debugpos1, i);
-                code_push(param_num, debugpos1, i);
                 // ***** 関数の呼び出し *****
                 code_push("gotouser", debugpos1, i);
+                // ***** 引数の数を設定 *****
+                code_push(param_num, debugpos1, i);
                 match2(")", i++);
                 continue;
             }
@@ -2733,13 +2729,13 @@ var Interpreter;
             code_push('"' + func_name + '"', debugpos1, i);
             // ***** 組み込み変数のとき *****
             if (func_type == 1 && func_tbl[func_name].param_num == -1) {
-                code_push("store0", debugpos1, i);
                 code_push("call", debugpos1, i);
+                code_push(0, debugpos1, i);
                 return i;
             }
             if (func_type == 2 && addfunc_tbl[func_name].param_num == -1) {
-                code_push("store0", debugpos1, i);
                 code_push("calladdfunc", debugpos1, i);
+                code_push(0, debugpos1, i);
                 return i;
             }
             // ***** 組み込み関数のとき *****
@@ -2769,11 +2765,8 @@ var Interpreter;
             if ((func_type == 1 && param_num < func_tbl[func_name].param_num) ||
                 (func_type == 2 && param_num < addfunc_tbl[func_name].param_num)) {
                 debugpos2 = i;
-                throw new Error(func_name + "() の引数の数が足りません。");
+                throw new Error(func_name + " の引数の数が足りません。");
             }
-            // ***** 引数の数を設定 *****
-            code_push("storenum", debugpos1, i);
-            code_push(param_num, debugpos1, i);
             // ***** 関数の呼び出し *****
             if (func_type == 1) {
                 if (func_name == "input" || func_name == "keyinput") {
@@ -2784,6 +2777,8 @@ var Interpreter;
             } else {
                 code_push("calladdfunc", debugpos1, i);
             }
+            // ***** 引数の数を設定 *****
+            code_push(param_num, debugpos1, i);
             // ***** 戻り値を返す *****
             return i;
         }
@@ -2833,11 +2828,10 @@ var Interpreter;
                     }
                     match2(")", i++);
                 }
-                // ***** 引数の数を設定 *****
-                code_push("storenum", debugpos1, i);
-                code_push(param_num, debugpos1, i);
                 // ***** 関数の呼び出し *****
                 code_push("calluser", debugpos1, i);
+                // ***** 引数の数を設定 *****
+                code_push(param_num, debugpos1, i);
                 // ***** 戻り値を返す *****
                 return i;
             }
@@ -4872,6 +4866,11 @@ var Interpreter;
                 vars.setVarValue(a2, a1);
             }
             return true;
+        });
+        make_one_func_tbl_A("funcgoto", 1, [], function (param) {
+            // ***** ここでは使用不可 *****
+            throw new Error("funcgoto は戻り値を使用できません。");
+            // return true;
         });
         make_one_func_tbl_A("gc", 0, [], function (param) {
             // ***** NOP *****
