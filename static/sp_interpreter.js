@@ -1,7 +1,7 @@
 // This file is encoded with UTF-8 without BOM.
 
 // sp_interpreter.js
-// 2015-6-12 v3.60
+// 2015-6-15 v3.61
 
 
 // SPALM Web Interpreter
@@ -493,6 +493,7 @@ var Interpreter;
     var can2_height_init = 18;  // ソフトキー表示エリアの高さ(px)
     var can2_forecolor_init = "#ffffff"; // ソフトキー表示エリアの文字色の初期値
     var can2_backcolor_init = "#707070"; // ソフトキー表示エリアの背景色の初期値
+    var can2_font_size_init = 16;        // ソフトキー表示エリアのフォントサイズ(px)の初期値
     var can;                    // 現在の描画先のCanvas要素
     var ctx;                    // 現在の描画先のCanvasコンテキスト
     var ctx_originx;            // 座標系の原点座標X(px)
@@ -510,6 +511,7 @@ var Interpreter;
     // ***** FlashCanvas Pro (将来用) で monospace が横長のフォントになるので削除 *****
     // var font_family = "'MS Gothic', Osaka-Mono, monospace"; // フォント指定
     var font_family = "'MS Gothic', Osaka-Mono"; // フォント指定
+    var font_size_set = [12, 16, 24, 30]; // フォントサイズの設定値(px)(最小,小,中,大の順)
 
     var src;                    // ソース
     var symbol = [];            // シンボル          (配列)
@@ -841,7 +843,8 @@ var Interpreter;
         ctx1.clearRect(0, 0, can1.width, can1.height);
         ctx2.clearRect(0, 0, can2.width, can2.height);
         // ***** フォントサイズの初期化 *****
-        font_size = 16;
+        font_size = font_size_set[1];
+        ctx2.font = can2_font_size_init + "px " + font_family;
         // ***** Canvasの各設定の初期化 *****
         init_canvas_setting(ctx1);
         // ***** 現在の描画先にセット *****
@@ -3564,6 +3567,8 @@ var Interpreter;
     // ***** Canvasの各設定の初期化 *****
     function init_canvas_setting(ctx) {
         // ***** フォント設定 *****
+        // (フォントサイズだけはリセットしない(過去との互換性維持のため))
+        // font_size = font_size_set[1];
         ctx.font = font_size + "px " + font_family;
         ctx.textAlign = "left";
         ctx.textBaseline = "top";
@@ -3584,7 +3589,7 @@ var Interpreter;
         ctx_scaley = 1;
         ctx_scaleox = 0;
         ctx_scaleoy = 0;
-        ctx.setTransform(1, 0, 0, 1, 0, 0);      // 座標系を初期化
+        ctx.setTransform(1, 0, 0, 1, 0, 0); // 座標系を初期化
         // ***** 現在状態を保存 *****
         ctx.save();
     }
@@ -3609,8 +3614,8 @@ var Interpreter;
         // ***** 線の幅設定 *****
         ctx.lineWidth = line_width;
         // ***** 座標系設定 *****
-        ctx.setTransform(1, 0, 0, 1, 0, 0);      // 座標系を元に戻す
-        set_canvas_axis(ctx);                    // 座標系を再設定
+        ctx.setTransform(1, 0, 0, 1, 0, 0); // 座標系を元に戻す
+        set_canvas_axis(ctx);               // 座標系を再設定
         // ***** 現在状態を再び保存 *****
         ctx.save();
     }
@@ -3657,9 +3662,7 @@ var Interpreter;
 
     // ***** ソフトキー表示 *****
     function disp_softkey() {
-        ctx2.fillStyle = can2_backcolor_init;
-        ctx2.fillRect(0, 0, can2.width, can2.height);
-        ctx2.font = "16px " + font_family;
+        ctx2.clearRect(0, 0, can2.width, can2.height);
         ctx2.fillStyle = can2_forecolor_init;
         ctx2.textAlign = "left";
         ctx2.textBaseline = "top";
@@ -4380,9 +4383,9 @@ var Interpreter;
         make_one_func_tbl_A("cls", 0, [], function (param) {
             // ***** 画面クリア *****
             // ctx.clearRect(-ctx_originx, -ctx_originy, can.width, can.height);
-            ctx.setTransform(1, 0, 0, 1, 0, 0);      // 座標系を元に戻す
+            ctx.setTransform(1, 0, 0, 1, 0, 0); // 座標系を元に戻す
             ctx.clearRect(0, 0, can.width, can.height);  // 画面クリア
-            set_canvas_axis(ctx);                    // 座標系を再設定
+            set_canvas_axis(ctx);               // 座標系を再設定
             return true;
         });
         make_one_func_tbl_A("col", 1, [], function (param) {
@@ -4849,11 +4852,11 @@ var Interpreter;
             ctx.closePath();
             // 以下は不要になったもよう(Chrome v27)
             // // ***** Chrome v23 でカーブを描画しない件の対策 *****
-            // ctx.rotate(45 * Math.PI / 180);          // 回転させるとなぜか描画する
+            // ctx.rotate(45 * Math.PI / 180);     // 回転させるとなぜか描画する
             ctx.fill();
             // 以下は不要になったもよう(Chrome v27)
-            // ctx.setTransform(1, 0, 0, 1, 0, 0);      // 座標系を元に戻す
-            // set_canvas_axis(ctx);                    // 座標系を再設定
+            // ctx.setTransform(1, 0, 0, 1, 0, 0); // 座標系を元に戻す
+            // set_canvas_axis(ctx);               // 座標系を再設定
             return true;
         });
         make_one_func_tbl_A("funccall", 1, [1], function (param) {
@@ -5107,8 +5110,8 @@ var Interpreter;
             // ***** 座標系の原点座標設定 *****
             ctx_originx = a1;
             ctx_originy = a2;
-            ctx.setTransform(1, 0, 0, 1, 0, 0);      // 座標系を元に戻す
-            set_canvas_axis(ctx);                    // 座標系を再設定
+            ctx.setTransform(1, 0, 0, 1, 0, 0); // 座標系を元に戻す
+            set_canvas_axis(ctx);               // 座標系を再設定
             return true;
         });
         make_one_func_tbl_A("oval", 6, [], function (param) {
@@ -5182,8 +5185,8 @@ var Interpreter;
             ctx_rotate = a1 * Math.PI / 180;
             ctx_rotateox = a2;
             ctx_rotateoy = a3;
-            ctx.setTransform(1, 0, 0, 1, 0, 0);      // 座標系を元に戻す
-            set_canvas_axis(ctx);                    // 座標系を再設定
+            ctx.setTransform(1, 0, 0, 1, 0, 0); // 座標系を元に戻す
+            set_canvas_axis(ctx);               // 座標系を再設定
             return true;
         });
         make_one_func_tbl_A("round", 6, [], function (param) {
@@ -5211,11 +5214,11 @@ var Interpreter;
             ctx.closePath();
             // 以下は不要になったもよう(Chrome v27)
             // // ***** Chrome v23 でカーブを描画しない件の対策 *****
-            // ctx.rotate(45 * Math.PI / 180);          // 回転させるとなぜか描画する
+            // ctx.rotate(45 * Math.PI / 180);     // 回転させるとなぜか描画する
             ctx.stroke();
             // 以下は不要になったもよう(Chrome v27)
-            // ctx.setTransform(1, 0, 0, 1, 0, 0);      // 座標系を元に戻す
-            // set_canvas_axis(ctx);                    // 座標系を再設定
+            // ctx.setTransform(1, 0, 0, 1, 0, 0); // 座標系を元に戻す
+            // set_canvas_axis(ctx);               // 座標系を再設定
             return true;
         });
         make_one_func_tbl_A("save", 1, [], function (param) {
@@ -5258,8 +5261,8 @@ var Interpreter;
             ctx_scaley = a2;
             ctx_scaleox = a3;
             ctx_scaleoy = a4;
-            ctx.setTransform(1, 0, 0, 1, 0, 0);      // 座標系を元に戻す
-            set_canvas_axis(ctx);                    // 座標系を再設定
+            ctx.setTransform(1, 0, 0, 1, 0, 0); // 座標系を元に戻す
+            set_canvas_axis(ctx);               // 座標系を再設定
             return true;
         });
         make_one_func_tbl_A("setfont", 1, [], function (param) {
@@ -5267,11 +5270,11 @@ var Interpreter;
 
             a1 = String(param[0]).toUpperCase();
             switch (a1) {
-                case "L": font_size = 30; break;
-                case "M": font_size = 24; break;
-                case "S": font_size = 16; break;
-                case "T": font_size = 12; break;
-                default: font_size = 24; break;
+                case "L": font_size = font_size_set[3]; break;
+                case "M": font_size = font_size_set[2]; break;
+                case "S": font_size = font_size_set[1]; break;
+                case "T": font_size = font_size_set[0]; break;
+                default: font_size = font_size_set[1]; break;
             }
             ctx.font = font_size + "px " + font_family;
             return true;
@@ -5357,7 +5360,7 @@ var Interpreter;
             a1 = Math.trunc(param[0]);
             sp_compati_mode = a1;
             if (sp_compati_mode == 1) {
-                font_size = 12;
+                font_size = font_size_set[0];
                 ctx.font = font_size + "px " + font_family;
                 use_local_vars = false;
             }
