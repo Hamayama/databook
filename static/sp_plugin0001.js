@@ -21,7 +21,7 @@
 //   外部クラス一覧
 //     DigitCalc   10進数計算用クラス(staticクラス)
 //     ConvZenHan  文字列の全角半角変換用クラス(staticクラス)
-//     FloodFill   領域塗りつぶし用クラス
+//     FloodFill   領域塗りつぶし用クラス(staticクラス)
 //     Missile     ミサイル用クラス
 //     MMLPlayer   MML音楽演奏用クラス
 //     SandSim     砂シミュレート用クラス
@@ -73,7 +73,7 @@ var Plugin0001;
             stimg = {};
             missile = {};
             audplayer = {};
-            sand_obj = null;
+            sand_obj = {};
             aud_mode = 1;
         });
         // ***** 実行後処理を登録 *****
@@ -316,6 +316,16 @@ var Plugin0001;
             // for (var prop_name in missile) { DebugShow(prop_name + " "); } DebugShow("\n");
             return true;
         });
+        add_one_func_tbl_A("dissand", 1, [], function (param, vars, can, ctx) {
+            var a1;
+
+            a1 = Math.trunc(param[0]);
+            if (sand_obj.hasOwnProperty(a1)) {
+                delete sand_obj[a1];
+            }
+            // for (var prop_name in sand_obj) { DebugShow(prop_name + " "); } DebugShow("\n");
+            return true;
+        });
         add_one_func_tbl_A("disstrimg", 1, [], function (param, vars, can, ctx) {
             var a1;
             var ch;
@@ -458,7 +468,6 @@ var Plugin0001;
             var x1, y1;
             var ret_obj = {};
             var col, threshold, paint_mode;
-            var ffill_obj = {};
 
             a1 = (+param[0]); // X
             a2 = (+param[1]); // Y
@@ -482,10 +491,9 @@ var Plugin0001;
             x1 = ret_obj.x;
             y1 = ret_obj.y;
             // ***** 領域塗りつぶし *****
-            ffill_obj = new FloodFill(can, ctx, x1, y1, threshold, paint_mode, col, 255);
-            ctx.setTransform(1, 0, 0, 1, 0, 0);      // 座標系を元に戻す
-            ffill_obj.fill();  // 塗りつぶし処理
-            set_canvas_axis(ctx);                    // 座標系を再設定
+            ctx.setTransform(1, 0, 0, 1, 0, 0); // 座標系を元に戻す
+            FloodFill.fill(can, ctx, x1, y1, threshold, paint_mode, col, 255);
+            set_canvas_axis(ctx);               // 座標系を再設定
             return true;
         });
         add_one_func_tbl_A("fpoly", 4, [0, 1], function (param, vars, can, ctx) {
@@ -736,42 +744,56 @@ var Plugin0001;
             ctx.stroke();
             return true;
         });
-        add_one_func_tbl_A("sandmake", 10, [], function (param, vars, can, ctx) {
-            var a1, a2, a3, a4;
+        add_one_func_tbl_A("sandmake", 11, [], function (param, vars, can, ctx) {
+            var a1;
             var x1, y1;
             var w1, h1;
+            var r1, r2, r3, r4;
             var col, threshold, border_mode;
 
-            x1 = Math.trunc(param[0]);
-            y1 = Math.trunc(param[1]);
-            w1 = Math.trunc(param[2]);
-            h1 = Math.trunc(param[3]);
-            a1 = (+param[4]);
-            a2 = (+param[5]);
-            a3 = (+param[6]);
-            a4 = (+param[7]);
-            col = Math.trunc(param[8]);
-            threshold = Math.trunc(param[9]);
-            if (param.length <= 10) {
+            a1 = Math.trunc(param[0]);
+            x1 = Math.trunc(param[1]);
+            y1 = Math.trunc(param[2]);
+            w1 = Math.trunc(param[3]);
+            h1 = Math.trunc(param[4]);
+            r1 = (+param[5]);
+            r2 = (+param[6]);
+            r3 = (+param[7]);
+            r4 = (+param[8]);
+            col = Math.trunc(param[9]);
+            threshold = Math.trunc(param[10]);
+            if (param.length <= 11) {
                 border_mode = 1;
             } else {
-                border_mode = Math.trunc(param[10]);
+                border_mode = Math.trunc(param[11]);
             }
-            sand_obj = new SandSim(can, ctx, x1, y1, w1, h1, a1, a2, a3, a4, col, threshold, border_mode);
-            sand_obj.maketable();
+            sand_obj[a1] = new SandSim(can, ctx, x1, y1, w1, h1, r1, r2, r3, r4, col, threshold, border_mode);
+            sand_obj[a1].maketable();
             // loop_nocount_flag = true;
             set_loop_nocount();
             return true;
         });
-        add_one_func_tbl_A("sandmove", 0, [], function (param, vars, can, ctx) {
-            if (sand_obj) { sand_obj.move(); }
+        add_one_func_tbl_A("sandmove", 1, [], function (param, vars, can, ctx) {
+            var a1;
+
+            a1 = Math.trunc(param[0]);
+            if (sand_obj.hasOwnProperty(a1)) {
+                sand_obj[a1].move();
+            } else {
+                throw new Error("砂シミュレート用オブジェクト" + a1 + " は作成されていません。");
+            }
             return true;
         });
-        add_one_func_tbl_A("sanddraw", 0, [], function (param, vars, can, ctx) {
-            if (sand_obj) {
-                ctx.setTransform(1, 0, 0, 1, 0, 0);      // 座標系を元に戻す
-                sand_obj.draw();
-                set_canvas_axis(ctx);                    // 座標系を再設定
+        add_one_func_tbl_A("sanddraw", 1, [], function (param, vars, can, ctx) {
+            var a1;
+
+            a1 = Math.trunc(param[0]);
+            if (sand_obj.hasOwnProperty(a1)) {
+                ctx.setTransform(1, 0, 0, 1, 0, 0); // 座標系を元に戻す
+                sand_obj[a1].draw();
+                set_canvas_axis(ctx);               // 座標系を再設定
+            } else {
+                throw new Error("砂シミュレート用オブジェクト" + a1 + " は作成されていません。");
             }
             return true;
         });
@@ -1201,7 +1223,7 @@ var Plugin0001;
             var a1, a2, a3, a4;
             var x1, y1, x2, y2;
             var r1, a, b;
-            var rr, aa, bb;
+            var rr, aaxx, bb;
             var drawflag;
             var x_old, y_old;
 
@@ -1233,27 +1255,16 @@ var Plugin0001;
             // ***** 描画処理 *****
             if (a < 1) { a = 1; }
             if (b < 1) { b = 1; }
-            aa = a * a;
             bb = b * b;
             rr = r1 * r1;
-            x2 = r1;
             drawflag = false;
             x_old = 0;
             y_old = 0;
             for (y2 = 0; y2 <= r1; y2++) {
-                // 円の内側になるまでループ
-                while (aa * x2 * x2 + bb * y2 * y2 >= rr) {
-                    x2--;
-                    if (x2 < 0) { break; }
-                }
-                if (x2 < 0) {
-                    if (drawflag) {
-                        // 上下の最後の部分を水平線で追加表示
-                        txtovrsub(vars, a1, a2, a3, x1 - x_old, y1 - y_old, strrepeatsub(a4, 2 * x_old + 1));
-                        txtovrsub(vars, a1, a2, a3, x1 - x_old, y1 + y_old, strrepeatsub(a4, 2 * x_old + 1));
-                    }
-                    break;
-                }
+                // 円周のx座標を計算(円の内側になるように調整)
+                aaxx = rr - bb * y2 * y2;
+                x2 = (aaxx > 0) ? Math.ceil((Math.sqrt(aaxx) / a) - 1) : -1;
+                if (x2 < 0) { break; }
                 // 両端の点を表示
                 txtpsetsub(vars, a1, a2, a3, x1 - x2, y1 - y2, a4);
                 txtpsetsub(vars, a1, a2, a3, x1 + x2, y1 - y2, a4);
@@ -1270,13 +1281,18 @@ var Plugin0001;
                 x_old = x2;
                 y_old = y2;
             }
+            if (drawflag) {
+                // 上下の最後の部分を水平線で追加表示
+                txtovrsub(vars, a1, a2, a3, x1 - x_old, y1 - y_old, strrepeatsub(a4, 2 * x_old + 1));
+                txtovrsub(vars, a1, a2, a3, x1 - x_old, y1 + y_old, strrepeatsub(a4, 2 * x_old + 1));
+            }
             return true;
         });
         add_one_func_tbl_A("txtfcircle", 9, [0], function (param, vars, can, ctx) {
             var a1, a2, a3, a4;
             var x1, y1, x2, y2;
             var r1, a, b;
-            var rr, aa, bb;
+            var rr, aaxx, bb;
 
             a1 = getvarname(param[0]);
             a2 = Math.trunc(param[1]);
@@ -1306,16 +1322,12 @@ var Plugin0001;
             // ***** 描画処理 *****
             if (a < 1) { a = 1; }
             if (b < 1) { b = 1; }
-            aa = a * a;
             bb = b * b;
             rr = r1 * r1;
-            x2 = r1;
             for (y2 = 0; y2 <= r1; y2++) {
-                // 円の内側になるまでループ
-                while (aa * x2 * x2 + bb * y2 * y2 >= rr) {
-                    x2--;
-                    if (x2 < 0) { break; }
-                }
+                // 円周のx座標を計算(円の内側になるように調整)
+                aaxx = rr - bb * y2 * y2;
+                x2 = (aaxx > 0) ? Math.ceil((Math.sqrt(aaxx) / a) - 1) : -1;
                 if (x2 < 0) { break; }
                 // 両端を結ぶ水平線を表示
                 txtovrsub(vars, a1, a2, a3, x1 - x2, y1 - y2, strrepeatsub(a4, 2 * x2 + 1));
@@ -2501,7 +2513,7 @@ var DigitCalc = (function () {
         // ***** 数値を各桁に分解する *****
         arr_st = x.str.split("");
         x.digit_len = arr_st.length;
-        // x.digit = [];
+        x.digit = [];
         for (i = 0; i < x.digit_len; i++) {
             x.digit[i] = (+arr_st[x.digit_len - i - 1]);
         }
@@ -2515,7 +2527,14 @@ var DigitCalc = (function () {
         var arr_st;
 
         // ***** エラーチェック *****
-        if (!x.digit_len) { return; }
+        if (!x.digit_len) {
+            // ( NaN 等もあるのでここで初期化はしない)
+            // x.sign = "+";
+            // x.str = "";
+            // x.digit = [];
+            // x.digit_len = 0;
+            return;
+        }
         // ***** 数値の各桁を文字列に変換 *****
         arr_st = [];
         for (i = 0; i < x.digit_len; i++) {
@@ -2528,14 +2547,27 @@ var DigitCalc = (function () {
         if (ret && ret[1]) { x.str = ret[1]; } else { x.str = "0"; }
         // ***** エラーチェック *****
         if (x.str.length > DigitCalc.MAX_DIGIT_LEN) {
+            // x.sign = "+";
             x.str = "Infinity";
-            // return;
+            x.digit = [];
+            x.digit_len = 0;
+            return;
+        }
+        // ***** 数値を各桁に再度分解する *****
+        // (不要な桁を削除するため)
+        arr_st = x.str.split("");
+        x.digit_len = arr_st.length;
+        x.digit = [];
+        for (i = 0; i < x.digit_len; i++) {
+            x.digit[i] = (+arr_st[x.digit_len - i - 1]);
         }
     };
 
     // ***** 10進数オブジェクトから符号付文字列を取得する(staticメソッド) *****
     DigitCalc.get_digit_obj_signed_str = function (x) {
-        if (x.sign == "-" && x.str != "0" && x.str != "NaN") {
+        // ( -0 もありとする)
+        // if (x.sign == "-" && x.str != "0" && x.str != "NaN") {
+        if (x.sign == "-" && x.str != "NaN") {
             return ("-" + x.str);
         }
         return x.str;
@@ -2545,13 +2577,16 @@ var DigitCalc = (function () {
     DigitCalc.add_digit_obj = function (x, y, z) {
         var i;
 
+        // ***** 結果の初期化 *****
+        z.sign = "+";
+        z.str = "NaN";
+        z.digit = [];
+        z.digit_len = 0;
         // ***** エラーチェック *****
         if (x.str == "NaN" || y.str == "NaN") {
-            z.str = "NaN";
             return;
         }
         if (x.str == "Infinity" && y.str == "Infinity" && x.sign != y.sign) {
-            z.str = "NaN";
             return;
         }
         if (x.str == "Infinity") {
@@ -2562,6 +2597,13 @@ var DigitCalc = (function () {
         if (y.str == "Infinity") {
             z.sign = y.sign;
             z.str = "Infinity";
+            return;
+        }
+        if (x.str == "0" && y.str == "0") {
+            z.sign = (x.sign == "-" && y.sign == "-") ? "-" : "+";
+            z.str = "0";
+            z.digit = [0];
+            z.digit_len = 1;
             return;
         }
         // ***** 計算の簡略化のため各桁に符号を付ける *****
@@ -2653,22 +2695,25 @@ var DigitCalc = (function () {
         var i, j;
         var carry_num;
 
+        // ***** 結果の初期化 *****
+        z.sign = "+";
+        z.str = "NaN";
+        z.digit = [];
+        z.digit_len = 0;
         // ***** エラーチェック *****
         if (x.str == "NaN" || y.str == "NaN") {
-            z.str = "NaN";
             return;
         }
         if ((x.str == "Infinity" && y.str == "0") || (x.str == "0" && y.str == "Infinity")) {
-            z.str = "NaN";
             return;
         }
         if (x.str == "Infinity" || y.str == "Infinity") {
-            if (x.sign == y.sign) { z.sign = "+"; } else { z.sign = "-"; }
+            z.sign = (x.sign == y.sign) ? "+" : "-";
             z.str = "Infinity";
             return;
         }
         if (x.digit_len + y.digit_len - 1 > DigitCalc.MAX_DIGIT_LEN) {
-            if (x.sign == y.sign) { z.sign = "+"; } else { z.sign = "-"; }
+            z.sign = (x.sign == y.sign) ? "+" : "-";
             z.str = "Infinity";
             return;
         }
@@ -2689,7 +2734,7 @@ var DigitCalc = (function () {
             }
         }
         // ***** 結果の符号を求める *****
-        if (x.sign == y.sign) { z.sign = "+"; } else { z.sign = "-"; }
+        z.sign = (x.sign == y.sign) ? "+" : "-";
         // ***** 10進数オブジェクトの文字列を更新する *****
         DigitCalc.update_digit_obj_str(z);
     };
@@ -2700,33 +2745,42 @@ var DigitCalc = (function () {
         var minus_flag;
         var minus_count;
 
+        // ***** 結果の初期化 *****
+        z.sign = "+";
+        z.str = "NaN";
+        z.digit = [];
+        z.digit_len = 0;
+        z2.sign = "+";
+        z2.str = "NaN";
+        z2.digit = [];
+        z2.digit_len = 0;
         // ***** エラーチェック *****
         if (x.str == "NaN" || y.str == "NaN") {
-            z.str = "NaN";
             return;
         }
         if (x.str == "Infinity" && y.str == "Infinity") {
-            z.str = "NaN";
             return;
         }
         if (x.str == "Infinity") {
-            if (x.sign == y.sign) { z.sign = "+"; } else { z.sign = "-"; }
+            z.sign = (x.sign == y.sign) ? "+" : "-";
             z.str = "Infinity";
             return;
         }
         if (y.str == "Infinity") {
-            z.sign = "+";
+            z.sign = (x.sign == y.sign) ? "+" : "-";
             z.str = "0";
+            z.digit = [0];
+            z.digit_len = 1;
             z2.sign = x.sign;
             z2.str = x.str;
+            z2.digit = x.digit.slice(0);
+            z2.digit_len = x.digit_len;
             return;
         }
         // ***** 0除算チェック *****
         if (y.str == "0") {
-            if (x.str == "0") {
-                z.str = "NaN";
-            } else {
-                if (x.sign == y.sign) { z.sign = "+"; } else { z.sign = "-"; }
+            if (x.str != "0") {
+                z.sign = (x.sign == y.sign) ? "+" : "-";
                 z.str = "Infinity";
             }
             return;
@@ -2773,7 +2827,7 @@ var DigitCalc = (function () {
             z.digit[i] = minus_count;
         }
         // ***** 結果の符号を求める *****
-        if (x.sign == y.sign) { z.sign = "+"; } else { z.sign = "-"; }
+        z.sign = (x.sign == y.sign) ? "+" : "-";
         z2.sign = x.sign;
         // ***** 10進数オブジェクトの文字列を更新する *****
         DigitCalc.update_digit_obj_str(z);
@@ -2790,6 +2844,24 @@ var ConvZenHan = (function () {
     // ***** (staticクラスのため未使用) *****
     function ConvZenHan() { }
 
+    // ***** 内部変数 *****
+    var alphaToZenkaku = {};       // アルファベット全角変換テーブル(連想配列オブジェクト)
+    var alphaToHankaku = {};       // アルファベット半角変換テーブル(連想配列オブジェクト)
+    var numberToZenkaku = {};      // 数字全角変換テーブル(連想配列オブジェクト)
+    var numberToHankaku = {};      // 数字半角変換テーブル(連想配列オブジェクト)
+    var punctuationToZenkaku = {}; // 記号全角変換テーブル(連想配列オブジェクト)
+    var punctuationToHankaku = {}; // 記号半角変換テーブル(連想配列オブジェクト)
+    var spaceToZenkaku = {};       // スペース全角変換テーブル(連想配列オブジェクト)
+    var spaceToHankaku = {};       // スペース半角変換テーブル(連想配列オブジェクト)
+    var katakanaToZenkaku = {};    // カタカナ全角変換テーブル(連想配列オブジェクト)
+    var katakanaToHankaku = {};    // カタカナ半角変換テーブル(連想配列オブジェクト)
+    var HiraganaToKatakana = {};   // ひらがなカタカナ変換テーブル(連想配列オブジェクト)
+    var KatakanaToHiragana = {};   // カタカナひらがな変換テーブル(連想配列オブジェクト)
+    var DakutenToZenkaku = {};     // 濁点全角変換テーブル(連想配列オブジェクト)
+    var DakutenToHankaku = {};     // 濁点半角変換テーブル(連想配列オブジェクト)
+    var DakutenSplit = {};         // 濁点分離テーブル(連想配列オブジェクト)
+    var DakutenMarge = {};         // 濁点結合テーブル(連想配列オブジェクト)
+
     // ***** 全角に変換する(staticメソッド) *****
     ConvZenHan.toZenkaku = function (st1, mode1) {
         var ret_st;
@@ -2803,8 +2875,8 @@ var ConvZenHan = (function () {
         if (mode1.indexOf("a") >= 0) {
             ret_st = ret_st.replace(/[\u0041-\u005A]|[\u0061-\u007A]/g,
                 function (c) {
-                    if (!ConvZenHan.alphaToZenkaku.hasOwnProperty(c)) { return c; }
-                    return ConvZenHan.alphaToZenkaku[c];
+                    if (!alphaToZenkaku.hasOwnProperty(c)) { return c; }
+                    return alphaToZenkaku[c];
                 }
             );
         }
@@ -2812,8 +2884,8 @@ var ConvZenHan = (function () {
         if (mode1.indexOf("n") >= 0) {
             ret_st = ret_st.replace(/[\u0030-\u0039]/g,
                 function (c) {
-                    if (!ConvZenHan.numberToZenkaku.hasOwnProperty(c)) { return c; }
-                    return ConvZenHan.numberToZenkaku[c];
+                    if (!numberToZenkaku.hasOwnProperty(c)) { return c; }
+                    return numberToZenkaku[c];
                 }
             );
         }
@@ -2821,8 +2893,8 @@ var ConvZenHan = (function () {
         if (mode1.indexOf("p") >= 0) {
             ret_st = ret_st.replace(/[\u0021-\u007E]|[\uFF61-\uFF64]|[\u00A2-\u00A5]/g,
                 function (c) {
-                    if (!ConvZenHan.punctuationToZenkaku.hasOwnProperty(c)) { return c; }
-                    return ConvZenHan.punctuationToZenkaku[c];
+                    if (!punctuationToZenkaku.hasOwnProperty(c)) { return c; }
+                    return punctuationToZenkaku[c];
                 }
             );
         }
@@ -2830,8 +2902,8 @@ var ConvZenHan = (function () {
         if (mode1.indexOf("s") >= 0) {
             ret_st = ret_st.replace(/ /g,
                 function (c) {
-                    if (!ConvZenHan.spaceToZenkaku.hasOwnProperty(c)) { return c; }
-                    return ConvZenHan.spaceToZenkaku[c];
+                    if (!spaceToZenkaku.hasOwnProperty(c)) { return c; }
+                    return spaceToZenkaku[c];
                 }
             );
         }
@@ -2840,8 +2912,8 @@ var ConvZenHan = (function () {
         if (mode1.indexOf("k") >= 0 || mode1.indexOf("h") >= 0) {
             ret_st = ret_st.replace(/[\uFF65-\uFF9D][ﾞﾟ]?/g,
                 function (c) {
-                    if (!ConvZenHan.katakanaToZenkaku.hasOwnProperty(c)) { return c; }
-                    return ConvZenHan.katakanaToZenkaku[c];
+                    if (!katakanaToZenkaku.hasOwnProperty(c)) { return c; }
+                    return katakanaToZenkaku[c];
                 }
             );
         }
@@ -2849,8 +2921,8 @@ var ConvZenHan = (function () {
         if (mode1.indexOf("h") >= 0) {
             ret_st = ret_st.replace(/[\u30A1-\u30FC]/g,
                 function (c) {
-                    if (!ConvZenHan.KatakanaToHiragana.hasOwnProperty(c)) { return c; }
-                    return ConvZenHan.KatakanaToHiragana[c];
+                    if (!KatakanaToHiragana.hasOwnProperty(c)) { return c; }
+                    return KatakanaToHiragana[c];
                 }
             );
         }
@@ -2858,8 +2930,8 @@ var ConvZenHan = (function () {
         if (mode1.indexOf("t") >= 0) {
             ret_st = ret_st.replace(/[\u3041-\u3094]/g,
                 function (c) {
-                    if (!ConvZenHan.HiraganaToKatakana.hasOwnProperty(c)) { return c; }
-                    return ConvZenHan.HiraganaToKatakana[c];
+                    if (!HiraganaToKatakana.hasOwnProperty(c)) { return c; }
+                    return HiraganaToKatakana[c];
                 }
             );
         }
@@ -2868,8 +2940,8 @@ var ConvZenHan = (function () {
         if (mode1.indexOf("m") >= 0) {
             ret_st = ret_st.replace(/[\u30A1-\u30FC][ﾞﾟ゛゜]?|[\u3041-\u3094][ﾞﾟ゛゜]?/g,
                 function (c) {
-                    if (!ConvZenHan.DakutenMarge.hasOwnProperty(c)) { return c; }
-                    return ConvZenHan.DakutenMarge[c];
+                    if (!DakutenMarge.hasOwnProperty(c)) { return c; }
+                    return DakutenMarge[c];
                 }
             );
         }
@@ -2877,8 +2949,8 @@ var ConvZenHan = (function () {
         if (mode1.indexOf("v") >= 0) {
             ret_st = ret_st.replace(/[\u30A1-\u30FC]|[\u3041-\u3094]/g,
                 function (c) {
-                    if (!ConvZenHan.DakutenSplit.hasOwnProperty(c)) { return c; }
-                    return ConvZenHan.DakutenSplit[c];
+                    if (!DakutenSplit.hasOwnProperty(c)) { return c; }
+                    return DakutenSplit[c];
                 }
             );
         }
@@ -2886,8 +2958,8 @@ var ConvZenHan = (function () {
         if (mode1.indexOf("d") >= 0) {
             ret_st = ret_st.replace(/[ﾞﾟ]/g,
                 function (c) {
-                    if (!ConvZenHan.DakutenToZenkaku.hasOwnProperty(c)) { return c; }
-                    return ConvZenHan.DakutenToZenkaku[c];
+                    if (!DakutenToZenkaku.hasOwnProperty(c)) { return c; }
+                    return DakutenToZenkaku[c];
                 }
             );
         }
@@ -2908,8 +2980,8 @@ var ConvZenHan = (function () {
         if (mode1.indexOf("a") >= 0) {
             ret_st = ret_st.replace(/[\uFF21-\uFF3A]|[\uFF41-\uFF5A]/g,
                 function (c) {
-                    if (!ConvZenHan.alphaToHankaku.hasOwnProperty(c)) { return c; }
-                    return ConvZenHan.alphaToHankaku[c];
+                    if (!alphaToHankaku.hasOwnProperty(c)) { return c; }
+                    return alphaToHankaku[c];
                 }
             );
         }
@@ -2917,8 +2989,8 @@ var ConvZenHan = (function () {
         if (mode1.indexOf("n") >= 0) {
             ret_st = ret_st.replace(/[\uFF10-\uFF19]/g,
                 function (c) {
-                    if (!ConvZenHan.numberToHankaku.hasOwnProperty(c)) { return c; }
-                    return ConvZenHan.numberToHankaku[c];
+                    if (!numberToHankaku.hasOwnProperty(c)) { return c; }
+                    return numberToHankaku[c];
                 }
             );
         }
@@ -2926,8 +2998,8 @@ var ConvZenHan = (function () {
         if (mode1.indexOf("p") >= 0) {
             ret_st = ret_st.replace(/[\uFF01-\uFF5E]|[\u3001-\u300D]|[\uFFE0-\uFFE5]/g,
                 function (c) {
-                    if (!ConvZenHan.punctuationToHankaku.hasOwnProperty(c)) { return c; }
-                    return ConvZenHan.punctuationToHankaku[c];
+                    if (!punctuationToHankaku.hasOwnProperty(c)) { return c; }
+                    return punctuationToHankaku[c];
                 }
             );
         }
@@ -2935,8 +3007,8 @@ var ConvZenHan = (function () {
         if (mode1.indexOf("s") >= 0) {
             ret_st = ret_st.replace(/[\u3000]/g,
                 function (c) {
-                    if (!ConvZenHan.spaceToHankaku.hasOwnProperty(c)) { return c; }
-                    return ConvZenHan.spaceToHankaku[c];
+                    if (!spaceToHankaku.hasOwnProperty(c)) { return c; }
+                    return spaceToHankaku[c];
                 }
             );
         }
@@ -2945,8 +3017,8 @@ var ConvZenHan = (function () {
         if (mode1.indexOf("t") >= 0) {
             ret_st = ret_st.replace(/[\u3041-\u3094]/g,
                 function (c) {
-                    if (!ConvZenHan.HiraganaToKatakana.hasOwnProperty(c)) { return c; }
-                    return ConvZenHan.HiraganaToKatakana[c];
+                    if (!HiraganaToKatakana.hasOwnProperty(c)) { return c; }
+                    return HiraganaToKatakana[c];
                 }
             );
         }
@@ -2954,8 +3026,8 @@ var ConvZenHan = (function () {
         if (mode1.indexOf("k") >= 0 || mode1.indexOf("t") >= 0) {
             ret_st = ret_st.replace(/[\u30A1-\u30FC]/g,
                 function (c) {
-                    if (!ConvZenHan.katakanaToHankaku.hasOwnProperty(c)) { return c; }
-                    return ConvZenHan.katakanaToHankaku[c];
+                    if (!katakanaToHankaku.hasOwnProperty(c)) { return c; }
+                    return katakanaToHankaku[c];
                 }
             );
         }
@@ -2964,8 +3036,8 @@ var ConvZenHan = (function () {
         if (mode1.indexOf("v") >= 0) {
             ret_st = ret_st.replace(/[\u30A1-\u30FC]|[\u3041-\u3094]/g,
                 function (c) {
-                    if (!ConvZenHan.DakutenSplit.hasOwnProperty(c)) { return c; }
-                    return ConvZenHan.DakutenSplit[c];
+                    if (!DakutenSplit.hasOwnProperty(c)) { return c; }
+                    return DakutenSplit[c];
                 }
             );
         }
@@ -2973,8 +3045,8 @@ var ConvZenHan = (function () {
         if (mode1.indexOf("d") >= 0) {
             ret_st = ret_st.replace(/[゛゜]/g,
                 function (c) {
-                    if (!ConvZenHan.DakutenToHankaku.hasOwnProperty(c)) { return c; }
-                    return ConvZenHan.DakutenToHankaku[c];
+                    if (!DakutenToHankaku.hasOwnProperty(c)) { return c; }
+                    return DakutenToHankaku[c];
                 }
             );
         }
@@ -2984,120 +3056,120 @@ var ConvZenHan = (function () {
 
     // ***** 以下は内部処理用 *****
 
-    // ***** 変換テーブル生成(内部処理用)(staticメソッド) *****
-    ConvZenHan.makeTable = function () {
+    // ***** 変換テーブル生成(内部処理用) *****
+    function makeTable() {
         var i;
         var han, zen;
         var ch, cz, cz2;
 
         // alert("ConvZenHan.makeTable:-:実行されました。");
         // ***** アルファベット *****
-        ConvZenHan.alphaToZenkaku = {};
-        ConvZenHan.alphaToHankaku = {};
+        alphaToZenkaku = {};
+        alphaToHankaku = {};
         for (i = 0x41; i <= 0x5A; i++) { // 「A」～「Z」
-            ConvZenHan.alphaToZenkaku[String.fromCharCode(i)] = String.fromCharCode(i + 0xFEE0);
-            ConvZenHan.alphaToHankaku[String.fromCharCode(i + 0xFEE0)] = String.fromCharCode(i);
+            alphaToZenkaku[String.fromCharCode(i)] = String.fromCharCode(i + 0xFEE0);
+            alphaToHankaku[String.fromCharCode(i + 0xFEE0)] = String.fromCharCode(i);
         }
         for (i = 0x61; i <= 0x7A; i++) { // 「a」～「z」
-            ConvZenHan.alphaToZenkaku[String.fromCharCode(i)] = String.fromCharCode(i + 0xFEE0);
-            ConvZenHan.alphaToHankaku[String.fromCharCode(i + 0xFEE0)] = String.fromCharCode(i);
+            alphaToZenkaku[String.fromCharCode(i)] = String.fromCharCode(i + 0xFEE0);
+            alphaToHankaku[String.fromCharCode(i + 0xFEE0)] = String.fromCharCode(i);
         }
         // ***** 数字 *****
-        ConvZenHan.numberToZenkaku = {};
-        ConvZenHan.numberToHankaku = {};
+        numberToZenkaku = {};
+        numberToHankaku = {};
         for (i = 0x30; i <= 0x39; i++) { // 「0」～「9」
-            ConvZenHan.numberToZenkaku[String.fromCharCode(i)] = String.fromCharCode(i + 0xFEE0);
-            ConvZenHan.numberToHankaku[String.fromCharCode(i + 0xFEE0)] = String.fromCharCode(i);
+            numberToZenkaku[String.fromCharCode(i)] = String.fromCharCode(i + 0xFEE0);
+            numberToHankaku[String.fromCharCode(i + 0xFEE0)] = String.fromCharCode(i);
         }
         // ***** 記号 *****
-        ConvZenHan.punctuationToZenkaku = {};
-        ConvZenHan.punctuationToHankaku = {};
+        punctuationToZenkaku = {};
+        punctuationToHankaku = {};
         for (i = 0x21; i <= 0x2F; i++) { // 「!」～「/」
-            ConvZenHan.punctuationToZenkaku[String.fromCharCode(i)] = String.fromCharCode(i + 0xFEE0);
-            ConvZenHan.punctuationToHankaku[String.fromCharCode(i + 0xFEE0)] = String.fromCharCode(i);
+            punctuationToZenkaku[String.fromCharCode(i)] = String.fromCharCode(i + 0xFEE0);
+            punctuationToHankaku[String.fromCharCode(i + 0xFEE0)] = String.fromCharCode(i);
         }
         for (i = 0x3A; i <= 0x40; i++) { // 「:」～「@」
-            ConvZenHan.punctuationToZenkaku[String.fromCharCode(i)] = String.fromCharCode(i + 0xFEE0);
-            ConvZenHan.punctuationToHankaku[String.fromCharCode(i + 0xFEE0)] = String.fromCharCode(i);
+            punctuationToZenkaku[String.fromCharCode(i)] = String.fromCharCode(i + 0xFEE0);
+            punctuationToHankaku[String.fromCharCode(i + 0xFEE0)] = String.fromCharCode(i);
         }
         for (i = 0x5B; i <= 0x60; i++) { // 「[」～「`」
-            ConvZenHan.punctuationToZenkaku[String.fromCharCode(i)] = String.fromCharCode(i + 0xFEE0);
-            ConvZenHan.punctuationToHankaku[String.fromCharCode(i + 0xFEE0)] = String.fromCharCode(i);
+            punctuationToZenkaku[String.fromCharCode(i)] = String.fromCharCode(i + 0xFEE0);
+            punctuationToHankaku[String.fromCharCode(i + 0xFEE0)] = String.fromCharCode(i);
         }
         for (i = 0x7B; i <= 0x7E; i++) { // 「{」～「~」
-            ConvZenHan.punctuationToZenkaku[String.fromCharCode(i)] = String.fromCharCode(i + 0xFEE0);
-            ConvZenHan.punctuationToHankaku[String.fromCharCode(i + 0xFEE0)] = String.fromCharCode(i);
+            punctuationToZenkaku[String.fromCharCode(i)] = String.fromCharCode(i + 0xFEE0);
+            punctuationToHankaku[String.fromCharCode(i + 0xFEE0)] = String.fromCharCode(i);
         }
-        ConvZenHan.punctuationToZenkaku["\uFF61"] = "。"; // 「。」の文字コードは \u3002
-        ConvZenHan.punctuationToZenkaku["\uFF62"] = "「"; // 「「」の文字コードは \u300C
-        ConvZenHan.punctuationToZenkaku["\uFF63"] = "」"; // 「」」の文字コードは \u300D
-        ConvZenHan.punctuationToZenkaku["\uFF64"] = "、"; // 「、」の文字コードは \u3001
-        ConvZenHan.punctuationToZenkaku["\u00A2"] = "￠"; // 「￠」の文字コードは \uFFE0
-        ConvZenHan.punctuationToZenkaku["\u00A3"] = "￡"; // 「￡」の文字コードは \uFFE1
-        ConvZenHan.punctuationToZenkaku["\u00A5"] = "￥"; // 「￥」の文字コードは \uFFE5
-        ConvZenHan.punctuationToHankaku["。"] = "\uFF61";
-        ConvZenHan.punctuationToHankaku["「"] = "\uFF62";
-        ConvZenHan.punctuationToHankaku["」"] = "\uFF63";
-        ConvZenHan.punctuationToHankaku["、"] = "\uFF64";
-        ConvZenHan.punctuationToHankaku["￠"] = "\u00A2";
-        ConvZenHan.punctuationToHankaku["￡"] = "\u00A3";
-        ConvZenHan.punctuationToHankaku["￥"] = "\u00A5";
+        punctuationToZenkaku["\uFF61"] = "。"; // 「。」の文字コードは \u3002
+        punctuationToZenkaku["\uFF62"] = "「"; // 「「」の文字コードは \u300C
+        punctuationToZenkaku["\uFF63"] = "」"; // 「」」の文字コードは \u300D
+        punctuationToZenkaku["\uFF64"] = "、"; // 「、」の文字コードは \u3001
+        punctuationToZenkaku["\u00A2"] = "￠"; // 「￠」の文字コードは \uFFE0
+        punctuationToZenkaku["\u00A3"] = "￡"; // 「￡」の文字コードは \uFFE1
+        punctuationToZenkaku["\u00A5"] = "￥"; // 「￥」の文字コードは \uFFE5
+        punctuationToHankaku["。"] = "\uFF61";
+        punctuationToHankaku["「"] = "\uFF62";
+        punctuationToHankaku["」"] = "\uFF63";
+        punctuationToHankaku["、"] = "\uFF64";
+        punctuationToHankaku["￠"] = "\u00A2";
+        punctuationToHankaku["￡"] = "\u00A3";
+        punctuationToHankaku["￥"] = "\u00A5";
         // ***** スペース *****
-        ConvZenHan.spaceToZenkaku = {};
-        ConvZenHan.spaceToHankaku = {};
+        spaceToZenkaku = {};
+        spaceToHankaku = {};
         han = " ";      // 半角スペース (\u0020)
         zen = "\u3000"; // 全角スペース (\u3000)
         for (i = 0; i < han.length; i++) {
-            ConvZenHan.spaceToZenkaku[han.charAt(i)] = zen.charAt(i);
-            ConvZenHan.spaceToHankaku[zen.charAt(i)] = han.charAt(i);
+            spaceToZenkaku[han.charAt(i)] = zen.charAt(i);
+            spaceToHankaku[zen.charAt(i)] = han.charAt(i);
         }
         // ***** カタカナ *****
-        ConvZenHan.katakanaToZenkaku = {};
-        ConvZenHan.katakanaToHankaku = {};
+        katakanaToZenkaku = {};
+        katakanaToHankaku = {};
         han = "ｱｲｳｴｵｧｨｩｪｫｶｷｸｹｺｻｼｽｾｿﾀﾁﾂｯﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔｬﾕｭﾖｮﾗﾘﾙﾚﾛﾜｦﾝｰ･";
         zen = "アイウエオァィゥェォカキクケコサシスセソタチツッテトナニヌネノハヒフヘホマミムメモヤャユュヨョラリルレロワヲンー・";
         for (i = 0; i < han.length; i++) {
             ch = han.charAt(i);
             cz = zen.charAt(i);
-            ConvZenHan.katakanaToZenkaku[ch] = cz;
-            ConvZenHan.katakanaToHankaku[cz] = ch;
+            katakanaToZenkaku[ch] = cz;
+            katakanaToHankaku[cz] = ch;
             if (cz.match(/[カキクケコサシスセソタチツテトハヒフヘホ]/)) {
-                ConvZenHan.katakanaToZenkaku[ch + "ﾞ"] = String.fromCharCode(cz.charCodeAt(0) + 1);
-                ConvZenHan.katakanaToHankaku[String.fromCharCode(cz.charCodeAt(0) + 1)] = ch + "ﾞ";
+                katakanaToZenkaku[ch + "ﾞ"] = String.fromCharCode(cz.charCodeAt(0) + 1);
+                katakanaToHankaku[String.fromCharCode(cz.charCodeAt(0) + 1)] = ch + "ﾞ";
             } else {
-                ConvZenHan.katakanaToZenkaku[ch + "ﾞ"] = cz + "ﾞ";   // その他の濁点はそのまま
+                katakanaToZenkaku[ch + "ﾞ"] = cz + "ﾞ";   // その他の濁点はそのまま
             }
             if (cz.match(/[ハヒフヘホ]/)) {
-                ConvZenHan.katakanaToZenkaku[ch + "ﾟ"] = String.fromCharCode(cz.charCodeAt(0) + 2);
-                ConvZenHan.katakanaToHankaku[String.fromCharCode(cz.charCodeAt(0) + 2)] = ch + "ﾟ";
+                katakanaToZenkaku[ch + "ﾟ"] = String.fromCharCode(cz.charCodeAt(0) + 2);
+                katakanaToHankaku[String.fromCharCode(cz.charCodeAt(0) + 2)] = ch + "ﾟ";
             } else {
-                ConvZenHan.katakanaToZenkaku[ch + "ﾟ"] = cz + "ﾟ";   // その他の半濁点はそのまま
+                katakanaToZenkaku[ch + "ﾟ"] = cz + "ﾟ";   // その他の半濁点はそのまま
             }
         }
-        ConvZenHan.katakanaToZenkaku["ｳﾞ"] = "\u30F4";
-        ConvZenHan.katakanaToZenkaku["ﾜﾞ"] = "\u30F7";
-        ConvZenHan.katakanaToZenkaku["ｦﾞ"] = "\u30FA";
-        ConvZenHan.katakanaToHankaku["\u30F4"] = "ｳﾞ";
-        ConvZenHan.katakanaToHankaku["\u30F7"] = "ﾜﾞ";
-        ConvZenHan.katakanaToHankaku["\u30FA"] = "ｦﾞ";
+        katakanaToZenkaku["ｳﾞ"] = "\u30F4";
+        katakanaToZenkaku["ﾜﾞ"] = "\u30F7";
+        katakanaToZenkaku["ｦﾞ"] = "\u30FA";
+        katakanaToHankaku["\u30F4"] = "ｳﾞ";
+        katakanaToHankaku["\u30F7"] = "ﾜﾞ";
+        katakanaToHankaku["\u30FA"] = "ｦﾞ";
         // ***** ひらがなとカタカナ *****
-        ConvZenHan.HiraganaToKatakana = {};
-        ConvZenHan.KatakanaToHiragana = {};
+        HiraganaToKatakana = {};
+        KatakanaToHiragana = {};
         for (i = 0x3041; i <= 0x3094; i++) { // 「あ」の小文字 ～ 「う」の濁点
-            ConvZenHan.HiraganaToKatakana[String.fromCharCode(i)] = String.fromCharCode(i + 0x60);
-            ConvZenHan.KatakanaToHiragana[String.fromCharCode(i + 0x60)] = String.fromCharCode(i);
+            HiraganaToKatakana[String.fromCharCode(i)] = String.fromCharCode(i + 0x60);
+            KatakanaToHiragana[String.fromCharCode(i + 0x60)] = String.fromCharCode(i);
         }
         // ***** 濁点と半濁点 *****
-        ConvZenHan.DakutenToZenkaku = {};
-        ConvZenHan.DakutenToHankaku = {};
+        DakutenToZenkaku = {};
+        DakutenToHankaku = {};
         han = "ﾞﾟ";
         zen = "゛゜";
         for (i = 0; i < han.length; i++) {
-            ConvZenHan.DakutenToZenkaku[han.charAt(i)] = zen.charAt(i);
-            ConvZenHan.DakutenToHankaku[zen.charAt(i)] = han.charAt(i);
+            DakutenToZenkaku[han.charAt(i)] = zen.charAt(i);
+            DakutenToHankaku[zen.charAt(i)] = han.charAt(i);
         }
-        ConvZenHan.DakutenSplit = {};
-        ConvZenHan.DakutenMarge = {};
+        DakutenSplit = {};
+        DakutenMarge = {};
         han = "ｱｲｳｴｵｧｨｩｪｫｶｷｸｹｺｻｼｽｾｿﾀﾁﾂｯﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔｬﾕｭﾖｮﾗﾘﾙﾚﾛﾜｦﾝｰ･";
         zen = "アイウエオァィゥェォカキクケコサシスセソタチツッテトナニヌネノハヒフヘホマミムメモヤャユュヨョラリルレロワヲンー・";
         for (i = 0; i < han.length; i++) {
@@ -3105,77 +3177,170 @@ var ConvZenHan = (function () {
             cz = zen.charAt(i);
             cz2 = String.fromCharCode(cz.charCodeAt(0) - 0x60); // ひらがな
             if (cz.match(/[カキクケコサシスセソタチツテトハヒフヘホ]/)) {
-                ConvZenHan.DakutenSplit[String.fromCharCode(cz.charCodeAt(0) + 1)] = cz + "ﾞ";
-                ConvZenHan.DakutenSplit[String.fromCharCode(cz2.charCodeAt(0) + 1)] = cz2 + "ﾞ";
-                ConvZenHan.DakutenMarge[cz + "ﾞ"] = String.fromCharCode(cz.charCodeAt(0) + 1);
-                ConvZenHan.DakutenMarge[cz2 + "ﾞ"] = String.fromCharCode(cz2.charCodeAt(0) + 1);
-                ConvZenHan.DakutenMarge[cz + "゛"] = String.fromCharCode(cz.charCodeAt(0) + 1);
-                ConvZenHan.DakutenMarge[cz2 + "゛"] = String.fromCharCode(cz2.charCodeAt(0) + 1);
+                DakutenSplit[String.fromCharCode(cz.charCodeAt(0) + 1)] = cz + "ﾞ";
+                DakutenSplit[String.fromCharCode(cz2.charCodeAt(0) + 1)] = cz2 + "ﾞ";
+                DakutenMarge[cz + "ﾞ"] = String.fromCharCode(cz.charCodeAt(0) + 1);
+                DakutenMarge[cz2 + "ﾞ"] = String.fromCharCode(cz2.charCodeAt(0) + 1);
+                DakutenMarge[cz + "゛"] = String.fromCharCode(cz.charCodeAt(0) + 1);
+                DakutenMarge[cz2 + "゛"] = String.fromCharCode(cz2.charCodeAt(0) + 1);
             }
             if (cz.match(/[ハヒフヘホ]/)) {
-                ConvZenHan.DakutenSplit[String.fromCharCode(cz.charCodeAt(0) + 2)] = cz + "ﾟ";
-                ConvZenHan.DakutenSplit[String.fromCharCode(cz2.charCodeAt(0) + 2)] = cz2 + "ﾟ";
-                ConvZenHan.DakutenMarge[cz + "ﾟ"] = String.fromCharCode(cz.charCodeAt(0) + 2);
-                ConvZenHan.DakutenMarge[cz2 + "ﾟ"] = String.fromCharCode(cz2.charCodeAt(0) + 2);
-                ConvZenHan.DakutenMarge[cz + "゜"] = String.fromCharCode(cz.charCodeAt(0) + 2);
-                ConvZenHan.DakutenMarge[cz2 + "゜"] = String.fromCharCode(cz2.charCodeAt(0) + 2);
+                DakutenSplit[String.fromCharCode(cz.charCodeAt(0) + 2)] = cz + "ﾟ";
+                DakutenSplit[String.fromCharCode(cz2.charCodeAt(0) + 2)] = cz2 + "ﾟ";
+                DakutenMarge[cz + "ﾟ"] = String.fromCharCode(cz.charCodeAt(0) + 2);
+                DakutenMarge[cz2 + "ﾟ"] = String.fromCharCode(cz2.charCodeAt(0) + 2);
+                DakutenMarge[cz + "゜"] = String.fromCharCode(cz.charCodeAt(0) + 2);
+                DakutenMarge[cz2 + "゜"] = String.fromCharCode(cz2.charCodeAt(0) + 2);
             }
         }
-        ConvZenHan.DakutenSplit["\u30F4"] = "ウﾞ";
-        ConvZenHan.DakutenSplit["\u30F7"] = "ワﾞ";
-        ConvZenHan.DakutenSplit["\u30F8"] = "ヰﾞ";
-        ConvZenHan.DakutenSplit["\u30F9"] = "ヱﾞ";
-        ConvZenHan.DakutenSplit["\u30FA"] = "ヲﾞ";
-        ConvZenHan.DakutenSplit["\u3094"] = "うﾞ";
-        ConvZenHan.DakutenMarge["ウﾞ"] = "\u30F4";
-        ConvZenHan.DakutenMarge["ワﾞ"] = "\u30F7";
-        ConvZenHan.DakutenMarge["ヰﾞ"] = "\u30F8";
-        ConvZenHan.DakutenMarge["ヱﾞ"] = "\u30F9";
-        ConvZenHan.DakutenMarge["ヲﾞ"] = "\u30FA";
-        ConvZenHan.DakutenMarge["うﾞ"] = "\u3094";
-        ConvZenHan.DakutenMarge["ウ゛"] = "\u30F4";
-        ConvZenHan.DakutenMarge["ワ゛"] = "\u30F7";
-        ConvZenHan.DakutenMarge["ヰ゛"] = "\u30F8";
-        ConvZenHan.DakutenMarge["ヱ゛"] = "\u30F9";
-        ConvZenHan.DakutenMarge["ヲ゛"] = "\u30FA";
-        ConvZenHan.DakutenMarge["う゛"] = "\u3094";
-    };
+        DakutenSplit["\u30F4"] = "ウﾞ";
+        DakutenSplit["\u30F7"] = "ワﾞ";
+        DakutenSplit["\u30F8"] = "ヰﾞ";
+        DakutenSplit["\u30F9"] = "ヱﾞ";
+        DakutenSplit["\u30FA"] = "ヲﾞ";
+        DakutenSplit["\u3094"] = "うﾞ";
+        DakutenMarge["ウﾞ"] = "\u30F4";
+        DakutenMarge["ワﾞ"] = "\u30F7";
+        DakutenMarge["ヰﾞ"] = "\u30F8";
+        DakutenMarge["ヱﾞ"] = "\u30F9";
+        DakutenMarge["ヲﾞ"] = "\u30FA";
+        DakutenMarge["うﾞ"] = "\u3094";
+        DakutenMarge["ウ゛"] = "\u30F4";
+        DakutenMarge["ワ゛"] = "\u30F7";
+        DakutenMarge["ヰ゛"] = "\u30F8";
+        DakutenMarge["ヱ゛"] = "\u30F9";
+        DakutenMarge["ヲ゛"] = "\u30FA";
+        DakutenMarge["う゛"] = "\u3094";
+    }
 
     // ***** 変換テーブルをここで1回だけ生成 *****
-    ConvZenHan.makeTable();
+    makeTable();
 
     return ConvZenHan; // これがないとクラスが動かないので注意
 })();
 
 
-// ***** 領域塗りつぶし用クラス *****
+// ***** 領域塗りつぶし用クラス(staticクラス) *****
 var FloodFill = (function () {
     // ***** コンストラクタ *****
-    function FloodFill(can, ctx, x, y, threshold, paint_mode, bound_col, bound_alpha) {
-        // ***** 初期化 *****
-        this.can = can;               // Canvas要素
-        this.ctx = ctx;               // Canvasのコンテキスト
-        this.width = can.width;       // Canvasの幅(px)
-        this.height = can.height;     // Canvasの高さ(px)
-        this.x = x | 0;               // 塗りつぶし開始座標X(px)
-        this.y = y | 0;               // 塗りつぶし開始座標Y(px)
-        this.threshold = threshold;   // 同色と判定するしきい値(0-255)
-        this.paint_mode = paint_mode; // 塗りつぶしモード(=0:同一色領域, =1:境界色指定)
-        this.paint_col = {};          // 塗りつぶされる色(オブジェクト)
-        this.paint_col.r = 0;         // 塗りつぶされる色 R
-        this.paint_col.g = 0;         // 塗りつぶされる色 G
-        this.paint_col.b = 0;         // 塗りつぶされる色 B
-        this.paint_col.a = 0;         // 塗りつぶされる色 alpha
-        this.bound_col = {};                             // 境界色(オブジェクト)
-        this.bound_col.r = (bound_col & 0xff0000) >> 16; // 境界色 R
-        this.bound_col.g = (bound_col & 0x00ff00) >> 8;  // 境界色 G
-        this.bound_col.b = (bound_col & 0x0000ff);       // 境界色 B
-        this.bound_col.a = bound_alpha;                  // 境界色 alpha
-        this.seed_buf = [];           // シードバッファ(配列)
-        this.img_data = {};           // 画像データ(オブジェクト)
-    }
+    // ***** (staticクラスのため未使用) *****
+    function FloodFill() { }
+
+    // ***** 内部変数 *****
+    var width;           // Canvasの幅(px)
+    var height;          // Canvasの高さ(px)
+    var img_data = {};   // 画像データ(オブジェクト)
+    var filled_buf = []; // 塗りつぶしチェック用バッファ(配列)
+    var seed_buf = [];   // シードバッファ(配列)
+    var threshold;       // 同色と判定するしきい値(0-255)
+    var paint_mode;      // 塗りつぶしモード(=0:同一色領域, =1:境界色指定)
+    var paint_col = {};  // 塗りつぶされる色(オブジェクト)
+    var bound_col = {};  // 境界色(オブジェクト)
+
+    // ***** 塗りつぶし処理(staticメソッド) *****
+    FloodFill.fill = function (can, ctx, x0, y0, threshold0, paint_mode0, bound_col0, bound_alpha0) {
+        var i;
+        var x, y;
+        var x1, x2;
+        var seed_info = {};
+        var filled_buf_len;
+
+        // ***** 各種パラメータの取得 *****
+        width = can.width;
+        height = can.height;
+        x0 = x0 | 0; // 整数化
+        y0 = y0 | 0; // 整数化
+        threshold = threshold0;
+        paint_mode = paint_mode0;
+        bound_col.r = (bound_col0 & 0xff0000) >> 16; // 境界色 R
+        bound_col.g = (bound_col0 & 0x00ff00) >> 8;  // 境界色 G
+        bound_col.b = (bound_col0 & 0x0000ff);       // 境界色 B
+        bound_col.a = bound_alpha0;                  // 境界色 alpha
+        // ***** エラーチェック *****
+        if (x0 < 0 || x0 >= width)  { return false; }
+        if (y0 < 0 || y0 >= height) { return false; }
+        // ***** 画像データを取得 *****
+        img_data = ctx.getImageData(0, 0, width, height);
+        // ***** 塗りつぶされる色を取得 *****
+        paint_col = getPixel(x0, y0);
+        // ***** 塗りつぶしチェック用バッファの初期化 *****
+        filled_buf = [];
+        filled_buf_len = width * height;
+        for (i = 0; i < filled_buf_len; i++) {
+            filled_buf[i] = 0;
+        }
+        // ***** シードバッファの初期化 *****
+        seed_buf = [];
+        // ***** 開始点をシード登録 *****
+        seed_info = {};
+        seed_info.x1     = x0; // 左端座標X1
+        seed_info.x2     = x0; // 右端座標X2
+        seed_info.y      = y0; // 水平座標Y
+        seed_info.y_from = y0; // 親シードの水平座標Y_From
+        seed_buf.push(seed_info);
+        // ***** シードがなくなるまでループ *****
+        while (seed_buf.length > 0) {
+            // ***** シードを1個取り出す *****
+            seed_info = seed_buf.shift();
+            x = seed_info.x1;
+            y = seed_info.y;
+            // ***** 塗りつぶし済みならば処理をしない *****
+            if (filled_buf[x + y * width] == 1) { continue; }
+            // ***** 左方向の境界を探す *****
+            x1 = seed_info.x1;
+            while (x1 > 0) {
+                if (!checkColor(x1 - 1, y)) { break; }
+                x1--;
+            }
+            // ***** 右方向の境界を探す *****
+            x2 = seed_info.x2;
+            while (x2 < width - 1) {
+                if (!checkColor(x2 + 1, y)) { break; }
+                x2++;
+            }
+            // ***** 線分を描画して、塗りつぶし済みチェック用のバッファを更新 *****
+            ctx.fillRect(x1, y, x2 - x1 + 1, 1);
+            for (x = x1; x <= x2; x++) {
+                filled_buf[x + y * width] = 1;
+            }
+            // ***** 1つ上の線分をスキャン *****
+            if (y - 1 >= 0) {
+                if (y - 1 == seed_info.y_from) {
+                    if (seed_info.x1 >= 0 && x1 < seed_info.x1) {
+                        scanLine(x1, seed_info.x1 - 1, y - 1, y);
+                    }
+                    if (seed_info.x2 < width && seed_info.x2 < x2) {
+                        scanLine(seed_info.x2 + 1, x2, y - 1, y);
+                    }
+                } else {
+                    scanLine(x1, x2, y - 1, y);
+                }
+            }
+            // ***** 1つ下の線分をスキャン *****
+            if (y + 1 < height) {
+                if (y + 1 == seed_info.y_from) {
+                    if (seed_info.x1 >= 0 && x1 < seed_info.x1) {
+                        scanLine(x1, seed_info.x1 - 1, y + 1, y);
+                    }
+                    if (seed_info.x2 < width && seed_info.x2 < x2) {
+                        scanLine(seed_info.x2 + 1, x2, y + 1, y);
+                    }
+                } else {
+                    scanLine(x1, x2, y + 1, y);
+                }
+            }
+        }
+        // ***** 領域を解放 *****
+        img_data = {};
+        filled_buf = [];
+        seed_buf = [];
+        return true;
+    };
+
+    // ***** 以下は内部処理用 *****
+
     // ***** 点の色を取得(内部処理用) *****
-    FloodFill.prototype.getPixel = function (x, y) {
+    function getPixel(x, y) {
         var ret_col = {};
 
         // ***** 戻り値の初期化 *****
@@ -3184,18 +3349,18 @@ var FloodFill = (function () {
         ret_col.b = 0;
         ret_col.a = 0;
         // ***** エラーチェック *****
-        if (x < 0 || x >= this.width)  { return ret_col; }
-        if (y < 0 || y >= this.height) { return ret_col; }
+        if (x < 0 || x >= width)  { return ret_col; }
+        if (y < 0 || y >= height) { return ret_col; }
         // ***** 点の色を取得 *****
-        ret_col.r = this.img_data.data[(x + y * this.width) * 4];
-        ret_col.g = this.img_data.data[(x + y * this.width) * 4 + 1];
-        ret_col.b = this.img_data.data[(x + y * this.width) * 4 + 2];
-        ret_col.a = this.img_data.data[(x + y * this.width) * 4 + 3];
+        ret_col.r = img_data.data[(x + y * width) * 4];
+        ret_col.g = img_data.data[(x + y * width) * 4 + 1];
+        ret_col.b = img_data.data[(x + y * width) * 4 + 2];
+        ret_col.a = img_data.data[(x + y * width) * 4 + 3];
         // ***** 戻り値を返す *****
         return ret_col;
-    };
+    }
     // ***** 境界色のチェック(内部処理用) *****
-    FloodFill.prototype.checkColor = function (x, y) {
+    function checkColor(x, y) {
         var ret;
         var diff2;
         var pixel_col;
@@ -3203,30 +3368,30 @@ var FloodFill = (function () {
         // ***** 戻り値の初期化 *****
         ret = false;
         // ***** エラーチェック *****
-        if (x < 0 || x >= this.width)  { return ret; }
-        if (y < 0 || y >= this.height) { return ret; }
+        if (x < 0 || x >= width)  { return ret; }
+        if (y < 0 || y >= height) { return ret; }
         // ***** 色の比較 *****
-        pixel_col = this.getPixel(x, y);
-        if (this.paint_mode == 0) {
-            diff2 = (this.paint_col.r - pixel_col.r) * (this.paint_col.r - pixel_col.r) +
-                    (this.paint_col.g - pixel_col.g) * (this.paint_col.g - pixel_col.g) +
-                    (this.paint_col.b - pixel_col.b) * (this.paint_col.b - pixel_col.b) +
-                    (this.paint_col.a - pixel_col.a) * (this.paint_col.a - pixel_col.a);
+        pixel_col = getPixel(x, y);
+        if (paint_mode == 0) {
+            diff2 = (paint_col.r - pixel_col.r) * (paint_col.r - pixel_col.r) +
+                    (paint_col.g - pixel_col.g) * (paint_col.g - pixel_col.g) +
+                    (paint_col.b - pixel_col.b) * (paint_col.b - pixel_col.b) +
+                    (paint_col.a - pixel_col.a) * (paint_col.a - pixel_col.a);
         } else {
-            diff2 = (this.bound_col.r - pixel_col.r) * (this.bound_col.r - pixel_col.r) +
-                    (this.bound_col.g - pixel_col.g) * (this.bound_col.g - pixel_col.g) +
-                    (this.bound_col.b - pixel_col.b) * (this.bound_col.b - pixel_col.b) +
-                    (this.bound_col.a - pixel_col.a) * (this.bound_col.a - pixel_col.a);
+            diff2 = (bound_col.r - pixel_col.r) * (bound_col.r - pixel_col.r) +
+                    (bound_col.g - pixel_col.g) * (bound_col.g - pixel_col.g) +
+                    (bound_col.b - pixel_col.b) * (bound_col.b - pixel_col.b) +
+                    (bound_col.a - pixel_col.a) * (bound_col.a - pixel_col.a);
         }
-        if (diff2 <= this.threshold * this.threshold * 4) { ret = true; } // 4倍してスケールを合わせる
+        if (diff2 <= threshold * threshold * 4) { ret = true; } // 4倍してスケールを合わせる
         // ***** 戻り値を返す *****
-        if (this.paint_mode != 0) {
+        if (paint_mode != 0) {
             ret = !ret;
         }
         return ret;
-    };
+    }
     // ***** 線分をスキャンしてシードを登録(内部処理用) *****
-    FloodFill.prototype.scanLine = function (x1, x2, y, y_from) {
+    function scanLine(x1, x2, y, y_from) {
         var x, x1_tmp;
         var seed_info = {};
 
@@ -3235,14 +3400,14 @@ var FloodFill = (function () {
         while (x <= x2) {
             // ***** 非領域色をスキップ *****
             while (x <= x2) {
-                if (this.checkColor(x, y)) { break; }
+                if (checkColor(x, y)) { break; }
                 x++;
             }
             if (x > x2) { break; }
             x1_tmp = x;
             // ***** 領域色をスキャン *****
             while (x <= x2) {
-                if (!this.checkColor(x, y)) { break; }
+                if (!checkColor(x, y)) { break; }
                 x++;
             }
             // ***** シードを登録 *****
@@ -3251,90 +3416,9 @@ var FloodFill = (function () {
             seed_info.x2 = x - 1;      // 右端座標X2
             seed_info.y = y;           // 水平座標Y
             seed_info.y_from = y_from; // 親シードの水平座標Y_From
-            this.seed_buf.push(seed_info);
+            seed_buf.push(seed_info);
         }
-    };
-    // ***** 塗りつぶし処理 *****
-    FloodFill.prototype.fill = function () {
-        var i;
-        var x, y;
-        var x1, x2;
-        var seed_info = {};
-        var filled_buf = [];
-
-        // ***** エラーチェック *****
-        if (this.x < 0 || this.x >= this.width)  { return false; }
-        if (this.y < 0 || this.y >= this.height) { return false; }
-        // ***** 画像データを取得 *****
-        this.img_data = this.ctx.getImageData(0, 0, this.width, this.height);
-        // ***** 塗りつぶされる色を取得 *****
-        this.paint_col = this.getPixel(this.x, this.y);
-        // ***** 塗りつぶし済みチェック用のバッファを生成 *****
-        filled_buf = [];
-        for (i = 0; i < this.width * this.height; i++) {
-            filled_buf[i] = 0;
-        }
-        // ***** 開始点をシード登録 *****
-        seed_info = {};
-        seed_info.x1 = this.x;     // 左端座標X1
-        seed_info.x2 = this.x;     // 右端座標X2
-        seed_info.y = this.y;      // 水平座標Y
-        seed_info.y_from = this.y; // 親シードの水平座標Y_From
-        this.seed_buf.push(seed_info);
-        // ***** シードがなくなるまでループ *****
-        while (this.seed_buf.length > 0) {
-            // ***** シードを1個取り出す *****
-            seed_info = this.seed_buf.shift();
-            x = seed_info.x1;
-            y = seed_info.y;
-            // ***** 塗りつぶし済みならば処理をしない *****
-            if (filled_buf[x + y * this.width] == 1) { continue; }
-            // ***** 左方向の境界を探す *****
-            x1 = seed_info.x1;
-            while (x1 > 0) {
-                if (!this.checkColor(x1 - 1, y)) { break; }
-                x1--;
-            }
-            // ***** 右方向の境界を探す *****
-            x2 = seed_info.x2;
-            while (x2 < this.width - 1) {
-                if (!this.checkColor(x2 + 1, y)) { break; }
-                x2++;
-            }
-            // ***** 線分を描画して、塗りつぶし済みチェック用のバッファを更新 *****
-            this.ctx.fillRect(x1, y, x2 - x1 + 1, 1);
-            for (x = x1; x <= x2; x++) {
-                filled_buf[x + y * this.width] = 1;
-            }
-            // ***** 1つ上の線分をスキャン *****
-            if (y - 1 >= 0) {
-                if (y - 1 == seed_info.y_from) {
-                    if (seed_info.x1 >= 0 && x1 < seed_info.x1) {
-                        this.scanLine(x1, seed_info.x1 - 1, y - 1, y);
-                    }
-                    if (seed_info.x2 < this.width && seed_info.x2 < x2) {
-                        this.scanLine(seed_info.x2 + 1, x2, y - 1, y);
-                    }
-                } else {
-                    this.scanLine(x1, x2, y - 1, y);
-                }
-            }
-            // ***** 1つ下の線分をスキャン *****
-            if (y + 1 < this.height) {
-                if (y + 1 == seed_info.y_from) {
-                    if (seed_info.x1 >= 0 && x1 < seed_info.x1) {
-                        this.scanLine(x1, seed_info.x1 - 1, y + 1, y);
-                    }
-                    if (seed_info.x2 < this.width && seed_info.x2 < x2) {
-                        this.scanLine(seed_info.x2 + 1, x2, y + 1, y);
-                    }
-                } else {
-                    this.scanLine(x1, x2, y + 1, y);
-                }
-            }
-        }
-        return true;
-    };
+    }
     return FloodFill; // これがないとクラスが動かないので注意
 })();
 
