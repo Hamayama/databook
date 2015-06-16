@@ -31,7 +31,7 @@ var Plugin0001;
     var stimg = {};     // 画像文字割付用  (連想配列オブジェクト)
     var missile = {};   // ミサイル用      (連想配列オブジェクト)
     var audplayer = {}; // 音楽再生用      (連想配列オブジェクト)
-    var sand_obj = {};  // 砂シミュレート用(SandSimクラスのインスタンス)
+    var sand_obj = {};  // 砂シミュレート用(連想配列オブジェクト)
     var aud_mode;       // 音楽モード      (=0:音楽なし,=1:音楽あり,=2:音楽演奏機能有無による)
 
     // ***** インタープリター参照用 *****
@@ -85,6 +85,7 @@ var Plugin0001;
         add_clear_var_funcs("plugin0001", function () {
             stimg = {};
             missile = {};
+            sand_obj = {};
             // ***** 音楽全停止 *****
             audstopall();
         });
@@ -2527,7 +2528,7 @@ var DigitCalc = (function () {
         var arr_st;
 
         // ***** エラーチェック *****
-        if (!x.digit_len) {
+        if (x.digit_len <= 0) {
             // ( NaN 等もあるのでここで初期化はしない)
             // x.sign = "+";
             // x.str = "";
