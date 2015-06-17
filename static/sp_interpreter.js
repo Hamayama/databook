@@ -1,11 +1,11 @@
 // This file is encoded with UTF-8 without BOM.
 
 // sp_interpreter.js
-// 2015-6-17 v3.64
+// 2015-6-18 v3.65
 
 
 // SPALM Web Interpreter
-// Modified for Web Application, by H.H(Hamayama Hama)
+// Modified for Web Application, by H.H(Hamayama Hama).
 // The original of this program is SPALM for cell-phones.
 //
 // This program is free software; you can redistribute it and/or modify
@@ -2260,16 +2260,14 @@ var Interpreter;
                     i = c_expression2(for_exp3, for_stm - 3);
                     code_push("pop", debugpos1, i);
                 }
-                // 式2
+                // 式2 (空なら無限ループ)
                 code_push("label", debugpos1, i);
                 code_push('"for_exp2\\' + j + '"', debugpos1, i);
                 if (for_exp2 < for_exp3 - 1) {
                     i = c_expression2(for_exp2, for_exp3 - 2);
-                } else {
-                    code_push("store1", debugpos1, i); // 式2が空なら無限ループ
+                    code_push("ifnotgoto", debugpos1, i);
+                    code_push('"for_end\\' + j + '"', debugpos1, i);
                 }
-                code_push("ifnotgoto", debugpos1, i);
-                code_push('"for_end\\' + j + '"', debugpos1, i);
                 // 文
                 // ***** 文(ステートメント)のコンパイル(再帰的に実行) *****
                 c_statement(for_stm, for_end - 1, '"for_end\\' + j + '"', '"for_exp3\\' + j + '"');
@@ -3633,9 +3631,9 @@ var Interpreter;
         ctx.translate(-ctx_scaleox, -ctx_scaleoy);   // 拡大縮小の中心座標を移動
     }
     // ***** Canvasの座標変換 *****
-    // (ret_objには、空オブジェクトを格納した変数を渡すこと)
-    // (座標系の変換を適用して、グラフィックスの座標(x,y)から
-    //  実際の画面上の座標(ret_obj.x, ret_obj.y)を取得して返す)
+    // (ret_objには、空のオブジェクトを格納した変数を渡すこと。
+    //  グラフィックスの座標(x,y)から、
+    //  実際の画面上の座標(ret_obj.x, ret_obj.y)を計算して返す)
     function conv_axis_point(x, y, ret_obj) {
         var x1, y1, t1;
         // ***** 座標系の変換の分を補正 *****
@@ -3736,7 +3734,7 @@ var Interpreter;
                 // }
             }
         }
-        if (debugpos2 >= symbol_len) { msg += "プログラム最後まで検索したが文が完成せず"; }
+        if (debugpos2 >= symbol_len) { msg += "- プログラム最後まで検索したが文が完成せず。"; }
         DebugShow(msg + "\n");
     }
 
@@ -3783,6 +3781,7 @@ var Interpreter;
             this.array_cache = [];    // 配列変数名キャッシュ用(検索高速化のため)(配列)
             this.array_cache[0] = {}; // グローバル配列変数名キャッシュ用(連想配列オブジェクト)
         }
+
         // ***** 定数 *****
         // (Object.keysと配列操作のsome,filter,forEachがあるときは、そちらを利用する)
         if (Object.keys && Array.prototype.some && Array.prototype.filter && Array.prototype.forEach) {
@@ -3844,7 +3843,10 @@ var Interpreter;
             }
         };
         // ***** 変数のタイプチェック(内部処理用) *****
-        // (ret_objには、空オブジェクトを格納した変数を渡すこと)
+        // (ret_objには、空のオブジェクトを格納した変数を渡すこと。
+        //  以下のプロパティがセットされて返る。
+        //    ret_obj.now_index  ローカル/グローバル変数のスコープの番号
+        //    ret_obj.loc_flag   ローカル変数使用フラグ )
         Vars.prototype.checkType = function (var_name, ret_obj) {
             var i = 0;
             var pre_word;
@@ -6563,6 +6565,7 @@ var Profiler = (function () {
         this.time_start_flag = {}; // 時間測定開始フラグ  (キー名称ごと)
         this.records = {};         // 測定結果            (キー名称ごと)
     }
+
     // ***** 定数 *****
     // (Chrome を --enable-benchmarking オプション付きで起動したときは、
     //  マイクロ秒まで測定する)

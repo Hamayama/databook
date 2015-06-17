@@ -769,7 +769,7 @@ var Plugin0001;
                 border_mode = Math.trunc(param[11]);
             }
             sand_obj[a1] = new SandSim(can, ctx, x1, y1, w1, h1, r1, r2, r3, r4, col, threshold, border_mode);
-            sand_obj[a1].maketable();
+            sand_obj[a1].makeTable();
             // loop_nocount_flag = true;
             set_loop_nocount();
             return true;
@@ -1851,7 +1851,7 @@ var Plugin0001;
             num = parseInt(a1, 16);
             return num;
         });
-        // ***** 数値の文字列を加算して文字列で返す命令の追加 *****
+        // ***** 数値の文字列を加算して文字列で返す命令 *****
         // (例. y=intstradd("100","200")  を実行すると y="300"  となる)
         // (例. y=intstradd("100","-200") を実行すると y="-100" となる)
         add_one_func_tbl_B("intstradd", 2, [], function (param, vars, can, ctx) {
@@ -1865,16 +1865,39 @@ var Plugin0001;
             a2 = String(param[1]); // 数値の文字列2
 
             // ***** 10進数オブジェクトの生成 *****
-            DigitCalc.make_digit_obj(x, a1);
-            DigitCalc.make_digit_obj(y, a2);
-            DigitCalc.make_digit_obj(z, "NaN");
+            DigitCalc.makeDigitObj(x, a1);
+            DigitCalc.makeDigitObj(y, a2);
+            DigitCalc.makeDigitObj(z, "NaN");
             // ***** 10進数オブジェクトの加算 *****
-            DigitCalc.add_digit_obj(x, y, z);
+            DigitCalc.addDigitObj(x, y, z);
             // ***** 10進数オブジェクトから符号付文字列を取得する *****
-            num = DigitCalc.get_digit_obj_signed_str(z);
+            num = DigitCalc.getDigitObjSignedStr(z);
             return num;
         });
-        // ***** 数値の文字列を乗算して文字列で返す命令の追加 *****
+        // ***** 数値の文字列を減算して文字列で返す命令 *****
+        // (例. y=intstrsub("100","200")  を実行すると y="-100" となる)
+        // (例. y=intstrsub("100","-200") を実行すると y="300"  となる)
+        add_one_func_tbl_B("intstrsub", 2, [], function (param, vars, can, ctx) {
+            var num;
+            var a1, a2;
+            var x = {};
+            var y = {};
+            var z = {};
+
+            a1 = String(param[0]); // 数値の文字列1
+            a2 = String(param[1]); // 数値の文字列2
+
+            // ***** 10進数オブジェクトの生成 *****
+            DigitCalc.makeDigitObj(x, a1);
+            DigitCalc.makeDigitObj(y, a2);
+            DigitCalc.makeDigitObj(z, "NaN");
+            // ***** 10進数オブジェクトの減算 *****
+            DigitCalc.subDigitObj(x, y, z);
+            // ***** 10進数オブジェクトから符号付文字列を取得する *****
+            num = DigitCalc.getDigitObjSignedStr(z);
+            return num;
+        });
+        // ***** 数値の文字列を乗算して文字列で返す命令 *****
         // (例. y=intstrmul("100","200")  を実行すると y="20000"  となる)
         // (例. y=intstrmul("100","-200") を実行すると y="-20000" となる)
         add_one_func_tbl_B("intstrmul", 2, [], function (param, vars, can, ctx) {
@@ -1888,16 +1911,16 @@ var Plugin0001;
             a2 = String(param[1]); // 数値の文字列2
 
             // ***** 10進数オブジェクトの生成 *****
-            DigitCalc.make_digit_obj(x, a1);
-            DigitCalc.make_digit_obj(y, a2);
-            DigitCalc.make_digit_obj(z, "NaN");
+            DigitCalc.makeDigitObj(x, a1);
+            DigitCalc.makeDigitObj(y, a2);
+            DigitCalc.makeDigitObj(z, "NaN");
             // ***** 10進数オブジェクトの乗算 *****
-            DigitCalc.mul_digit_obj(x, y, z);
+            DigitCalc.mulDigitObj(x, y, z);
             // ***** 10進数オブジェクトから符号付文字列を取得する *****
-            num = DigitCalc.get_digit_obj_signed_str(z);
+            num = DigitCalc.getDigitObjSignedStr(z);
             return num;
         });
-        // ***** 数値の文字列を除算して文字列で返す命令の追加 *****
+        // ***** 数値の文字列を除算して文字列で返す命令 *****
         // (例. y=intstrdiv("10","3")   を実行すると y="3"   となる)
         // (例. y=intstrdiv("10","-3")  を実行すると y="-3"  となる)
         // (例. y=intstrdiv("10","3",1) を実行すると y="1"   となる(第3引数を1にすると余りを返す))
@@ -1919,19 +1942,19 @@ var Plugin0001;
             }
 
             // ***** 10進数オブジェクトの生成 *****
-            DigitCalc.make_digit_obj(x, a1);
-            DigitCalc.make_digit_obj(y, a2);
-            DigitCalc.make_digit_obj(z, "NaN");
-            DigitCalc.make_digit_obj(z2, "NaN");
+            DigitCalc.makeDigitObj(x, a1);
+            DigitCalc.makeDigitObj(y, a2);
+            DigitCalc.makeDigitObj(z, "NaN");
+            DigitCalc.makeDigitObj(z2, "NaN");
             // ***** 10進数オブジェクトの除算 *****
-            DigitCalc.div_digit_obj(x, y, z, z2);
+            DigitCalc.divDigitObj(x, y, z, z2);
             // ***** 10進数オブジェクトから符号付文字列を取得する *****
             if (a3 == 1) {        // 余りを返す
-                num = DigitCalc.get_digit_obj_signed_str(z2);
+                num = DigitCalc.getDigitObjSignedStr(z2);
             } else if (a3 == 2) { // 商と余りをカンマで区切って返す
-                num = DigitCalc.get_digit_obj_signed_str(z) + "," + DigitCalc.get_digit_obj_signed_str(z2);
+                num = DigitCalc.getDigitObjSignedStr(z) + "," + DigitCalc.getDigitObjSignedStr(z2);
             } else {              // 商を返す
-                num = DigitCalc.get_digit_obj_signed_str(z);
+                num = DigitCalc.getDigitObjSignedStr(z);
             }
             return num;
         });
@@ -2440,12 +2463,13 @@ var DigitCalc = (function () {
 
     // ***** 10進数オブジェクトの生成(staticメソッド) *****
     // (数値文字列num_stから10進数オブジェクトxを生成する)
-    // (xには空のオブジェクトを渡すこと。以下のプロパティがセットされて返る。
-    //    x.sign      : 符号文字列
-    //    x.str       : 数値文字列
-    //    x.digit[i]  : 各桁の値の配列(0オリジン)
-    //    x.digit_len : 桁数 )
-    DigitCalc.make_digit_obj = function (x, num_st) {
+    // (xには、空のオブジェクトを格納した変数を渡すこと。
+    //  以下のプロパティがセットされて返る。
+    //    x.sign       符号文字列
+    //    x.str        数値文字列
+    //    x.digit[i]   各桁の値の配列
+    //    x.digit_len  桁数 )
+    DigitCalc.makeDigitObj = function (x, num_st) {
         var reg_exp;
         var ret;
         var i;
@@ -2519,9 +2543,8 @@ var DigitCalc = (function () {
             x.digit[i] = (+arr_st[x.digit_len - i - 1]);
         }
     };
-
     // ***** 10進数オブジェクトの文字列を更新する(staticメソッド) *****
-    DigitCalc.update_digit_obj_str = function (x) {
+    DigitCalc.updateDigitObjStr = function (x) {
         var reg_exp;
         var ret;
         var i;
@@ -2563,9 +2586,8 @@ var DigitCalc = (function () {
             x.digit[i] = (+arr_st[x.digit_len - i - 1]);
         }
     };
-
     // ***** 10進数オブジェクトから符号付文字列を取得する(staticメソッド) *****
-    DigitCalc.get_digit_obj_signed_str = function (x) {
+    DigitCalc.getDigitObjSignedStr = function (x) {
         // ( -0 もありとする)
         // if (x.sign == "-" && x.str != "0" && x.str != "NaN") {
         if (x.sign == "-" && x.str != "NaN") {
@@ -2573,9 +2595,8 @@ var DigitCalc = (function () {
         }
         return x.str;
     };
-
     // ***** 10進数オブジェクトの加算(staticメソッド) *****
-    DigitCalc.add_digit_obj = function (x, y, z) {
+    DigitCalc.addDigitObj = function (x, y, z) {
         var i;
 
         // ***** 結果の初期化 *****
@@ -2688,11 +2709,19 @@ var DigitCalc = (function () {
             }
         }
         // ***** 10進数オブジェクトの文字列を更新する *****
-        DigitCalc.update_digit_obj_str(z);
+        DigitCalc.updateDigitObjStr(z);
     };
-
+    // ***** 10進数オブジェクトの減算(staticメソッド) *****
+    DigitCalc.subDigitObj = function (x, y, z) {
+        // ***** yの符号を逆にする *****
+        y.sign = (y.sign == "-") ? "+" : "-";
+        // ***** 加算を実行 *****
+        DigitCalc.addDigitObj(x, y, z);
+        // ***** yの符号を元に戻す *****
+        y.sign = (y.sign == "-") ? "+" : "-";
+    };
     // ***** 10進数オブジェクトの乗算(staticメソッド) *****
-    DigitCalc.mul_digit_obj = function (x, y, z) {
+    DigitCalc.mulDigitObj = function (x, y, z) {
         var i, j;
         var carry_num;
 
@@ -2737,11 +2766,10 @@ var DigitCalc = (function () {
         // ***** 結果の符号を求める *****
         z.sign = (x.sign == y.sign) ? "+" : "-";
         // ***** 10進数オブジェクトの文字列を更新する *****
-        DigitCalc.update_digit_obj_str(z);
+        DigitCalc.updateDigitObjStr(z);
     };
-
     // ***** 10進数オブジェクトの除算(staticメソッド) *****
-    DigitCalc.div_digit_obj = function (x, y, z, z2) {
+    DigitCalc.divDigitObj = function (x, y, z, z2) {
         var i, j;
         var minus_flag;
         var minus_count;
@@ -2831,10 +2859,9 @@ var DigitCalc = (function () {
         z.sign = (x.sign == y.sign) ? "+" : "-";
         z2.sign = x.sign;
         // ***** 10進数オブジェクトの文字列を更新する *****
-        DigitCalc.update_digit_obj_str(z);
-        DigitCalc.update_digit_obj_str(z2);
+        DigitCalc.updateDigitObjStr(z);
+        DigitCalc.updateDigitObjStr(z2);
     };
-
     return DigitCalc; // これがないとクラスが動かないので注意
 })();
 
@@ -2862,6 +2889,9 @@ var ConvZenHan = (function () {
     var DakutenToHankaku = {};     // 濁点半角変換テーブル(連想配列オブジェクト)
     var DakutenSplit = {};         // 濁点分離テーブル(連想配列オブジェクト)
     var DakutenMarge = {};         // 濁点結合テーブル(連想配列オブジェクト)
+
+    // ***** 変換テーブルをここで1回だけ生成 *****
+    makeTable();
 
     // ***** 全角に変換する(staticメソッド) *****
     ConvZenHan.toZenkaku = function (st1, mode1) {
@@ -2967,7 +2997,6 @@ var ConvZenHan = (function () {
         // ***** 戻り値を返す *****
         return ret_st;
     };
-
     // ***** 半角に変換する(staticメソッド) *****
     ConvZenHan.toHankaku = function (st1, mode1) {
         var ret_st;
@@ -3063,7 +3092,7 @@ var ConvZenHan = (function () {
         var han, zen;
         var ch, cz, cz2;
 
-        // alert("ConvZenHan.makeTable:-:実行されました。");
+        // alert("makeTable:-:実行されました。");
         // ***** アルファベット *****
         alphaToZenkaku = {};
         alphaToHankaku = {};
@@ -3213,10 +3242,6 @@ var ConvZenHan = (function () {
         DakutenMarge["ヲ゛"] = "\u30FA";
         DakutenMarge["う゛"] = "\u3094";
     }
-
-    // ***** 変換テーブルをここで1回だけ生成 *****
-    makeTable();
-
     return ConvZenHan; // これがないとクラスが動かないので注意
 })();
 
@@ -3549,6 +3574,7 @@ var MMLPlayer = (function () {
         this.tempo_chg = []; // テンポ変更情報(配列)(全チャンネル共通)
         this.compiled = 0;   // コンパイル状態(=0:未,=1:コンパイル中,=2:完了)
     }
+
     // ***** 定数 *****
     MMLPlayer.MAX_CH = 8;          // 最大チャンネル数(増やすと音が小さくなる)
     MMLPlayer.SAMPLE_RATE = 22050; // サンプリングレート(Hz)(これより小さいとエラー)
@@ -4278,8 +4304,8 @@ var MMLPlayer = (function () {
         return i;
     };
     // ***** MML内の数値を取得(内部処理用) *****
-    // (引数の ret には、空のオブジェクトを格納した変数を渡すこと
-    //  (検索位置 i の最終位置を、ret.i に格納して返すため))
+    // (retには、空のオブジェクトを格納した変数を渡すこと。
+    //  最終の検索位置をret.iにセットして返す)
     MMLPlayer.prototype.getValue = function (mml_st, i, err_val, ret) {
         var c, start, mml_st_len;
 
@@ -4400,7 +4426,7 @@ var SandSim = (function () {
         this.over_right  = (border_mode & 2)? 0: this.width - 1;
     }
     // ***** テーブル生成 *****
-    SandSim.prototype.maketable = function () {
+    SandSim.prototype.makeTable = function () {
         var i, j, k;
         var r, g, b, a, diff2, col2;
         var img_data;
