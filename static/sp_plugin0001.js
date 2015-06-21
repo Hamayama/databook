@@ -1981,6 +1981,7 @@ var Plugin0001;
                         mis.useflag = Math.trunc(vars.getVarValue(mis.useflag_var_name));
                         if (mis.useflag == 0) {
                             num = mis.no;
+                            break;
                         }
                     }
                 }
@@ -2171,10 +2172,14 @@ var Plugin0001;
                     for (j = x3; j <= x4; j++) {
                         if (j >= 0 && j < st1.length) {
                             ch = st1.charAt(j);
-                            if (a4.indexOf(ch) >= 0) { num = 1; }
+                            if (a4.indexOf(ch) >= 0) {
+                                num = 1;
+                                break;
+                            }
                         }
                     }
                 }
+                if (num == 1) { break; }
             }
             return num;
         });
