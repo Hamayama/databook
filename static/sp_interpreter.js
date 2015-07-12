@@ -1,7 +1,7 @@
 // This file is encoded with UTF-8 without BOM.
 
 // sp_interpreter.js
-// 2015-6-21 v3.66
+// 2015-7-12 v3.67
 
 
 // SPALM Web Interpreter
@@ -539,6 +539,7 @@ var Interpreter;
     var sleep_flag;             // スリープ用のフラグ
     var sleep_time;             // スリープ時間(msec)
     var sleep_id = null;        // スリープキャンセル用ID
+    var sleep_data = {};        // スリープ時間調整用(連想配列オブジェクト)
     var loop_time_max = 3000;   // 最大ループ時間(msec) これ以上時間がかかったらエラーとする
     var loop_time_start;        // ループ開始時間(msec)
     var loop_time_count;        // ループ経過時間(msec)
@@ -934,6 +935,7 @@ var Interpreter;
         end_flag = false;
         running_flag = true; runstatchanged();
         sleep_flag = false;
+        sleep_data = {};
         loop_nocount_flag = false;
         loop_nocount_mode = false;
         input_flag = false;
@@ -5339,6 +5341,34 @@ var Interpreter;
             a1 = Math.trunc(param[0]);
             sleep_flag = true;
             sleep_time = a1;
+            return true;
+        });
+        make_one_func_tbl_A("sleepsync", 1, [], function (param) {
+            var a1, a2;
+            var t_new;
+            var t_diff;
+
+            a1 = Math.trunc(param[0]);
+            if (param.length <= 1) {
+                a2 = 0;
+            } else {
+                a2 = Math.trunc(param[1]);
+            }
+            t_new = Date.now();
+            if (sleep_data.hasOwnProperty(a2)) {
+                t_diff = t_new - sleep_data[a2];
+                if (t_diff < a1) {
+                    sleep_time = a1 - t_diff;
+                } else if (t_diff < a1 * 50) {
+                    sleep_time = 1;
+                } else {
+                    sleep_time = a1;
+                }
+            } else {
+                sleep_time = a1;
+            }
+            sleep_data[a2] = t_new + sleep_time;
+            sleep_flag = true;
             return true;
         });
         make_one_func_tbl_A("soft1", 1, [], function (param) {
