@@ -67,12 +67,33 @@
 
 -->
 </style>
+<script type="text/javascript">
+<!--
+// ***** 説明の表示／非表示 *****
+function show_help() {
+    if (document.getElementById("show_help_status1").value == "0") {
+        document.getElementById("show_help_status1").value = "1";
+        document.getElementById("show_help_text1").innerHTML = "＜説明を隠す＞";
+        document.getElementById("help_text1").style.display = "block";
+    } else {
+        document.getElementById("show_help_status1").value = "0";
+        document.getElementById("show_help_text1").innerHTML = "＜説明を表示＞";
+        document.getElementById("help_text1").style.display = "none";
+    }
+}
+// -->
+</script>
 </head>
 
 <body class="main_container">
 <div class="main_frame">
 <div class="title_text">{{ databook_title }}&nbsp;&nbsp;<span class="warn_text">{{ write_disabled_message }}</span></div>
 <b>{{ admin_message }}</b> <a href="{{ login_url|safe }}">{{ login_text }}</a><br><br>
+<a href="#" id="show_help_text1" onclick="show_help();">＜説明を表示＞</a><br>
+<form action="#" onsubmit="return false;" style="display: inline;">
+<input type="hidden" id="show_help_status1" value="0">
+</form>
+<div id="help_text1" style="display: none; margin-top: 10px; margin-bottom: 15px;">
 ＜内容＞<br>
 &nbsp;&nbsp;SPALM Web Interpreter のプログラムを登録可能なデータベースです。(Google App Engine を利用しています)<br>
 &nbsp;&nbsp;タイトル名を入力して編集ボタンをクリックにより、データ編集画面を表示し、データの登録が行えます。<br>
@@ -89,6 +110,7 @@
 （４）現状、SPALM Web Interpreter の実行画面では、プログラム（ソース）をセーブすることはできません。<br>
 &nbsp;&nbsp;データ編集画面のソース欄にコピー＆ペーストして、データ編集画面でセーブする必要があります。<br>
 <br>
+</div>
 
 <div class="data_input">
 <form action="{{ editpage_url }}" method="post">
