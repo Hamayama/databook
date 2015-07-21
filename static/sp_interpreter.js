@@ -1,7 +1,7 @@
 // This file is encoded with UTF-8 without BOM.
 
 // sp_interpreter.js
-// 2015-7-12 v3.67
+// 2015-7-21 v3.68
 
 
 // SPALM Web Interpreter
@@ -5357,9 +5357,9 @@ var Interpreter;
             t_new = Date.now();
             if (sleep_data.hasOwnProperty(a2)) {
                 t_diff = t_new - sleep_data[a2];
-                if (t_diff < a1) {
+                if (t_diff >= -a1 && t_diff < a1) {
                     sleep_time = a1 - t_diff;
-                } else if (t_diff < a1 * 50) {
+                } else if (t_diff >= a1 && t_diff < a1 * 50) {
                     sleep_time = 1;
                 } else {
                     sleep_time = a1;
