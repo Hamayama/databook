@@ -75,11 +75,17 @@ var Plugin0001;
             audplayer = {};
             sand_obj = {};
             aud_mode = 1;
+            // ***** 音楽再開 *****
+            // (CPU負荷軽減のために追加)
+            MMLPlayer.resume();
         });
         // ***** 実行後処理を登録 *****
         add_after_run_funcs("plugin0001", function () {
             // ***** 音楽全停止 *****
             audstopall();
+            // ***** 音楽中断 *****
+            // (CPU負荷軽減のために追加)
+            MMLPlayer.suspend();
         });
         // ***** 全変数クリア時処理を登録 *****
         add_clear_var_funcs("plugin0001", function () {
@@ -126,9 +132,9 @@ var Plugin0001;
 
             // ***** 音楽モードチェック *****
             if (aud_mode == 1) {
-                if (!MMLPlayer.AudioContext) { throw new Error("音楽演奏機能が利用できません。"); }
+                if (!MMLPlayer.adctx) { throw new Error("音楽演奏機能が利用できません。"); }
             } else if (aud_mode == 2) {
-                if (!MMLPlayer.AudioContext) { return true; }
+                if (!MMLPlayer.adctx) { return true; }
             } else {
                 return true;
             }
@@ -152,9 +158,9 @@ var Plugin0001;
 
             // ***** 音楽モードチェック *****
             if (aud_mode == 1) {
-                if (!MMLPlayer.AudioContext) { throw new Error("音楽演奏機能が利用できません。"); }
+                if (!MMLPlayer.adctx) { throw new Error("音楽演奏機能が利用できません。"); }
             } else if (aud_mode == 2) {
-                if (!MMLPlayer.AudioContext) { return true; }
+                if (!MMLPlayer.adctx) { return true; }
             } else {
                 return true;
             }
@@ -182,9 +188,9 @@ var Plugin0001;
 
             // ***** 音楽モードチェック *****
             if (aud_mode == 1) {
-                if (!MMLPlayer.AudioContext) { throw new Error("音楽演奏機能が利用できません。"); }
+                if (!MMLPlayer.adctx) { throw new Error("音楽演奏機能が利用できません。"); }
             } else if (aud_mode == 2) {
-                if (!MMLPlayer.AudioContext) { return true; }
+                if (!MMLPlayer.adctx) { return true; }
             } else {
                 return true;
             }
@@ -204,9 +210,9 @@ var Plugin0001;
 
             // ***** 音楽モードチェック *****
             if (aud_mode == 1) {
-                if (!MMLPlayer.AudioContext) { throw new Error("音楽演奏機能が利用できません。"); }
+                if (!MMLPlayer.adctx) { throw new Error("音楽演奏機能が利用できません。"); }
             } else if (aud_mode == 2) {
-                if (!MMLPlayer.AudioContext) { return true; }
+                if (!MMLPlayer.adctx) { return true; }
             } else {
                 return true;
             }
@@ -225,9 +231,9 @@ var Plugin0001;
 
             // ***** 音楽モードチェック *****
             if (aud_mode == 1) {
-                if (!MMLPlayer.AudioContext) { throw new Error("音楽演奏機能が利用できません。"); }
+                if (!MMLPlayer.adctx) { throw new Error("音楽演奏機能が利用できません。"); }
             } else if (aud_mode == 2) {
-                if (!MMLPlayer.AudioContext) { return true; }
+                if (!MMLPlayer.adctx) { return true; }
             } else {
                 return true;
             }
@@ -247,9 +253,9 @@ var Plugin0001;
 
             // ***** 音楽モードチェック *****
             if (aud_mode == 1) {
-                if (!MMLPlayer.AudioContext) { throw new Error("音楽演奏機能が利用できません。"); }
+                if (!MMLPlayer.adctx) { throw new Error("音楽演奏機能が利用できません。"); }
             } else if (aud_mode == 2) {
-                if (!MMLPlayer.AudioContext) { return true; }
+                if (!MMLPlayer.adctx) { return true; }
             } else {
                 return true;
             }
@@ -1684,7 +1690,7 @@ var Plugin0001;
             var num;
 
             // ***** 音楽モードチェック *****
-            if (!MMLPlayer.AudioContext) { return 0; }
+            if (!MMLPlayer.adctx) { return 0; }
 
             num = 1;
             return num;
@@ -1697,7 +1703,7 @@ var Plugin0001;
 
             // ***** 音楽モードチェック *****
             if (aud_mode == 1 || aud_mode == 2) {
-                if (!MMLPlayer.AudioContext) { return 0; }
+                if (!MMLPlayer.adctx) { return 0; }
             } else {
                 return 0;
             }
@@ -1720,7 +1726,7 @@ var Plugin0001;
 
             // ***** 音楽モードチェック *****
             if (aud_mode == 1 || aud_mode == 2) {
-                if (!MMLPlayer.AudioContext) { return -1; }
+                if (!MMLPlayer.adctx) { return -1; }
             } else {
                 return -1;
             }
@@ -3584,18 +3590,42 @@ var MMLPlayer = (function () {
     MMLPlayer.MAX_CH = 8;          // 最大チャンネル数(増やすと音が小さくなる)
     MMLPlayer.SAMPLE_RATE = 22050; // サンプリングレート(Hz)(これより小さいとエラー)
 
-    // ***** Chrome v23 で何回もnewするとエラーになるため *****
-    // ***** ここで1回だけnewする *****
+    // ***** Web Audio APIの音声コンテキストの取得 *****
+    // (Chrome v23 で何回もnewするとエラーになるため、ここで1回だけnewする)
     MMLPlayer.AudioContext = window.AudioContext || window.webkitAudioContext;
     if (MMLPlayer.AudioContext) {
         MMLPlayer.adctx = new MMLPlayer.AudioContext(); // 音声コンテキスト
+    } else {
+        MMLPlayer.adctx = null;
     }
+    // ***** 音楽中断(staticメソッド) *****
+    // (CPU負荷軽減のために追加)
+    MMLPlayer.suspend = function () {
+        // ***** 音声コンテキストの存在チェック *****
+        if (!MMLPlayer.adctx) { return false; }
+        // ***** 音楽中断 *****
+        if (MMLPlayer.adctx.suspend) {
+            MMLPlayer.adctx.suspend();
+        }
+        return true;
+    };
+    // ***** 音楽再開(staticメソッド) *****
+    // (CPU負荷軽減のために追加)
+    MMLPlayer.resume = function () {
+        // ***** 音声コンテキストの存在チェック *****
+        if (!MMLPlayer.adctx) { return false; }
+        // ***** 音楽再開 *****
+        if (MMLPlayer.adctx.resume) {
+            MMLPlayer.adctx.resume();
+        }
+        return true;
+    };
 
     // ***** 再生状態取得 *****
     // (戻り値は =0:停止, =1:演奏開始中, =2:演奏中, =3:演奏終了)
     MMLPlayer.prototype.getStatus = function () {
-        // ***** Web Audio APIの存在チェック *****
-        if (!MMLPlayer.AudioContext) { return 0; }
+        // ***** 音声コンテキストの存在チェック *****
+        if (!MMLPlayer.adctx) { return 0; }
         // ***** 未再生のチェック *****
         if (!this.node) { return 0; }
         // ***** 再生状態を返す *****
@@ -3606,8 +3636,8 @@ var MMLPlayer = (function () {
     };
     // ***** 音量設定 *****
     MMLPlayer.prototype.setVolume = function (volume) {
-        // ***** Web Audio APIの存在チェック *****
-        if (!MMLPlayer.AudioContext) { return false; }
+        // ***** 音声コンテキストの存在チェック *****
+        if (!MMLPlayer.adctx) { return false; }
         // ***** ゲイン(音量)設定 *****
         this.gain = volume / 100;
         if (this.gain < 0) { this.gain = 0; }
@@ -3619,8 +3649,8 @@ var MMLPlayer = (function () {
     };
     // ***** 再生速度レート設定 *****
     MMLPlayer.prototype.setSpeedRate = function (speed_rate) {
-        // ***** Web Audio APIの存在チェック *****
-        if (!MMLPlayer.AudioContext) { return false; }
+        // ***** 音声コンテキストの存在チェック *****
+        if (!MMLPlayer.adctx) { return false; }
         // ***** 再生速度レート設定 *****
         this.speed_rate = speed_rate;
         if (this.node) {
@@ -3633,8 +3663,8 @@ var MMLPlayer = (function () {
     MMLPlayer.prototype.play = function (repeat_flag) {
         var self; // this保存用
 
-        // ***** Web Audio APIの存在チェック *****
-        if (!MMLPlayer.AudioContext) { return false; }
+        // ***** 音声コンテキストの存在チェック *****
+        if (!MMLPlayer.adctx) { return false; }
         // ***** 停止 *****
         this.stop();
         // ***** コンパイル完了のチェック *****
@@ -3667,8 +3697,8 @@ var MMLPlayer = (function () {
     };
     // ***** 停止 *****
     MMLPlayer.prototype.stop = function () {
-        // ***** Web Audio APIの存在チェック *****
-        if (!MMLPlayer.AudioContext) { return false; }
+        // ***** 音声コンテキストの存在チェック *****
+        if (!MMLPlayer.adctx) { return false; }
         // ***** 未再生のチェック *****
         if (!this.node) { return false; }
         // ***** 停止 *****
@@ -3692,8 +3722,8 @@ var MMLPlayer = (function () {
         var chdata_len;  // チャンネル1個の音声バッファのサイズ
         var tempo_sort = function (a,b) { return (a.pos - b.pos); }; // ソート用(比較関数)
 
-        // ***** Web Audio APIの存在チェック *****
-        if (!MMLPlayer.AudioContext) { return false; }
+        // ***** 音声コンテキストの存在チェック *****
+        if (!MMLPlayer.adctx) { return false; }
         // ***** 引数のチェック *****
         if (!mml_st) { return false; }
         // ***** 停止 *****
@@ -3747,8 +3777,8 @@ var MMLPlayer = (function () {
         var uint8_arr;  // バイナリデータ(型付配列)
         var self;       // this保存用
 
-        // ***** Web Audio APIの存在チェック *****
-        if (!MMLPlayer.AudioContext) { return false; }
+        // ***** 音声コンテキストの存在チェック *****
+        if (!MMLPlayer.adctx) { return false; }
         // ***** 引数のチェック *****
         if (!aud_data_st) { return false; }
         // ***** 停止 *****
@@ -4390,7 +4420,11 @@ var MMLPlayer = (function () {
     };
     return MMLPlayer; // これがないとクラスが動かないので注意
 })();
-
+// ***** 起動直後は正常に動作しないことがあるためコメントアウト (Chrome v44) *****
+// // ***** 音楽中断 *****
+// // (CPU負荷軽減のために追加)
+// // (起動時は中断状態にして、CPU負荷を軽減する)
+// MMLPlayer.suspend();
 
 // ***** 砂シミュレート用クラス *****
 var SandSim = (function () {
