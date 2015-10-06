@@ -1,7 +1,7 @@
 // This file is encoded with UTF-8 without BOM.
 
 // sp_interpreter.js
-// 2015-8-8 v3.69
+// 2015-10-6 v3.70
 
 
 // SPALM Web Interpreter
@@ -624,7 +624,7 @@ var Interpreter;
         "func":6,       "funcgoto":7,   "break":8,      "continue":9,   "switch":10,
         "case":11,      "default":12,   "if":13,        "elsif":14,     "else":15,
         "for":16,       "while":17,     "do":18,        "global":19,    "glb":20,
-        "local":21,     "loc":22,       "defconst":23,  "defconst2":24, "disconst":25 };
+        "local":21,     "loc":22,       "defconst":23,  "disconst":24 };
 
     // ***** hasOwnPropertyをプロパティ名に使うかもしれない場合の対策 *****
     // (変数名、関数名、ラベル名、画像変数名について、
@@ -1699,6 +1699,7 @@ var Interpreter;
         var lbl_name;
         var func_name, func_stm, func_end;
         var param_num;
+        var var_name;
 
         var switch_exp, switch_stm, switch_default_stm, switch_end;
         var switch_case_no;
@@ -1886,8 +1887,35 @@ var Interpreter;
                 continue;
             }
 
+            // ***** global/local文のとき *****
+            // (loc a,b,c のように、複数の変数をカンマ区切りで一括宣言可能とする)
+            if (sym == "global" || sym == "glb" || sym == "local" || sym == "loc") {
+                i++;
+                while (i < sym_end) {
+                    j = code_len + 1;
+                    i = c_expression(i, sym_end);
+                    code_push("pop", debugpos1, i);
+                    if (j < code_len) {
+                        var_name = String(code[j]);
+                        if (var_name.charAt(1) != "\\") {
+                            checkvarname(var_name, i);
+                            // ***** 変数名に接頭語を付ける *****
+                            var_name = sym.charAt(0) + "\\" + var_name;
+                            code[j] = var_name;
+                            code_str[j] = '"' + var_name + '"';
+                        }
+                    }
+                    if (symbol[i] == ",") {
+                        i++;
+                        continue;
+                    }
+                    break;
+                }
+                continue;
+            }
+
             // ***** defconst文のとき *****
-            if (sym == "defconst" || sym == "defconst2") {
+            if (sym == "defconst") {
                 i++;
                 match2("(", i++);
                 i++;
@@ -2957,19 +2985,13 @@ var Interpreter;
             }
             return i;
         }
-        // ***** 変数名のチェック *****
-        if (!(isAlpha(var_name.charAt(0)) || var_name.charAt(0) == "_")) {
-            debugpos2 = i;
-            throw new Error("変数名が不正です。('" + var_name + "')");
-        }
         // ***** 接頭語のチェック *****
         if (var_name == "global" || var_name == "glb" || var_name == "local" || var_name == "loc") {
             var_name2 = symbol[i++];
-            if (!(isAlpha(var_name2.charAt(0)) || var_name2.charAt(0) == "_")) {
-                debugpos2 = i;
-                throw new Error("変数名が不正です。('" + var_name2 + "')");
-            }
+            checkvarname(var_name2, i);
             var_name = var_name.charAt(0) + "\\" + var_name2;
+        } else {
+            checkvarname(var_name, i);
         }
         // ***** 変数名をセット *****
         code_push("storestr", debugpos1, i);
@@ -3011,20 +3033,13 @@ var Interpreter;
             }
             return i;
         }
-        // ***** 変数名のチェック *****
-        if (!(isAlpha(var_name.charAt(0)) || var_name.charAt(0) == "_")) {
-            debugpos2 = i;
-            throw new Error("変数名が不正です。('" + var_name + "')");
-        }
         // ***** 接頭語のチェック *****
         if (var_name == "global" || var_name == "glb" || var_name == "local" || var_name == "loc") {
             var_name2 = symbol[i++];
-            if (!(isAlpha(var_name2.charAt(0)) || var_name2.charAt(0) == "_")) {
-                debugpos2 = i;
-                throw new Error("変数名が不正です。('" + var_name2 + "')");
-            }
+            checkvarname(var_name2, i);
             var_name = var_name.charAt(0) + "\\" + var_name2;
         } else {
+            checkvarname(var_name, i);
             // ***** 関数の仮引数はデフォルトでローカル変数とする *****
             var_name = "l\\" + var_name;
         }
@@ -3046,6 +3061,22 @@ var Interpreter;
         }
         // ***** 戻り値を返す *****
         return i;
+    }
+    // ***** 変数名のチェック *****
+    function checkvarname(var_name, sym_start) {
+        var i = sym_start;
+
+        // ***** 変数名のチェック *****
+        if (!(isAlpha(var_name.charAt(0)) || var_name.charAt(0) == "_")) {
+            debugpos2 = i;
+            throw new Error("変数名が不正です。('" + var_name + "')");
+        }
+        if (reserved.hasOwnProperty(var_name) ||
+            func_tbl.hasOwnProperty(var_name) ||
+            addfunc_tbl.hasOwnProperty(var_name)) {
+            debugpos2 = i;
+            throw new Error("名前 '" + var_name + "' は予約されているため、変数名には使用できません。");
+        }
     }
 
     // ****************************************
@@ -3072,7 +3103,7 @@ var Interpreter;
             sym = symbol[i];
 
             // ***** defconst文のとき *****
-            if (sym == "defconst" || sym == "defconst2") {
+            if (sym == "defconst") {
                 i++;
                 match2("(", i++);
                 cst_name = symbol[i++];
@@ -3092,13 +3123,7 @@ var Interpreter;
                         i++;
                     }
                     // ***** 定数の定義情報1個の生成 *****
-                    const_tbl[cst_name] = {};
-                    if (sym == "defconst2") {
-                        const_tbl[cst_name].type = 2;
-                    } else {
-                        const_tbl[cst_name].type = 1;
-                    }
-                    const_tbl[cst_name].value = cst_value;
+                    const_tbl[cst_name] = cst_value;
                 } else {
                     debugpos2 = i;
                     throw new Error("定数名が不正です。('" + cst_name + "')");
@@ -3130,12 +3155,8 @@ var Interpreter;
             // if (const_tbl.hasOwnProperty(sym)) {
             if (hasOwn.call(const_tbl, sym)) {
                 i++;
-                // ***** 種別2のときは関数を対象とする *****
-                if ((const_tbl[sym].type == 1 && symbol[i] != "(") ||
-                    (const_tbl[sym].type == 2 && symbol[i] == "(")) {
-                    // ***** 定数を実際の値に置換する *****
-                    symbol[i - 1] = const_tbl[sym].value;
-                }
+                // ***** 定数を実際の値に置換する *****
+                symbol[i - 1] = const_tbl[sym];
                 continue;
             }
 
@@ -3153,9 +3174,7 @@ var Interpreter;
         for (cst_name in constants) {
             // if (constants.hasOwnProperty(cst_name)) {
             if (hasOwn.call(constants, cst_name)) {
-                const_tbl[cst_name] = {};
-                const_tbl[cst_name].type = 1;
-                const_tbl[cst_name].value = String(constants[cst_name]);
+                const_tbl[cst_name] = String(constants[cst_name]);
             }
         }
     }
