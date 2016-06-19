@@ -131,13 +131,7 @@ var Plugin0001;
             a2 = String(param[1]);
 
             // ***** 音楽モードチェック *****
-            if (aud_mode == 1) {
-                if (!MMLPlayer.adctx) { throw new Error("音楽演奏機能が利用できません。"); }
-            } else if (aud_mode == 2) {
-                if (!MMLPlayer.adctx) { return true; }
-            } else {
-                return true;
-            }
+            if (audmodecheck()) { return true; }
 
             if (audplayer.hasOwnProperty(a1)) {
                 audplayer[a1].mmlplayer.stop();
@@ -157,13 +151,7 @@ var Plugin0001;
             a2 = String(param[1]); // 音楽データ(data URI scheme)
 
             // ***** 音楽モードチェック *****
-            if (aud_mode == 1) {
-                if (!MMLPlayer.adctx) { throw new Error("音楽演奏機能が利用できません。"); }
-            } else if (aud_mode == 2) {
-                if (!MMLPlayer.adctx) { return true; }
-            } else {
-                return true;
-            }
+            if (audmodecheck()) { return true; }
 
             if (audplayer.hasOwnProperty(a1)) {
                 audplayer[a1].mmlplayer.stop();
@@ -187,13 +175,7 @@ var Plugin0001;
             }
 
             // ***** 音楽モードチェック *****
-            if (aud_mode == 1) {
-                if (!MMLPlayer.adctx) { throw new Error("音楽演奏機能が利用できません。"); }
-            } else if (aud_mode == 2) {
-                if (!MMLPlayer.adctx) { return true; }
-            } else {
-                return true;
-            }
+            if (audmodecheck()) { return true; }
 
             if (audplayer.hasOwnProperty(a1)) {
                 audplayer[a1].mmlplayer.play(a2);
@@ -209,13 +191,7 @@ var Plugin0001;
             a2 = (+param[1]);
 
             // ***** 音楽モードチェック *****
-            if (aud_mode == 1) {
-                if (!MMLPlayer.adctx) { throw new Error("音楽演奏機能が利用できません。"); }
-            } else if (aud_mode == 2) {
-                if (!MMLPlayer.adctx) { return true; }
-            } else {
-                return true;
-            }
+            if (audmodecheck()) { return true; }
 
             if (audplayer.hasOwnProperty(a1)) {
                 audplayer[a1].mmlplayer.setSpeedRate(a2);
@@ -230,13 +206,7 @@ var Plugin0001;
             a1 = Math.trunc(param[0]);
 
             // ***** 音楽モードチェック *****
-            if (aud_mode == 1) {
-                if (!MMLPlayer.adctx) { throw new Error("音楽演奏機能が利用できません。"); }
-            } else if (aud_mode == 2) {
-                if (!MMLPlayer.adctx) { return true; }
-            } else {
-                return true;
-            }
+            if (audmodecheck()) { return true; }
 
             if (audplayer.hasOwnProperty(a1)) {
                 audplayer[a1].mmlplayer.stop();
@@ -252,13 +222,7 @@ var Plugin0001;
             a2 = Math.trunc(param[1]);
 
             // ***** 音楽モードチェック *****
-            if (aud_mode == 1) {
-                if (!MMLPlayer.adctx) { throw new Error("音楽演奏機能が利用できません。"); }
-            } else if (aud_mode == 2) {
-                if (!MMLPlayer.adctx) { return true; }
-            } else {
-                return true;
-            }
+            if (audmodecheck()) { return true; }
 
             if (audplayer.hasOwnProperty(a1)) {
                 audplayer[a1].mmlplayer.setVolume(a2);
@@ -666,7 +630,7 @@ var Plugin0001;
                         if (mis.useflag != 0 && mis.useflag <= 1000) {
                             mis.x100 = Math.trunc(vars.getVarValue(mis.x100_var_name));
                             mis.y100 = Math.trunc(vars.getVarValue(mis.y100_var_name));
-                            mis.ch =     String(vars.getVarValue(mis.ch_var_name));
+                            mis.ch =   String(vars.getVarValue(mis.ch_var_name));
                             x1 = (mis.x100 / 100) | 0; // 整数化
                             y1 = (mis.y100 / 100) | 0; // 整数化
                             ch = mis.ch;
@@ -902,6 +866,7 @@ var Plugin0001;
         add_one_func_tbl_A("txtdraw", 3, [0], function (param, vars, can, ctx) {
             var a1, a2, a3;
             var x1, y1;
+            var anc;
             var i;
             var st1;
             var font_size = get_font_size();
@@ -916,6 +881,11 @@ var Plugin0001;
                 x1 = Math.trunc(param[3]);
                 y1 = Math.trunc(param[4]);
             }
+            if (param.length <= 5) {
+                anc = 0;
+            } else {
+                anc = Math.trunc(param[5]);
+            }
 
             // ***** NaN対策 *****
             a2 = a2 | 0;
@@ -926,6 +896,12 @@ var Plugin0001;
             if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
                 throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
             }
+
+            // ***** アンカー処理(水平方向のみ) *****
+            // if (anc & 4)    { ctx.textAlign = "left"; }   // 左
+            if (anc & 8)       { ctx.textAlign = "right"; }  // 右
+            else if (anc & 1)  { ctx.textAlign = "center"; } // 中央
+            else { ctx.textAlign = "left"; }                 // その他
 
             // ***** 描画処理 *****
             for (i = a2; i <= a3; i++) {
@@ -943,8 +919,8 @@ var Plugin0001;
                 st1 = st1.replace(/　/g, "  "); // 全角スペースを半角スペース2個に変換
 
                 // ***** 文字列表示 *****
-                ctx.textAlign = "left";
-                ctx.textBaseline = "top";
+                // ctx.textAlign = "left";
+                // ctx.textBaseline = "top";
                 ctx.fillText(st1, x1, y1);
                 y1 += font_size;
             }
@@ -954,6 +930,7 @@ var Plugin0001;
             var a1, a2, a3;
             var x1, y1, x2;
             var w1, h1;
+            var anc;
             var i, j;
             var ch;
             var st1;
@@ -965,6 +942,11 @@ var Plugin0001;
             y1 = Math.trunc(param[4]);
             w1 = Math.trunc(param[5]);
             h1 = Math.trunc(param[6]);
+            if (param.length <= 7) {
+                anc = 0;
+            } else {
+                anc = Math.trunc(param[7]);
+            }
 
             // ***** NaN対策 *****
             a2 = a2 | 0;
@@ -985,6 +967,14 @@ var Plugin0001;
                 // st1 = vars[a1 + "[" + i + "]"];
                 st1 = vars.getVarValue(a1 + "[" + i + "]");
                 st1 = String(st1);
+
+                if (i == a2) {
+                    // ***** アンカー処理(水平方向のみ) *****
+                    // if (anc & 4)   { }                            // 左
+                    if (anc & 8)      { x1 -= w1 * st1.length; }     // 右
+                    else if (anc & 1) { x1 -= w1 * st1.length / 2; } // 中央
+                }
+
                 x2 = x1;
                 for (j = 0; j < st1.length; j++) {
                     ch = st1.charAt(j);
@@ -1495,23 +1485,23 @@ var Plugin0001;
                 e1 = {};
                 e1.a = (x2 - x1) / (y2 - y1); // Yが1増えたときのXの増分
                 if (y1 < y2) {
-                    e1.ydir = 1;  // Y方向の向き
-                    e1.y1  = y1;  // 始点のY座標
-                    e1.y2  = y2;  // 終点のY座標
-                    e1.x   = x1;  // X座標
-                    // e1.x1c = x1;  // 始点のX座標(保存用)
-                    // e1.y1c = y1;  // 始点のY座標(保存用)
-                    // e1.x2c = x2;  // 終点のX座標(保存用)
-                    // e1.y2c = y2;  // 終点のY座標(保存用)
+                    e1.ydir =  1; // Y方向の向き
+                    e1.y1   = y1; // 始点のY座標
+                    e1.y2   = y2; // 終点のY座標
+                    e1.x    = x1; // X座標
+                    // e1.x1c  = x1; // 始点のX座標(保存用)
+                    // e1.y1c  = y1; // 始点のY座標(保存用)
+                    // e1.x2c  = x2; // 終点のX座標(保存用)
+                    // e1.y2c  = y2; // 終点のY座標(保存用)
                 } else {
                     e1.ydir = -1; // Y方向の向き
-                    e1.y1  = y2;  // 始点のY座標
-                    e1.y2  = y1;  // 終点のY座標
-                    e1.x   = x2;  // X座標
-                    // e1.x1c = x2;  // 始点のX座標(保存用)
-                    // e1.y1c = y2;  // 始点のY座標(保存用)
-                    // e1.x2c = x1;  // 終点のX座標(保存用)
-                    // e1.y2c = y1;  // 終点のY座標(保存用)
+                    e1.y1   = y2; // 始点のY座標
+                    e1.y2   = y1; // 終点のY座標
+                    e1.x    = x2; // X座標
+                    // e1.x1c  = x2; // 始点のX座標(保存用)
+                    // e1.y1c  = y2; // 始点のY座標(保存用)
+                    // e1.x2c  = x1; // 終点のX座標(保存用)
+                    // e1.y2c  = y1; // 終点のY座標(保存用)
                 }
                 edge.push(e1);
             }
@@ -1606,7 +1596,7 @@ var Plugin0001;
                 a5 = a5.substring(0, a4.length);
             } else if (a5.length < a4.length) {
                 for (i = a5.length; i < a4.length; i++) {
-                    a5 = a5 + " ";
+                    a5 += " ";
                 }
             }
 
@@ -1654,7 +1644,7 @@ var Plugin0001;
                 a5 = a5.substring(0, a4.length);
             } else if (a5.length < a4.length) {
                 for (i = a5.length; i < a4.length; i++) {
-                    a5 = a5 + " ";
+                    a5 += " ";
                 }
             }
 
@@ -2130,9 +2120,6 @@ var Plugin0001;
             var num;
             var a1, a2, a3, a4;
             var x1, y1, x2, y2, x3, y3, x4, y4;
-            var i, j;
-            var ch;
-            var st1;
 
             a1 = getvarname(param[0]);
             a2 = Math.trunc(param[1]);
@@ -2165,28 +2152,80 @@ var Plugin0001;
             // ***** 取得処理 *****
             if (x1 > x2) { x3 = x2; x4 = x1; } else { x3 = x1; x4 = x2; }
             if (y1 > y2) { y3 = y2; y4 = y1; } else { y3 = y1; y4 = y2; }
-            num = 0;
-            for (i = y3; i <= y4; i++) {
-                if (i >= a2 && i <= a3) {
+            num = txtbchksub(vars, a1, a2, a3, x3, y3, x4, y4, a4);
+            return num;
+        });
+        add_one_func_tbl_B("txtbchk2", 10, [0], function (param, vars, can, ctx) {
+            var num;
+            var a1, a2, a3, a4;
+            var x1, y1, x2, y2, x3, y3, x4, y4;
+            var chw, chh;
+            var offx, offy;
+            var anc;
+            var st1;
 
-                    // ***** 配列の存在チェック *****
-                    if (!vars.checkVar(a1 + "[" + i + "]")) { continue; }
-
-                    // st1 = vars[a1 + "[" + i + "]"];
-                    st1 = vars.getVarValue(a1 + "[" + i + "]");
-                    st1 = String(st1);
-                    for (j = x3; j <= x4; j++) {
-                        if (j >= 0 && j < st1.length) {
-                            ch = st1.charAt(j);
-                            if (a4.indexOf(ch) >= 0) {
-                                num = 1;
-                                break;
-                            }
-                        }
-                    }
-                }
-                if (num == 1) { break; }
+            a1 = getvarname(param[0]);
+            a2 = Math.trunc(param[1]);
+            a3 = Math.trunc(param[2]);
+            x1 = Math.trunc(param[3]);
+            y1 = Math.trunc(param[4]);
+            x2 = Math.trunc(param[5]);
+            y2 = Math.trunc(param[6]);
+            a4 = String(param[7]);
+            chw = Math.trunc(param[8]);
+            chh = Math.trunc(param[9]);
+            if (param.length <= 11) {
+                offx = 0;
+                offy = 0;
+            } else {
+                offx = Math.trunc(param[10]);
+                offy = Math.trunc(param[11]);
             }
+            if (param.length <= 12) {
+                anc = 0;
+            } else {
+                anc = Math.trunc(param[12]);
+            }
+
+            // ***** NaN対策 *****
+            a2 = a2 | 0;
+            a3 = a3 | 0;
+
+            // ***** エラーチェック *****
+            // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
+            if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
+                throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
+            }
+            if (a4.length == 0) { return 0; }
+
+            // ***** アンカー処理(水平方向のみ) *****
+            // st1 = vars[a1 + "[" + i + "]"];
+            st1 = vars.getVarValue(a1 + "[" + a2 + "]");
+            st1 = String(st1);
+            // if (anc & 4)   { }                               // 左
+            if (anc & 8)      { offx -= chw * st1.length; }     // 右
+            else if (anc & 1) { offx -= chw * st1.length / 2; } // 中央
+
+            // ***** 座標変換 *****
+            if (x1 > x2) { x3 = x2; x4 = x1; } else { x3 = x1; x4 = x2; }
+            if (y1 > y2) { y3 = y2; y4 = y1; } else { y3 = y1; y4 = y2; }
+            x3 = Math.floor((x3 - offx) / chw);
+            y3 = Math.floor((y3 - offy) / chh);
+            x4 = Math.ceil((x4 - offx) / chw) - 1;
+            y4 = Math.ceil((y4 - offy) / chh) - 1;
+
+            // ***** エラーチェック *****
+            // if (x3 > max_str_size || y3 > max_str_size) {
+            if (!(x3 <= max_str_size && y3 <= max_str_size)) {
+                throw new Error("処理する文字数が不正です。" + max_str_size + "以下である必要があります。");
+            }
+            // if (x4 > max_str_size || y4 > max_str_size) {
+            if (!(x4 <= max_str_size && y4 <= max_str_size)) {
+                throw new Error("処理する文字数が不正です。" + max_str_size + "以下である必要があります。");
+            }
+
+            // ***** 取得処理 *****
+            num = txtbchksub(vars, a1, a2, a3, x3, y3, x4, y4, a4);
             return num;
         });
         add_one_func_tbl_B("txtpget", 5, [0], function (param, vars, can, ctx) {
@@ -2233,6 +2272,36 @@ var Plugin0001;
     //                補助関数等
     // ****************************************
 
+    // ***** 文字列配列の四角領域の文字チェックサブ *****
+    function txtbchksub(vars, var_name, min_y, max_y, x1, y1, x2, y2, st1) {
+        var num;
+        var i, j;
+        var ch;
+        var st2;
+
+        num = 0;
+        for (i = y1; i <= y2; i++) {
+            if (!(i >= min_y && i <= max_y)) { continue; }
+
+            // ***** 配列の存在チェック *****
+            if (!vars.checkVar(var_name + "[" + i + "]")) { continue; }
+
+            // st2 = vars[a1 + "[" + i + "]"];
+            st2 = vars.getVarValue(var_name + "[" + i + "]");
+            st2 = String(st2);
+            for (j = x1; j <= x2; j++) {
+                if (j >= 0 && j < st2.length) {
+                    ch = st2.charAt(j);
+                    if (st1.indexOf(ch) >= 0) {
+                        num = 1;
+                        break;
+                    }
+                }
+            }
+            if (num == 1) { break; }
+        }
+        return num;
+    }
     // ***** 文字列配列のライン表示処理サブ *****
     function txtlinesub(vars, var_name, min_y, max_y, x1, y1, x2, y2, ch) {
         var x3, y3;
@@ -2454,6 +2523,17 @@ var Plugin0001;
                 delete audplayer[aud_no];
             }
         }
+    }
+    // ***** 音楽モードチェック *****
+    function audmodecheck() {
+        if (aud_mode == 1) {
+            if (!MMLPlayer.adctx) { throw new Error("音楽演奏機能が利用できません。"); }
+        } else if (aud_mode == 2) {
+            if (!MMLPlayer.adctx) { return true; }
+        } else {
+            return true;
+        }
+        return false;
     }
 
 
@@ -2917,8 +2997,7 @@ var ConvZenHan = (function () {
         if (mode1.indexOf("a") >= 0) {
             ret_st = ret_st.replace(/[\u0041-\u005A]|[\u0061-\u007A]/g,
                 function (c) {
-                    if (!alphaToZenkaku.hasOwnProperty(c)) { return c; }
-                    return alphaToZenkaku[c];
+                    return alphaToZenkaku.hasOwnProperty(c) ? alphaToZenkaku[c] : c;
                 }
             );
         }
@@ -2926,8 +3005,7 @@ var ConvZenHan = (function () {
         if (mode1.indexOf("n") >= 0) {
             ret_st = ret_st.replace(/[\u0030-\u0039]/g,
                 function (c) {
-                    if (!numberToZenkaku.hasOwnProperty(c)) { return c; }
-                    return numberToZenkaku[c];
+                    return numberToZenkaku.hasOwnProperty(c) ? numberToZenkaku[c] : c;
                 }
             );
         }
@@ -2935,8 +3013,7 @@ var ConvZenHan = (function () {
         if (mode1.indexOf("p") >= 0) {
             ret_st = ret_st.replace(/[\u0021-\u007E]|[\uFF61-\uFF64]|[\u00A2-\u00A5]/g,
                 function (c) {
-                    if (!punctuationToZenkaku.hasOwnProperty(c)) { return c; }
-                    return punctuationToZenkaku[c];
+                    return punctuationToZenkaku.hasOwnProperty(c) ? punctuationToZenkaku[c] : c;
                 }
             );
         }
@@ -2944,8 +3021,7 @@ var ConvZenHan = (function () {
         if (mode1.indexOf("s") >= 0) {
             ret_st = ret_st.replace(/ /g,
                 function (c) {
-                    if (!spaceToZenkaku.hasOwnProperty(c)) { return c; }
-                    return spaceToZenkaku[c];
+                    return spaceToZenkaku.hasOwnProperty(c) ? spaceToZenkaku[c] : c;
                 }
             );
         }
@@ -2954,8 +3030,7 @@ var ConvZenHan = (function () {
         if (mode1.indexOf("k") >= 0 || mode1.indexOf("h") >= 0) {
             ret_st = ret_st.replace(/[\uFF65-\uFF9D][ﾞﾟ]?/g,
                 function (c) {
-                    if (!katakanaToZenkaku.hasOwnProperty(c)) { return c; }
-                    return katakanaToZenkaku[c];
+                    return katakanaToZenkaku.hasOwnProperty(c) ? katakanaToZenkaku[c] : c;
                 }
             );
         }
@@ -2963,8 +3038,7 @@ var ConvZenHan = (function () {
         if (mode1.indexOf("h") >= 0) {
             ret_st = ret_st.replace(/[\u30A1-\u30FC]/g,
                 function (c) {
-                    if (!KatakanaToHiragana.hasOwnProperty(c)) { return c; }
-                    return KatakanaToHiragana[c];
+                    return KatakanaToHiragana.hasOwnProperty(c) ? KatakanaToHiragana[c] : c;
                 }
             );
         }
@@ -2972,8 +3046,7 @@ var ConvZenHan = (function () {
         if (mode1.indexOf("t") >= 0) {
             ret_st = ret_st.replace(/[\u3041-\u3094]/g,
                 function (c) {
-                    if (!HiraganaToKatakana.hasOwnProperty(c)) { return c; }
-                    return HiraganaToKatakana[c];
+                    return HiraganaToKatakana.hasOwnProperty(c) ? HiraganaToKatakana[c] : c;
                 }
             );
         }
@@ -2982,8 +3055,7 @@ var ConvZenHan = (function () {
         if (mode1.indexOf("m") >= 0) {
             ret_st = ret_st.replace(/[\u30A1-\u30FC][ﾞﾟ゛゜]?|[\u3041-\u3094][ﾞﾟ゛゜]?/g,
                 function (c) {
-                    if (!DakutenMarge.hasOwnProperty(c)) { return c; }
-                    return DakutenMarge[c];
+                    return DakutenMarge.hasOwnProperty(c) ? DakutenMarge[c] : c;
                 }
             );
         }
@@ -2991,8 +3063,7 @@ var ConvZenHan = (function () {
         if (mode1.indexOf("v") >= 0) {
             ret_st = ret_st.replace(/[\u30A1-\u30FC]|[\u3041-\u3094]/g,
                 function (c) {
-                    if (!DakutenSplit.hasOwnProperty(c)) { return c; }
-                    return DakutenSplit[c];
+                    return DakutenSplit.hasOwnProperty(c) ? DakutenSplit[c] : c;
                 }
             );
         }
@@ -3000,8 +3071,7 @@ var ConvZenHan = (function () {
         if (mode1.indexOf("d") >= 0) {
             ret_st = ret_st.replace(/[ﾞﾟ]/g,
                 function (c) {
-                    if (!DakutenToZenkaku.hasOwnProperty(c)) { return c; }
-                    return DakutenToZenkaku[c];
+                    return DakutenToZenkaku.hasOwnProperty(c) ? DakutenToZenkaku[c] : c;
                 }
             );
         }
@@ -3021,8 +3091,7 @@ var ConvZenHan = (function () {
         if (mode1.indexOf("a") >= 0) {
             ret_st = ret_st.replace(/[\uFF21-\uFF3A]|[\uFF41-\uFF5A]/g,
                 function (c) {
-                    if (!alphaToHankaku.hasOwnProperty(c)) { return c; }
-                    return alphaToHankaku[c];
+                    return alphaToHankaku.hasOwnProperty(c) ? alphaToHankaku[c] : c;
                 }
             );
         }
@@ -3030,8 +3099,7 @@ var ConvZenHan = (function () {
         if (mode1.indexOf("n") >= 0) {
             ret_st = ret_st.replace(/[\uFF10-\uFF19]/g,
                 function (c) {
-                    if (!numberToHankaku.hasOwnProperty(c)) { return c; }
-                    return numberToHankaku[c];
+                    return numberToHankaku.hasOwnProperty(c) ? numberToHankaku[c] : c;
                 }
             );
         }
@@ -3039,8 +3107,7 @@ var ConvZenHan = (function () {
         if (mode1.indexOf("p") >= 0) {
             ret_st = ret_st.replace(/[\uFF01-\uFF5E]|[\u3001-\u300D]|[\uFFE0-\uFFE5]/g,
                 function (c) {
-                    if (!punctuationToHankaku.hasOwnProperty(c)) { return c; }
-                    return punctuationToHankaku[c];
+                    return punctuationToHankaku.hasOwnProperty(c) ? punctuationToHankaku[c] : c;
                 }
             );
         }
@@ -3048,8 +3115,7 @@ var ConvZenHan = (function () {
         if (mode1.indexOf("s") >= 0) {
             ret_st = ret_st.replace(/[\u3000]/g,
                 function (c) {
-                    if (!spaceToHankaku.hasOwnProperty(c)) { return c; }
-                    return spaceToHankaku[c];
+                    return spaceToHankaku.hasOwnProperty(c) ? spaceToHankaku[c] : c;
                 }
             );
         }
@@ -3058,8 +3124,7 @@ var ConvZenHan = (function () {
         if (mode1.indexOf("t") >= 0) {
             ret_st = ret_st.replace(/[\u3041-\u3094]/g,
                 function (c) {
-                    if (!HiraganaToKatakana.hasOwnProperty(c)) { return c; }
-                    return HiraganaToKatakana[c];
+                    return HiraganaToKatakana.hasOwnProperty(c) ? HiraganaToKatakana[c] : c;
                 }
             );
         }
@@ -3067,8 +3132,7 @@ var ConvZenHan = (function () {
         if (mode1.indexOf("k") >= 0 || mode1.indexOf("t") >= 0) {
             ret_st = ret_st.replace(/[\u30A1-\u30FC]/g,
                 function (c) {
-                    if (!katakanaToHankaku.hasOwnProperty(c)) { return c; }
-                    return katakanaToHankaku[c];
+                    return katakanaToHankaku.hasOwnProperty(c) ? katakanaToHankaku[c] : c;
                 }
             );
         }
@@ -3077,8 +3141,7 @@ var ConvZenHan = (function () {
         if (mode1.indexOf("v") >= 0) {
             ret_st = ret_st.replace(/[\u30A1-\u30FC]|[\u3041-\u3094]/g,
                 function (c) {
-                    if (!DakutenSplit.hasOwnProperty(c)) { return c; }
-                    return DakutenSplit[c];
+                    return DakutenSplit.hasOwnProperty(c) ? DakutenSplit[c] : c;
                 }
             );
         }
@@ -3086,8 +3149,7 @@ var ConvZenHan = (function () {
         if (mode1.indexOf("d") >= 0) {
             ret_st = ret_st.replace(/[゛゜]/g,
                 function (c) {
-                    if (!DakutenToHankaku.hasOwnProperty(c)) { return c; }
-                    return DakutenToHankaku[c];
+                    return DakutenToHankaku.hasOwnProperty(c) ? DakutenToHankaku[c] : c;
                 }
             );
         }
@@ -3218,19 +3280,19 @@ var ConvZenHan = (function () {
             cz = zen.charAt(i);
             cz2 = String.fromCharCode(cz.charCodeAt(0) - 0x60); // ひらがな
             if (cz.match(/[カキクケコサシスセソタチツテトハヒフヘホ]/)) {
-                DakutenSplit[String.fromCharCode(cz.charCodeAt(0) + 1)] = cz + "ﾞ";
+                DakutenSplit[String.fromCharCode(cz.charCodeAt(0)  + 1)] = cz  + "ﾞ";
                 DakutenSplit[String.fromCharCode(cz2.charCodeAt(0) + 1)] = cz2 + "ﾞ";
-                DakutenMarge[cz + "ﾞ"] = String.fromCharCode(cz.charCodeAt(0) + 1);
-                DakutenMarge[cz2 + "ﾞ"] = String.fromCharCode(cz2.charCodeAt(0) + 1);
-                DakutenMarge[cz + "゛"] = String.fromCharCode(cz.charCodeAt(0) + 1);
+                DakutenMarge[cz  + "ﾞ"]  = String.fromCharCode(cz.charCodeAt(0)  + 1);
+                DakutenMarge[cz2 + "ﾞ"]  = String.fromCharCode(cz2.charCodeAt(0) + 1);
+                DakutenMarge[cz  + "゛"] = String.fromCharCode(cz.charCodeAt(0)  + 1);
                 DakutenMarge[cz2 + "゛"] = String.fromCharCode(cz2.charCodeAt(0) + 1);
             }
             if (cz.match(/[ハヒフヘホ]/)) {
-                DakutenSplit[String.fromCharCode(cz.charCodeAt(0) + 2)] = cz + "ﾟ";
+                DakutenSplit[String.fromCharCode(cz.charCodeAt(0)  + 2)] = cz  + "ﾟ";
                 DakutenSplit[String.fromCharCode(cz2.charCodeAt(0) + 2)] = cz2 + "ﾟ";
-                DakutenMarge[cz + "ﾟ"] = String.fromCharCode(cz.charCodeAt(0) + 2);
-                DakutenMarge[cz2 + "ﾟ"] = String.fromCharCode(cz2.charCodeAt(0) + 2);
-                DakutenMarge[cz + "゜"] = String.fromCharCode(cz.charCodeAt(0) + 2);
+                DakutenMarge[cz  + "ﾟ"]  = String.fromCharCode(cz.charCodeAt(0)  + 2);
+                DakutenMarge[cz2 + "ﾟ"]  = String.fromCharCode(cz2.charCodeAt(0) + 2);
+                DakutenMarge[cz  + "゜"] = String.fromCharCode(cz.charCodeAt(0)  + 2);
                 DakutenMarge[cz2 + "゜"] = String.fromCharCode(cz2.charCodeAt(0) + 2);
             }
         }
@@ -3240,12 +3302,12 @@ var ConvZenHan = (function () {
         DakutenSplit["\u30F9"] = "ヱﾞ";
         DakutenSplit["\u30FA"] = "ヲﾞ";
         DakutenSplit["\u3094"] = "うﾞ";
-        DakutenMarge["ウﾞ"] = "\u30F4";
-        DakutenMarge["ワﾞ"] = "\u30F7";
-        DakutenMarge["ヰﾞ"] = "\u30F8";
-        DakutenMarge["ヱﾞ"] = "\u30F9";
-        DakutenMarge["ヲﾞ"] = "\u30FA";
-        DakutenMarge["うﾞ"] = "\u3094";
+        DakutenMarge["ウﾞ"]  = "\u30F4";
+        DakutenMarge["ワﾞ"]  = "\u30F7";
+        DakutenMarge["ヰﾞ"]  = "\u30F8";
+        DakutenMarge["ヱﾞ"]  = "\u30F9";
+        DakutenMarge["ヲﾞ"]  = "\u30FA";
+        DakutenMarge["うﾞ"]  = "\u3094";
         DakutenMarge["ウ゛"] = "\u30F4";
         DakutenMarge["ワ゛"] = "\u30F7";
         DakutenMarge["ヰ゛"] = "\u30F8";
@@ -3509,8 +3571,8 @@ var Missile = (function () {
             y0 = (this.y100 / 100) | 0;
 
             // ***** 次の座標を計算 *****
-            this.x100 = this.x100 + this.speed100 * Math.cos(this.degree * Math.PI / 180) / this.div_x;
-            this.y100 = this.y100 + this.speed100 * Math.sin(this.degree * Math.PI / 180) / this.div_y;
+            this.x100 += this.speed100 * Math.cos(this.degree * Math.PI / 180) / this.div_x;
+            this.y100 += this.speed100 * Math.sin(this.degree * Math.PI / 180) / this.div_y;
             this.x100 = this.x100 | 0; // 整数化
             this.y100 = this.y100 | 0; // 整数化
 

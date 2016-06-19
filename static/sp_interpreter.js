@@ -1,7 +1,7 @@
 // This file is encoded with UTF-8 without BOM.
 
 // sp_interpreter.js
-// 2015-10-6 v3.70
+// 2016-6-19 v3.71
 
 
 // SPALM Web Interpreter
@@ -513,7 +513,7 @@ var Interpreter;
     var font_family = "'MS Gothic', Osaka-Mono"; // フォント指定
     var font_size_set = [12, 16, 24, 30]; // フォントサイズの設定値(px)(最小,小,中,大の順)
 
-    var src;                    // ソース
+    var src;                    // ソース            (文字列)
     var symbol = [];            // シンボル          (配列)
     var symbol_line = [];       // シンボルが何行目か(配列)(エラー表示用)
     var symbol_len = 0;         // シンボル数        (symbol.lengthのキャッシュ用)
@@ -540,7 +540,7 @@ var Interpreter;
     var sleep_time;             // スリープ時間(msec)
     var sleep_id = null;        // スリープキャンセル用ID
     var sleep_data = {};        // スリープ時間調整用(連想配列オブジェクト)
-    var loop_time_max = 3000;   // 最大ループ時間(msec) これ以上時間がかかったらエラーとする
+    var loop_time_max = 3000;   // 最大ループ時間(msec)(これ以上時間がかかったらエラーとする)
     var loop_time_start;        // ループ開始時間(msec)
     var loop_time_count;        // ループ経過時間(msec)
     var loop_nocount_flag;      // ループ時間ノーカウントフラグ
@@ -4623,26 +4623,26 @@ var Interpreter;
             a4 = Math.trunc(param[3]); // アンカー
             if (a1 == "screen") {
                 // ***** 水平方向 *****
-                // if (a4 & 4) { }                               // 左
-                if (a4 & 8)  { a2 = a2 - can1.width; }           // 右
-                else if (a4 & 1)  { a2 = a2 - can1.width / 2; }  // 中央
+                // if (a4 & 4)   { }                            // 左
+                if (a4 & 8)      { a2 = a2 - can1.width; }      // 右
+                else if (a4 & 1) { a2 = a2 - can1.width / 2; }  // 中央
                 // ***** 垂直方向 *****
-                // if (a4 & 16) { }                              // 上
-                if (a4 & 32) { a3 = a3 - can1.height; }          // 下
-                else if (a4 & 2)  { a3 = a3 - can1.height / 2; } // 中央
+                // if (a4 & 16)  { }                            // 上
+                if (a4 & 32)     { a3 = a3 - can1.height; }     // 下
+                else if (a4 & 2) { a3 = a3 - can1.height / 2; } // 中央
                 // ***** 画像を描画(表示画面→ターゲット) *****
                 ctx.drawImage(can1, a2, a3);
             } else {
                 // if (imgvars.hasOwnProperty(a1)) {
                 if (hasOwn.call(imgvars, a1)) {
                     // ***** 水平方向 *****
-                    // if (a4 & 4) { }                                          // 左
-                    if (a4 & 8)  { a2 = a2 - imgvars[a1].can.width; }           // 右
-                    else if (a4 & 1)  { a2 = a2 - imgvars[a1].can.width / 2; }  // 中央
+                    // if (a4 & 4)   { }                                       // 左
+                    if (a4 & 8)      { a2 = a2 - imgvars[a1].can.width; }      // 右
+                    else if (a4 & 1) { a2 = a2 - imgvars[a1].can.width / 2; }  // 中央
                     // ***** 垂直方向 *****
-                    // if (a4 & 16) { }                                         // 上
-                    if (a4 & 32) { a3 = a3 - imgvars[a1].can.height; }          // 下
-                    else if (a4 & 2)  { a3 = a3 - imgvars[a1].can.height / 2; } // 中央
+                    // if (a4 & 16)  { }                                       // 上
+                    if (a4 & 32)     { a3 = a3 - imgvars[a1].can.height; }     // 下
+                    else if (a4 & 2) { a3 = a3 - imgvars[a1].can.height / 2; } // 中央
                     // ***** 画像を描画(画像変数→ターゲット) *****
                     ctx.drawImage(imgvars[a1].can, a2, a3);
                 } else {
@@ -4689,13 +4689,13 @@ var Interpreter;
                 img_h = a5;
             }
             // (水平方向の座標を計算)
-            // if (a9 & 4) { }                         // 左
-            if (a9 & 8)  { a7 = a7 - img_w; }          // 右
-            else if (a9 & 1)  { a7 = a7 - img_w / 2; } // 中央
+            // if (a9 & 4)   { }                      // 左
+            if (a9 & 8)      { a7 = a7 - img_w; }     // 右
+            else if (a9 & 1) { a7 = a7 - img_w / 2; } // 中央
             // (垂直方向の座標を計算)
-            // if (a9 & 16) { }                        // 上
-            if (a9 & 32) { a8 = a8 - img_h; }          // 下
-            else if (a9 & 2)  { a8 = a8 - img_h / 2; } // 中央
+            // if (a9 & 16)  { }                      // 上
+            if (a9 & 32)     { a8 = a8 - img_h; }     // 下
+            else if (a9 & 2) { a8 = a8 - img_h / 2; } // 中央
 
             // ***** 描画処理 *****
             ctx.save();
@@ -5436,13 +5436,13 @@ var Interpreter;
                 a4 = Math.trunc(param[3]); // アンカー
             }
             // ***** 水平方向 *****
-            if (a4 & 4)       { ctx.textAlign = "left"; }    // 左
-            else if (a4 & 8)  { ctx.textAlign = "right"; }   // 右
-            else if (a4 & 1)  { ctx.textAlign = "center"; }  // 中央
-            else { ctx.textAlign = "left"; }                 // その他
+            // if (a4 & 4)    { ctx.textAlign = "left"; }   // 左
+            if (a4 & 8)       { ctx.textAlign = "right"; }  // 右
+            else if (a4 & 1)  { ctx.textAlign = "center"; } // 中央
+            else { ctx.textAlign = "left"; }                // その他
             // ***** 垂直方向 *****
-            if (a4 & 16)      { ctx.textBaseline = "top"; }        // 上
-            else if (a4 & 32) { ctx.textBaseline = "bottom"; }     // 下
+            // if (a4 & 16)   { ctx.textBaseline = "top"; }        // 上
+            if (a4 & 32)      { ctx.textBaseline = "bottom"; }     // 下
             else if (a4 & 2)  { ctx.textBaseline = "middle"; }     // 中央
             else if (a4 & 64) { ctx.textBaseline = "alphabetic"; } // ベースライン
             else { ctx.textBaseline = "top"; }                     // その他
