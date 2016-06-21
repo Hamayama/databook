@@ -1,7 +1,7 @@
-// This file is encoded with UTF-8 without BOM.
+// -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2016-6-19 v3.71
+// 2016-6-21 v3.72
 
 
 // SPALM Web Interpreter
@@ -496,15 +496,7 @@ var Interpreter;
     var can2_font_size_init = 16;        // ソフトキー表示エリアのフォントサイズ(px)の初期値
     var can;                    // 現在の描画先のCanvas要素
     var ctx;                    // 現在の描画先のCanvasコンテキスト
-    var ctx_originx;            // 座標系の原点座標X(px)
-    var ctx_originy;            // 座標系の原点座標Y(px)
-    var ctx_rotate;             // 座標系の回転の角度(rad)
-    var ctx_rotateox;           // 座標系の回転の中心座標X(px)
-    var ctx_rotateoy;           // 座標系の回転の中心座標Y(px)
-    var ctx_scalex;             // 座標系の拡大縮小のX方向倍率
-    var ctx_scaley;             // 座標系の拡大縮小のY方向倍率
-    var ctx_scaleox;            // 座標系の拡大縮小の中心座標X(px)
-    var ctx_scaleoy;            // 座標系の拡大縮小の中心座標Y(px)
+    var axis = {};              // 座標系情報(連想配列オブジェクト)
     var font_size;              // フォントサイズ(px)
     var color_val;              // 色設定
     var line_width;             // 線の幅(px)
@@ -829,13 +821,13 @@ var Interpreter;
         ctx1 = can1.getContext("2d");
         ctx2 = can2.getContext("2d");
         // ***** Canvasのリサイズ *****
-        can1.width = can1_width_init;
+        can1.width  = can1_width_init;
         can1.height = can1_height_init;
-        can2.width = can2_width_init;
+        can2.width  = can2_width_init;
         can2.height = can2_height_init;
-        can1.style.width = can1_width_init + "px";
+        can1.style.width  = can1_width_init  + "px";
         can1.style.height = can1_height_init + "px";
-        can2.style.width = can2_width_init + "px";
+        can2.style.width  = can2_width_init  + "px";
         can2.style.height = can2_height_init + "px";
         // ***** Canvasの背景色設定 *****
         can1.style.backgroundColor = can1_backcolor_init;
@@ -3600,15 +3592,16 @@ var Interpreter;
         line_width = 1;
         ctx.lineWidth = line_width;
         // ***** 座標系設定 *****
-        ctx_originx = 0;
-        ctx_originy = 0;
-        ctx_rotate = 0;
-        ctx_rotateox = 0;
-        ctx_rotateoy = 0;
-        ctx_scalex = 1;
-        ctx_scaley = 1;
-        ctx_scaleox = 0;
-        ctx_scaleoy = 0;
+        axis = {};
+        axis.originx  = 0; // 座標系の原点座標X(px)
+        axis.originy  = 0; // 座標系の原点座標Y(px)
+        axis.rotate   = 0; // 座標系の回転の角度(rad)
+        axis.rotateox = 0; // 座標系の回転の中心座標X(px)
+        axis.rotateoy = 0; // 座標系の回転の中心座標Y(px)
+        axis.scalex   = 1; // 座標系の拡大縮小のX方向倍率
+        axis.scaley   = 1; // 座標系の拡大縮小のY方向倍率
+        axis.scaleox  = 0; // 座標系の拡大縮小の中心座標X(px)
+        axis.scaleoy  = 0; // 座標系の拡大縮小の中心座標Y(px)
         ctx.setTransform(1, 0, 0, 1, 0, 0); // 座標系を初期化
         // ***** 現在状態を保存 *****
         ctx.save();
@@ -3643,41 +3636,41 @@ var Interpreter;
     // (基本的に座標系を元に戻してから呼ぶこと)
     function set_canvas_axis(ctx) {
         // (これらの変換は、記述と逆の順番で実行されるので注意)
-        ctx.translate(ctx_originx, ctx_originy);     // 原点座標を移動
-        ctx.translate(ctx_rotateox, ctx_rotateoy);   // 回転の中心座標を元に戻す
-        ctx.rotate(ctx_rotate);                      // 回転の角度を指定
-        ctx.translate(-ctx_rotateox, -ctx_rotateoy); // 回転の中心座標を移動
-        ctx.translate(ctx_scaleox, ctx_scaleoy);     // 拡大縮小の中心座標を元に戻す
-        ctx.scale(ctx_scalex, ctx_scaley);           // 拡大縮小の倍率を指定
-        ctx.translate(-ctx_scaleox, -ctx_scaleoy);   // 拡大縮小の中心座標を移動
+        ctx.translate( axis.originx,   axis.originy);  // 原点座標を移動
+        ctx.translate( axis.rotateox,  axis.rotateoy); // 回転の中心座標を元に戻す
+        ctx.rotate(axis.rotate);                       // 回転の角度を指定
+        ctx.translate(-axis.rotateox, -axis.rotateoy); // 回転の中心座標を移動
+        ctx.translate( axis.scaleox,   axis.scaleoy);  // 拡大縮小の中心座標を元に戻す
+        ctx.scale(axis.scalex, axis.scaley);           // 拡大縮小の倍率を指定
+        ctx.translate(-axis.scaleox,  -axis.scaleoy);  // 拡大縮小の中心座標を移動
     }
     // ***** Canvasの座標変換 *****
-    // (ret_objには、空のオブジェクトを格納した変数を渡すこと。
-    //  グラフィックスの座標(x,y)から、
-    //  実際の画面上の座標(ret_obj.x, ret_obj.y)を計算して返す)
-    function conv_axis_point(x, y, ret_obj) {
+    // (グラフィック上の座標(x,y)から、
+    //  実際の画面上の座標(x1,y1)を計算して、配列にして返す)
+    function conv_axis_point(x, y) {
         var x1, y1, t1;
         // ***** 座標系の変換の分を補正 *****
         x1 = x;
         y1 = y;
-        x1 = x1 - ctx_scaleox;  // 拡大縮小の中心座標を移動
-        y1 = y1 - ctx_scaleoy;
-        x1 = x1 * ctx_scalex;   // 拡大縮小
-        y1 = y1 * ctx_scaley;
-        x1 = x1 + ctx_scaleox;  // 拡大縮小の中心座標を元に戻す
-        y1 = y1 + ctx_scaleoy;
-        x1 = x1 - ctx_rotateox; // 回転の中心座標を移動
-        y1 = y1 - ctx_rotateoy;
+        x1 = x1 - axis.scaleox;  // 拡大縮小の中心座標を移動
+        y1 = y1 - axis.scaleoy;
+        x1 = x1 * axis.scalex;   // 拡大縮小
+        y1 = y1 * axis.scaley;
+        x1 = x1 + axis.scaleox;  // 拡大縮小の中心座標を元に戻す
+        y1 = y1 + axis.scaleoy;
+        x1 = x1 - axis.rotateox; // 回転の中心座標を移動
+        y1 = y1 - axis.rotateoy;
         // ここでt1を使わないと、計算結果がおかしくなるので注意
-        t1 = x1 * Math.cos(ctx_rotate) - y1 * Math.sin(ctx_rotate); // 回転
-        y1 = x1 * Math.sin(ctx_rotate) + y1 * Math.cos(ctx_rotate);
+        t1 = x1 * Math.cos(axis.rotate) - y1 * Math.sin(axis.rotate); // 回転
+        y1 = x1 * Math.sin(axis.rotate) + y1 * Math.cos(axis.rotate);
         // x1 = t1;
-        x1 = t1 + ctx_rotateox; // 回転の中心座標を元に戻す
-        y1 = y1 + ctx_rotateoy;
-        x1 = x1 + ctx_originx;  // 原点座標を移動
-        y1 = y1 + ctx_originy;
-        ret_obj.x = x1 | 0; // 整数化
-        ret_obj.y = y1 | 0; // 整数化
+        x1 = t1 + axis.rotateox; // 回転の中心座標を元に戻す
+        y1 = y1 + axis.rotateoy;
+        x1 = x1 + axis.originx;  // 原点座標を移動
+        y1 = y1 + axis.originy;
+        x1 = x1 | 0; // 整数化
+        y1 = y1 | 0; // 整数化
+        return [x1, y1];
     }
 
     // ***** ソフトキー表示 *****
@@ -3864,41 +3857,45 @@ var Interpreter;
             }
         };
         // ***** 変数のタイプチェック(内部処理用) *****
-        // (ret_objには、空のオブジェクトを格納した変数を渡すこと。
-        //  以下のプロパティがセットされて返る。
-        //    ret_obj.now_index  ローカル/グローバル変数のスコープの番号
-        //    ret_obj.loc_flag   ローカル変数使用フラグ )
-        Vars.prototype.checkType = function (var_name, ret_obj) {
+        // 戻り値は、以下の3個の情報を、配列にして返す
+        //   var_name   接頭語を削除した変数名
+        //   now_index  ローカル/グローバル変数のスコープの番号
+        //   loc_flag   ローカル変数使用フラグ
+        Vars.prototype.checkType = function (var_name) {
             var i = 0;
+            var now_index;
             var pre_word;
+            var loc_flag;
 
             // ***** 関数の引数のポインタ対応 *****
             // (変数名の「a\」の後の数字により、ローカル/グローバル変数のスコープを指定)
             if (var_name.substring(0, 2) == "a\\") {
                 i = var_name.indexOf("\\", 2) + 1;
-                ret_obj.now_index = use_local_vars ? Math.trunc(var_name.substring(2, i - 1)) : 0;
+                now_index = use_local_vars ? Math.trunc(var_name.substring(2, i - 1)) : 0;
             } else {
-                ret_obj.now_index = use_local_vars ? this.local_scope_num : 0;
+                now_index = use_local_vars ? this.local_scope_num : 0;
             }
             // ***** 接頭語のチェック *****
             pre_word = var_name.substring(i, i + 2);
             if (pre_word == "l\\") {
                 i += 2;
-                ret_obj.loc_flag = true;
+                loc_flag = true;
             } else {
                 if (pre_word == "g\\") {
                     i += 2;
-                    ret_obj.now_index = 0;
+                    now_index = 0;
                 }
-                ret_obj.loc_flag = false;
+                loc_flag = false;
             }
-            // ***** 接頭語を削除して返す *****
-            return (i > 0) ? var_name.substring(i) : var_name;
+            // ***** 接頭語の削除 *****
+            if (i > 0) { var_name = var_name.substring(i); }
+            // ***** 戻り値を返す *****
+            return [var_name, now_index, loc_flag];
         };
         // ***** 変数を削除する *****
         Vars.prototype.deleteVar = function (var_name) {
             var i;
-            var ret_obj = {};
+            var ret_array; // = []; (遅くなるので初期化しない)
             var now_index;
             var now_vars;
             var glb_vars;
@@ -3910,12 +3907,13 @@ var Interpreter;
             // ***** 接頭語ありのとき *****
             // if (var_name.charAt(1) == "\\") {
             if (var_name.charCodeAt(1) == 0x5C) {
-                var_name = this.checkType(var_name, ret_obj);
-                now_index = ret_obj.now_index;
-                loc_flag = ret_obj.loc_flag;
+                ret_array = this.checkType(var_name);
+                var_name  = ret_array[0];
+                now_index = ret_array[1];
+                loc_flag  = ret_array[2];
             } else {
                 now_index = use_local_vars ? this.local_scope_num : 0;
-                loc_flag = false;
+                loc_flag  = false;
             }
 
             // ***** ローカル/グローバル変数のスコープを取得 *****
@@ -3951,7 +3949,7 @@ var Interpreter;
         };
         // ***** 変数の存在チェック *****
         Vars.prototype.checkVar = function (var_name) {
-            var ret_obj = {};
+            var ret_array; // = []; (遅くなるので初期化しない)
             var now_index;
             var now_vars;
             var glb_vars;
@@ -3963,12 +3961,13 @@ var Interpreter;
             // ***** 接頭語ありのとき *****
             // if (var_name.charAt(1) == "\\") {
             if (var_name.charCodeAt(1) == 0x5C) {
-                var_name = this.checkType(var_name, ret_obj);
-                now_index = ret_obj.now_index;
-                loc_flag = ret_obj.loc_flag;
+                ret_array = this.checkType(var_name);
+                var_name  = ret_array[0];
+                now_index = ret_array[1];
+                loc_flag  = ret_array[2];
             } else {
                 now_index = use_local_vars ? this.local_scope_num : 0;
-                loc_flag = false;
+                loc_flag  = false;
             }
 
             // ***** ローカル/グローバル変数のスコープを取得 *****
@@ -4030,7 +4029,7 @@ var Interpreter;
         // ***** 変数の値を取得する *****
         Vars.prototype.getVarValue = function (var_name) {
             var i;
-            var ret_obj = {};
+            var ret_array; // = []; (遅くなるので初期化しない)
             var now_index;
             var now_vars;
             var glb_vars;
@@ -4043,12 +4042,13 @@ var Interpreter;
             // ***** 接頭語ありのとき *****
             // if (var_name.charAt(1) == "\\") {
             if (var_name.charCodeAt(1) == 0x5C) {
-                var_name = this.checkType(var_name, ret_obj);
-                now_index = ret_obj.now_index;
-                loc_flag = ret_obj.loc_flag;
+                ret_array = this.checkType(var_name);
+                var_name  = ret_array[0];
+                now_index = ret_array[1];
+                loc_flag  = ret_array[2];
             } else {
                 now_index = use_local_vars ? this.local_scope_num : 0;
-                loc_flag = false;
+                loc_flag  = false;
             }
 
             // ***** ローカル/グローバル変数のスコープを取得 *****
@@ -4095,7 +4095,7 @@ var Interpreter;
         // ***** 変数の値を設定する *****
         Vars.prototype.setVarValue = function (var_name, var_value) {
             var i;
-            var ret_obj = {};
+            var ret_array; // = []; (遅くなるので初期化しない)
             var now_index;
             var now_vars;
             var glb_vars;
@@ -4108,12 +4108,13 @@ var Interpreter;
             // ***** 接頭語ありのとき *****
             // if (var_name.charAt(1) == "\\") {
             if (var_name.charCodeAt(1) == 0x5C) {
-                var_name = this.checkType(var_name, ret_obj);
-                now_index = ret_obj.now_index;
-                loc_flag = ret_obj.loc_flag;
+                ret_array = this.checkType(var_name);
+                var_name  = ret_array[0];
+                now_index = ret_array[1];
+                loc_flag  = ret_array[2];
             } else {
                 now_index = use_local_vars ? this.local_scope_num : 0;
-                loc_flag = false;
+                loc_flag  = false;
             }
 
             // ***** ローカル/グローバル変数のスコープを取得 *****
@@ -4183,7 +4184,7 @@ var Interpreter;
         // ***** 配列変数の一括コピー *****
         Vars.prototype.copyArray = function (var_name, var_name2) {
             var i;
-            var ret_obj = {};
+            var ret_array; // = []; (遅くなるので初期化しない)
             var now_index;
             var now_vars;
             var glb_vars;
@@ -4199,12 +4200,13 @@ var Interpreter;
             // ***** 接頭語ありのとき *****
             // if (var_name.charAt(1) == "\\") {
             if (var_name.charCodeAt(1) == 0x5C) {
-                var_name = this.checkType(var_name, ret_obj);
-                now_index = ret_obj.now_index;
-                loc_flag = ret_obj.loc_flag;
+                ret_array = this.checkType(var_name);
+                var_name  = ret_array[0];
+                now_index = ret_array[1];
+                loc_flag  = ret_array[2];
             } else {
                 now_index = use_local_vars ? this.local_scope_num : 0;
-                loc_flag = false;
+                loc_flag  = false;
             }
 
             // ***** 変数に[を付加 *****
@@ -4246,7 +4248,7 @@ var Interpreter;
         };
         // ***** 配列変数の一括削除 *****
         Vars.prototype.deleteArray = function (var_name) {
-            var ret_obj = {};
+            var ret_array; // = []; (遅くなるので初期化しない)
             var now_index;
             var now_vars;
             var glb_vars;
@@ -4260,12 +4262,13 @@ var Interpreter;
             // ***** 接頭語ありのとき *****
             // if (var_name.charAt(1) == "\\") {
             if (var_name.charCodeAt(1) == 0x5C) {
-                var_name = this.checkType(var_name, ret_obj);
-                now_index = ret_obj.now_index;
-                loc_flag = ret_obj.loc_flag;
+                ret_array = this.checkType(var_name);
+                var_name  = ret_array[0];
+                now_index = ret_array[1];
+                loc_flag  = ret_array[2];
             } else {
                 now_index = use_local_vars ? this.local_scope_num : 0;
-                loc_flag = false;
+                loc_flag  = false;
             }
 
             // ***** 変数に[を付加 *****
@@ -4406,7 +4409,7 @@ var Interpreter;
         });
         make_one_func_tbl_A("cls", 0, [], function (param) {
             // ***** 画面クリア *****
-            // ctx.clearRect(-ctx_originx, -ctx_originy, can.width, can.height);
+            // ctx.clearRect(-axis.originx, -axis.originy, can.width, can.height);
             ctx.setTransform(1, 0, 0, 1, 0, 0); // 座標系を元に戻す
             ctx.clearRect(0, 0, can.width, can.height);  // 画面クリア
             set_canvas_axis(ctx);               // 座標系を再設定
@@ -4466,13 +4469,13 @@ var Interpreter;
             if (a1 == a3 && a2 < a4) {
                 // (後から処理)
                 i_start = a5 - 1;
-                i_end = 0;
-                i_plus = -1;
+                i_end   =  0;
+                i_plus  = -1;
             } else {
                 // (前から処理)
-                i_start = 0;
-                i_end = a5 - 1;
-                i_plus = 1;
+                i_start =  0;
+                i_end   = a5 - 1;
+                i_plus  =  1;
             }
             i = i_start;
             while (true) {
@@ -4485,8 +4488,8 @@ var Interpreter;
                 // vars[a3 + "[" + (a4 + i) + "]"] = a6;
                 vars.setVarValue(a3 + "[" + (a4 + i) + "]", a6);
                 i += i_plus;
-                if (i_plus > 0 && i <= i_end) { continue; }
-                if (i_plus < 0 && i >= i_end) { continue; }
+                if ((i_plus > 0 && i <= i_end) ||
+                    (i_plus < 0 && i >= i_end)) { continue; }
                 break;
             }
             return true;
@@ -5132,8 +5135,8 @@ var Interpreter;
             a1 = Math.trunc(param[0]); // X
             a2 = Math.trunc(param[1]); // Y
             // ***** 座標系の原点座標設定 *****
-            ctx_originx = a1;
-            ctx_originy = a2;
+            axis.originx = a1;
+            axis.originy = a2;
             ctx.setTransform(1, 0, 0, 1, 0, 0); // 座標系を元に戻す
             set_canvas_axis(ctx);               // 座標系を再設定
             return true;
@@ -5206,9 +5209,9 @@ var Interpreter;
                 a3 = (+param[2]); // 中心座標Y
             }
             // ***** 座標系の角度設定 *****
-            ctx_rotate = a1 * Math.PI / 180;
-            ctx_rotateox = a2;
-            ctx_rotateoy = a3;
+            axis.rotate = a1 * Math.PI / 180;
+            axis.rotateox = a2;
+            axis.rotateoy = a3;
             ctx.setTransform(1, 0, 0, 1, 0, 0); // 座標系を元に戻す
             set_canvas_axis(ctx);               // 座標系を再設定
             return true;
@@ -5281,10 +5284,10 @@ var Interpreter;
                 throw new Error("座標系の倍率の値が不正です。-" + max_scale_size + "から" + max_scale_size + "までの数値を指定してください。");
             }
             // ***** 座標系の倍率設定 *****
-            ctx_scalex = a1;
-            ctx_scaley = a2;
-            ctx_scaleox = a3;
-            ctx_scaleoy = a4;
+            axis.scalex = a1;
+            axis.scaley = a2;
+            axis.scaleox = a3;
+            axis.scaleoy = a4;
             ctx.setTransform(1, 0, 0, 1, 0, 0); // 座標系を元に戻す
             set_canvas_axis(ctx);               // 座標系を再設定
             return true;
@@ -5745,16 +5748,15 @@ var Interpreter;
             var num;
             var a1, a2;
             var x1, y1;
-            var ret_obj = {};
+            var ret_array = [];
             var img_data = {};
 
             a1 = (+param[0]); // X
             a2 = (+param[1]); // Y
             // ***** 座標系の変換の分を補正 *****
-            ret_obj = {};
-            conv_axis_point(a1, a2, ret_obj);
-            x1 = ret_obj.x;
-            y1 = ret_obj.y;
+            ret_array = conv_axis_point(a1, a2);
+            x1 = ret_array[0];
+            y1 = ret_array[1];
             // ***** エラーチェック *****
             // if (x1 < 0 || x1 >= can.width || y1 < 0 || y1 >= can.height) { return 0; }
             if (!(x1 >= 0 && x1 < can.width && y1 >= 0 && y1 < can.height)) { return 0; }

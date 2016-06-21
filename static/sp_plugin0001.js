@@ -1,3 +1,12 @@
+// -*- coding: utf-8 -*-
+
+// sp_plugin0001.js
+// 2016-6-21 v3.72
+
+
+// A Plugin to add functions to SPALM Web Interpreter
+
+
 // ****************************************
 //                プラグイン
 // ****************************************
@@ -437,7 +446,7 @@ var Plugin0001;
         add_one_func_tbl_A("fillarea", 2, [], function (param, vars, can, ctx) {
             var a1, a2;
             var x1, y1;
-            var ret_obj = {};
+            var ret_array = [];
             var col, threshold, paint_mode;
 
             a1 = (+param[0]); // X
@@ -457,10 +466,9 @@ var Plugin0001;
                 }
             }
             // ***** 座標系の変換の分を補正 *****
-            ret_obj = {};
-            conv_axis_point(a1, a2, ret_obj);
-            x1 = ret_obj.x;
-            y1 = ret_obj.y;
+            ret_array = conv_axis_point(a1, a2);
+            x1 = ret_array[0];
+            y1 = ret_array[1];
             // ***** 領域塗りつぶし *****
             ctx.setTransform(1, 0, 0, 1, 0, 0); // 座標系を元に戻す
             FloodFill.fill(can, ctx, x1, y1, threshold, paint_mode, col, 255);
@@ -1029,14 +1037,14 @@ var Plugin0001;
             if (a1 == b1 && b2 < y1) {
                 // (後から処理)
                 i_start = b3;
-                i_end = b2;
-                i_plus = -1;
+                i_end   = b2;
+                i_plus  = -1;
                 y1 = y1 + (b3 - b2);
             } else {
                 // (前から処理)
                 i_start = b2;
-                i_end = b3;
-                i_plus = 1;
+                i_end   = b3;
+                i_plus  =  1;
             }
             i = i_start;
             while (true) {
@@ -1064,8 +1072,8 @@ var Plugin0001;
                 }
                 i  += i_plus;
                 y1 += i_plus;
-                if (i_plus > 0 && i <= i_end) { continue; }
-                if (i_plus < 0 && i >= i_end) { continue; }
+                if ((i_plus > 0 && i <= i_end) ||
+                    (i_plus < 0 && i >= i_end)) { continue; }
                 break;
             }
             return true;
@@ -1809,6 +1817,18 @@ var Plugin0001;
                     num = String.fromCharCode(a1); // サロゲートペアを使用しない文字のとき
                 }
             }
+            return num;
+        });
+        add_one_func_tbl_B("clamp", 3, [], function (param, vars, can, ctx) {
+            var num;
+            var a1, a2, a3;
+
+            a1 = (+param[0]);
+            a2 = (+param[1]);
+            a3 = (+param[2]);
+            if (a1 < a2)      { num = a2; }
+            else if (a1 > a3) { num = a3; }
+            else              { num = a1; }
             return num;
         });
         add_one_func_tbl_B("fboxchk", 8, [], function (param, vars, can, ctx) {
@@ -4487,6 +4507,7 @@ var MMLPlayer = (function () {
 // // (CPU負荷軽減のために追加)
 // // (起動時は中断状態にして、CPU負荷を軽減する)
 // MMLPlayer.suspend();
+
 
 // ***** 砂シミュレート用クラス *****
 var SandSim = (function () {
