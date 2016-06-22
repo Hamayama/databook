@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2016-6-21 v3.72
+// 2016-6-22 v3.73
 
 
 // SPALM Web Interpreter
@@ -1582,9 +1582,9 @@ var Interpreter;
             }
             // ***** 各種フラグのチェックと処理時間の測定 *****
             if (loop_nocount_flag || loop_nocount_mode) {
-                if (!loop_nocount_mode) {
+                // (ループ時間ノーカウントフラグがONのときは、処理時間の測定をリセットする)
+                if (loop_nocount_flag && !loop_nocount_mode) {
                     loop_nocount_flag = false;
-                    // ***** ループ時間ノーカウントフラグがONのときは処理時間に含めない *****
                     // loop_time_start = new Date().getTime();
                     loop_time_start = Date.now();
                 }
@@ -4508,10 +4508,10 @@ var Interpreter;
 
             a1 = Math.trunc(param[0]);
             if (a1 == 0) {
-                loop_nocount_flag = true;
                 loop_nocount_mode = false;
-            } else {
+                // (ループ時間ノーカウントフラグをONにして、処理時間の測定をリセットする)
                 loop_nocount_flag = true;
+            } else {
                 loop_nocount_mode = true;
             }
             return true;
