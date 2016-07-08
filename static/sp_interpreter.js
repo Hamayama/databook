@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2016-6-22 v3.73
+// 2016-7-8 v3.74
 
 
 // SPALM Web Interpreter
@@ -480,6 +480,7 @@ var Interpreter;
     var max_str_size = 10000;   // 処理する文字数最大値
     var max_image_size = 4000;  // 画像の縦横のサイズ最大値(px)
     var max_scale_size = 1000;  // 座標系の倍率最大値
+    var max_font_size = 1000;   // フォントサイズの最大値(px)
 
     var can1;                   // Canvas要素
     var ctx1;                   // Canvasのコンテキスト
@@ -629,9 +630,9 @@ var Interpreter;
     if (!Date.now) { Date.now = function () { return new Date().getTime(); }; }
 
     // ***** 小数切り捨て関数(ES6) *****
-    Math.trunc = Math.trunc || function (x) {
-        return (x < 0) ? Math.ceil(x) : Math.floor(x);
-    };
+    if (!Math.trunc) {
+        Math.trunc = function (x) { return (x < 0) ? Math.ceil(x) : Math.floor(x); };
+    }
 
     // ****************************************
     //                 公開I/F
@@ -3580,7 +3581,11 @@ var Interpreter;
     function init_canvas_setting(ctx) {
         // ***** フォント設定 *****
         // (フォントサイズだけはリセットしない(過去との互換性維持のため))
-        // font_size = font_size_set[1];
+        // if (sp_compati_mode == 1) {
+        //     font_size = font_size_set[0];
+        // } else {
+        //     font_size = font_size_set[1];
+        // }
         ctx.font = font_size + "px " + font_family;
         ctx.textAlign = "left";
         ctx.textBaseline = "top";
@@ -4342,24 +4347,34 @@ var Interpreter;
             } else {
                 a4 = (+param[3]); // H
             }
-            a = a3 / 2;  // X方向の半径
-            b = a4 / 2;  // Y方向の半径
-            x0 = a1 + a; // 中心のX座標
-            y0 = a2 + b; // 中心のY座標
-            ctx.beginPath();
-            ctx.moveTo(a + x0, y0);
-            r1 = 0;
-            c1 = 2 * Math.PI / 100;
-            for (i = 1; i < 100; i++) {
-                // ctx.lineTo(a * Math.cos(2 * Math.PI * i / 100) + x0, b * Math.sin(2 * Math.PI * i / 100) + y0);
-                ctx.lineTo(a * Math.cos(r1) + x0, b * Math.sin(r1) + y0);
-                r1 += c1;
+            if (a3 == a4) {
+                a = a3 / 2;  // 半径
+                x0 = a1 + a; // 中心のX座標
+                y0 = a2 + a; // 中心のY座標
+                ctx.beginPath();
+                ctx.arc(x0, y0, a, 0, 2 * Math.PI);
+                ctx.closePath();
+                ctx.stroke();
+            } else {
+                a = a3 / 2;  // X方向の半径
+                b = a4 / 2;  // Y方向の半径
+                x0 = a1 + a; // 中心のX座標
+                y0 = a2 + b; // 中心のY座標
+                ctx.beginPath();
+                ctx.moveTo(a + x0, y0);
+                r1 = 0;
+                c1 = 2 * Math.PI / 100;
+                for (i = 1; i < 100; i++) {
+                    // ctx.lineTo(a * Math.cos(2 * Math.PI * i / 100) + x0, b * Math.sin(2 * Math.PI * i / 100) + y0);
+                    ctx.lineTo(a * Math.cos(r1) + x0, b * Math.sin(r1) + y0);
+                    r1 += c1;
+                }
+                ctx.closePath();
+                ctx.stroke();
+                // 以下は不要になったもよう(Chrome v27)
+                // // ***** Chrome v23 で円が閉じない件の対策(中心を0.5ずらしたとき) *****
+                // ctx.fillRect(a + x0, y0, 0.5, 0.5);
             }
-            ctx.closePath();
-            ctx.stroke();
-            // 以下は不要になったもよう(Chrome v27)
-            // // ***** Chrome v23 で円が閉じない件の対策(中心を0.5ずらしたとき) *****
-            // ctx.fillRect(a + x0, y0, 0.5, 0.5);
             return true;
         });
         make_one_func_tbl_A("clear", 4, [], function (param) {
@@ -4430,15 +4445,11 @@ var Interpreter;
         });
         make_one_func_tbl_A("color", 3, [], function (param) {
             var a1, a2, a3;
-            var col_r, col_g, col_b;
 
             a1 = Math.trunc(param[0]); // R
             a2 = Math.trunc(param[1]); // G
             a3 = Math.trunc(param[2]); // B
-            col_r = a1;
-            col_g = a2;
-            col_b = a3;
-            color_val = "rgb(" + col_r + "," + col_g + "," + col_b + ")";
+            color_val = "rgb(" + a1 + "," + a2 + "," + a3 + ")";
             ctx.strokeStyle = color_val;
             ctx.fillStyle = color_val;
             return true;
@@ -4465,6 +4476,7 @@ var Interpreter;
                 throw new Error("処理する配列の個数が不正です。" + max_array_size + "以下である必要があります。");
             }
             if (a5 <= 0) { return true; }
+
             // ***** コピー処理 *****
             if (a1 == a3 && a2 < a4) {
                 // (後から処理)
@@ -4781,26 +4793,36 @@ var Interpreter;
             } else {
                 a4 = (+param[3]); // H
             }
-            a = a3 / 2;  // X方向の半径
-            b = a4 / 2;  // Y方向の半径
-            x0 = a1 + a; // 中心のX座標
-            y0 = a2 + b; // 中心のY座標
-            ctx.beginPath();
-            ctx.moveTo(a + x0, y0);
-            r1 = 0;
-            c1 = 2 * Math.PI / 100;
-            for (i = 1; i < 100; i++) {
-                // ctx.lineTo(a * Math.cos(2 * Math.PI * i / 100) + x0, b * Math.sin(2 * Math.PI * i / 100) + y0);
-                ctx.lineTo(a * Math.cos(r1) + x0, b * Math.sin(r1) + y0);
-                r1 += c1;
+            if (a3 == a4) {
+                a = a3 / 2;  // 半径
+                x0 = a1 + a; // 中心のX座標
+                y0 = a2 + a; // 中心のY座標
+                ctx.beginPath();
+                ctx.arc(x0, y0, a, 0, 2 * Math.PI);
+                ctx.closePath();
+                ctx.fill();
+            } else {
+                a = a3 / 2;  // X方向の半径
+                b = a4 / 2;  // Y方向の半径
+                x0 = a1 + a; // 中心のX座標
+                y0 = a2 + b; // 中心のY座標
+                ctx.beginPath();
+                ctx.moveTo(a + x0, y0);
+                r1 = 0;
+                c1 = 2 * Math.PI / 100;
+                for (i = 1; i < 100; i++) {
+                    // ctx.lineTo(a * Math.cos(2 * Math.PI * i / 100) + x0, b * Math.sin(2 * Math.PI * i / 100) + y0);
+                    ctx.lineTo(a * Math.cos(r1) + x0, b * Math.sin(r1) + y0);
+                    r1 += c1;
+                }
+                ctx.closePath();
+                // 以下は不要になったもよう(Chrome v27)
+                // // ***** Chrome v23 で塗りつぶさない件の対策 *****
+                // ctx.rect(x0, y0, 1, 1);     // 真ん中に小さな四角を描くと、塗りつぶしエリアが反転するもよう
+                ctx.fill();
+                // 以下は不要になったもよう(Chrome v24)
+                // ctx.fillRect(x0, y0, 1, 1); // 反転して抜けた真ん中の小さな四角をさらに塗りつぶす
             }
-            ctx.closePath();
-            // 以下は不要になったもよう(Chrome v27)
-            // // ***** Chrome v23 で塗りつぶさない件の対策 *****
-            // ctx.rect(x0, y0, 1, 1);     // 真ん中に小さな四角を描くと、塗りつぶしエリアが反転するもよう
-            ctx.fill();
-            // 以下は不要になったもよう(Chrome v24)
-            // ctx.fillRect(x0, y0, 1, 1); // 反転して抜けた真ん中の小さな四角をさらに塗りつぶす
             return true;
         });
         make_one_func_tbl_A("foval", 6, [], function (param) {
@@ -5278,11 +5300,13 @@ var Interpreter;
                     a4 = (+param[3]); // 中心座標Y
                 }
             }
+
             // ***** エラーチェック *****
             // if (a1 < -max_scale_size || a1 > max_scale_size || a2 < -max_scale_size || a2 > max_scale_size) {
             if (!(a1 >= -max_scale_size && a1 <= max_scale_size && a2 >= -max_scale_size && a2 <= max_scale_size)) {
                 throw new Error("座標系の倍率の値が不正です。-" + max_scale_size + "から" + max_scale_size + "までの数値を指定してください。");
             }
+
             // ***** 座標系の倍率設定 *****
             axis.scalex = a1;
             axis.scaley = a2;
@@ -5303,6 +5327,21 @@ var Interpreter;
                 case "T": font_size = font_size_set[0]; break;
                 default: font_size = font_size_set[1]; break;
             }
+            ctx.font = font_size + "px " + font_family;
+            return true;
+        });
+        make_one_func_tbl_A("setfontsize", 1, [], function (param) {
+            var a1;
+
+            a1 = Math.trunc(param[0]);
+
+            // ***** エラーチェック *****
+            // if (a1 <= 0 || a1 > max_font_size) {
+            if (!(a1 > 0 && a1 <= max_font_size)) {
+                throw new Error("フォントサイズが不正です。1-" + max_font_size + "の範囲で指定してください。");
+            }
+
+            font_size = a1;
             ctx.font = font_size + "px " + font_family;
             return true;
         });
@@ -5341,6 +5380,7 @@ var Interpreter;
                 a3 = Math.trunc(param[2]); // W2
                 a4 = Math.trunc(param[3]); // H2
             }
+
             // ***** エラーチェック *****
             // if (a1 <= 0 || a1 > max_image_size || a2 <= 0 || a2 > max_image_size ||
             //     a3 <= 0 || a3 > max_image_size || a4 <= 0 || a4 > max_image_size) {
@@ -5348,6 +5388,7 @@ var Interpreter;
                   a3 > 0 && a3 <= max_image_size && a4 > 0 && a4 <= max_image_size)) {
                 throw new Error("縦横のサイズの値が不正です。1-" + max_image_size + "の範囲で指定してください。");
             }
+
             // ***** 画面サイズ設定 *****
             can1.width = a1;
             can1.height = a2;
@@ -5757,9 +5798,11 @@ var Interpreter;
             ret_array = conv_axis_point(a1, a2);
             x1 = ret_array[0];
             y1 = ret_array[1];
+
             // ***** エラーチェック *****
             // if (x1 < 0 || x1 >= can.width || y1 < 0 || y1 >= can.height) { return 0; }
             if (!(x1 >= 0 && x1 < can.width && y1 >= 0 && y1 < can.height)) { return 0; }
+
             // ***** 画像データを取得 *****
             img_data = ctx.getImageData(x1, y1, 1, 1);
             // ***** 色情報を取得 *****

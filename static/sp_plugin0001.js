@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_plugin0001.js
-// 2016-6-21 v3.72
+// 2016-7-8 v3.74
 
 
 // A Plugin to add functions to SPALM Web Interpreter
@@ -67,9 +67,9 @@ var Plugin0001;
     var hasOwn = Object.prototype.hasOwnProperty;
 
     // ***** 小数切り捨て関数(ES6) *****
-    Math.trunc = Math.trunc || function (x) {
-        return (x < 0) ? Math.ceil(x) : Math.floor(x);
-    };
+    if (!Math.trunc) {
+        Math.trunc = function (x) { return (x < 0) ? Math.ceil(x) : Math.floor(x); };
+    }
 
     // ****************************************
     //                 公開I/F
@@ -259,18 +259,15 @@ var Plugin0001;
         });
         add_one_func_tbl_A("coloralpha", 4, [], function (param, vars, can, ctx) {
             var a1, a2, a3 ,a4;
-            var col_r, col_g, col_b, alpha;
+            var alpha;
             var color_val;
 
             a1 = Math.trunc(param[0]); // R
             a2 = Math.trunc(param[1]); // G
             a3 = Math.trunc(param[2]); // B
             a4 = Math.trunc(param[3]); // alpha
-            col_r = a1;
-            col_g = a2;
-            col_b = a3;
             alpha = a4 / 255;
-            color_val = "rgba(" + col_r + "," + col_g + "," + col_b + "," + alpha + ")";
+            color_val = "rgba(" + a1 + "," + a2 + "," + a3 + "," + alpha + ")";
             ctx.strokeStyle = color_val;
             ctx.fillStyle = color_val;
             set_color_val(color_val);
@@ -349,8 +346,10 @@ var Plugin0001;
                         a6 = (+param[6]); // 加算角
                         a7 = Math.trunc(param[7]); // 頂点数
                     }
+
                     // ***** エラーチェック *****
                     if (a7 > 1000) { a7 = 1000; }
+
                     // ***** 描画処理 *****
                     a = a3 / 2;  // X方向の半径
                     b = a4 / 2;  // Y方向の半径
@@ -2006,15 +2005,26 @@ var Plugin0001;
         });
         add_one_func_tbl_B("randint", 2, [], function (param, vars, can, ctx) {
             var num;
-            var a1, a2, a3;
+            var a1, a2;
+            var t;
 
             a1 = Math.trunc(param[0]);
             a2 = Math.trunc(param[1]);
-            if (a1 > a2) { a3 = a2; a2 = a1; a1 = a3; }
+            if (a1 > a2) { t = a1; a1 = a2; a2 = t; }
             // min から max までの整数の乱数を返す
             // (Math.round() を用いると、非一様分布になるのでNG)
             // num = Math.floor(Math.random() * (max - min + 1)) + min;
             num = Math.floor(Math.random() * (a2 - a1 + 1)) + a1;
+            return num;
+        });
+        add_one_func_tbl_B("sign", 1, [], function (param, vars, can, ctx) {
+            var num;
+            var a1;
+
+            a1 = (+param[0]);
+            if      (a1 > 0) { num =  1; }
+            else if (a1 < 0) { num = -1; }
+            else             { num =  0; }
             return num;
         });
         add_one_func_tbl_B("strmake", 2, [], function (param, vars, can, ctx) {
