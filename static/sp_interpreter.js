@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2016-7-9 v4.00
+// 2016-7-9 v4.01
 
 
 // SPALM Web Interpreter
@@ -1792,7 +1792,7 @@ var Interpreter;
                     func_tbl.hasOwnProperty(func_name) ||
                     addfunc_tbl.hasOwnProperty(func_name)) {
                     // (一部の関数定義エラーを発生させない(過去との互換性維持のため))
-                    if (sp_compati_mode == 1 && func_name != "int") {
+                    if (!(sp_compati_mode == 1 && func_name == "int")) {
                         debugpos2 = i;
                         throw new Error("名前 '" + func_name + "' は予約されています。関数の定義に失敗しました。");
                     }
