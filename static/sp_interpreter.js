@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2016-7-8 v3.74
+// 2016-7-9 v4.00
 
 
 // SPALM Web Interpreter
@@ -461,10 +461,7 @@ function stop_button() {
 //
 // その他 情報等 :
 //
-//   各命令の定義は、
-//     make_func_tbl_A()  (戻り値のない関数のとき)
-//     make_func_tbl_B()  (戻り値のある関数のとき)
-//   の中で行っています。
+//   各命令の定義は make_func_tbl の中で行っています。
 //   また、新しい命令の追加は、別ファイルのプラグインで行うことを想定しています。
 //
 //   内部クラス一覧
@@ -481,6 +478,7 @@ var Interpreter;
     var max_image_size = 4000;  // 画像の縦横のサイズ最大値(px)
     var max_scale_size = 1000;  // 座標系の倍率最大値
     var max_font_size = 1000;   // フォントサイズの最大値(px)
+    var max_font_size2 = 16;    // ソフトキー表示エリアのフォントサイズの最大値(px)
 
     var can1;                   // Canvas要素
     var ctx1;                   // Canvasのコンテキスト
@@ -507,9 +505,9 @@ var Interpreter;
     var font_size_set = [12, 16, 24, 30]; // フォントサイズの設定値(px)(最小,小,中,大の順)
 
     var src;                    // ソース            (文字列)
-    var symbol = [];            // シンボル          (配列)
-    var symbol_line = [];       // シンボルが何行目か(配列)(エラー表示用)
-    var symbol_len = 0;         // シンボル数        (symbol.lengthのキャッシュ用)
+    var token = [];             // トークン          (配列)
+    var token_line = [];        // トークンが何行目か(配列)(エラー表示用)
+    var token_len = 0;          // トークン数        (token.lengthのキャッシュ用)
     var code = [];              // コード            (配列)
     var code_info = [];         // コード情報        (配列)(エラー表示用)
     var code_str = [];          // コード文字列      (配列)(表示用とラベル設定用)
@@ -520,6 +518,7 @@ var Interpreter;
     var func = {};              // 関数用            (連想配列オブジェクト)
     var stack = [];             // スタック          (配列)
     var param = [];             // 関数の引数        (配列)
+    var nothing = 0;            // 戻り値なしの組み込み関数の戻り値
 
     var pc;                     // プログラムカウンタ
     var debugpc;                // エラーの場所
@@ -557,7 +556,6 @@ var Interpreter;
 
     var sp_compati_mode;        // 互換モード(=0:通常モード,=1:互換モード)
     var use_local_vars;         // ローカル変数使用有無
-    var use_addfunc;            // 追加命令使用有無
     var save_data = {};         // セーブデータ(連想配列オブジェクト)(仮)
     var prof_obj = {};          // プロファイラ実行用(Profilerクラスのインスタンス)
     var out_data = {};          // 外部データ(連想配列オブジェクト)
@@ -693,8 +691,7 @@ var Interpreter;
             Alm2("Interpreter.init:-:Canvas内のマウスの状態が取得できません。");
         }
         // ***** 命令の定義情報の生成 *****
-        make_func_tbl_A();
-        make_func_tbl_B();
+        make_func_tbl();
         // ***** 戻り値を返す *****
         ret = true;
         return ret;
@@ -818,6 +815,8 @@ var Interpreter;
 
         // ***** 戻り値の初期化 *****
         ret = false;
+        // ***** 互換モードの初期化 *****
+        sp_compati_mode = 0;
         // ***** Canvasのコンテキストを取得 *****
         ctx1 = can1.getContext("2d");
         ctx2 = can2.getContext("2d");
@@ -838,31 +837,35 @@ var Interpreter;
         ctx2.clearRect(0, 0, can2.width, can2.height);
         // ***** フォントサイズの初期化 *****
         font_size = font_size_set[1];
-        ctx2.font = can2_font_size_init + "px " + font_family;
+        // ctx2.font = can2_font_size_init + "px " + font_family;
         // ***** Canvasの各設定の初期化 *****
         init_canvas_setting(ctx1);
         // ***** 現在の描画先にセット *****
         can = can1;
         ctx = ctx1;
         // ***** ソフトキー表示 *****
-        softkey[0] = "";
-        softkey[1] = "";
+        softkey[0] = {};
+        softkey[1] = {};
+        softkey[0].text = "";
+        softkey[1].text = "";
+        softkey[0].font_size = can2_font_size_init;
+        softkey[1].font_size = can2_font_size_init;
         disp_softkey();
         // ***** デバッグ表示クリア *****
         DebugShowClear();
         // ***** 実行開始 *****
         DebugShow("実行開始\n");
-        // ***** シンボル初期化 *****
+        // ***** トークン分割 *****
         try {
-            initsymbol();
+            tokenize();
         } catch (ex1) {
-            DebugShow("symbol:(" + symbol_len + "個): ");
-            msg = symbol.join(" ");
+            DebugShow("token:(" + token_len + "個): ");
+            msg = token.join(" ");
             DebugShow(msg + "\n");
-            DebugShow("initsymbol: " + ex1.message + "\n");
-            debugpos1 = symbol_len - 1;
+            DebugShow("tokenize: " + ex1.message + "\n");
+            debugpos1 = token_len - 1;
             if (debugpos1 < 0) { debugpos1 = 0; }
-            msg = "エラー場所: " + symbol_line[debugpos1] + "行";
+            msg = "エラー場所: " + token_line[debugpos1] + "行";
             DebugShow(msg + "\n");
             DebugShow("実行終了\n");
             return ret;
@@ -871,8 +874,8 @@ var Interpreter;
         try {
             expandconst();
         } catch (ex2) {
-            DebugShow("symbol:(" + symbol_len + "個): ");
-            msg = symbol.join(" ");
+            DebugShow("token:(" + token_len + "個): ");
+            msg = token.join(" ");
             DebugShow(msg + "\n");
             DebugShow("expandconst: " + ex2.message + ": debugpos=" + debugpos1 + "\n");
             show_err_place(debugpos1, debugpos2);
@@ -885,10 +888,10 @@ var Interpreter;
         try {
             compile();
         } catch (ex3) {
-            DebugShow("symbol:(" + symbol_len + "個): ");
-            msg = symbol.join(" ");
+            DebugShow("token:(" + token_len + "個): ");
+            msg = token.join(" ");
             DebugShow(msg + "\n");
-            DebugShow("code  :(" + code_len + "個): ");
+            DebugShow("code :(" + code_len + "個): ");
             msg = code_str.join(" ");
             DebugShow(msg + "\n");
             DebugShow("compile: " + ex3.message + ": debugpos=" + debugpos1 + "\n");
@@ -897,10 +900,10 @@ var Interpreter;
             return ret;
         }
         if (debug_mode == 1) {
-            DebugShow("symbol:(" + symbol_len + "個): ");
-            msg = symbol.join(" ");
+            DebugShow("token:(" + token_len + "個): ");
+            msg = token.join(" ");
             DebugShow(msg + "\n");
-            DebugShow("code  :(" + code_len + "個): ");
+            DebugShow("code :(" + code_len + "個): ");
             msg = code_str.join(" ");
             DebugShow(msg + "\n");
         }
@@ -944,9 +947,8 @@ var Interpreter;
         mousex = -10000;
         mousey = -10000;
         mouse_btn_stat = {};
-        sp_compati_mode = 0;
+        // sp_compati_mode = 0;
         use_local_vars = true;
-        use_addfunc = true;
         save_data = {};
         prof_obj = null;
         if (typeof (Profiler) == "function") { prof_obj = new Profiler(); }
@@ -1041,7 +1043,7 @@ var Interpreter;
     function execcode() {
         var i;
         var c;
-        var sym;
+        var cod;
         var num, num2;
         var var_name;
         var lbl_name;
@@ -1055,11 +1057,11 @@ var Interpreter;
         loop_time_start = Date.now();
         time_cnt = 0;
         while (pc < code_len) {
-            // ***** シンボル取り出し *****
+            // ***** コード取り出し *****
             debugpc = pc;
-            sym = code[pc++];
+            cod = code[pc++];
             // ***** スタックマシンのコードを実行 *****
-            switch (sym) {
+            switch (cod) {
                 // ( case opecode.load: が遅かったので数値を直接指定する)
                 case 1: // load
                     num = stack.pop();
@@ -1428,7 +1430,6 @@ var Interpreter;
                     // func_name = toglobal(func_name);
                     // ***** 組み込み関数の呼び出し *****
                     num = func_tbl[func_name].func(param);
-                    if (!func_tbl[func_name].use_retval) { num = 0; }
                     stack.push(num);
                     break;
                 case 53: // callwait
@@ -1449,7 +1450,6 @@ var Interpreter;
                     // func_name = toglobal(func_name);
                     // ***** 組み込み関数の呼び出し *****
                     num = func_tbl[func_name].func(param);
-                    if (!func_tbl[func_name].use_retval) { num = 0; }
                     // ***** 入力待ち状態でなければ完了 *****
                     if (!(input_flag || keyinput_flag)) {
                         stack.push(num);
@@ -1471,11 +1471,7 @@ var Interpreter;
                     func_name = stack.pop();
                     // func_name = toglobal(func_name);
                     // ***** 組み込み関数の呼び出し *****
-                    if (!use_addfunc) {
-                        throw new Error("関数 '" + func_name + "' の呼び出しに失敗しました(追加命令が無効に設定されています)。");
-                    }
                     num = addfunc_tbl[func_name].func(param, vars, can, ctx);
-                    if (!addfunc_tbl[func_name].use_retval) { num = 0; }
                     stack.push(num);
                     break;
                 case 55: // calluser
@@ -1578,7 +1574,7 @@ var Interpreter;
                     break;
                 default:
                     // ***** 命令コードエラー *****
-                    throw new Error("未定義の命令コード (" + sym + ") が見つかりました。");
+                    throw new Error("未定義の命令コード (" + cod + ") が見つかりました。");
                     // break;
             }
             // ***** 各種フラグのチェックと処理時間の測定 *****
@@ -1613,21 +1609,21 @@ var Interpreter;
     // ***** ラベル設定 *****
     function setlabel() {
         var i, j, k;
-        var sym;
+        var cod;
         var lbl_name;
         var func_name;
 
-        // ***** シンボル解析のループ *****
+        // ***** コード解析のループ *****
         i = 0;
         label = {};
         func = {};
         while (i < code_len) {
-            // ***** シンボル取り出し *****
+            // ***** コード取り出し *****
             debugpos1 = code_info[i].pos1;
-            // sym = code[i++];
-            sym = code_str[i++];
+            // cod = code[i++];
+            cod = code_str[i++];
             // ***** ラベルのとき *****
-            if (sym == "label") {
+            if (cod == "label") {
                 lbl_name = code[i++];
                 // if (label.hasOwnProperty(lbl_name)) {
                 if (hasOwn.call(label, lbl_name)) {
@@ -1638,7 +1634,7 @@ var Interpreter;
                 continue;
             }
             // ***** 関数定義のとき *****
-            if (sym == "func") {
+            if (cod == "func") {
                 func_name = code[i++];
                 // if (func.hasOwnProperty(func_name)) {
                 if (hasOwn.call(func, func_name)) {
@@ -1649,17 +1645,17 @@ var Interpreter;
                 j = i;
                 k = 1;
                 while (j < code_len) {
-                    // sym = code[j++];
-                    sym = code_str[j++];
-                    // if (sym == "func") { k++; }
-                    if (sym == "funcend") {
+                    // cod = code[j++];
+                    cod = code_str[j++];
+                    // if (cod == "func") { k++; }
+                    if (cod == "funcend") {
                         k--;
                         if (k == 0) {
                             func[func_name + "\\end"] = j;
                             break;
                         }
                     }
-                    if (sym == "func") {
+                    if (cod == "func") {
                         debugpos2 = code_info[j - 1].pos1 + 1;
                         throw new Error("funcの中にfuncを入れられません。");
                     }
@@ -1672,7 +1668,7 @@ var Interpreter;
     // ****************************************
     //              コンパイル処理
     // ****************************************
-    // (シンボルを解析してスタックマシンのコードを生成する)
+    // (トークンを解析してスタックマシンのコードを生成する)
 
     // ***** コンパイル *****
     function compile() {
@@ -1681,14 +1677,14 @@ var Interpreter;
         code_info = [];
         code_str = [];
         code_len = 0;
-        c_statement(0, symbol_len, "", "");
+        c_statement(0, token_len, "", "");
     }
 
     // ***** 文(ステートメント)のコンパイル *****
-    function c_statement(sym_start, sym_end, break_lbl, continue_lbl) {
-        var i, j, k, k2;
+    function c_statement(tok_start, tok_end, break_lbl, continue_lbl) {
+        var i, j, k, k2, k3;
         var ch;
-        var sym;
+        var tok;
         var lbl_name;
         var func_name, func_stm, func_end;
         var param_num;
@@ -1710,30 +1706,30 @@ var Interpreter;
         var while_exp, while_stm, while_end;
         var do_exp, do_stm, do_end;
 
-        // ***** シンボル解析のループ *****
-        i = sym_start;
-        while (i < sym_end) {
-            // ***** シンボル取り出し *****
+        // ***** トークン解析のループ *****
+        i = tok_start;
+        while (i < tok_end) {
+            // ***** トークン取り出し *****
             debugpos1 = i;
-            sym = symbol[i];
+            tok = token[i];
 
             // ***** 「;」のとき *****
-            if (sym == ";") {
+            if (tok == ";") {
                 i++;
                 continue;
             }
 
             // ***** label文のとき *****
-            if (sym == "label") {
+            if (tok == "label") {
                 i++;
                 code_push("label", debugpos1, i);
                 // (マイナス値を許可(特別扱い))
-                // lbl_name = symbol[i++];
-                if (symbol[i] == "-" && isDigit(symbol[i + 1].charAt(0))) {
-                    lbl_name = symbol[i] + symbol[i + 1];
+                // lbl_name = token[i++];
+                if (token[i] == "-" && isDigit(token[i + 1].charAt(0))) {
+                    lbl_name = token[i] + token[i + 1];
                     i += 2;
                 } else {
-                    lbl_name = symbol[i];
+                    lbl_name = token[i];
                     i++;
                 }
                 // (文字列化)
@@ -1745,48 +1741,48 @@ var Interpreter;
             }
 
             // ***** goto文のとき *****
-            if (sym == "goto") {
+            if (tok == "goto") {
                 i++;
-                i = c_expression(i, sym_end);
+                i = c_expression(i, tok_end);
                 code_push("gotostack", debugpos1, i);
                 continue;
             }
 
             // ***** gosub文のとき *****
-            if (sym == "gosub") {
+            if (tok == "gosub") {
                 i++;
-                i = c_expression(i, sym_end);
+                i = c_expression(i, tok_end);
                 code_push("gosubstack", debugpos1, i);
                 continue;
             }
 
             // ***** return文のとき *****
-            if (sym == "return") {
+            if (tok == "return") {
                 i++;
                 // ***** 戻り値を取得 *****
                 // (直後が } のときも戻り値なしとする(過去との互換性維持のため))
-                // if (symbol[i] == ";") {
-                if (symbol[i] == ";" || symbol[i] == "}") {
+                // if (token[i] == ";") {
+                if (token[i] == ";" || token[i] == "}") {
                     code_push("store0", debugpos1, i);
                 } else {
-                    i = c_expression(i, sym_end);
+                    i = c_expression(i, tok_end);
                 }
                 code_push("return", debugpos1, i);
                 continue;
             }
 
             // ***** end文のとき *****
-            if (sym == "end") {
+            if (tok == "end") {
                 i++;
                 code_push("end", debugpos1, i);
                 continue;
             }
 
             // ***** func文のとき *****
-            if (sym == "func") {
+            if (tok == "func") {
                 i++;
                 code_push("func", debugpos1, i);
-                func_name = symbol[i++];
+                func_name = token[i++];
                 // ***** 関数名のチェック *****
                 if (!(isAlpha(func_name.charAt(0)) || func_name.charAt(0) == "_")) {
                     debugpos2 = i;
@@ -1796,7 +1792,7 @@ var Interpreter;
                     func_tbl.hasOwnProperty(func_name) ||
                     addfunc_tbl.hasOwnProperty(func_name)) {
                     // (一部の関数定義エラーを発生させない(過去との互換性維持のため))
-                    if (func_name != "int") {
+                    if (sp_compati_mode == 1 && func_name != "int") {
                         debugpos2 = i;
                         throw new Error("名前 '" + func_name + "' は予約されています。関数の定義に失敗しました。");
                     }
@@ -1804,14 +1800,14 @@ var Interpreter;
                 code_push('"' + func_name + '"', debugpos1, i);
                 // ***** 仮引数 *****
                 match2("(", i++);
-                if (symbol[i] == ")") {
+                if (token[i] == ")") {
                     i++;
                 } else {
-                    while (i < sym_end) {
+                    while (i < tok_end) {
                         // ***** 変数名のコンパイル2(関数の仮引数用) *****
-                        i = c_getvarname2(i, sym_end);
+                        i = c_getvarname2(i, tok_end);
                         code_push("loadparam", debugpos1, i);
-                        if (symbol[i] == ",") {
+                        if (token[i] == ",") {
                             i++;
                             continue;
                         }
@@ -1824,9 +1820,9 @@ var Interpreter;
                 match2("{", i++);
                 func_stm = i;
                 k = 1;
-                while (i < sym_end) {
-                    if (symbol[i] == "{") { k++; }
-                    if (symbol[i] == "}") { k--; }
+                while (i < tok_end) {
+                    if (token[i] == "{") { k++; }
+                    if (token[i] == "}") { k--; }
                     if (k == 0) { break; }
                     i++;
                 }
@@ -1841,16 +1837,16 @@ var Interpreter;
             }
 
             // ***** funcgoto文のとき *****
-            if (sym == "funcgoto") {
+            if (tok == "funcgoto") {
                 i++;
                 match2("(", i++);
-                func_name = symbol[i];
+                func_name = token[i];
                 // ***** 1文字取り出す *****
                 ch = func_name.charAt(0);
                 // ***** アルファベットかアンダースコアかポインタのとき *****
                 if (isAlpha(ch) || ch == "_" || ch == "*") {
                     // ***** 変数名のコンパイル *****
-                    i = c_getvarname(i, sym_end);
+                    i = c_getvarname(i, tok_end);
                 } else {
                     debugpos2 = i + 1;
                     throw new Error("関数名が不正です。('" + func_name + "')");
@@ -1858,13 +1854,13 @@ var Interpreter;
                 // ***** 引数の取得 *****
                 match2("(", i++);
                 param_num = 0;
-                if (symbol[i] == ")") {
+                if (token[i] == ")") {
                     i++;
                 } else {
-                    while (i < sym_end) {
-                        i = c_expression(i, sym_end);
+                    while (i < tok_end) {
+                        i = c_expression(i, tok_end);
                         param_num++;
-                        if (symbol[i] == ",") {
+                        if (token[i] == ",") {
                             i++;
                             continue;
                         }
@@ -1880,25 +1876,25 @@ var Interpreter;
                 continue;
             }
 
-            // ***** global/local文のとき *****
+            // ***** global/local/var文のとき *****
             // (loc a,b,c のように、複数の変数をカンマ区切りで一括宣言可能とする)
-            if (sym == "global" || sym == "glb" || sym == "local" || sym == "loc") {
+            if (tok == "global" || tok == "glb" || tok == "local" || tok == "loc") {
                 i++;
-                while (i < sym_end) {
+                while (i < tok_end) {
                     j = code_len + 1;
-                    i = c_expression(i, sym_end);
+                    i = c_expression(i, tok_end);
                     code_push("pop", debugpos1, i);
                     if (j < code_len) {
                         var_name = String(code[j]);
                         if (var_name.charAt(1) != "\\") {
                             checkvarname(var_name, i);
                             // ***** 変数名に接頭語を付ける *****
-                            var_name = sym.charAt(0) + "\\" + var_name;
+                            var_name = tok.charAt(0) + "\\" + var_name;
                             code[j] = var_name;
                             code_str[j] = '"' + var_name + '"';
                         }
                     }
-                    if (symbol[i] == ",") {
+                    if (token[i] == ",") {
                         i++;
                         continue;
                     }
@@ -1907,14 +1903,30 @@ var Interpreter;
                 continue;
             }
 
+            // ***** spmode文のとき *****
+            if (tok == "spmode") {
+                j = i;
+                i++;
+                match2("(", i++);
+                if (token[i] == "0") {
+                    sp_compati_mode = 0;
+                } else {
+                    sp_compati_mode = 1;
+                }
+                i++;
+                match2(")", i++);
+                i = j;
+                // continue;
+            }
+
             // ***** defconst文のとき *****
-            if (sym == "defconst") {
+            if (tok == "defconst") {
                 i++;
                 match2("(", i++);
                 i++;
                 match2(",", i++);
                 // (マイナス値を許可(特別扱い))
-                if (symbol[i] == "-" && isDigit(symbol[i + 1].charAt(0))) {
+                if (token[i] == "-" && isDigit(token[i + 1].charAt(0))) {
                     i += 2;
                 } else {
                     i++;
@@ -1924,7 +1936,7 @@ var Interpreter;
             }
 
             // ***** disconst文のとき *****
-            if (sym == "disconst") {
+            if (tok == "disconst") {
                 i++;
                 match2("(", i++);
                 i++;
@@ -1933,7 +1945,7 @@ var Interpreter;
             }
 
             // ***** break文のとき *****
-            if (sym == "break") {
+            if (tok == "break") {
                 i++;
                 if (break_lbl == "") {
                     debugpos2 = i;
@@ -1945,7 +1957,7 @@ var Interpreter;
             }
 
             // ***** continue文のとき *****
-            if (sym == "continue") {
+            if (tok == "continue") {
                 i++;
                 if (continue_lbl == "") {
                     debugpos2 = i;
@@ -1958,7 +1970,7 @@ var Interpreter;
 
             // ***** switch文のとき *****
             // switch (式) { case 式: 文 ... case 式: 文 default: 文 }
-            if (sym == "switch") {
+            if (tok == "switch") {
                 i++;
                 // ***** 解析とアドレスの取得 *****
                 j = i;
@@ -1966,13 +1978,13 @@ var Interpreter;
                 // 式
                 switch_exp = i;
                 k = 1;
-                if (symbol[i] == ")") {
+                if (token[i] == ")") {
                     debugpos2 = i + 1;
                     throw new Error("switch文の条件式がありません。");
                 }
-                while (i < sym_end) {
-                    if (symbol[i] == "(") { k++; }
-                    if (symbol[i] == ")") { k--; }
+                while (i < tok_end) {
+                    if (token[i] == "(") { k++; }
+                    if (token[i] == ")") { k--; }
                     if (k == 0) { break; }
                     i++;
                 }
@@ -1984,24 +1996,27 @@ var Interpreter;
                 switch_case_exp = [];
                 switch_case_stm = [];
                 switch_default_stm = -1;
-                while (i < sym_end) {
-                    if (symbol[i] == "{") { k++; }
-                    if (symbol[i] == "}") { k--; }
+                while (i < tok_end) {
+                    if (token[i] == "{") { k++; }
+                    if (token[i] == "}") { k--; }
                     if (k == 0) { break; }
                     if (k == 1) {
-                        if (symbol[i] == "case") {
+                        if (token[i] == "case") {
                             i++;
                             // 式
                             switch_case_exp.push(i);
-                            if (symbol[i] == ":") {
+                            if (token[i] == ":") {
                                 debugpos2 = i + 1;
                                 throw new Error("case文の値がありません。");
                             }
                             k2 = 1;                  // caseに式を可能とする
-                            while (i < sym_end) {
-                                if (symbol[i] == "?") { k2++; }
-                                if (symbol[i] == ":") { k2--; }
-                                if (k2 == 0) { break; }
+                            k3 = 0;
+                            while (i < tok_end) {
+                                // if (token[i] == "?") { k2++; }
+                                if (token[i] == ":") { k2--; }
+                                if (token[i] == "(") { k3++; }
+                                if (token[i] == ")") { k3--; }
+                                if (k2 == 0 && k3 == 0) { break; }
                                 i++;
                             }
                             match2(":", i++);
@@ -2009,7 +2024,7 @@ var Interpreter;
                             switch_case_stm.push(i);
                             continue;
                         }
-                        if (symbol[i] == "default") {
+                        if (token[i] == "default") {
                             i++;
                             switch_case_exp.push(i); // caseの1個としても登録
                             match2(":", i++);
@@ -2024,7 +2039,7 @@ var Interpreter;
                 match2("}", i++);
                 // 終了
                 switch_end = i;
-                // ***** 新しいシンボルの生成 *****
+                // ***** コードの生成 *****
                 // 式
                 i = c_expression2(switch_exp, switch_stm - 3);
                 for (switch_case_no = 0; switch_case_no < switch_case_exp.length; switch_case_no++) {
@@ -2070,7 +2085,7 @@ var Interpreter;
 
             // ***** if文のとき *****
             // if (式) { 文 } elsif (式) { 文 } ... elsif (式) { 文 } else { 文 }
-            if (sym == "if") {
+            if (tok == "if") {
                 i++;
                 // ***** 解析とアドレスの取得 *****
                 j = i;
@@ -2078,13 +2093,13 @@ var Interpreter;
                 // 式
                 if_exp = i;
                 k = 1;
-                if (symbol[i] == ")") {
+                if (token[i] == ")") {
                     debugpos2 = i + 1;
                     throw new Error("if文の条件式がありません。");
                 }
-                while (i < sym_end) {
-                    if (symbol[i] == "(") { k++; }
-                    if (symbol[i] == ")") { k--; }
+                while (i < tok_end) {
+                    if (token[i] == "(") { k++; }
+                    if (token[i] == ")") { k--; }
                     if (k == 0) { break; }
                     i++;
                 }
@@ -2093,9 +2108,9 @@ var Interpreter;
                 // 文
                 if_stm = i;
                 k = 1;
-                while (i < sym_end) {
-                    if (symbol[i] == "{") { k++; }
-                    if (symbol[i] == "}") { k--; }
+                while (i < tok_end) {
+                    if (token[i] == "{") { k++; }
+                    if (token[i] == "}") { k--; }
                     if (k == 0) { break; }
                     i++;
                 }
@@ -2106,22 +2121,22 @@ var Interpreter;
                 elsif_stm = [];
                 elsif_stm_end = [];
                 else_stm = -1;
-                while (i < sym_end) {
+                while (i < tok_end) {
                     // elsif
-                    if (symbol[i] == "elsif") {
+                    if (token[i] == "elsif") {
                         debugpos1 = i; // エラー表示位置調整
                         i++;
                         match2("(", i++);
                         // 式
                         elsif_exp.push(i);
                         k = 1;
-                        if (symbol[i] == ")") {
+                        if (token[i] == ")") {
                             debugpos2 = i + 1;
                             throw new Error("elsif文の条件式がありません。");
                         }
-                        while (i < sym_end) {
-                            if (symbol[i] == "(") { k++; }
-                            if (symbol[i] == ")") { k--; }
+                        while (i < tok_end) {
+                            if (token[i] == "(") { k++; }
+                            if (token[i] == ")") { k--; }
                             if (k == 0) { break; }
                             i++;
                         }
@@ -2130,9 +2145,9 @@ var Interpreter;
                         // 文
                         elsif_stm.push(i);
                         k = 1;
-                        while (i < sym_end) {
-                            if (symbol[i] == "{") { k++; }
-                            if (symbol[i] == "}") { k--; }
+                        while (i < tok_end) {
+                            if (token[i] == "{") { k++; }
+                            if (token[i] == "}") { k--; }
                             if (k == 0) { break; }
                             i++;
                         }
@@ -2141,16 +2156,16 @@ var Interpreter;
                         continue;
                     }
                     // else
-                    if (symbol[i] == "else") {
+                    if (token[i] == "else") {
                         debugpos1 = i; // エラー表示位置調整
                         i++;
                         match2("{", i++);
                         // 文
                         else_stm = i;
                         k = 1;
-                        while (i < sym_end) {
-                            if (symbol[i] == "{") { k++; }
-                            if (symbol[i] == "}") { k--; }
+                        while (i < tok_end) {
+                            if (token[i] == "{") { k++; }
+                            if (token[i] == "}") { k--; }
                             if (k == 0) { break; }
                             i++;
                         }
@@ -2162,7 +2177,7 @@ var Interpreter;
                 }
                 // 終了
                 if_end = i;
-                // ***** 新しいシンボルの生成 *****
+                // ***** コードの生成 *****
                 debugpos1 = j - 1; // エラー表示位置調整
                 // 式
                 i = c_expression2(if_exp, if_stm - 3);
@@ -2220,7 +2235,7 @@ var Interpreter;
 
             // ***** for文のとき *****
             // for (式1; 式2; 式3) { 文 }
-            if (sym == "for") {
+            if (tok == "for") {
                 i++;
                 // ***** 解析とアドレスの取得 *****
                 j = i;
@@ -2228,29 +2243,35 @@ var Interpreter;
                 // 式1
                 for_exp1 = i;
                 k = 1;
-                while (i < sym_end) {
-                    if (symbol[i] == "?") { k++; }
-                    if (symbol[i] == ";") { k--; }
-                    if (k == 0) { break; }
+                k2 = 0;
+                while (i < tok_end) {
+                    // if (token[i] == "?") { k++; }
+                    if (token[i] == ";") { k--; }
+                    if (token[i] == "(") { k2++; }
+                    if (token[i] == ")") { k2--; }
+                    if (k == 0 && k2 == 0) { break; }
                     i++;
                 }
                 match2(";", i++);
                 // 式2
                 for_exp2 = i;
                 k = 1;
-                while (i < sym_end) {
-                    if (symbol[i] == "?") { k++; }
-                    if (symbol[i] == ";") { k--; }
-                    if (k == 0) { break; }
+                k2 = 0;
+                while (i < tok_end) {
+                    // if (token[i] == "?") { k++; }
+                    if (token[i] == ";") { k--; }
+                    if (token[i] == "(") { k2++; }
+                    if (token[i] == ")") { k2--; }
+                    if (k == 0 && k2 == 0) { break; }
                     i++;
                 }
                 match2(";", i++);
                 // 式3
                 for_exp3 = i;
                 k = 1;
-                while (i < sym_end) {
-                    if (symbol[i] == "(") { k++; }
-                    if (symbol[i] == ")") { k--; }
+                while (i < tok_end) {
+                    if (token[i] == "(") { k++; }
+                    if (token[i] == ")") { k--; }
                     if (k == 0) { break; }
                     i++;
                 }
@@ -2259,16 +2280,16 @@ var Interpreter;
                 // 文
                 for_stm = i;
                 k = 1;
-                while (i < sym_end) {
-                    if (symbol[i] == "{") { k++; }
-                    if (symbol[i] == "}") { k--; }
+                while (i < tok_end) {
+                    if (token[i] == "{") { k++; }
+                    if (token[i] == "}") { k--; }
                     if (k == 0) { break; }
                     i++;
                 }
                 match2("}", i++);
                 // 終了
                 for_end = i;
-                // ***** 新しいシンボルの生成 *****
+                // ***** コードの生成 *****
                 // 式1
                 if (for_exp1 < for_exp2 - 1) {
                     i = c_expression2(for_exp1, for_exp2 - 2);
@@ -2295,7 +2316,7 @@ var Interpreter;
                 // ***** 文(ステートメント)のコンパイル(再帰的に実行) *****
                 c_statement(for_stm, for_end - 1, '"for_end\\' + j + '"', '"for_exp3\\' + j + '"');
                 // for (i = for_stm; i < for_end - 1; i++) {
-                //     code_push(symbol[i], debugpos1, i);
+                //     code_push(token[i], debugpos1, i);
                 // }
                 code_push("goto", debugpos1, i);
                 code_push('"for_exp3\\' + j + '"', debugpos1, i);
@@ -2308,7 +2329,7 @@ var Interpreter;
 
             // ***** while文のとき *****
             // while (式) { 文 }
-            if (sym == "while") {
+            if (tok == "while") {
                 i++;
                 // ***** 解析とアドレスの取得 *****
                 j = i;
@@ -2316,13 +2337,13 @@ var Interpreter;
                 // 式
                 while_exp = i;
                 k = 1;
-                if (symbol[i] == ")") {
+                if (token[i] == ")") {
                     debugpos2 = i + 1;
                     throw new Error("while文の条件式がありません。");
                 }
-                while (i < sym_end) {
-                    if (symbol[i] == "(") { k++; }
-                    if (symbol[i] == ")") { k--; }
+                while (i < tok_end) {
+                    if (token[i] == "(") { k++; }
+                    if (token[i] == ")") { k--; }
                     if (k == 0) { break; }
                     i++;
                 }
@@ -2331,16 +2352,16 @@ var Interpreter;
                 // 文
                 while_stm = i;
                 k = 1;
-                while (i < sym_end) {
-                    if (symbol[i] == "{") { k++; }
-                    if (symbol[i] == "}") { k--; }
+                while (i < tok_end) {
+                    if (token[i] == "{") { k++; }
+                    if (token[i] == "}") { k--; }
                     if (k == 0) { break; }
                     i++;
                 }
                 match2("}", i++);
                 // 終了
                 while_end = i;
-                // ***** 新しいシンボルの生成 *****
+                // ***** コードの生成 *****
                 // 式
                 code_push("label", debugpos1, i);
                 code_push('"while_exp\\' + j + '"', debugpos1, i);
@@ -2361,7 +2382,7 @@ var Interpreter;
 
             // ***** do文のとき *****
             // do { 文 } while (式)
-            if (sym == "do") {
+            if (tok == "do") {
                 i++;
                 // ***** 解析とアドレスの取得 *****
                 j = i;
@@ -2369,14 +2390,14 @@ var Interpreter;
                 // 文
                 do_stm = i;
                 k = 1;
-                while (i < sym_end) {
-                    if (symbol[i] == "{") { k++; }
-                    if (symbol[i] == "}") { k--; }
+                while (i < tok_end) {
+                    if (token[i] == "{") { k++; }
+                    if (token[i] == "}") { k--; }
                     if (k == 0) { break; }
                     i++;
                 }
                 match2("}", i++);
-                if (symbol[i] != "while") {
+                if (token[i] != "while") {
                     debugpos2 = i + 1;
                     throw new Error("do文のwhileがありません。");
                 }
@@ -2385,20 +2406,20 @@ var Interpreter;
                 // 式
                 do_exp = i;
                 k = 1;
-                if (symbol[i] == ")") {
+                if (token[i] == ")") {
                     debugpos2 = i + 1;
                     throw new Error("do文の条件式がありません。");
                 }
-                while (i < sym_end) {
-                    if (symbol[i] == "(") { k++; }
-                    if (symbol[i] == ")") { k--; }
+                while (i < tok_end) {
+                    if (token[i] == "(") { k++; }
+                    if (token[i] == ")") { k--; }
                     if (k == 0) { break; }
                     i++;
                 }
                 match2(")", i++);
                 // 終了
                 do_end = i;
-                // ***** 新しいシンボルの生成 *****
+                // ***** コードの生成 *****
                 // 文
                 code_push("label", debugpos1, i);
                 code_push('"do_stm\\' + j + '"', debugpos1, i);
@@ -2416,44 +2437,44 @@ var Interpreter;
             }
 
             // ***** 式のコンパイル *****
-            i = c_expression(i, sym_end);
+            i = c_expression(i, tok_end);
             code_push("pop", debugpos1, i);
         }
     }
 
     // ***** 式のコンパイル *****
     // (priorityは演算子の優先順位を表す。大きいほど優先順位が高い)
-    function c_expression(sym_start, sym_end, priority) {
+    function c_expression(tok_start, tok_end, priority) {
         var i, j;
-        var sym;
+        var tok;
         var tri_flag;
 
         // ***** 引数のチェック *****
         if (priority == null) { priority = 0; }
         // ***** 因子のコンパイル *****
-        i = sym_start;
-        i = c_factor(i, sym_end);
+        i = tok_start;
+        i = c_factor(i, tok_end);
         // ***** 演算子処理のループ *****
         tri_flag = false;
-        while (i < sym_end) {
-            // ***** シンボル取り出し *****
+        while (i < tok_end) {
+            // ***** トークン取り出し *****
             // debugpos1 = i;
-            sym = symbol[i];
+            tok = token[i];
             // ***** 「&」のとき *****
-            if (sym == "&" && priority < 10) {
+            if (tok == "&" && priority < 10) {
                 i++;
-                i = c_expression(i, sym_end, 10);
+                i = c_expression(i, tok_end, 10);
                 code_push("and", debugpos1, i);
                 tri_flag = false;
                 continue;
             }
             // ***** 「&&」のとき *****
-            if (sym == "&&" && priority < 10) {
+            if (tok == "&&" && priority < 10) {
                 j = i;
                 i++;
                 code_push("ifnotgoto", debugpos1, i);
                 code_push('"and_zero\\' + j + '"', debugpos1, i);
-                i = c_expression(i, sym_end, 9); // 右結合
+                i = c_expression(i, tok_end, 9); // 右結合
                 code_push("ifnotgoto", debugpos1, i);
                 code_push('"and_zero\\' + j + '"', debugpos1, i);
                 code_push("store1", debugpos1, i);
@@ -2468,20 +2489,20 @@ var Interpreter;
                 continue;
             }
             // ***** 「|」のとき *****
-            if (sym == "|" && priority < 10) {
+            if (tok == "|" && priority < 10) {
                 i++;
-                i = c_expression(i, sym_end, 10);
+                i = c_expression(i, tok_end, 10);
                 code_push("or", debugpos1, i);
                 tri_flag = false;
                 continue;
             }
             // ***** 「||」のとき *****
-            if (sym == "||" && priority < 10) {
+            if (tok == "||" && priority < 10) {
                 j = i;
                 i++;
                 code_push("ifgoto", debugpos1, i);
                 code_push('"or_one\\' + j + '"', debugpos1, i);
-                i = c_expression(i, sym_end, 9); // 右結合
+                i = c_expression(i, tok_end, 9); // 右結合
                 code_push("ifgoto", debugpos1, i);
                 code_push('"or_one\\' + j + '"', debugpos1, i);
                 code_push("store0", debugpos1, i);
@@ -2496,27 +2517,29 @@ var Interpreter;
                 continue;
             }
             // ***** 「^」のとき *****
-            if (sym == "^" && priority < 10) {
+            if (tok == "^" && priority < 10) {
                 i++;
-                i = c_expression(i, sym_end, 10);
+                i = c_expression(i, tok_end, 10);
                 code_push("xor", debugpos1, i);
                 tri_flag = false;
                 continue;
             }
             // ***** 3項演算子「?:;」のとき *****
-            if (sym == "?" && priority < 10) {
+            if (tok == "?" && priority < 10) {
                 j = i;
                 i++;
                 code_push("ifnotgoto", debugpos1, i);
                 code_push('"tri_zero\\' + j + '"', debugpos1, i);
-                i = c_expression(i, sym_end, 9); // 右結合
+                i = c_expression(i, tok_end, 9); // 右結合
                 match2(":", i++);
                 code_push("goto", debugpos1, i);
                 code_push('"tri_end\\' + j + '"', debugpos1, i);
                 code_push("label", debugpos1, i);
                 code_push('"tri_zero\\' + j + '"', debugpos1, i);
-                i = c_expression(i, sym_end, 9); // 右結合
-                match2(";", i++);
+                i = c_expression(i, tok_end, 9); // 右結合
+                if (sp_compati_mode == 1) {
+                    match2(";", i++);
+                }
                 code_push("label", debugpos1, i);
                 code_push('"tri_end\\' + j + '"', debugpos1, i);
                 tri_flag = true;
@@ -2524,119 +2547,119 @@ var Interpreter;
             }
 
             // (3項演算子の処理後は、優先順位10の演算子しか処理しない(過去との互換性維持のため))
-            if (tri_flag == true) {
+            if (sp_compati_mode == 1 && tri_flag == true) {
                 break;
             }
 
             // ***** 「<<」のとき *****
-            if (sym == "<<" && priority < 20) {
+            if (tok == "<<" && priority < 20) {
                 i++;
-                i = c_expression(i, sym_end, 20);
+                i = c_expression(i, tok_end, 20);
                 code_push("shl", debugpos1, i);
                 continue;
             }
             // ***** 「<」のとき *****
-            if (sym == "<" && priority < 20) {
+            if (tok == "<" && priority < 20) {
                 i++;
-                i = c_expression(i, sym_end, 20);
+                i = c_expression(i, tok_end, 20);
                 code_push("cmplt", debugpos1, i);
                 continue;
             }
             // ***** 「<=」のとき *****
-            if (sym == "<=" && priority < 20) {
+            if (tok == "<=" && priority < 20) {
                 i++;
-                i = c_expression(i, sym_end, 20);
+                i = c_expression(i, tok_end, 20);
                 code_push("cmple", debugpos1, i);
                 continue;
             }
             // ***** 「>>>」のとき *****
-            if (sym == ">>>" && priority < 20) {
+            if (tok == ">>>" && priority < 20) {
                 i++;
-                i = c_expression(i, sym_end, 20);
+                i = c_expression(i, tok_end, 20);
                 code_push("ushr", debugpos1, i);
                 continue;
             }
             // ***** 「>>」のとき *****
-            if (sym == ">>" && priority < 20) {
+            if (tok == ">>" && priority < 20) {
                 i++;
-                i = c_expression(i, sym_end, 20);
+                i = c_expression(i, tok_end, 20);
                 code_push("shr", debugpos1, i);
                 continue;
             }
             // ***** 「>」のとき *****
-            if (sym == ">" && priority < 20) {
+            if (tok == ">" && priority < 20) {
                 i++;
-                i = c_expression(i, sym_end, 20);
+                i = c_expression(i, tok_end, 20);
                 code_push("cmpgt", debugpos1, i);
                 continue;
             }
             // ***** 「>=」のとき *****
-            if (sym == ">=" && priority < 20) {
+            if (tok == ">=" && priority < 20) {
                 i++;
-                i = c_expression(i, sym_end, 20);
+                i = c_expression(i, tok_end, 20);
                 code_push("cmpge", debugpos1, i);
                 continue;
             }
             // ***** 「==」のとき *****
-            if (sym == "==" && priority < 20) {
+            if (tok == "==" && priority < 20) {
                 i++;
-                i = c_expression(i, sym_end, 20);
+                i = c_expression(i, tok_end, 20);
                 code_push("cmpeq", debugpos1, i);
                 continue;
             }
             // ***** 「!=」のとき *****
-            if (sym == "!=" && priority < 20) {
+            if (tok == "!=" && priority < 20) {
                 i++;
-                i = c_expression(i, sym_end, 20);
+                i = c_expression(i, tok_end, 20);
                 code_push("cmpne", debugpos1, i);
                 continue;
             }
             // ***** 「+」のとき *****
-            if (sym == "+" && priority < 30) {
+            if (tok == "+" && priority < 30) {
                 i++;
-                i = c_expression(i, sym_end, 30);
+                i = c_expression(i, tok_end, 30);
                 code_push("add", debugpos1, i);
                 continue;
             }
             // ***** 「.」のとき *****
-            if (sym == "." && priority < 30) {
+            if (tok == "." && priority < 30) {
                 i++;
-                i = c_expression(i, sym_end, 30);
+                i = c_expression(i, tok_end, 30);
                 code_push("addstr", debugpos1, i);
                 continue;
             }
             // ***** 「-」のとき *****
-            if (sym == "-" && priority < 30) {
+            if (tok == "-" && priority < 30) {
                 i++;
-                i = c_expression(i, sym_end, 30);
+                i = c_expression(i, tok_end, 30);
                 code_push("sub", debugpos1, i);
                 continue;
             }
             // ***** 「*」のとき *****
-            if (sym == "*" && priority < 40) {
+            if (tok == "*" && priority < 40) {
                 i++;
-                i = c_expression(i, sym_end, 40);
+                i = c_expression(i, tok_end, 40);
                 code_push("mul", debugpos1, i);
                 continue;
             }
             // ***** 「/」のとき *****
-            if (sym == "/" && priority < 40) {
+            if (tok == "/" && priority < 40) {
                 i++;
-                i = c_expression(i, sym_end, 40);
+                i = c_expression(i, tok_end, 40);
                 code_push("div", debugpos1, i);
                 continue;
             }
             // ***** 「\」のとき *****
-            if (sym == "\\" && priority < 40) {
+            if (tok == "\\" && priority < 40) {
                 i++;
-                i = c_expression(i, sym_end, 40);
+                i = c_expression(i, tok_end, 40);
                 code_push("divint", debugpos1, i);
                 continue;
             }
             // ***** 「%」のとき *****
-            if (sym == "%" && priority < 40) {
+            if (tok == "%" && priority < 40) {
                 i++;
-                i = c_expression(i, sym_end, 40);
+                i = c_expression(i, tok_end, 40);
                 code_push("mod", debugpos1, i);
                 continue;
             }
@@ -2647,18 +2670,18 @@ var Interpreter;
         return i;
     }
     // ***** 式のコンパイル2(カンマ区切りありバージョン) *****
-    function c_expression2(sym_start, sym_end) {
+    function c_expression2(tok_start, tok_end) {
         var i;
 
         // ***** 式のコンパイル *****
-        i = sym_start;
-        i = c_expression(i, sym_end);
+        i = tok_start;
+        i = c_expression(i, tok_end);
         // ***** カンマ区切りの処理 *****
-        while (i < sym_end) {
-            if (symbol[i] == ",") {
+        while (i < tok_end) {
+            if (token[i] == ",") {
                 i++;
                 code_push("pop", debugpos1, i);
-                i = c_expression(i, sym_end);
+                i = c_expression(i, tok_end);
                 continue;
             }
             break;
@@ -2668,88 +2691,88 @@ var Interpreter;
     }
 
     // ***** 因子のコンパイル *****
-    function c_factor(sym_start, sym_end) {
+    function c_factor(tok_start, tok_end) {
         var num;
         var i;
         var ch;
-        var sym;
+        var tok;
         var func_type;
         var func_name;
         var param_num;
 
-        // ***** シンボル取り出し *****
-        i = sym_start;
+        // ***** トークン取り出し *****
+        i = tok_start;
         // debugpos1 = i;
-        sym = symbol[i];
+        tok = token[i];
         // ***** 「!」のとき *****
-        if (sym == "!") {
+        if (tok == "!") {
             i++;
-            i = c_factor(i, sym_end);
+            i = c_factor(i, tok_end);
             code_push("lognot", debugpos1, i);
             return i;
         }
         // ***** 「~」のとき *****
-        if (sym == "~") {
+        if (tok == "~") {
             i++;
-            i = c_factor(i, sym_end);
+            i = c_factor(i, tok_end);
             code_push("not", debugpos1, i);
             return i;
         }
         // ***** 「+」のとき *****
-        if (sym == "+") {
+        if (tok == "+") {
             i++;
-            i = c_factor(i, sym_end);
+            i = c_factor(i, tok_end);
             code_push("positive", debugpos1, i);
             return i;
         }
         // ***** 「-」のとき *****
-        if (sym == "-") {
+        if (tok == "-") {
             i++;
-            i = c_factor(i, sym_end);
+            i = c_factor(i, tok_end);
             code_push("negative", debugpos1, i);
             return i;
         }
         // ***** 「(」のとき *****
-        if (sym == "(") {
+        if (tok == "(") {
             i++;
-            i = c_expression2(i, sym_end);
+            i = c_expression2(i, tok_end);
             match2(")", i++);
             return i;
         }
         // ***** アドレス的なもののとき *****
         // ***** (変数名を取得して返す) *****
-        if (sym == "&") {
+        if (tok == "&") {
             i++;
-            if (symbol[i] == "(") {
+            if (token[i] == "(") {
                 i++;
-                i = c_getvarname(i, sym_end);
+                i = c_getvarname(i, tok_end);
                 match2(")", i++);
             } else {
-                i = c_getvarname(i, sym_end);
+                i = c_getvarname(i, tok_end);
             }
             return i;
         }
         // ***** プレインクリメント(「++」「--」)のとき *****
-        if (sym == "++") {
+        if (tok == "++") {
             i++;
-            i = c_getvarname(i, sym_end);
+            i = c_getvarname(i, tok_end);
             code_push("preinc", debugpos1, i);
             return i;
         }
-        if (sym == "--") {
+        if (tok == "--") {
             i++;
-            i = c_getvarname(i, sym_end);
+            i = c_getvarname(i, tok_end);
             code_push("predec", debugpos1, i);
             return i;
         }
 
         // ***** 組み込み関数/組み込み変数のとき *****
-        if (func_tbl.hasOwnProperty(sym)) { func_type = 1; }
-        else if (addfunc_tbl.hasOwnProperty(sym)) { func_type = 2; }
+        if (func_tbl.hasOwnProperty(tok)) { func_type = 1; }
+        else if (addfunc_tbl.hasOwnProperty(tok)) { func_type = 2; }
         else { func_type = 0; }
         if (func_type > 0) {
             i++;
-            func_name = sym;
+            func_name = tok;
             code_push("storestr", debugpos1, i);
             code_push('"' + func_name + '"', debugpos1, i);
             // ***** 組み込み変数のとき *****
@@ -2767,19 +2790,19 @@ var Interpreter;
             match2("(", i++);
             // ***** 引数の取得 *****
             param_num = 0;
-            if (symbol[i] == ")") {
+            if (token[i] == ")") {
                 i++;
             } else {
-                while (i < sym_end) {
+                while (i < tok_end) {
                     // ***** 「変数名をとる引数」のとき *****
                     if ((func_type == 1 && func_tbl[func_name].param_varname_flag.hasOwnProperty(param_num)) ||
                         (func_type == 2 && addfunc_tbl[func_name].param_varname_flag.hasOwnProperty(param_num))) {
-                        i = c_getvarname(i, sym_end);
+                        i = c_getvarname(i, tok_end);
                     } else {
-                        i = c_expression(i, sym_end);
+                        i = c_expression(i, tok_end);
                     }
                     param_num++;
-                    if (symbol[i] == ",") {
+                    if (token[i] == ",") {
                         i++;
                         continue;
                     }
@@ -2809,11 +2832,11 @@ var Interpreter;
         }
 
         // ***** 1文字取り出す *****
-        ch = sym.charAt(0);
+        ch = tok.charAt(0);
         // ***** 文字列のとき *****
         if (ch == '"') {
             i++;
-            num = sym;
+            num = tok;
             code_push("storestr", debugpos1, i);
             code_push(num, debugpos1, i);
             return i;
@@ -2823,7 +2846,7 @@ var Interpreter;
         // if (isDigit(ch)) {
         if (isDigit(ch) || ch == "-") {
             i++;
-            num = +sym; // 数値にする
+            num = +tok; // 数値にする
             code_push("storenum", debugpos1, i);
             code_push(num, debugpos1, i);
             return i;
@@ -2832,20 +2855,20 @@ var Interpreter;
         if (isAlpha(ch) || ch == "_" || ch == "*") {
 
             // ***** 変数名のコンパイル *****
-            i = c_getvarname(i, sym_end);
+            i = c_getvarname(i, tok_end);
 
             // ***** 関数のとき *****
-            if (symbol[i] == "(") {
+            if (token[i] == "(") {
                 i++;
                 // ***** 引数の取得 *****
                 param_num = 0;
-                if (symbol[i] == ")") {
+                if (token[i] == ")") {
                     i++;
                 } else {
-                    while (i < sym_end) {
-                        i = c_expression(i, sym_end);
+                    while (i < tok_end) {
+                        i = c_expression(i, tok_end);
                         param_num++;
-                        if (symbol[i] == ",") {
+                        if (token[i] == ",") {
                             i++;
                             continue;
                         }
@@ -2863,66 +2886,66 @@ var Interpreter;
 
             // ***** 変数の処理 *****
 
-            // ***** シンボル取り出し *****
-            sym = symbol[i];
+            // ***** トークン取り出し *****
+            tok = token[i];
             // ***** ポストインクリメント(「++」「--」)のとき *****
-            if (sym == "++") {
+            if (tok == "++") {
                 i++;
                 code_push("postinc", debugpos1, i);
                 return i;
             }
-            if (sym == "--") {
+            if (tok == "--") {
                 i++;
                 code_push("postdec", debugpos1, i);
                 return i;
             }
             // ***** 代入のとき *****
-            if (sym == "=") {
+            if (tok == "=") {
                 i++;
-                i = c_expression(i, sym_end);
+                i = c_expression(i, tok_end);
                 code_push("load", debugpos1, i);
                 return i;
             }
             // ***** 複合代入のとき *****
-            if (sym == "+=") {
+            if (tok == "+=") {
                 i++;
-                i = c_expression(i, sym_end);
+                i = c_expression(i, tok_end);
                 code_push("loadadd", debugpos1, i);
                 return i;
             }
-            if (sym == "-=") {
+            if (tok == "-=") {
                 i++;
-                i = c_expression(i, sym_end);
+                i = c_expression(i, tok_end);
                 code_push("loadsub", debugpos1, i);
                 return i;
             }
-            if (sym == "*=") {
+            if (tok == "*=") {
                 i++;
-                i = c_expression(i, sym_end);
+                i = c_expression(i, tok_end);
                 code_push("loadmul", debugpos1, i);
                 return i;
             }
-            if (sym == "/=") {
+            if (tok == "/=") {
                 i++;
-                i = c_expression(i, sym_end);
+                i = c_expression(i, tok_end);
                 code_push("loaddiv", debugpos1, i);
                 return i;
             }
-            if (sym == "\\=") {
+            if (tok == "\\=") {
                 i++;
-                i = c_expression(i, sym_end);
+                i = c_expression(i, tok_end);
                 code_push("loaddivint", debugpos1, i);
                 return i;
             }
-            if (sym == "%=") {
+            if (tok == "%=") {
                 i++;
-                i = c_expression(i, sym_end);
+                i = c_expression(i, tok_end);
                 code_push("loadmod", debugpos1, i);
                 return i;
             }
-            if (sym == ".=") {
+            if (tok == ".=") {
                 i++;
-                i = c_expression(i, sym_end);
+                i = c_expression(i, tok_end);
                 code_push("loadaddstr", debugpos1, i);
                 return i;
             }
@@ -2933,46 +2956,46 @@ var Interpreter;
         }
         // ***** 構文エラー *****
         // (一部の構文エラーを発生させない(過去との互換性維持のため))
-        if (sym == ")") {
+        if (sp_compati_mode == 1 && tok == ")") {
             i++;
             code_push("store0", debugpos1, i);
             return i;
         }
         debugpos2 = i + 1;
-        throw new Error("構文エラー 予期しない '" + symbol[i] + "' が見つかりました。");
+        throw new Error("構文エラー 予期しない '" + token[i] + "' が見つかりました。");
         // ***** 戻り値を返す *****
         // i++;
         // return i;
     }
 
     // ***** 変数名のコンパイル(通常用) *****
-    function c_getvarname(sym_start, sym_end) {
+    function c_getvarname(tok_start, tok_end) {
         var i;
         var var_name;
         var var_name2;
 
         // ***** 変数名取得 *****
-        i = sym_start;
+        i = tok_start;
         // debugpos1 = i;
-        var_name = symbol[i++];
+        var_name = token[i++];
 
         // ***** ポインタ的なもののとき(文頭の*の前にはセミコロンが必要) *****
         // ***** (変数の内容を変数名にする) *****
         if (var_name == "*") {
-            if (symbol[i] == "(") {
+            if (token[i] == "(") {
                 i++;
-                i = c_getvarname(i, sym_end);
+                i = c_getvarname(i, tok_end);
                 match2(")", i++);
                 code_push("pointer", debugpos1, i);
             } else {
-                i = c_getvarname(i, sym_end);
+                i = c_getvarname(i, tok_end);
                 code_push("pointer", debugpos1, i);
             }
             // ***** 配列変数のとき *****
-            while (symbol[i] == "[") {
+            while (token[i] == "[") {
                 i++;
-                // i = Math.trunc(c_expression(i, sym_end));
-                i = c_expression(i, sym_end); // 配列の添字に文字列もあり
+                // i = Math.trunc(c_expression(i, tok_end));
+                i = c_expression(i, tok_end); // 配列の添字に文字列もあり
                 match2("]", i++);
                 code_push("array", debugpos1, i);
             }
@@ -2980,7 +3003,7 @@ var Interpreter;
         }
         // ***** 接頭語のチェック *****
         if (var_name == "global" || var_name == "glb" || var_name == "local" || var_name == "loc") {
-            var_name2 = symbol[i++];
+            var_name2 = token[i++];
             checkvarname(var_name2, i);
             var_name = var_name.charAt(0) + "\\" + var_name2;
         } else {
@@ -2990,10 +3013,10 @@ var Interpreter;
         code_push("storestr", debugpos1, i);
         code_push('"' + var_name + '"', debugpos1, i);
         // ***** 配列変数のとき *****
-        while (symbol[i] == "[") {
+        while (token[i] == "[") {
             i++;
-            // i = Math.trunc(c_expression(i, sym_end));
-            i = c_expression(i, sym_end); // 配列の添字に文字列もあり
+            // i = Math.trunc(c_expression(i, tok_end));
+            i = c_expression(i, tok_end); // 配列の添字に文字列もあり
             match2("]", i++);
             code_push("array", debugpos1, i);
         }
@@ -3001,7 +3024,7 @@ var Interpreter;
         return i;
     }
     // ***** 変数名のコンパイル2(関数の仮引数用) *****
-    function c_getvarname2(sym_start, sym_end, pointer_flag) {
+    function c_getvarname2(tok_start, tok_end, pointer_flag) {
         var i;
         var var_name;
         var var_name2;
@@ -3010,25 +3033,25 @@ var Interpreter;
         if (pointer_flag == null) { pointer_flag = false; }
 
         // ***** 変数名取得 *****
-        i = sym_start;
+        i = tok_start;
         // debugpos1 = i;
-        var_name = symbol[i++];
+        var_name = token[i++];
 
         // ***** ポインタ的なもののとき(文頭の*の前にはセミコロンが必要) *****
         // ***** (実際は*を削っているだけ) *****
         if (var_name == "*") {
-            if (symbol[i] == "(") {
+            if (token[i] == "(") {
                 i++;
-                i = c_getvarname2(i, sym_end, true);
+                i = c_getvarname2(i, tok_end, true);
                 match2(")", i++);
             } else {
-                i = c_getvarname2(i, sym_end, true);
+                i = c_getvarname2(i, tok_end, true);
             }
             return i;
         }
         // ***** 接頭語のチェック *****
         if (var_name == "global" || var_name == "glb" || var_name == "local" || var_name == "loc") {
-            var_name2 = symbol[i++];
+            var_name2 = token[i++];
             checkvarname(var_name2, i);
             var_name = var_name.charAt(0) + "\\" + var_name2;
         } else {
@@ -3045,10 +3068,10 @@ var Interpreter;
         code_push("storestr", debugpos1, i);
         code_push('"' + var_name + '"', debugpos1, i);
         // ***** 配列変数のとき *****
-        while (symbol[i] == "[") {
+        while (token[i] == "[") {
             i++;
-            // i = Math.trunc(c_expression(i, sym_end));
-            i = c_expression(i, sym_end); // 配列の添字に文字列もあり
+            // i = Math.trunc(c_expression(i, tok_end));
+            i = c_expression(i, tok_end); // 配列の添字に文字列もあり
             match2("]", i++);
             code_push("array", debugpos1, i);
         }
@@ -3056,8 +3079,8 @@ var Interpreter;
         return i;
     }
     // ***** 変数名のチェック *****
-    function checkvarname(var_name, sym_start) {
-        var i = sym_start;
+    function checkvarname(var_name, tok_start) {
+        var i = tok_start;
 
         // ***** 変数名のチェック *****
         if (!(isAlpha(var_name.charAt(0)) || var_name.charAt(0) == "_")) {
@@ -3075,31 +3098,31 @@ var Interpreter;
     // ****************************************
     //               定数展開処理
     // ****************************************
-    // (シンボル中の定数を実際の値に置換する)
+    // (トークン中の定数を実際の値に置換する)
 
     // ***** 定数展開 *****
     function expandconst() {
         var i;
         var ch;
-        var sym;
+        var tok;
         var cst_name;
         var cst_value;
 
         // ***** 定数の定義情報の生成 *****
         make_const_tbl();
 
-        // ***** シンボル解析のループ *****
+        // ***** トークン解析のループ *****
         i = 0;
-        while (i < symbol_len - 4) { // 終端のend(4個)は対象外
-            // ***** シンボル取り出し *****
+        while (i < token_len - 4) { // 終端のend(4個)は対象外
+            // ***** トークン取り出し *****
             debugpos1 = i;
-            sym = symbol[i];
+            tok = token[i];
 
             // ***** defconst文のとき *****
-            if (sym == "defconst") {
+            if (tok == "defconst") {
                 i++;
                 match2("(", i++);
-                cst_name = symbol[i++];
+                cst_name = token[i++];
                 // ***** 1文字取り出す *****
                 ch = cst_name.charAt(0);
                 // ***** アルファベットかアンダースコアのとき *****
@@ -3107,12 +3130,12 @@ var Interpreter;
                     match2(",", i++);
                     // ***** 値の取得 *****
                     // (マイナス値を許可(特別扱い))
-                    // cst_value = symbol[i++];
-                    if (symbol[i] == "-" && isDigit(symbol[i + 1].charAt(0))) {
-                        cst_value = symbol[i] + symbol[i + 1];
+                    // cst_value = token[i++];
+                    if (token[i] == "-" && isDigit(token[i + 1].charAt(0))) {
+                        cst_value = token[i] + token[i + 1];
                         i += 2;
                     } else {
-                        cst_value = symbol[i];
+                        cst_value = token[i];
                         i++;
                     }
                     // ***** 定数の定義情報1個の生成 *****
@@ -3126,10 +3149,10 @@ var Interpreter;
             }
 
             // ***** disconst文のとき *****
-            if (sym == "disconst") {
+            if (tok == "disconst") {
                 i++;
                 match2("(", i++);
-                cst_name = symbol[i++];
+                cst_name = token[i++];
                 // ***** 1文字取り出す *****
                 ch = cst_name.charAt(0);
                 // ***** アルファベットかアンダースコアのとき *****
@@ -3145,11 +3168,11 @@ var Interpreter;
             }
 
             // ***** 定数のとき *****
-            // if (const_tbl.hasOwnProperty(sym)) {
-            if (hasOwn.call(const_tbl, sym)) {
+            // if (const_tbl.hasOwnProperty(tok)) {
+            if (hasOwn.call(const_tbl, tok)) {
                 i++;
                 // ***** 定数を実際の値に置換する *****
-                symbol[i - 1] = const_tbl[sym];
+                token[i - 1] = const_tbl[tok];
                 continue;
             }
 
@@ -3173,16 +3196,16 @@ var Interpreter;
     }
 
     // ****************************************
-    //            シンボル初期化処理
+    //             トークン分割処理
     // ****************************************
-    // (ソースの文字列を解析してシンボルを生成する)
+    // (ソースの文字列を解析してトークンに分割する)
 
-    // ***** シンボル初期化 *****
-    function initsymbol() {
+    // ***** トークン分割 *****
+    function tokenize() {
         var i;
         var src_len;
         var ch, ch2;
-        var sym_start;
+        var tok_start;
         var dot_count;
         var zero_flag;
         var temp_st;
@@ -3193,9 +3216,9 @@ var Interpreter;
         // ***** ソース解析のループ *****
         i = 0;
         line_no = 1;
-        symbol = [];
-        symbol_line = [];
-        symbol_len = 0;
+        token = [];
+        token_line = [];
+        token_len = 0;
         src_len = src.length;
         while (i < src_len) {
             // ***** 1文字取り出す *****
@@ -3226,6 +3249,23 @@ var Interpreter;
                 }
                 continue;
             }
+            // ***** コメント「/* */」のとき *****
+            if (ch == "/" && ch2 == "*") {
+                i++;
+                while (i < src_len) {
+                    // ***** 1文字取り出す *****
+                    ch = src.charAt(i++);
+                    if (i < src_len) { ch2 = src.charAt(i); } else { ch2 = ""; }
+                    // ***** デリミタのとき *****
+                    if (ch == "*" && ch2 == "/") { i++; break; }
+                    // ***** 改行のとき *****
+                    if (ch == "\r" || ch == "\n") {
+                        line_no++;
+                        if (ch == "\r" && ch2 == "\n") { i++; }
+                    }
+                }
+                continue;
+            }
             // ***** コメント「'」のとき *****
             if (ch == "'") {
                 while (i < src_len) {
@@ -3244,7 +3284,7 @@ var Interpreter;
             }
 
             // ***** 有効文字のとき *****
-            sym_start = i - 1;
+            tok_start = i - 1;
             line_no_s = line_no;
             // ***** 16進数のとき *****
             if (ch == "0" && ch2 == "x") {
@@ -3253,17 +3293,17 @@ var Interpreter;
                     ch = src.charAt(i);
                     if (isHex(ch)) { i++; } else { break; }
                 }
-                temp_st = src.substring(sym_start, i);
+                temp_st = src.substring(tok_start, i);
                 temp_no = parseInt(temp_st, 16); // 16進数変換
 
                 // ***** NaN対策 *****
                 temp_no = temp_no | 0;
 
                 if (temp_no < 0) { // 負のときは符号を分離する
-                    symbol_push("-", line_no_s);
-                    symbol_push(String(-temp_no), line_no_s);
+                    token_push("-", line_no_s);
+                    token_push(String(-temp_no), line_no_s);
                 } else {
-                    symbol_push(String(temp_no), line_no_s);
+                    token_push(String(temp_no), line_no_s);
                 }
                 continue;
             }
@@ -3272,7 +3312,7 @@ var Interpreter;
                 dot_count = 0;
                 zero_flag = true;
                 // ***** 先頭の0をカット *****
-                if (ch == "0" && isDigit(ch2)) { sym_start = i; } else { zero_flag = false; }
+                if (ch == "0" && isDigit(ch2)) { tok_start = i; } else { zero_flag = false; }
                 while (i < src_len) {
                     // ***** 1文字取り出す(iの加算なし) *****
                     ch = src.charAt(i);
@@ -3282,10 +3322,10 @@ var Interpreter;
                     // ***** 数値のチェック *****
                     if (isDigit(ch)) { i++; } else { break; }
                     // ***** 先頭の0をカット *****
-                    if (zero_flag && ch == "0" && isDigit(ch2)) { sym_start = i; } else { zero_flag = false; }
+                    if (zero_flag && ch == "0" && isDigit(ch2)) { tok_start = i; } else { zero_flag = false; }
                 }
                 if (dot_count >= 2) { throw new Error("数値の小数点重複エラー"); }
-                symbol_push(src.substring(sym_start, i), line_no_s);
+                token_push(src.substring(tok_start, i), line_no_s);
                 continue;
             }
             // ***** アルファベットかアンダースコアのとき *****
@@ -3294,7 +3334,7 @@ var Interpreter;
                     ch = src.charAt(i);
                     if (isAlpha(ch) || ch == "_" || isDigit(ch)) { i++; } else { break; }
                 }
-                symbol_push(src.substring(sym_start, i), line_no_s);
+                token_push(src.substring(tok_start, i), line_no_s);
                 continue;
             }
             // ***** 文字列のとき *****
@@ -3320,10 +3360,10 @@ var Interpreter;
                         if (ch == "\r" && ch2 == "\n") { i++; }
                     }
                 }
-                temp_st = src.substring(sym_start, i)
+                temp_st = src.substring(tok_start, i)
                     .replace(/\\"/g,  '"')   // 「"」のエスケープ
                     .replace(/\\\\/g, "\\"); // 「\」のエスケープ ← これは最後にしないといけない
-                symbol_push(temp_st, line_no_s);
+                token_push(temp_st, line_no_s);
                 continue;
             }
             // ***** 演算子その他のとき *****
@@ -3343,13 +3383,13 @@ var Interpreter;
             if (ch == "=" || ch == "!" || ch == "*" || ch == "/" || ch == "%" || ch == "\\" || ch == ".") {
                 if (ch2 == "=") { i++; }
             }
-            symbol_push(src.substring(sym_start, i), line_no_s);
+            token_push(src.substring(tok_start, i), line_no_s);
         }
         // ***** 終端の追加(安全のため) *****
-        symbol_push("end", line_no);
-        symbol_push("end", line_no);
-        symbol_push("end", line_no);
-        symbol_push("end", line_no);
+        token_push("end", line_no);
+        token_push("end", line_no);
+        token_push("end", line_no);
+        token_push("end", line_no);
     }
 
     // ****************************************
@@ -3385,13 +3425,13 @@ var Interpreter;
     }
     // ***** 文字チェック *****
     function match2(ch, i) {
-        if (i >= symbol_len) {
-            debugpos2 = symbol_len;
+        if (i >= token_len) {
+            debugpos2 = token_len;
             throw new Error("'" + ch + "' が見つかりませんでした。");
         }
-        if (ch != symbol[i]) {
+        if (ch != token[i]) {
             debugpos2 = i + 1;
-            throw new Error("'" + ch + "' があるべき所に '" + symbol[i] + "' が見つかりました。");
+            throw new Error("'" + ch + "' があるべき所に '" + token[i] + "' が見つかりました。");
         }
         // ***** 加算されないので注意 *****
         // i++;
@@ -3653,7 +3693,7 @@ var Interpreter;
     // (グラフィック上の座標(x,y)から、
     //  実際の画面上の座標(x1,y1)を計算して、配列にして返す)
     function conv_axis_point(x, y) {
-        var x1, y1, t1;
+        var x1, y1, t;
         // ***** 座標系の変換の分を補正 *****
         x1 = x;
         y1 = y;
@@ -3665,11 +3705,11 @@ var Interpreter;
         y1 = y1 + axis.scaleoy;
         x1 = x1 - axis.rotateox; // 回転の中心座標を移動
         y1 = y1 - axis.rotateoy;
-        // ここでt1を使わないと、計算結果がおかしくなるので注意
-        t1 = x1 * Math.cos(axis.rotate) - y1 * Math.sin(axis.rotate); // 回転
+        // ここでtを使わないと、計算結果がおかしくなるので注意
+        t  = x1 * Math.cos(axis.rotate) - y1 * Math.sin(axis.rotate); // 回転
         y1 = x1 * Math.sin(axis.rotate) + y1 * Math.cos(axis.rotate);
-        // x1 = t1;
-        x1 = t1 + axis.rotateox; // 回転の中心座標を元に戻す
+        // x1 = t;
+        x1 = t  + axis.rotateox; // 回転の中心座標を元に戻す
         y1 = y1 + axis.rotateoy;
         x1 = x1 + axis.originx;  // 原点座標を移動
         y1 = y1 + axis.originy;
@@ -3680,58 +3720,66 @@ var Interpreter;
 
     // ***** ソフトキー表示 *****
     function disp_softkey() {
+        var softkey_text;
+
         ctx2.clearRect(0, 0, can2.width, can2.height);
         ctx2.fillStyle = can2_forecolor_init;
         ctx2.textAlign = "left";
         ctx2.textBaseline = "top";
-        if (softkey[0] != "") {
-            if (softkey[0].charAt(0) == "*") {
-                ctx2.fillText(softkey[0].substring(1), 0, 2);
+        softkey_text = softkey[0].text;
+        if (softkey_text != "") {
+            ctx2.font = softkey[0].font_size + "px " + font_family;
+            if (softkey_text.charAt(0) == "*") {
+                softkey_text = softkey_text.substring(1);
             } else {
-                ctx2.fillText("[c]:" + softkey[0], 0, 2);
+                softkey_text = "[c]:" + softkey_text;
             }
+            ctx2.fillText(softkey_text, 0, 2);
         }
         ctx2.textAlign = "right";
-        if (softkey[1] != "") {
-            if (softkey[1].charAt(0) == "*") {
-                ctx2.fillText(softkey[1].substring(1), can2.width, 2);
+        softkey_text = softkey[1].text;
+        if (softkey_text != "") {
+            ctx2.font = softkey[1].font_size + "px " + font_family;
+            if (softkey_text.charAt(0) == "*") {
+                softkey_text = softkey_text.substring(1);
             } else {
-                ctx2.fillText("[v]:" + softkey[1], can2.width, 2);
+                softkey_text = "[v]:" + softkey_text;
             }
+            ctx2.fillText(softkey_text, can2.width, 2);
         }
     }
 
-    // ***** シンボル追加 *****
-    function symbol_push(sym, line_no) {
-        // symbol.push(sym);
-        // symbol_line.push(line_no);
-        // symbol_len++;
-        symbol[symbol_len] = sym;
-        symbol_line[symbol_len++] = line_no;
+    // ***** トークン追加 *****
+    function token_push(tok, line_no) {
+        // token.push(tok);
+        // token_line.push(line_no);
+        // token_len++;
+        token[token_len] = tok;
+        token_line[token_len++] = line_no;
     }
 
     // ***** コード追加 *****
-    function code_push(sym, pos1, pos2) {
+    function code_push(tok, pos1, pos2) {
         // (命令コードは数値に変換)
-        if (opecode.hasOwnProperty(sym)) {
-            code[code_len] = opecode[sym];
+        if (opecode.hasOwnProperty(tok)) {
+            code[code_len] = opecode[tok];
         // (文字列はダブルクォートを外す)
-        } else if (sym.charAt && sym.charAt(0) == '"') {
-            if (sym.length >= 2 && sym.charAt(sym.length - 1) == '"') {
-                code[code_len] = sym.substring(1, sym.length - 1);
+        } else if (tok.charAt && tok.charAt(0) == '"') {
+            if (tok.length >= 2 && tok.charAt(tok.length - 1) == '"') {
+                code[code_len] = tok.substring(1, tok.length - 1);
             } else {
-                code[code_len] = sym.substring(1);
+                code[code_len] = tok.substring(1);
             }
         // (その他のときはそのまま格納)
         } else {
-            code[code_len] = sym;
+            code[code_len] = tok;
         }
         // (コード情報にはデバッグ位置の情報を格納)
         code_info[code_len] = {};
         code_info[code_len].pos1 = pos1;
         code_info[code_len].pos2 = pos2;
         // (コード文字列はそのまま格納)
-        code_str[code_len++] = sym;
+        code_str[code_len++] = tok;
     }
 
     // ***** エラー場所の表示 *****
@@ -3740,12 +3788,12 @@ var Interpreter;
         var msg;
         var msg_count;
 
-        msg = "エラー場所: " + symbol_line[debugpos1] + "行: ";
+        msg = "エラー場所: " + token_line[debugpos1] + "行: ";
         msg_count = 0;
         if (debugpos2 <= debugpos1) { debugpos2 = debugpos1 + 1; } // エラーが出ない件の対策
         for (i = debugpos1; i < debugpos2; i++) {
-            if (i >= 0 && i < symbol_len) {
-                msg = msg + symbol[i] + " ";
+            if (i >= 0 && i < token_len) {
+                msg = msg + token[i] + " ";
                 msg_count++;
                 // if (msg_count >= 100) {
                 //     msg += "... ";
@@ -3753,18 +3801,18 @@ var Interpreter;
                 // }
             }
         }
-        if (debugpos2 >= symbol_len) { msg += "- プログラム最後まで検索したが文が完成せず。"; }
+        if (debugpos2 >= token_len) { msg += "- プログラム最後まで検索したが文が完成せず。"; }
         DebugShow(msg + "\n");
     }
 
     // ***** 変数名取得 *****
-    function getvarname(sym) {
+    function getvarname(tok) {
         // (ここではチェック不要)
-        // var c = sym.charCodeAt(0);
+        // var c = tok.charCodeAt(0);
         // if (!((c >= 0x41 && c <= 0x5A) || (c >= 0x61 && c <= 0x7A) || c == 0x5F)) {
-        //     throw new Error("変数名が不正です。('" + sym + "')");
+        //     throw new Error("変数名が不正です。('" + tok + "')");
         // }
-        return sym;
+        return tok;
     }
 
     // ***** グローバル変数化 *****
@@ -4317,23 +4365,30 @@ var Interpreter;
     //              命令の定義処理
     // ****************************************
 
-    // ***** 組み込み関数(戻り値なし)の定義情報の生成 *****
-    function make_func_tbl_A() {
-        // ***** 組み込み関数(戻り値なし)の定義情報を1個ずつ生成 *****
+    // ***** 組み込み関数の定義情報の生成 *****
+    function make_func_tbl() {
+        // ***** 組み込み関数の定義情報を1個ずつ生成 *****
         // (第2引数は関数の引数の数を指定する(ただし省略可能な引数は数に入れない))
+        // (第2引数を-1にすると組み込み変数になり、()なしで呼び出せる)
         // (第3引数は「変数名をとる引数」がある場合にその引数番号を配列で指定する)
-        make_one_func_tbl_A("addfunc", 1, [], function (param) {
+        // (戻り値なしの組み込み関数の戻り値は nothing とする)
+        make_one_func_tbl("abs", 1, [], function (param) {
+            var num;
             var a1;
 
-            a1 = Math.trunc(param[0]);
-            if (a1 == 0) {
-                use_addfunc = false;
-            } else {
-                use_addfunc = true;
-            }
-            return true;
+            a1 = (+param[0]);
+            num = Math.abs(a1);
+            return num;
         });
-        make_one_func_tbl_A("arc", 3, [], function (param) {
+        make_one_func_tbl("acos", 1, [], function (param) {
+            var num;
+            var a1;
+
+            a1 = (+param[0]);
+            num = Math.acos(a1) * 180 / Math.PI;
+            return num;
+        });
+        make_one_func_tbl("arc", 3, [], function (param) {
             var a1, a2, a3, a4;
             var i;
             var a, b, x0, y0;
@@ -4375,9 +4430,92 @@ var Interpreter;
                 // // ***** Chrome v23 で円が閉じない件の対策(中心を0.5ずらしたとき) *****
                 // ctx.fillRect(a + x0, y0, 0.5, 0.5);
             }
-            return true;
+            return nothing;
         });
-        make_one_func_tbl_A("clear", 4, [], function (param) {
+        make_one_func_tbl("arraylen", 1, [0], function (param) {
+            var num;
+            var a1, a2, a3;
+            var i;
+
+            a1 = getvarname(param[0]);
+            if (param.length <= 1) {
+                a2 = 0;
+                a3 = null;
+            } else {
+                a2 = Math.trunc(param[1]);
+                if (param.length <= 2) {
+                    a3 = null;
+                } else {
+                    a3 = Math.trunc(param[2]);
+                }
+            }
+
+            // ***** NaN対策 *****
+            a2 = a2 | 0;
+
+            // ***** エラーチェック *****
+            // if (a3 != null && (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size)) {
+            if (!(a3 == null || (a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size))) {
+                throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
+            }
+
+            // ***** カウント処理 *****
+            num = 0;
+            i = a2;
+            do {
+                // ***** 配列の存在チェック *****
+                if (vars.checkVar(a1 + "[" + i + "]")) {
+                    num++;
+                } else if (a3 == null) {
+                    break;
+                }
+                i++;
+            } while (a3 == null || i <= a3);
+            return num;
+        });
+        make_one_func_tbl("asin", 1, [], function (param) {
+            var num;
+            var a1;
+
+            a1 = (+param[0]);
+            num = Math.asin(a1) * 180 / Math.PI;
+            return num;
+        });
+        make_one_func_tbl("atan", 1, [], function (param) {
+            var num;
+            var a1;
+
+            a1 = (+param[0]);
+            num = Math.atan(a1) * 180 / Math.PI;
+            return num;
+        });
+        make_one_func_tbl("atan2", 2, [], function (param) {
+            var num;
+            var a1, a2;
+
+            a1 = (+param[0]);
+            a2 = (+param[1]);
+            // num = Math.atan2(a2, a1) * 180 / Math.PI;
+            num = Math.atan2(a1, a2) * 180 / Math.PI;
+            return num;
+        });
+        make_one_func_tbl("ceil", 1, [], function (param) {
+            var num;
+            var a1;
+
+            a1 = (+param[0]);
+            num = Math.ceil(a1);
+            return num;
+        });
+        make_one_func_tbl("chkvar", 1, [0], function (param) {
+            var num;
+            var a1;
+
+            a1 = getvarname(param[0]);
+            if (vars.checkVar(a1)) { num = 1; } else { num = 0; }
+            return num;
+        });
+        make_one_func_tbl("clear", 4, [], function (param) {
             var a1, a2, a3, a4;
 
             a1 = Math.trunc(param[0]); // X
@@ -4385,14 +4523,14 @@ var Interpreter;
             a3 = Math.trunc(param[2]); // W
             a4 = Math.trunc(param[3]); // H
             ctx.clearRect(a1, a2, a3, a4);
-            return true;
+            return nothing;
         });
-        make_one_func_tbl_A("clearkey", 0, [], function (param) {
+        make_one_func_tbl("clearkey", 0, [], function (param) {
             input_buf = [];
             keyinput_buf = [];
-            return true;
+            return nothing;
         });
-        make_one_func_tbl_A("clearvar", 0, [], function (param) {
+        make_one_func_tbl("clearvar", 0, [], function (param) {
             var name;
 
             // vars = {};
@@ -4404,9 +4542,9 @@ var Interpreter;
                     clear_var_funcs[name]();
                 }
             }
-            return true;
+            return nothing;
         });
-        make_one_func_tbl_A("clip", 4, [], function (param) {
+        make_one_func_tbl("clip", 4, [], function (param) {
             var a1, a2, a3, a4;
 
             a1 = Math.trunc(param[0]); // X
@@ -4420,17 +4558,17 @@ var Interpreter;
             ctx.beginPath();
             ctx.rect(a1, a2, a3, a4);
             ctx.clip();
-            return true;
+            return nothing;
         });
-        make_one_func_tbl_A("cls", 0, [], function (param) {
+        make_one_func_tbl("cls", 0, [], function (param) {
             // ***** 画面クリア *****
             // ctx.clearRect(-axis.originx, -axis.originy, can.width, can.height);
             ctx.setTransform(1, 0, 0, 1, 0, 0); // 座標系を元に戻す
             ctx.clearRect(0, 0, can.width, can.height);  // 画面クリア
             set_canvas_axis(ctx);               // 座標系を再設定
-            return true;
+            return nothing;
         });
-        make_one_func_tbl_A("col", 1, [], function (param) {
+        make_one_func_tbl("col", 1, [], function (param) {
             var a1;
             var col_r, col_g, col_b;
 
@@ -4441,9 +4579,9 @@ var Interpreter;
             color_val = "rgb(" + col_r + "," + col_g + "," + col_b + ")";
             ctx.strokeStyle = color_val;
             ctx.fillStyle = color_val;
-            return true;
+            return nothing;
         });
-        make_one_func_tbl_A("color", 3, [], function (param) {
+        make_one_func_tbl("color", 3, [], function (param) {
             var a1, a2, a3;
 
             a1 = Math.trunc(param[0]); // R
@@ -4452,9 +4590,9 @@ var Interpreter;
             color_val = "rgb(" + a1 + "," + a2 + "," + a3 + ")";
             ctx.strokeStyle = color_val;
             ctx.fillStyle = color_val;
-            return true;
+            return nothing;
         });
-        make_one_func_tbl_A("copy", 5, [0, 2], function (param) {
+        make_one_func_tbl("copy", 5, [0, 2], function (param) {
             var a1, a2, a3, a4, a5, a6;
             var i;
             var i_start, i_end, i_plus;
@@ -4475,7 +4613,7 @@ var Interpreter;
             if (!(a5 <= max_array_size)) {
                 throw new Error("処理する配列の個数が不正です。" + max_array_size + "以下である必要があります。");
             }
-            if (a5 <= 0) { return true; }
+            if (a5 <= 0) { return nothing; }
 
             // ***** コピー処理 *****
             if (a1 == a3 && a2 < a4) {
@@ -4504,18 +4642,42 @@ var Interpreter;
                     (i_plus < 0 && i >= i_end)) { continue; }
                 break;
             }
-            return true;
+            return nothing;
         });
-        make_one_func_tbl_A("copyall", 2, [0, 1], function (param) {
+        make_one_func_tbl("copyall", 2, [0, 1], function (param) {
             var a1, a2;
 
             a1 = getvarname(param[0]);
             a2 = getvarname(param[1]);
             // ***** 配列変数の一括コピー *****
             vars.copyArray(a1, a2);
-            return true;
+            return nothing;
         });
-        make_one_func_tbl_A("dbgloopset", 1, [], function (param) {
+        make_one_func_tbl("cos", 1, [], function (param) {
+            var num;
+            var a1;
+
+            a1 = (+param[0]);
+            if (sp_compati_mode == 1) {
+                num = Math.trunc(Math.cos(a1 * Math.PI / 180) * 100);
+            } else {
+                num = Math.cos(a1 * Math.PI / 180);
+            }
+            return num;
+        });
+        make_one_func_tbl("day", -1, [], function (param) {
+            var num;
+
+            num = new Date().getDate();
+            return num;
+        });
+        make_one_func_tbl("dayofweek", -1, [], function (param) {
+            var num;
+
+            num = new Date().getDay() + 1; // =1:日曜日,=2:月曜日 ... =7:土曜日
+            return num;
+        });
+        make_one_func_tbl("dbgloopset", 1, [], function (param) {
             var a1;
 
             a1 = Math.trunc(param[0]);
@@ -4526,9 +4688,9 @@ var Interpreter;
             } else {
                 loop_nocount_mode = true;
             }
-            return true;
+            return nothing;
         });
-        add_one_func_tbl_A("dbgprint", 1, [], function (param) {
+        make_one_func_tbl("dbgprint", 1, [], function (param) {
             var a1, a2;
 
             a1 = String(param[0]);
@@ -4539,9 +4701,9 @@ var Interpreter;
             }
             if (a2 != 0) { a1 = a1 + "\n"; }
             DebugShow(a1);
-            return true;
+            return nothing;
         });
-        add_one_func_tbl_A("dbgstop", 0, [], function (param) {
+        make_one_func_tbl("dbgstop", 0, [], function (param) {
             var a1;
 
             a1 = "";
@@ -4550,9 +4712,27 @@ var Interpreter;
             }
             if (a1 != "") { a1 = "('" + a1 + "')"; }
             throw new Error("dbgstop命令で停止しました。" + a1);
-            // return true;
+            // return nothing;
         });
-        make_one_func_tbl_A("disarray", 1, [0], function (param) {
+        make_one_func_tbl("dcos", 1, [], function (param) {
+            var num;
+            var a1;
+
+            a1 = (+param[0]);
+            num = Math.cos(a1 * Math.PI / 180);
+            return num;
+        });
+        make_one_func_tbl("devpixratio", -1, [], function (param) {
+            var num;
+
+            if (window.devicePixelRatio) {
+                num = window.devicePixelRatio;
+            } else {
+                num = 0;
+            }
+            return num;
+        });
+        make_one_func_tbl("disarray", 1, [0], function (param) {
             var a1, a2, a3;
             var i;
 
@@ -4584,9 +4764,9 @@ var Interpreter;
                     vars.deleteVar(a1 + "[" + i + "]");
                 }
             }
-            return true;
+            return nothing;
         });
-        make_one_func_tbl_A("disimg", 1, [0], function (param) {
+        make_one_func_tbl("disimg", 1, [0], function (param) {
             var a1;
 
             a1 = toglobal(getvarname(param[0])); // 画像変数名取得
@@ -4595,17 +4775,77 @@ var Interpreter;
                 delete imgvars[a1];
             }
             // for (var prop_name in imgvars) { DebugShow(prop_name + " "); } DebugShow("\n");
-            return true;
+            return nothing;
         });
-        make_one_func_tbl_A("disvar", 1, [0], function (param) {
+        make_one_func_tbl("disvar", 1, [0], function (param) {
             var a1;
 
             a1 = getvarname(param[0]);
             // delete vars[a1];
             vars.deleteVar(a1);
-            return true;
+            return nothing;
         });
-        make_one_func_tbl_A("drawarea", 7, [0], function (param) {
+        make_one_func_tbl("download", 1, [], function (param) {
+            var num;
+            var a1, a2, a3;
+
+            a1 = String(param[0]);
+            if (param.length <= 1) {
+                a2 = "";
+                a3 = 0;
+            } else {
+                a2 = String(param[1]);
+                if (param.length <= 2) {
+                    a3 = 0;
+                } else {
+                    a3 = Math.trunc(param[2]);
+                }
+            }
+            if (a3 != 1) {
+                if (typeof (Download) == "function") {
+                    Download.download(a1, a2);
+                } else {
+                    window.location.href = "data:application/octet-stream," + encodeURIComponent(a1);
+                }
+            }
+            num = "data:text/plain;charset=utf-8," + encodeURIComponent(a1);
+            return num;
+        });
+        make_one_func_tbl("downloadimg", 0, [], function (param) {
+            var num;
+            var a1, a2;
+
+            if (param.length <= 0) {
+                a1 = "";
+                a2 = 0;
+            } else {
+                a1 = String(param[0]);
+                if (param.length <= 1) {
+                    a2 = 0;
+                } else {
+                    a2 = Math.trunc(param[1]);
+                }
+            }
+            if (a2 != 1) {
+                if (typeof (Download) == "function") {
+                    Download.downloadCanvas(can, a1);
+                } else {
+                    window.location.href = can.toDataURL("image/png").replace("image/png", "image/octet-stream");
+                }
+            }
+            num = can.toDataURL("image/png");
+            return num;
+        });
+        make_one_func_tbl("dpow", 2, [], function (param) {
+            var num;
+            var a1, a2;
+
+            a1 = (+param[0]);
+            a2 = (+param[1]);
+            num = Math.pow(a1, a2);
+            return num;
+        });
+        make_one_func_tbl("drawarea", 7, [0], function (param) {
             var a1, a2, a3, a4, a5, a6, a7;
 
             a1 = toglobal(getvarname(param[0])); // 画像変数名取得
@@ -4627,9 +4867,9 @@ var Interpreter;
                     throw new Error("Image「" + a1 + "」がロードされていません。");
                 }
             }
-            return true;
+            return nothing;
         });
-        make_one_func_tbl_A("drawimg", 4, [0], function (param) {
+        make_one_func_tbl("drawimg", 4, [0], function (param) {
             var a1, a2, a3, a4;
 
             a1 = toglobal(getvarname(param[0])); // 画像変数名取得
@@ -4664,9 +4904,9 @@ var Interpreter;
                     throw new Error("Image「" + a1 + "」がロードされていません。");
                 }
             }
-            return true;
+            return nothing;
         });
-        make_one_func_tbl_A("drawimgex", 9, [0], function (param) {
+        make_one_func_tbl("drawimgex", 9, [0], function (param) {
             var a1, a2, a3, a4, a5, a6, a7, a8, a9;
             var can0;
             var img_w, img_h;
@@ -4751,9 +4991,9 @@ var Interpreter;
             // ctx.drawImage(can0, a2, a3, a4, a5, a7, a8, a4, a5);
             ctx.drawImage(can0, a2, a3, a4, a5, 0, 0, a4, a5);
             ctx.restore();
-            return true;
+            return nothing;
         });
-        make_one_func_tbl_A("drawscaledimg", 9, [0], function (param) {
+        make_one_func_tbl("drawscaledimg", 9, [0], function (param) {
             var a1, a2, a3, a4, a5, a6, a7, a8, a9;
 
             a1 = toglobal(getvarname(param[0])); // 画像変数名取得
@@ -4777,9 +5017,33 @@ var Interpreter;
                     throw new Error("Image「" + a1 + "」がロードされていません。");
                 }
             }
-            return true;
+            return nothing;
         });
-        make_one_func_tbl_A("farc", 3, [], function (param) {
+        make_one_func_tbl("dsin", 1, [], function (param) {
+            var num;
+            var a1;
+
+            a1 = (+param[0]);
+            num = Math.sin(a1 * Math.PI / 180);
+            return num;
+        });
+        make_one_func_tbl("dtan", 1, [], function (param) {
+            var num;
+            var a1;
+
+            a1 = (+param[0]);
+            num = Math.tan(a1 * Math.PI / 180);
+            return num;
+        });
+        make_one_func_tbl("exp", 1, [], function (param) {
+            var num;
+            var a1;
+
+            a1 = (+param[0]);
+            num = Math.exp(a1);
+            return num;
+        });
+        make_one_func_tbl("farc", 3, [], function (param) {
             var a1, a2, a3, a4;
             var i;
             var a, b, x0, y0;
@@ -4823,9 +5087,17 @@ var Interpreter;
                 // 以下は不要になったもよう(Chrome v24)
                 // ctx.fillRect(x0, y0, 1, 1); // 反転して抜けた真ん中の小さな四角をさらに塗りつぶす
             }
-            return true;
+            return nothing;
         });
-        make_one_func_tbl_A("foval", 6, [], function (param) {
+        make_one_func_tbl("floor", 1, [], function (param) {
+            var num;
+            var a1;
+
+            a1 = (+param[0]);
+            num = Math.floor(a1);
+            return num;
+        });
+        make_one_func_tbl("foval", 6, [], function (param) {
             var a1, a2, a3, a4, a5, a6;
             var i;
             var a, b, x0, y0;
@@ -4864,9 +5136,9 @@ var Interpreter;
             ctx.fill();
             // 以下は不要になったもよう(Chrome v24)
             // ctx.fillRect(x0, y0, 1, 1); // 反転して抜けた真ん中の小さな四角をさらに塗りつぶす
-            return true;
+            return nothing;
         });
-        make_one_func_tbl_A("frect", 4, [], function (param) {
+        make_one_func_tbl("frect", 4, [], function (param) {
             var a1, a2, a3, a4;
 
             a1 = (+param[0]); // X
@@ -4874,9 +5146,9 @@ var Interpreter;
             a3 = (+param[2]); // W
             a4 = (+param[3]); // H
             ctx.fillRect(a1, a2, a3, a4);
-            return true;
+            return nothing;
         });
-        make_one_func_tbl_A("fround", 6, [], function (param) {
+        make_one_func_tbl("fround", 6, [], function (param) {
             var a1, a2, a3, a4, a5, a6;
             var rx, ry;
 
@@ -4906,9 +5178,9 @@ var Interpreter;
             // 以下は不要になったもよう(Chrome v27)
             // ctx.setTransform(1, 0, 0, 1, 0, 0); // 座標系を元に戻す
             // set_canvas_axis(ctx);               // 座標系を再設定
-            return true;
+            return nothing;
         });
-        make_one_func_tbl_A("funccall", 1, [1], function (param) {
+        make_one_func_tbl("funccall", 1, [1], function (param) {
             var a1, a2;
 
             a1 = param[0];
@@ -4917,18 +5189,264 @@ var Interpreter;
                 // vars[a2] = a1;
                 vars.setVarValue(a2, a1);
             }
-            return true;
+            return nothing;
         });
-        make_one_func_tbl_A("funcgoto", 1, [], function (param) {
+        make_one_func_tbl("funcgoto", 1, [], function (param) {
             // ***** ここでは使用不可 *****
             throw new Error("funcgoto は戻り値を使用できません。");
-            // return true;
+            // return nothing;
         });
-        make_one_func_tbl_A("gc", 0, [], function (param) {
+        make_one_func_tbl("gc", 0, [], function (param) {
             // ***** NOP *****
-            return true;
+            return nothing;
         });
-        make_one_func_tbl_A("line", 4, [], function (param) {
+        make_one_func_tbl("getoutdata", 1, [], function (param) {
+            var num;
+            var a1;
+
+            a1 = Math.trunc(param[0]);
+            if (out_data.hasOwnProperty(a1)) { num = out_data[a1]; } else { num = ""; }
+            return num;
+        });
+        make_one_func_tbl("getpixel", 2, [], function (param) {
+            var num;
+            var a1, a2;
+            var x1, y1;
+            var ret_array = [];
+            var img_data = {};
+
+            a1 = (+param[0]); // X
+            a2 = (+param[1]); // Y
+            // ***** 座標系の変換の分を補正 *****
+            ret_array = conv_axis_point(a1, a2);
+            x1 = ret_array[0];
+            y1 = ret_array[1];
+
+            // ***** エラーチェック *****
+            // if (x1 < 0 || x1 >= can.width || y1 < 0 || y1 >= can.height) { num = 0; return num; }
+            if (!(x1 >= 0 && x1 < can.width && y1 >= 0 && y1 < can.height)) { num = 0; return num; }
+
+            // ***** 画像データを取得 *****
+            img_data = ctx.getImageData(x1, y1, 1, 1);
+            // ***** 色情報を取得 *****
+            num = (img_data.data[0] << 16) | (img_data.data[1] << 8) | img_data.data[2];
+            return num;
+        });
+        make_one_func_tbl("height", -1, [], function (param) {
+            var num;
+
+            num = can1.height;
+            return num;
+        });
+        make_one_func_tbl("hour", -1, [], function (param) {
+            var num;
+
+            num = new Date().getHours();
+            return num;
+        });
+        make_one_func_tbl("imgheight", 1, [0], function (param) {
+            var num;
+            var a1;
+
+            a1 = toglobal(getvarname(param[0])); // 画像変数名取得
+            // if (imgvars.hasOwnProperty(a1)) {
+            if (hasOwn.call(imgvars, a1)) {
+                num = imgvars[a1].can.height;
+            } else { num = 0; }
+            return num;
+        });
+        make_one_func_tbl("imgwidth", 1, [0], function (param) {
+            var num;
+            var a1;
+
+            a1 = toglobal(getvarname(param[0])); // 画像変数名取得
+            // if (imgvars.hasOwnProperty(a1)) {
+            if (hasOwn.call(imgvars, a1)) {
+                num = imgvars[a1].can.width;
+            } else { num = 0; }
+            return num;
+        });
+        make_one_func_tbl("index", 2, [], function (param) {
+            var num;
+            var a1, a2, a3;
+
+            a1 = String(param[0]);
+            a2 = String(param[1]);
+            if (param.length <= 2) {
+                a3 = 0;
+            } else {
+                a3 = Math.trunc(param[2]);
+            }
+            num = a1.indexOf(a2, a3);
+            return num;
+        });
+        make_one_func_tbl("input", 0, [], function (param) {
+            var num;
+            var a1;
+            var repeat_flag;
+
+            if (param.length <= 0) {
+                a1 = 0;
+                repeat_flag = true;
+            } else {
+                a1 = Math.trunc(param[0]);
+                repeat_flag = false;
+            }
+            // ***** キー入力ありのとき *****
+            if (input_buf.length > 0) {
+                input_flag = false;
+                num = input_buf.shift();
+                return num;
+            }
+            // ***** キー入力なしのとき *****
+            num = 0;
+            if (repeat_flag) {
+                input_flag = true;
+                sleep_flag = true;
+                sleep_time = 1000;
+                return num;
+            }
+            if (a1 > 0 && !input_flag) {
+                input_flag = true;
+                sleep_flag = true;
+                sleep_time = a1;
+                return num;
+            }
+            input_flag = false;
+            return num;
+        });
+        make_one_func_tbl("inputdlg", 1, [], function (param) {
+            var num;
+            var a1, a2, a3, a4;
+
+            a1 = String(param[0]);
+            if (param.length <= 1) {
+                a2 = "";
+            } else {
+                a2 = String(param[1]);
+                if (param.length <= 3) {
+                    a3 = a4 = 0;
+                } else {
+                    a3 = Math.trunc(param[2]); // 未使用
+                    a4 = Math.trunc(param[3]); // 未使用
+                }
+            }
+            num = prompt(a1, a2) || ""; // nullのときは空文字列にする
+            keyclear();
+            mousebuttonclear();
+            loop_nocount_flag = true;
+            return num;
+        });
+        make_one_func_tbl("int", 1, [], function (param) {
+            var num;
+            var a1;
+
+            a1 = (+param[0]);
+            num = Math.trunc(a1);
+            return num;
+        });
+        make_one_func_tbl("join", 2, [0], function (param) {
+            var num;
+            var a1, a2, a3, a4;
+            var i;
+
+            a1 = getvarname(param[0]);
+            a2 = String(param[1]);
+            if (param.length <= 2) {
+                a3 = 0;
+                a4 = null;
+            } else {
+                a3 = Math.trunc(param[2]);
+                if (param.length <= 3) {
+                    a4 = null;
+                } else {
+                    a4 = Math.trunc(param[3]);
+                }
+            }
+
+            // ***** NaN対策 *****
+            a3 = a3 | 0;
+
+            // ***** エラーチェック *****
+            // if (a4 != null && (a4 - a3 + 1 < 1 || a4 - a3 + 1 > max_array_size)) {
+            if (!(a4 == null || (a4 - a3 + 1 >= 1 && a4 - a3 + 1 <= max_array_size))) {
+                throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
+            }
+
+            // ***** 連結処理 *****
+            num = "";
+            i = a3;
+            do {
+                // ***** 配列の存在チェック *****
+                if (a4 == null && !vars.checkVar(a1 + "[" + i + "]")) { break; }
+
+                if (num == "") {
+                    // num = num + vars[a1 + "[" + i + "]"];
+                    num = num + vars.getVarValue(a1 + "[" + i + "]");
+                } else {
+                    // num = num + a2 + vars[a1 + "[" + i + "]"];
+                    num = num + a2 + vars.getVarValue(a1 + "[" + i + "]");
+                }
+                i++;
+            } while (a4 == null || i <= a4);
+            return num;
+        });
+        make_one_func_tbl("keydowncode", -1, [], function (param) {
+            var num;
+
+            num = key_down_code;
+            return num;
+        });
+        make_one_func_tbl("keyinput", 0, [], function (param) {
+            var num;
+            var a1;
+            var repeat_flag;
+
+            if (param.length <= 0) {
+                a1 = 0;
+                repeat_flag = true;
+            } else {
+                a1 = Math.trunc(param[0]);
+                repeat_flag = false;
+            }
+            // ***** キー入力ありのとき *****
+            if (keyinput_buf.length > 0) {
+                keyinput_flag = false;
+                num = keyinput_buf.shift();
+                return num;
+            }
+            // ***** キー入力なしのとき *****
+            num = 0;
+            if (repeat_flag) {
+                keyinput_flag = true;
+                sleep_flag = true;
+                sleep_time = 1000;
+                return num;
+            }
+            if (a1 > 0 && !keyinput_flag) {
+                keyinput_flag = true;
+                sleep_flag = true;
+                sleep_time = a1;
+                return num;
+            }
+            keyinput_flag = false;
+            return num;
+        });
+        make_one_func_tbl("keyscan", 1, [], function (param) {
+            var num;
+            var a1;
+
+            a1 = Math.trunc(param[0]);
+            if (key_down_stat[a1] == true) { num = 1; } else { num = 0; }
+            return num;
+        });
+        make_one_func_tbl("keypresscode", -1, [], function (param) {
+            var num;
+
+            num = key_press_code;
+            return num;
+        });
+        make_one_func_tbl("line", 4, [], function (param) {
             var a1, a2, a3, a4;
 
             a1 = (+param[0]); // X1
@@ -4939,17 +5457,37 @@ var Interpreter;
             ctx.moveTo(a1, a2);
             ctx.lineTo(a3, a4);
             ctx.stroke();
-            return true;
+            return nothing;
         });
-        make_one_func_tbl_A("linewidth", 1, [], function (param) {
+        make_one_func_tbl("linewidth", 1, [], function (param) {
             var a1;
 
             a1 = (+param[0]); // W
             line_width = a1;
             ctx.lineWidth = line_width;
-            return true;
+            return nothing;
         });
-        make_one_func_tbl_A("loadimg", 2, [0], function (param) {
+        make_one_func_tbl("load", 0, [], function (param) {
+            var num;
+            var a1;
+
+            if (param.length <= 0) {
+                a1 = 0;
+            } else {
+                a1 = Math.trunc(param[0]);
+            }
+            if (!save_data.hasOwnProperty(a1)) {
+                num = "0";
+            } else {
+                num = save_data[a1];
+            }
+            // ***** 正負と小数も含めた数値チェック(-0.123等) *****
+            if (isFullDigit(num)) {
+                num = +num; // 数値にする
+            }
+            return num;
+        });
+        make_one_func_tbl("loadimg", 2, [0], function (param) {
             var a1, a2;
             var i, j, k;
             var g_data = [];
@@ -5022,9 +5560,9 @@ var Interpreter;
             init_canvas_setting(imgvars[a1].ctx);
             // ***** 画像を格納 *****
             imgvars[a1].ctx.putImageData(img_data, 0, 0);
-            return true;
+            return nothing;
         });
-        make_one_func_tbl_A("loadimgdata", 2, [0], function (param) {
+        make_one_func_tbl("loadimgdata", 2, [0], function (param) {
             var a1, a2;
             var img_obj = {};
 
@@ -5064,13 +5602,81 @@ var Interpreter;
                 imgvars[a1].loaded = true;
             };
             img_obj.src = a2; // 常にonloadより後にsrcをセットすること
-            return true;
+            return nothing;
         });
-        make_one_func_tbl_A("lock", 0, [], function (param) {
+        make_one_func_tbl("loadimgstat", 1, [0], function (param) {
+            var num;
+            var a1;
+
+            a1 = toglobal(getvarname(param[0])); // 画像変数名取得
+            // ***** 完了フラグをチェックして返す *****
+            num = 0;
+            // if (imgvars.hasOwnProperty(a1)) {
+            if (hasOwn.call(imgvars, a1)) {
+                if (imgvars[a1].hasOwnProperty("loaded")) {
+                    if (imgvars[a1].loaded == false) {
+                        num = 1;
+                    }
+                }
+            }
+            return num;
+        });
+        make_one_func_tbl("lock", 0, [], function (param) {
             // ***** NOP *****
-            return true;
+            return nothing;
         });
-        make_one_func_tbl_A("makearray", 2, [0], function (param) {
+        make_one_func_tbl("log", 1, [], function (param) {
+            var num;
+            var a1, a2;
+
+            a1 = (+param[0]);
+            if (param.length <= 1) {
+                a2 = 0;
+            } else {
+                a2 = (+param[1]);
+            }
+            if (a2 == 0) {
+                num = Math.log(a1);
+            } else {
+                num = Math.log(a1) / Math.log(a2);
+            }
+            return num;
+        });
+        make_one_func_tbl("max", 2, [], function (param) {
+            var num;
+            var a1, a2, a3;
+            var i;
+
+            a1 = (+param[0]);
+            a2 = (+param[1]);
+            num = Math.max(a1, a2);
+            for (i = 2; i < param.length; i++) {
+                a3 = (+param[i]);
+                num = Math.max(num, a3);
+            }
+            return num;
+        });
+        make_one_func_tbl("millisecond", -1, [], function (param) {
+            var num;
+
+            num = new Date().getMilliseconds();
+            return num;
+        });
+        make_one_func_tbl("min", 2, [], function (param) {
+            var num;
+            var a1, a2, a3;
+            var i;
+
+            a1 = (+param[0]);
+            a2 = (+param[1]);
+            num = Math.min(a1, a2);
+            for (i = 2; i < param.length; i++) {
+                a3 = (+param[i]);
+                num = Math.min(num, a3);
+            }
+            return num;
+        });
+        make_one_func_tbl("makearray", 2, [0], function (param) {
             var a1, a2, a3, a4;
             var i;
 
@@ -5099,9 +5705,9 @@ var Interpreter;
                 // vars[a1 + "[" + i + "]"] = a4;
                 vars.setVarValue(a1 + "[" + i + "]", a4);
             }
-            return true;
+            return nothing;
         });
-        make_one_func_tbl_A("makeimg", 3, [0], function (param) {
+        make_one_func_tbl("makeimg", 3, [0], function (param) {
             var a1, a2, a3;
 
             a1 = toglobal(getvarname(param[0])); // 画像変数名取得
@@ -5128,9 +5734,42 @@ var Interpreter;
             imgvars[a1].ctx = imgvars[a1].can.getContext("2d");
             // ***** Canvasの各設定の初期化 *****
             init_canvas_setting(imgvars[a1].ctx);
-            return true;
+            return nothing;
         });
-        make_one_func_tbl_A("msgdlg", 1, [], function (param) {
+        make_one_func_tbl("minute", -1, [], function (param) {
+            var num;
+
+            num = new Date().getMinutes();
+            return num;
+        });
+        make_one_func_tbl("month", -1, [], function (param) {
+            var num;
+
+            num = new Date().getMonth() + 1; // 1から12にするため1を加算
+            return num;
+        });
+        make_one_func_tbl("mousex", -1, [], function (param) {
+            var num;
+
+            num = mousex;
+            return num;
+        });
+        make_one_func_tbl("mousey", -1, [], function (param) {
+            var num;
+
+            num = mousey;
+            return num;
+        });
+        make_one_func_tbl("mousebtn", -1, [], function (param) {
+            var num;
+
+            num = 0;
+            if (mouse_btn_stat[0] == true) { num = num | 1; }        // 左ボタン
+            if (mouse_btn_stat[1] == true) { num = num | (1 << 2); } // 中ボタン(シフト値1でないので注意)
+            if (mouse_btn_stat[2] == true) { num = num | (1 << 1); } // 右ボタン(シフト値2でないので注意)
+            return num;
+        });
+        make_one_func_tbl("msgdlg", 1, [], function (param) {
             var a1;
 
             a1 = String(param[0]);
@@ -5141,17 +5780,17 @@ var Interpreter;
             keyclear();
             mousebuttonclear();
             loop_nocount_flag = true;
-            return true;
+            return nothing;
         });
-        make_one_func_tbl_A("onlocal", 0, [], function (param) {
+        make_one_func_tbl("onlocal", 0, [], function (param) {
             use_local_vars = true;
-            return true;
+            return nothing;
         });
-        make_one_func_tbl_A("offlocal", 0, [], function (param) {
+        make_one_func_tbl("offlocal", 0, [], function (param) {
             use_local_vars = false;
-            return true;
+            return nothing;
         });
-        make_one_func_tbl_A("origin", 2, [], function (param) {
+        make_one_func_tbl("origin", 2, [], function (param) {
             var a1, a2;
 
             a1 = Math.trunc(param[0]); // X
@@ -5161,9 +5800,9 @@ var Interpreter;
             axis.originy = a2;
             ctx.setTransform(1, 0, 0, 1, 0, 0); // 座標系を元に戻す
             set_canvas_axis(ctx);               // 座標系を再設定
-            return true;
+            return nothing;
         });
-        make_one_func_tbl_A("oval", 6, [], function (param) {
+        make_one_func_tbl("oval", 6, [], function (param) {
             var a1, a2, a3, a4, a5, a6;
             var i;
             var a, b, x0, y0;
@@ -5197,17 +5836,47 @@ var Interpreter;
             // 以下は不要になったもよう(Chrome v27)
             // // ***** Chrome v23 で円が閉じない件の対策(中心を0.5ずらしたとき) *****
             // ctx.fillRect(a * Math.cos(rad1) + x0, b * Math.sin(rad1) + y0, 0.5, 0.5);
-            return true;
+            return nothing;
         });
-        make_one_func_tbl_A("point", 2, [], function (param) {
+        make_one_func_tbl("PI", -1, [], function (param) {
+            var num;
+
+            num = Math.PI;
+            return num;
+        });
+        make_one_func_tbl("point", 2, [], function (param) {
             var a1, a2;
 
             a1 = (+param[0]); // X
             a2 = (+param[1]); // Y
             ctx.fillRect(a1, a2, 1, 1);
-            return true;
+            return nothing;
         });
-        make_one_func_tbl_A("rect", 4, [], function (param) {
+        make_one_func_tbl("pow", 2, [], function (param) {
+            var num;
+            var a1, a2;
+
+            a1 = (+param[0]);
+            a2 = (+param[1]);
+            num = Math.pow(a1, a2);
+            return num;
+        });
+        make_one_func_tbl("rand", -1, [], function (param) {
+            var num;
+
+            // min から max までの整数の乱数を返す
+            // (Math.round() を用いると、非一様分布になるのでNG)
+            // num = Math.floor(Math.random() * (max - min + 1)) + min;
+            num = Math.floor(Math.random() * (2147483647 - (-2147483648) + 1)) + (-2147483648);
+            return num;
+        });
+        make_one_func_tbl("random", -1, [], function (param) {
+            var num;
+
+            num = Math.random();
+            return num;
+        });
+        make_one_func_tbl("rect", 4, [], function (param) {
             var a1, a2, a3, a4;
 
             a1 = (+param[0]); // X
@@ -5217,963 +5886,9 @@ var Interpreter;
             ctx.beginPath();
             ctx.rect(a1, a2, a3, a4);
             ctx.stroke();
-            return true;
+            return nothing;
         });
-        make_one_func_tbl_A("rotate", 1, [], function (param) {
-            var a1, a2, a3;
-
-            a1 = (+param[0]); // 角度
-            if (param.length <= 2) {
-                a2 = 0;
-                a3 = 0;
-            } else {
-                a2 = (+param[1]); // 中心座標X
-                a3 = (+param[2]); // 中心座標Y
-            }
-            // ***** 座標系の角度設定 *****
-            axis.rotate = a1 * Math.PI / 180;
-            axis.rotateox = a2;
-            axis.rotateoy = a3;
-            ctx.setTransform(1, 0, 0, 1, 0, 0); // 座標系を元に戻す
-            set_canvas_axis(ctx);               // 座標系を再設定
-            return true;
-        });
-        make_one_func_tbl_A("round", 6, [], function (param) {
-            var a1, a2, a3, a4, a5, a6;
-            var rx, ry;
-
-            a1 = (+param[0]); // X
-            a2 = (+param[1]); // Y
-            a3 = (+param[2]); // W
-            a4 = (+param[3]); // H
-            a5 = (+param[4]); // RX
-            a6 = (+param[5]); // RY
-            rx = a5;
-            ry = a6;
-            ctx.beginPath();
-            ctx.moveTo(a1 + rx , a2);
-            ctx.lineTo(a1 + a3 - rx, a2);
-            ctx.quadraticCurveTo(a1 + a3 , a2, a1 + a3, a2 + ry);
-            ctx.lineTo(a1 + a3 , a2 + a4 - ry);
-            ctx.quadraticCurveTo(a1 + a3 , a2 + a4, a1 + a3 - rx, a2 + a4);
-            ctx.lineTo(a1 + rx , a2 + a4);
-            ctx.quadraticCurveTo(a1, a2 + a4, a1, a2 + a4 -ry);
-            ctx.lineTo(a1 , a2 + ry);
-            ctx.quadraticCurveTo(a1, a2, a1 + rx, a2);
-            ctx.closePath();
-            // 以下は不要になったもよう(Chrome v27)
-            // // ***** Chrome v23 でカーブを描画しない件の対策 *****
-            // ctx.rotate(45 * Math.PI / 180);     // 回転させるとなぜか描画する
-            ctx.stroke();
-            // 以下は不要になったもよう(Chrome v27)
-            // ctx.setTransform(1, 0, 0, 1, 0, 0); // 座標系を元に戻す
-            // set_canvas_axis(ctx);               // 座標系を再設定
-            return true;
-        });
-        make_one_func_tbl_A("save", 1, [], function (param) {
-            var a1, a2;
-
-            a1 = String(param[0]);
-            if (param.length <= 1) {
-                a2 = 0;
-            } else {
-                a2 = Math.trunc(param[0]);
-            }
-            save_data[a2] = a1;
-            return true;
-        });
-        make_one_func_tbl_A("scale", 1, [], function (param) {
-            var a1, a2, a3, a4;
-
-            a1 = (+param[0]); // X方向倍率
-            if (param.length <= 1) {
-                a2 = a1;
-                a3 = 0;
-                a4 = 0;
-            } else {
-                a2 = (+param[1]); // Y方向倍率
-                if (param.length <= 3) {
-                    a3 = 0;
-                    a4 = 0;
-                } else {
-                    a3 = (+param[2]); // 中心座標X
-                    a4 = (+param[3]); // 中心座標Y
-                }
-            }
-
-            // ***** エラーチェック *****
-            // if (a1 < -max_scale_size || a1 > max_scale_size || a2 < -max_scale_size || a2 > max_scale_size) {
-            if (!(a1 >= -max_scale_size && a1 <= max_scale_size && a2 >= -max_scale_size && a2 <= max_scale_size)) {
-                throw new Error("座標系の倍率の値が不正です。-" + max_scale_size + "から" + max_scale_size + "までの数値を指定してください。");
-            }
-
-            // ***** 座標系の倍率設定 *****
-            axis.scalex = a1;
-            axis.scaley = a2;
-            axis.scaleox = a3;
-            axis.scaleoy = a4;
-            ctx.setTransform(1, 0, 0, 1, 0, 0); // 座標系を元に戻す
-            set_canvas_axis(ctx);               // 座標系を再設定
-            return true;
-        });
-        make_one_func_tbl_A("setfont", 1, [], function (param) {
-            var a1;
-
-            a1 = String(param[0]).toUpperCase();
-            switch (a1) {
-                case "L": font_size = font_size_set[3]; break;
-                case "M": font_size = font_size_set[2]; break;
-                case "S": font_size = font_size_set[1]; break;
-                case "T": font_size = font_size_set[0]; break;
-                default: font_size = font_size_set[1]; break;
-            }
-            ctx.font = font_size + "px " + font_family;
-            return true;
-        });
-        make_one_func_tbl_A("setfontsize", 1, [], function (param) {
-            var a1;
-
-            a1 = Math.trunc(param[0]);
-
-            // ***** エラーチェック *****
-            // if (a1 <= 0 || a1 > max_font_size) {
-            if (!(a1 > 0 && a1 <= max_font_size)) {
-                throw new Error("フォントサイズが不正です。1-" + max_font_size + "の範囲で指定してください。");
-            }
-
-            font_size = a1;
-            ctx.font = font_size + "px " + font_family;
-            return true;
-        });
-        make_one_func_tbl_A("setoutdata", 2, [], function (param) {
-            var a1, a2;
-
-            a1 = Math.trunc(param[0]);
-            a2 = String(param[1]);
-            out_data[a1] = a2;
-            return true;
-        });
-        make_one_func_tbl_A("setpixel", 3, [], function (param) {
-            var a1, a2, a3;
-            var col_r, col_g, col_b;
-
-            a1 = (+param[0]);   // X
-            a2 = (+param[1]);   // Y
-            a3 = Math.trunc(param[2]); // RGB
-            col_r = (a3 & 0xff0000) >> 16; // R
-            col_g = (a3 & 0x00ff00) >> 8;  // G
-            col_b = (a3 & 0x0000ff);       // B
-            ctx.fillStyle = "rgb(" + col_r + "," + col_g + "," + col_b + ")";
-            ctx.fillRect(a1, a2, 1, 1);
-            ctx.fillStyle = color_val;
-            return true;
-        });
-        make_one_func_tbl_A("setscsize", 2, [], function (param) {
-            var a1, a2, a3, a4;
-
-            a1 = Math.trunc(param[0]); // W
-            a2 = Math.trunc(param[1]); // H
-            if (param.length <= 3) {
-                a3 = a1;
-                a4 = a2;
-            } else {
-                a3 = Math.trunc(param[2]); // W2
-                a4 = Math.trunc(param[3]); // H2
-            }
-
-            // ***** エラーチェック *****
-            // if (a1 <= 0 || a1 > max_image_size || a2 <= 0 || a2 > max_image_size ||
-            //     a3 <= 0 || a3 > max_image_size || a4 <= 0 || a4 > max_image_size) {
-            if (!(a1 > 0 && a1 <= max_image_size && a2 > 0 && a2 <= max_image_size &&
-                  a3 > 0 && a3 <= max_image_size && a4 > 0 && a4 <= max_image_size)) {
-                throw new Error("縦横のサイズの値が不正です。1-" + max_image_size + "の範囲で指定してください。");
-            }
-
-            // ***** 画面サイズ設定 *****
-            can1.width = a1;
-            can1.height = a2;
-            can1.style.width = a3 + "px";
-            can1.style.height = a4 + "px";
-            // ***** Canvasの各設定のリセット *****
-            reset_canvas_setting(ctx1);
-            return true;
-        });
-        make_one_func_tbl_A("sleep", 1, [], function (param) {
-            var a1;
-
-            a1 = Math.trunc(param[0]);
-            sleep_flag = true;
-            sleep_time = a1;
-            return true;
-        });
-        make_one_func_tbl_A("sleepsync", 1, [], function (param) {
-            var a1, a2;
-            var t_new;
-            var t_diff;
-
-            a1 = Math.trunc(param[0]);
-            if (param.length <= 1) {
-                a2 = 0;
-            } else {
-                a2 = Math.trunc(param[1]);
-            }
-            t_new = Date.now();
-            if (sleep_data.hasOwnProperty(a2)) {
-                t_diff = t_new - sleep_data[a2];
-                if (t_diff >= -a1 && t_diff < a1) {
-                    sleep_time = a1 - t_diff;
-                } else if (t_diff >= a1 && t_diff < a1 * 50) {
-                    sleep_time = 1;
-                } else {
-                    sleep_time = a1;
-                }
-            } else {
-                sleep_time = a1;
-            }
-            sleep_data[a2] = t_new + sleep_time;
-            sleep_flag = true;
-            return true;
-        });
-        make_one_func_tbl_A("soft1", 1, [], function (param) {
-            var a1;
-
-            a1 = String(param[0]);
-            softkey[0] = a1;
-            disp_softkey();
-            return true;
-        });
-        make_one_func_tbl_A("soft2", 1, [], function (param) {
-            var a1;
-
-            a1 = String(param[0]);
-            softkey[1] = a1;
-            disp_softkey();
-            return true;
-        });
-        make_one_func_tbl_A("spmode", 1, [], function (param) {
-            var a1;
-
-            a1 = Math.trunc(param[0]);
-            sp_compati_mode = a1;
-            if (sp_compati_mode == 1) {
-                font_size = font_size_set[0];
-                ctx.font = font_size + "px " + font_family;
-                use_local_vars = false;
-            }
-            return true;
-        });
-        make_one_func_tbl_A("text", 1, [], function (param) {
-            var a1, a2, a3, a4;
-
-            // ***** 文字列に変換 *****
-            // a1 = param[0];
-            a1 = String(param[0]);
-
-            // ***** Chrome v24 で全角スペースが半角のサイズで表示される件の対策 *****
-            a1 = a1.replace(/　/g, "  "); // 全角スペースを半角スペース2個に変換
-
-            if (param.length <= 3) {
-                a2 = a3 = a4 = 0;
-            } else {
-                a2 = Math.trunc(param[1]); // X
-                a3 = Math.trunc(param[2]); // Y
-                a4 = Math.trunc(param[3]); // アンカー
-            }
-            // ***** 水平方向 *****
-            // if (a4 & 4)    { ctx.textAlign = "left"; }   // 左
-            if (a4 & 8)       { ctx.textAlign = "right"; }  // 右
-            else if (a4 & 1)  { ctx.textAlign = "center"; } // 中央
-            else { ctx.textAlign = "left"; }                // その他
-            // ***** 垂直方向 *****
-            // if (a4 & 16)   { ctx.textBaseline = "top"; }        // 上
-            if (a4 & 32)      { ctx.textBaseline = "bottom"; }     // 下
-            else if (a4 & 2)  { ctx.textBaseline = "middle"; }     // 中央
-            else if (a4 & 64) { ctx.textBaseline = "alphabetic"; } // ベースライン
-            else { ctx.textBaseline = "top"; }                     // その他
-            // ***** 文字列表示 *****
-            ctx.fillText(a1, a2, a3);
-            return true;
-        });
-        make_one_func_tbl_A("trgt", 1, [0], function (param) {
-            var a1;
-
-            a1 = toglobal(getvarname(param[0])); // 画像変数名取得
-            if (a1 == "off") {
-                can = can1;
-                ctx = ctx1;
-            // } else if (imgvars.hasOwnProperty(a1)) {
-            } else if (hasOwn.call(imgvars, a1)) {
-                can = imgvars[a1].can;
-                ctx = imgvars[a1].ctx;
-            } else {
-                throw new Error("Image「" + a1 + "」がロードされていません。");
-            }
-            // ***** Canvasの各設定のリセット *****
-            reset_canvas_setting(ctx);
-            return true;
-        });
-        make_one_func_tbl_A("unlock", 0, [], function (param) {
-            var a1;
-
-            if (param.length <= 0) {
-                a1 = 0;
-            } else {
-                a1 = Math.trunc(param[0]);
-            }
-            // ***** NOP *****
-            return true;
-        });
-        make_one_func_tbl_A("@", 1, [0], function (param) {
-            var a1, a2;
-            var i;
-
-            a1 = getvarname(param[0]);
-            for (i = 1; i < param.length; i++) {
-                a2 = param[i];
-                // vars[a1 + "[" + (i - 1) + "]"] = a2;
-                vars.setVarValue(a1 + "[" + (i - 1) + "]", a2);
-            }
-            return true;
-        });
-    }
-
-
-    // ***** 組み込み関数(戻り値あり)の定義情報の生成 *****
-    function make_func_tbl_B() {
-        // ***** 組み込み関数(戻り値あり)の定義情報を1個ずつ生成 *****
-        // (第2引数は関数の引数の数を指定する(ただし省略可能な引数は数に入れない))
-        // (第2引数を-1にすると組み込み変数になり、()なしで呼び出せる)
-        // (第3引数は「変数名をとる引数」がある場合にその引数番号を配列で指定する)
-        make_one_func_tbl_B("abs", 1, [], function (param) {
-            var num;
-            var a1;
-
-            a1 = (+param[0]);
-            num = Math.abs(a1);
-            return num;
-        });
-        make_one_func_tbl_B("acos", 1, [], function (param) {
-            var num;
-            var a1;
-
-            a1 = (+param[0]);
-            num = Math.acos(a1) * 180 / Math.PI;
-            return num;
-        });
-        make_one_func_tbl_B("arraylen", 1, [0], function (param) {
-            var num;
-            var a1, a2, a3;
-            var i;
-
-            a1 = getvarname(param[0]);
-            if (param.length <= 1) {
-                a2 = 0;
-                a3 = null;
-            } else {
-                a2 = Math.trunc(param[1]);
-                if (param.length <= 2) {
-                    a3 = null;
-                } else {
-                    a3 = Math.trunc(param[2]);
-                }
-            }
-
-            // ***** NaN対策 *****
-            a2 = a2 | 0;
-
-            // ***** エラーチェック *****
-            // if (a3 != null && (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size)) {
-            if (!(a3 == null || (a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size))) {
-                throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
-            }
-
-            // ***** カウント処理 *****
-            num = 0;
-            i = a2;
-            do {
-                // ***** 配列の存在チェック *****
-                if (vars.checkVar(a1 + "[" + i + "]")) {
-                    num++;
-                } else if (a3 == null) {
-                    break;
-                }
-                i++;
-            } while (a3 == null || i <= a3);
-            return num;
-        });
-        make_one_func_tbl_B("asin", 1, [], function (param) {
-            var num;
-            var a1;
-
-            a1 = (+param[0]);
-            num = Math.asin(a1) * 180 / Math.PI;
-            return num;
-        });
-        make_one_func_tbl_B("atan", 1, [], function (param) {
-            var num;
-            var a1;
-
-            a1 = (+param[0]);
-            num = Math.atan(a1) * 180 / Math.PI;
-            return num;
-        });
-        make_one_func_tbl_B("atan2", 2, [], function (param) {
-            var num;
-            var a1, a2;
-
-            a1 = (+param[0]);
-            a2 = (+param[1]);
-            // num = Math.atan2(a2, a1) * 180 / Math.PI;
-            num = Math.atan2(a1, a2) * 180 / Math.PI;
-            return num;
-        });
-        make_one_func_tbl_B("ceil", 1, [], function (param) {
-            var num;
-            var a1;
-
-            a1 = (+param[0]);
-            num = Math.ceil(a1);
-            return num;
-        });
-        make_one_func_tbl_B("chkvar", 1, [0], function (param) {
-            var num;
-            var a1;
-
-            a1 = getvarname(param[0]);
-            if (vars.checkVar(a1)) { num = 1; } else { num = 0; }
-            return num;
-        });
-        make_one_func_tbl_B("cos", 1, [], function (param) {
-            var num;
-            var a1;
-
-            a1 = (+param[0]);
-            if (sp_compati_mode == 1) {
-                num = Math.trunc(Math.cos(a1 * Math.PI / 180) * 100);
-            } else {
-                num = Math.cos(a1 * Math.PI / 180);
-            }
-            return num;
-        });
-        make_one_func_tbl_B("day", -1, [], function (param) {
-            var num;
-
-            num = new Date().getDate();
-            return num;
-        });
-        make_one_func_tbl_B("dayofweek", -1, [], function (param) {
-            var num;
-
-            num = new Date().getDay() + 1; // =1:日曜日,=2:月曜日 ... =7:土曜日
-            return num;
-        });
-        make_one_func_tbl_B("dcos", 1, [], function (param) {
-            var num;
-            var a1;
-
-            a1 = (+param[0]);
-            num = Math.cos(a1 * Math.PI / 180);
-            return num;
-        });
-        make_one_func_tbl_B("devpixratio", -1, [], function (param) {
-            var num;
-
-            if (window.devicePixelRatio) {
-                num = window.devicePixelRatio;
-            } else {
-                num = 0;
-            }
-            return num;
-        });
-        make_one_func_tbl_B("download", 1, [], function (param) {
-            var num;
-            var a1, a2, a3;
-
-            a1 = String(param[0]);
-            if (param.length <= 1) {
-                a2 = "";
-                a3 = 0;
-            } else {
-                a2 = String(param[1]);
-                if (param.length <= 2) {
-                    a3 = 0;
-                } else {
-                    a3 = Math.trunc(param[2]);
-                }
-            }
-            if (a3 != 1) {
-                if (typeof (Download) == "function") {
-                    Download.download(a1, a2);
-                } else {
-                    window.location.href = "data:application/octet-stream," + encodeURIComponent(a1);
-                }
-            }
-            num = "data:text/plain;charset=utf-8," + encodeURIComponent(a1);
-            return num;
-        });
-        make_one_func_tbl_B("downloadimg", 0, [], function (param) {
-            var num;
-            var a1, a2;
-
-            if (param.length <= 0) {
-                a1 = "";
-                a2 = 0;
-            } else {
-                a1 = String(param[0]);
-                if (param.length <= 1) {
-                    a2 = 0;
-                } else {
-                    a2 = Math.trunc(param[1]);
-                }
-            }
-            if (a2 != 1) {
-                if (typeof (Download) == "function") {
-                    Download.downloadCanvas(can, a1);
-                } else {
-                    window.location.href = can.toDataURL("image/png").replace("image/png", "image/octet-stream");
-                }
-            }
-            num = can.toDataURL("image/png");
-            return num;
-        });
-        make_one_func_tbl_B("dpow", 2, [], function (param) {
-            var num;
-            var a1, a2;
-
-            a1 = (+param[0]);
-            a2 = (+param[1]);
-            num = Math.pow(a1, a2);
-            return num;
-        });
-        make_one_func_tbl_B("dsin", 1, [], function (param) {
-            var num;
-            var a1;
-
-            a1 = (+param[0]);
-            num = Math.sin(a1 * Math.PI / 180);
-            return num;
-        });
-        make_one_func_tbl_B("dtan", 1, [], function (param) {
-            var num;
-            var a1;
-
-            a1 = (+param[0]);
-            num = Math.tan(a1 * Math.PI / 180);
-            return num;
-        });
-        make_one_func_tbl_B("exp", 1, [], function (param) {
-            var num;
-            var a1;
-
-            a1 = (+param[0]);
-            num = Math.exp(a1);
-            return num;
-        });
-        make_one_func_tbl_B("floor", 1, [], function (param) {
-            var num;
-            var a1;
-
-            a1 = (+param[0]);
-            num = Math.floor(a1);
-            return num;
-        });
-        make_one_func_tbl_B("getoutdata", 1, [], function (param) {
-            var num;
-            var a1;
-
-            a1 = Math.trunc(param[0]);
-            if (out_data.hasOwnProperty(a1)) { num = out_data[a1]; } else { num = ""; }
-            return num;
-        });
-        make_one_func_tbl_B("getpixel", 2, [], function (param) {
-            var num;
-            var a1, a2;
-            var x1, y1;
-            var ret_array = [];
-            var img_data = {};
-
-            a1 = (+param[0]); // X
-            a2 = (+param[1]); // Y
-            // ***** 座標系の変換の分を補正 *****
-            ret_array = conv_axis_point(a1, a2);
-            x1 = ret_array[0];
-            y1 = ret_array[1];
-
-            // ***** エラーチェック *****
-            // if (x1 < 0 || x1 >= can.width || y1 < 0 || y1 >= can.height) { return 0; }
-            if (!(x1 >= 0 && x1 < can.width && y1 >= 0 && y1 < can.height)) { return 0; }
-
-            // ***** 画像データを取得 *****
-            img_data = ctx.getImageData(x1, y1, 1, 1);
-            // ***** 色情報を取得 *****
-            num = (img_data.data[0] << 16) | (img_data.data[1] << 8) | img_data.data[2];
-            return num;
-        });
-        make_one_func_tbl_B("height", -1, [], function (param) {
-            var num;
-
-            num = can1.height;
-            return num;
-        });
-        make_one_func_tbl_B("hour", -1, [], function (param) {
-            var num;
-
-            num = new Date().getHours();
-            return num;
-        });
-        make_one_func_tbl_B("imgheight", 1, [0], function (param) {
-            var num;
-            var a1;
-
-            a1 = toglobal(getvarname(param[0])); // 画像変数名取得
-            // if (imgvars.hasOwnProperty(a1)) {
-            if (hasOwn.call(imgvars, a1)) {
-                num = imgvars[a1].can.height;
-            } else { num = 0; }
-            return num;
-        });
-        make_one_func_tbl_B("imgwidth", 1, [0], function (param) {
-            var num;
-            var a1;
-
-            a1 = toglobal(getvarname(param[0])); // 画像変数名取得
-            // if (imgvars.hasOwnProperty(a1)) {
-            if (hasOwn.call(imgvars, a1)) {
-                num = imgvars[a1].can.width;
-            } else { num = 0; }
-            return num;
-        });
-        make_one_func_tbl_B("index", 2, [], function (param) {
-            var num;
-            var a1, a2, a3;
-
-            a1 = String(param[0]);
-            a2 = String(param[1]);
-            if (param.length <= 2) {
-                a3 = 0;
-            } else {
-                a3 = Math.trunc(param[2]);
-            }
-            num = a1.indexOf(a2, a3);
-            return num;
-        });
-        make_one_func_tbl_B("input", 0, [], function (param) {
-            var num;
-            var a1;
-            var repeat_flag;
-
-            if (param.length <= 0) {
-                a1 = 0;
-                repeat_flag = true;
-            } else {
-                a1 = Math.trunc(param[0]);
-                repeat_flag = false;
-            }
-            // ***** キー入力ありのとき *****
-            if (input_buf.length > 0) {
-                input_flag = false;
-                num = input_buf.shift();
-                return num;
-            }
-            // ***** キー入力なしのとき *****
-            if (repeat_flag) {
-                input_flag = true;
-                sleep_flag = true;
-                sleep_time = 1000;
-                return 0;
-            }
-            if (a1 > 0 && !input_flag) {
-                input_flag = true;
-                sleep_flag = true;
-                sleep_time = a1;
-                return 0;
-            }
-            input_flag = false;
-            return 0;
-        });
-        make_one_func_tbl_B("inputdlg", 1, [], function (param) {
-            var num;
-            var a1, a2, a3, a4;
-
-            a1 = String(param[0]);
-            if (param.length <= 1) {
-                a2 = "";
-            } else {
-                a2 = String(param[1]);
-                if (param.length <= 3) {
-                    a3 = a4 = 0;
-                } else {
-                    a3 = Math.trunc(param[2]); // 未使用
-                    a4 = Math.trunc(param[3]); // 未使用
-                }
-            }
-            num = prompt(a1, a2) || ""; // nullのときは空文字列にする
-            keyclear();
-            mousebuttonclear();
-            loop_nocount_flag = true;
-            return num;
-        });
-        make_one_func_tbl_B("int", 1, [], function (param) {
-            var num;
-            var a1;
-
-            a1 = (+param[0]);
-            num = Math.trunc(a1);
-            return num;
-        });
-        make_one_func_tbl_B("join", 2, [0], function (param) {
-            var num;
-            var a1, a2, a3, a4;
-            var i;
-
-            a1 = getvarname(param[0]);
-            a2 = String(param[1]);
-            if (param.length <= 2) {
-                a3 = 0;
-                a4 = null;
-            } else {
-                a3 = Math.trunc(param[2]);
-                if (param.length <= 3) {
-                    a4 = null;
-                } else {
-                    a4 = Math.trunc(param[3]);
-                }
-            }
-
-            // ***** NaN対策 *****
-            a3 = a3 | 0;
-
-            // ***** エラーチェック *****
-            // if (a4 != null && (a4 - a3 + 1 < 1 || a4 - a3 + 1 > max_array_size)) {
-            if (!(a4 == null || (a4 - a3 + 1 >= 1 && a4 - a3 + 1 <= max_array_size))) {
-                throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
-            }
-
-            // ***** 連結処理 *****
-            num = "";
-            i = a3;
-            do {
-                // ***** 配列の存在チェック *****
-                if (a4 == null && !vars.checkVar(a1 + "[" + i + "]")) { break; }
-
-                if (num == "") {
-                    // num = num + vars[a1 + "[" + i + "]"];
-                    num = num + vars.getVarValue(a1 + "[" + i + "]");
-                } else {
-                    // num = num + a2 + vars[a1 + "[" + i + "]"];
-                    num = num + a2 + vars.getVarValue(a1 + "[" + i + "]");
-                }
-                i++;
-            } while (a4 == null || i <= a4);
-            return num;
-        });
-        // make_one_func_tbl_B("keydown", -1, [], function (param) { // 名前がキー定数とかぶったため変更
-        make_one_func_tbl_B("keydowncode", -1, [], function (param) {
-            var num;
-
-            num = key_down_code;
-            return num;
-        });
-        make_one_func_tbl_B("keyinput", 0, [], function (param) {
-            var num;
-            var a1;
-            var repeat_flag;
-
-            if (param.length <= 0) {
-                a1 = 0;
-                repeat_flag = true;
-            } else {
-                a1 = Math.trunc(param[0]);
-                repeat_flag = false;
-            }
-            // ***** キー入力ありのとき *****
-            if (keyinput_buf.length > 0) {
-                keyinput_flag = false;
-                num = keyinput_buf.shift();
-                return num;
-            }
-            // ***** キー入力なしのとき *****
-            if (repeat_flag) {
-                keyinput_flag = true;
-                sleep_flag = true;
-                sleep_time = 1000;
-                return 0;
-            }
-            if (a1 > 0 && !keyinput_flag) {
-                keyinput_flag = true;
-                sleep_flag = true;
-                sleep_time = a1;
-                return 0;
-            }
-            keyinput_flag = false;
-            return 0;
-        });
-        make_one_func_tbl_B("keyscan", 1, [], function (param) {
-            var num;
-            var a1;
-
-            a1 = Math.trunc(param[0]);
-            if (key_down_stat[a1] == true) { num = 1; } else { num = 0; }
-            return num;
-        });
-        make_one_func_tbl_B("keypress", -1, [], function (param) {
-            var num;
-
-            num = key_press_code;
-            return num;
-        });
-        make_one_func_tbl_B("load", 0, [], function (param) {
-            var num;
-            var a1;
-
-            if (param.length <= 0) {
-                a1 = 0;
-            } else {
-                a1 = Math.trunc(param[0]);
-            }
-            if (!save_data.hasOwnProperty(a1)) {
-                num = "0";
-            } else {
-                num = save_data[a1];
-            }
-            // ***** 正負と小数も含めた数値チェック(-0.123等) *****
-            if (isFullDigit(num)) {
-                num = +num; // 数値にする
-            }
-            return num;
-        });
-        make_one_func_tbl_B("loadimgstat", 1, [0], function (param) {
-            var num;
-            var a1;
-
-            a1 = toglobal(getvarname(param[0])); // 画像変数名取得
-            // ***** 完了フラグをチェックして返す *****
-            num = 0;
-            // if (imgvars.hasOwnProperty(a1)) {
-            if (hasOwn.call(imgvars, a1)) {
-                if (imgvars[a1].hasOwnProperty("loaded")) {
-                    if (imgvars[a1].loaded == false) {
-                        num = 1;
-                    }
-                }
-            }
-            return num;
-        });
-        make_one_func_tbl_B("log", 1, [], function (param) {
-            var num;
-            var a1, a2;
-
-            a1 = (+param[0]);
-            if (param.length <= 1) {
-                a2 = 0;
-            } else {
-                a2 = (+param[1]);
-            }
-            if (a2 == 0) {
-                num = Math.log(a1);
-            } else {
-                num = Math.log(a1) / Math.log(a2);
-            }
-            return num;
-        });
-        make_one_func_tbl_B("max", 2, [], function (param) {
-            var num;
-            var a1, a2, a3;
-            var i;
-
-            a1 = (+param[0]);
-            a2 = (+param[1]);
-            num = Math.max(a1, a2);
-            for (i = 2; i < param.length; i++) {
-                a3 = (+param[i]);
-                num = Math.max(num, a3);
-            }
-            return num;
-        });
-        make_one_func_tbl_B("millisecond", -1, [], function (param) {
-            var num;
-
-            num = new Date().getMilliseconds();
-            return num;
-        });
-        make_one_func_tbl_B("min", 2, [], function (param) {
-            var num;
-            var a1, a2, a3;
-            var i;
-
-            a1 = (+param[0]);
-            a2 = (+param[1]);
-            num = Math.min(a1, a2);
-            for (i = 2; i < param.length; i++) {
-                a3 = (+param[i]);
-                num = Math.min(num, a3);
-            }
-            return num;
-        });
-        make_one_func_tbl_B("minute", -1, [], function (param) {
-            var num;
-
-            num = new Date().getMinutes();
-            return num;
-        });
-        make_one_func_tbl_B("month", -1, [], function (param) {
-            var num;
-
-            num = new Date().getMonth() + 1; // 1から12にするため1を加算
-            return num;
-        });
-        make_one_func_tbl_B("mousex", -1, [], function (param) {
-            var num;
-
-            num = mousex;
-            return num;
-        });
-        make_one_func_tbl_B("mousey", -1, [], function (param) {
-            var num;
-
-            num = mousey;
-            return num;
-        });
-        make_one_func_tbl_B("mousebtn", -1, [], function (param) {
-            var num;
-
-            num = 0;
-            if (mouse_btn_stat[0] == true) { num = num | 1; }        // 左ボタン
-            if (mouse_btn_stat[1] == true) { num = num | (1 << 2); } // 中ボタン(シフト値1でないので注意)
-            if (mouse_btn_stat[2] == true) { num = num | (1 << 1); } // 右ボタン(シフト値2でないので注意)
-            return num;
-        });
-        make_one_func_tbl_B("pow", 2, [], function (param) {
-            var num;
-            var a1, a2;
-
-            a1 = (+param[0]);
-            a2 = (+param[1]);
-            num = Math.pow(a1, a2);
-            return num;
-        });
-        make_one_func_tbl_B("PI", -1, [], function (param) {
-            var num;
-
-            num = Math.PI;
-            return num;
-        });
-        make_one_func_tbl_B("rand", -1, [], function (param) {
-            var num;
-
-            // min から max までの整数の乱数を返す
-            // (Math.round() を用いると、非一様分布になるのでNG)
-            // num = Math.floor(Math.random() * (max - min + 1)) + min;
-            num = Math.floor(Math.random() * (2147483647 - (-2147483648) + 1)) + (-2147483648);
-            return num;
-        });
-        make_one_func_tbl_B("random", -1, [], function (param) {
-            var num;
-
-            num = Math.random();
-            return num;
-        });
-        make_one_func_tbl_B("replace", 3, [], function (param) {
+        make_one_func_tbl("replace", 3, [], function (param) {
             var num;
             var a1, a2, a3, a4, a5;
             var i, j, k;
@@ -6212,19 +5927,168 @@ var Interpreter;
             }
             return num;
         });
-        make_one_func_tbl_B("scan", -1, [], function (param) {
+        make_one_func_tbl("rotate", 1, [], function (param) {
+            var a1, a2, a3;
+
+            a1 = (+param[0]); // 角度
+            if (param.length <= 2) {
+                a2 = 0;
+                a3 = 0;
+            } else {
+                a2 = (+param[1]); // 中心座標X
+                a3 = (+param[2]); // 中心座標Y
+            }
+            // ***** 座標系の角度設定 *****
+            axis.rotate = a1 * Math.PI / 180;
+            axis.rotateox = a2;
+            axis.rotateoy = a3;
+            ctx.setTransform(1, 0, 0, 1, 0, 0); // 座標系を元に戻す
+            set_canvas_axis(ctx);               // 座標系を再設定
+            return nothing;
+        });
+        make_one_func_tbl("round", 6, [], function (param) {
+            var a1, a2, a3, a4, a5, a6;
+            var rx, ry;
+
+            a1 = (+param[0]); // X
+            a2 = (+param[1]); // Y
+            a3 = (+param[2]); // W
+            a4 = (+param[3]); // H
+            a5 = (+param[4]); // RX
+            a6 = (+param[5]); // RY
+            rx = a5;
+            ry = a6;
+            ctx.beginPath();
+            ctx.moveTo(a1 + rx , a2);
+            ctx.lineTo(a1 + a3 - rx, a2);
+            ctx.quadraticCurveTo(a1 + a3 , a2, a1 + a3, a2 + ry);
+            ctx.lineTo(a1 + a3 , a2 + a4 - ry);
+            ctx.quadraticCurveTo(a1 + a3 , a2 + a4, a1 + a3 - rx, a2 + a4);
+            ctx.lineTo(a1 + rx , a2 + a4);
+            ctx.quadraticCurveTo(a1, a2 + a4, a1, a2 + a4 -ry);
+            ctx.lineTo(a1 , a2 + ry);
+            ctx.quadraticCurveTo(a1, a2, a1 + rx, a2);
+            ctx.closePath();
+            // 以下は不要になったもよう(Chrome v27)
+            // // ***** Chrome v23 でカーブを描画しない件の対策 *****
+            // ctx.rotate(45 * Math.PI / 180);     // 回転させるとなぜか描画する
+            ctx.stroke();
+            // 以下は不要になったもよう(Chrome v27)
+            // ctx.setTransform(1, 0, 0, 1, 0, 0); // 座標系を元に戻す
+            // set_canvas_axis(ctx);               // 座標系を再設定
+            return nothing;
+        });
+        make_one_func_tbl("save", 1, [], function (param) {
+            var a1, a2;
+
+            a1 = String(param[0]);
+            if (param.length <= 1) {
+                a2 = 0;
+            } else {
+                a2 = Math.trunc(param[0]);
+            }
+            save_data[a2] = a1;
+            return nothing;
+        });
+        make_one_func_tbl("scale", 1, [], function (param) {
+            var a1, a2, a3, a4;
+
+            a1 = (+param[0]); // X方向倍率
+            if (param.length <= 1) {
+                a2 = a1;
+                a3 = 0;
+                a4 = 0;
+            } else {
+                a2 = (+param[1]); // Y方向倍率
+                if (param.length <= 3) {
+                    a3 = 0;
+                    a4 = 0;
+                } else {
+                    a3 = (+param[2]); // 中心座標X
+                    a4 = (+param[3]); // 中心座標Y
+                }
+            }
+
+            // ***** エラーチェック *****
+            // if (a1 < -max_scale_size || a1 > max_scale_size || a2 < -max_scale_size || a2 > max_scale_size) {
+            if (!(a1 >= -max_scale_size && a1 <= max_scale_size && a2 >= -max_scale_size && a2 <= max_scale_size)) {
+                throw new Error("座標系の倍率の値が不正です。-" + max_scale_size + "から" + max_scale_size + "までの数値を指定してください。");
+            }
+
+            // ***** 座標系の倍率設定 *****
+            axis.scalex = a1;
+            axis.scaley = a2;
+            axis.scaleox = a3;
+            axis.scaleoy = a4;
+            ctx.setTransform(1, 0, 0, 1, 0, 0); // 座標系を元に戻す
+            set_canvas_axis(ctx);               // 座標系を再設定
+            return nothing;
+        });
+        make_one_func_tbl("scan", -1, [], function (param) {
             var num;
 
             num = key_scan_stat;
             return num;
         });
-        make_one_func_tbl_B("second", -1, [], function (param) {
+        make_one_func_tbl("second", -1, [], function (param) {
             var num;
 
             num = new Date().getSeconds();
             return num;
         });
-        make_one_func_tbl_B("setscl", 1, [], function (param) {
+        make_one_func_tbl("setfont", 1, [], function (param) {
+            var a1;
+
+            a1 = String(param[0]).toUpperCase();
+            switch (a1) {
+                case "L": font_size = font_size_set[3]; break;
+                case "M": font_size = font_size_set[2]; break;
+                case "S": font_size = font_size_set[1]; break;
+                case "T": font_size = font_size_set[0]; break;
+                default:  font_size = font_size_set[1]; // break;
+            }
+            ctx.font = font_size + "px " + font_family;
+            return nothing;
+        });
+        make_one_func_tbl("setfontsize", 1, [], function (param) {
+            var a1;
+
+            a1 = Math.trunc(param[0]);
+
+            // ***** エラーチェック *****
+            // if (a1 <= 0 || a1 > max_font_size) {
+            if (!(a1 > 0 && a1 <= max_font_size)) {
+                throw new Error("フォントサイズが不正です。1-" + max_font_size + "の範囲で指定してください。");
+            }
+
+            font_size = a1;
+            ctx.font = font_size + "px " + font_family;
+            return nothing;
+        });
+        make_one_func_tbl("setoutdata", 2, [], function (param) {
+            var a1, a2;
+
+            a1 = Math.trunc(param[0]);
+            a2 = String(param[1]);
+            out_data[a1] = a2;
+            return nothing;
+        });
+        make_one_func_tbl("setpixel", 3, [], function (param) {
+            var a1, a2, a3;
+            var col_r, col_g, col_b;
+
+            a1 = (+param[0]);   // X
+            a2 = (+param[1]);   // Y
+            a3 = Math.trunc(param[2]); // RGB
+            col_r = (a3 & 0xff0000) >> 16; // R
+            col_g = (a3 & 0x00ff00) >> 8;  // G
+            col_b = (a3 & 0x0000ff);       // B
+            ctx.fillStyle = "rgb(" + col_r + "," + col_g + "," + col_b + ")";
+            ctx.fillRect(a1, a2, 1, 1);
+            ctx.fillStyle = color_val;
+            return nothing;
+        });
+        make_one_func_tbl("setscl", 1, [], function (param) {
             var num;
             var a1, a2, a3;
 
@@ -6238,7 +6102,52 @@ var Interpreter;
             num = Math.round(a1 * a3) / a3;
             return num;
         });
-        make_one_func_tbl_B("sin", 1, [], function (param) {
+        make_one_func_tbl("setscsize", 2, [], function (param) {
+            var a1, a2, a3, a4;
+
+            a1 = Math.trunc(param[0]); // W
+            a2 = Math.trunc(param[1]); // H
+            if (param.length <= 3) {
+                a3 = a1;
+                a4 = a2;
+            } else {
+                a3 = Math.trunc(param[2]); // W2
+                a4 = Math.trunc(param[3]); // H2
+            }
+
+            // ***** エラーチェック *****
+            // if (a1 <= 0 || a1 > max_image_size || a2 <= 0 || a2 > max_image_size ||
+            //     a3 <= 0 || a3 > max_image_size || a4 <= 0 || a4 > max_image_size) {
+            if (!(a1 > 0 && a1 <= max_image_size && a2 > 0 && a2 <= max_image_size &&
+                  a3 > 0 && a3 <= max_image_size && a4 > 0 && a4 <= max_image_size)) {
+                throw new Error("縦横のサイズの値が不正です。1-" + max_image_size + "の範囲で指定してください。");
+            }
+
+            // ***** 画面サイズ設定 *****
+            can1.width = a1;
+            can1.height = a2;
+            can1.style.width = a3 + "px";
+            can1.style.height = a4 + "px";
+            if (a3 > can2_width_init) {
+                can2.width = a3;
+                can2.style.width = a3 + "px";
+                disp_softkey();
+            }
+            // ***** Canvasの各設定のリセット *****
+            reset_canvas_setting(ctx1);
+            return nothing;
+        });
+        make_one_func_tbl("sign", 1, [], function (param) {
+            var num;
+            var a1;
+
+            a1 = (+param[0]);
+            if      (a1 > 0) { num =  1; }
+            else if (a1 < 0) { num = -1; }
+            else             { num =  0; }
+            return num;
+        });
+        make_one_func_tbl("sin", 1, [], function (param) {
             var num;
             var a1;
 
@@ -6250,7 +6159,7 @@ var Interpreter;
             }
             return num;
         });
-        make_one_func_tbl_B("split", 3, [0], function (param) {
+        make_one_func_tbl("split", 3, [0], function (param) {
             var num;
             var a1, a2, a3, a4;
             var i, j, k;
@@ -6285,13 +6194,13 @@ var Interpreter;
             }
             return num;
         });
-        make_one_func_tbl_B("spweb", -1, [], function (param) {
+        make_one_func_tbl("spweb", -1, [], function (param) {
             var num;
 
             num = 1;
             return num;
         });
-        make_one_func_tbl_B("sqrt", 1, [], function (param) {
+        make_one_func_tbl("sqrt", 1, [], function (param) {
             var num;
             var a1;
 
@@ -6299,13 +6208,13 @@ var Interpreter;
             num = Math.sqrt(a1);
             return num;
         });
-        make_one_func_tbl_B("sthigh", -1, [], function (param) {
+        make_one_func_tbl("sthigh", -1, [], function (param) {
             var num;
 
             num = font_size;
             return num;
         });
-        make_one_func_tbl_B("strat", 2, [], function (param) {
+        make_one_func_tbl("strat", 2, [], function (param) {
             var num;
             var a1, a2;
 
@@ -6314,7 +6223,7 @@ var Interpreter;
             num = a1.charAt(a2);
             return num;
         });
-        make_one_func_tbl_B("strlen", 1, [], function (param) {
+        make_one_func_tbl("strlen", 1, [], function (param) {
             var num;
             var a1;
 
@@ -6322,7 +6231,7 @@ var Interpreter;
             num = a1.length;
             return num;
         });
-        make_one_func_tbl_B("stwide", 1, [], function (param) {
+        make_one_func_tbl("stwide", 1, [], function (param) {
             var num;
             var a1;
 
@@ -6330,7 +6239,7 @@ var Interpreter;
             num = ctx.measureText(a1).width;
             return num;
         });
-        make_one_func_tbl_B("substr", 2, [], function (param) {
+        make_one_func_tbl("substr", 2, [], function (param) {
             var num;
             var a1, a2, a3;
 
@@ -6344,7 +6253,99 @@ var Interpreter;
             num = a1.substring(a2, a2 + a3);
             return num;
         });
-        make_one_func_tbl_B("tan", 1, [], function (param) {
+        make_one_func_tbl("sleep", 1, [], function (param) {
+            var a1;
+
+            a1 = Math.trunc(param[0]);
+            sleep_flag = true;
+            sleep_time = a1;
+            return nothing;
+        });
+        make_one_func_tbl("sleepsync", 1, [], function (param) {
+            var a1, a2;
+            var t_new;
+            var t_diff;
+
+            a1 = Math.trunc(param[0]);
+            if (param.length <= 1) {
+                a2 = 0;
+            } else {
+                a2 = Math.trunc(param[1]);
+            }
+            t_new = Date.now();
+            if (sleep_data.hasOwnProperty(a2)) {
+                t_diff = t_new - sleep_data[a2];
+                if (t_diff >= -a1 && t_diff < a1) {
+                    sleep_time = a1 - t_diff;
+                } else if (t_diff >= a1 && t_diff < a1 * 50) {
+                    sleep_time = 1;
+                } else {
+                    sleep_time = a1;
+                }
+            } else {
+                sleep_time = a1;
+            }
+            sleep_data[a2] = t_new + sleep_time;
+            sleep_flag = true;
+            return nothing;
+        });
+        make_one_func_tbl("soft1", 1, [], function (param) {
+            var a1, a2;
+
+            a1 = String(param[0]);
+            if (param.length <= 1) {
+                a2 = can2_font_size_init;
+            } else {
+                a2 = Math.trunc(param[1]);
+            }
+
+            // ***** エラーチェック *****
+            // if (a2 <= 0 || a2 > max_font_size2) {
+            if (!(a2 > 0 && a2 <= max_font_size2)) {
+                throw new Error("フォントサイズが不正です。1-" + max_font_size2 + "の範囲で指定してください。");
+            }
+
+            softkey[0].text = a1;
+            softkey[0].font_size = a2;
+            disp_softkey();
+            return nothing;
+        });
+        make_one_func_tbl("soft2", 1, [], function (param) {
+            var a1, a2;
+
+            a1 = String(param[0]);
+            if (param.length <= 1) {
+                a2 = can2_font_size_init;
+            } else {
+                a2 = Math.trunc(param[1]);
+            }
+
+            // ***** エラーチェック *****
+            // if (a2 <= 0 || a2 > max_font_size2) {
+            if (!(a2 > 0 && a2 <= max_font_size2)) {
+                throw new Error("フォントサイズが不正です。1-" + max_font_size2 + "の範囲で指定してください。");
+            }
+
+            softkey[1].text = a1;
+            softkey[1].font_size = a2;
+            disp_softkey();
+            return nothing;
+        });
+        make_one_func_tbl("spmode", 1, [], function (param) {
+            var a1;
+
+            a1 = Math.trunc(param[0]);
+            if (a1 == 0) {
+                sp_compati_mode = 0;
+            } else {
+                sp_compati_mode = 1;
+                font_size = font_size_set[0];
+                ctx.font = font_size + "px " + font_family;
+                use_local_vars = false;
+            }
+            return nothing;
+        });
+        make_one_func_tbl("tan", 1, [], function (param) {
             var num;
             var a1;
 
@@ -6356,14 +6357,71 @@ var Interpreter;
             }
             return num;
         });
-        make_one_func_tbl_B("tick", -1, [], function (param) {
+        make_one_func_tbl("text", 1, [], function (param) {
+            var a1, a2, a3, a4;
+
+            // ***** 文字列に変換 *****
+            // a1 = param[0];
+            a1 = String(param[0]);
+
+            // ***** Chrome v24 で全角スペースが半角のサイズで表示される件の対策 *****
+            a1 = a1.replace(/　/g, "  "); // 全角スペースを半角スペース2個に変換
+
+            if (param.length >= 4) {
+                a2 = Math.trunc(param[1]); // X
+                a3 = Math.trunc(param[2]); // Y
+                a4 = Math.trunc(param[3]); // アンカー
+            } else if (param.length == 3) {
+                a2 = Math.trunc(param[1]); // X
+                a3 = Math.trunc(param[2]); // Y
+                a4 = 0;
+            } else if (param.length == 2) {
+                a2 = Math.trunc(param[1]); // X
+                a3 = a4 = 0;
+            } else {
+                a2 = a3 = a4 = 0;
+            }
+            // ***** 水平方向 *****
+            // if (a4 & 4)    { ctx.textAlign = "left"; }   // 左
+            if (a4 & 8)       { ctx.textAlign = "right"; }  // 右
+            else if (a4 & 1)  { ctx.textAlign = "center"; } // 中央
+            else { ctx.textAlign = "left"; }                // その他
+            // ***** 垂直方向 *****
+            // if (a4 & 16)   { ctx.textBaseline = "top"; }        // 上
+            if (a4 & 32)      { ctx.textBaseline = "bottom"; }     // 下
+            else if (a4 & 2)  { ctx.textBaseline = "middle"; }     // 中央
+            else if (a4 & 64) { ctx.textBaseline = "alphabetic"; } // ベースライン
+            else { ctx.textBaseline = "top"; }                     // その他
+            // ***** 文字列表示 *****
+            ctx.fillText(a1, a2, a3);
+            return nothing;
+        });
+        make_one_func_tbl("tick", -1, [], function (param) {
             var num;
 
             // num = new Date().getTime();
             num = Date.now();
             return num;
         });
-        make_one_func_tbl_B("trim", 1, [], function (param) {
+        make_one_func_tbl("trgt", 1, [0], function (param) {
+            var a1;
+
+            a1 = toglobal(getvarname(param[0])); // 画像変数名取得
+            if (a1 == "off") {
+                can = can1;
+                ctx = ctx1;
+            // } else if (imgvars.hasOwnProperty(a1)) {
+            } else if (hasOwn.call(imgvars, a1)) {
+                can = imgvars[a1].can;
+                ctx = imgvars[a1].ctx;
+            } else {
+                throw new Error("Image「" + a1 + "」がロードされていません。");
+            }
+            // ***** Canvasの各設定のリセット *****
+            reset_canvas_setting(ctx);
+            return nothing;
+        });
+        make_one_func_tbl("trim", 1, [], function (param) {
             var num;
             var a1;
 
@@ -6371,25 +6429,36 @@ var Interpreter;
             num = a1.replace(/^\s+|\s+$/g,"");
             return num;
         });
-        make_one_func_tbl_B("week", -1, [], function (param) {
+        make_one_func_tbl("unlock", 0, [], function (param) {
+            var a1;
+
+            if (param.length <= 0) {
+                a1 = 0;
+            } else {
+                a1 = Math.trunc(param[0]);
+            }
+            // ***** NOP *****
+            return nothing;
+        });
+        make_one_func_tbl("week", -1, [], function (param) {
             var num;
 
             num = new Date().getDay() + 1; // =1:日曜日,=2:月曜日 ... =7:土曜日
             return num;
         });
-        make_one_func_tbl_B("width", -1, [], function (param) {
+        make_one_func_tbl("width", -1, [], function (param) {
             var num;
 
             num = can1.width;
             return num;
         });
-        make_one_func_tbl_B("year", -1, [], function (param) {
+        make_one_func_tbl("year", -1, [], function (param) {
             var num;
 
             num = new Date().getFullYear();
             return num;
         });
-        make_one_func_tbl_B("yndlg", 1, [], function (param) {
+        make_one_func_tbl("yndlg", 1, [], function (param) {
             var num;
             var a1;
 
@@ -6403,30 +6472,22 @@ var Interpreter;
             loop_nocount_flag = true;
             return num;
         });
-    }
+        make_one_func_tbl("@", 1, [0], function (param) {
+            var a1, a2;
+            var i;
 
-    // ***** 組み込み関数(戻り値なし)の定義情報1個の生成 *****
-    function make_one_func_tbl_A(name, param_num, param_varname_indexes, func) {
-        var i;
-
-        // (定義情報1個の生成)
-        func_tbl[name] = {};
-        // (引数の数を設定(ただし省略可能な引数は数に入れない))
-        func_tbl[name].param_num = param_num;
-        // (「変数名をとる引数」の指定フラグを生成)
-        func_tbl[name].param_varname_flag = {};
-        if (param_varname_indexes && param_varname_indexes.length) {
-            for (i = 0; i < param_varname_indexes.length; i++) {
-                func_tbl[name].param_varname_flag[param_varname_indexes[i]] = true;
+            a1 = getvarname(param[0]);
+            for (i = 1; i < param.length; i++) {
+                a2 = param[i];
+                // vars[a1 + "[" + (i - 1) + "]"] = a2;
+                vars.setVarValue(a1 + "[" + (i - 1) + "]", a2);
             }
-        }
-        // (戻り値の有無を設定)
-        func_tbl[name].use_retval = false;
-        // (関数の本体を設定)
-        func_tbl[name].func = func;
+            return nothing;
+        });
     }
-    // ***** 組み込み関数(戻り値あり)の定義情報1個の生成 *****
-    function make_one_func_tbl_B(name, param_num, param_varname_indexes, func) {
+
+    // ***** 組み込み関数の定義情報1個の生成 *****
+    function make_one_func_tbl(name, param_num, param_varname_indexes, func) {
         var i;
 
         // (定義情報1個の生成)
@@ -6441,8 +6502,6 @@ var Interpreter;
                 func_tbl[name].param_varname_flag[param_varname_indexes[i]] = true;
             }
         }
-        // (戻り値の有無を設定)
-        func_tbl[name].use_retval = true;
         // (関数の本体を設定)
         func_tbl[name].func = func;
     }
@@ -6451,28 +6510,8 @@ var Interpreter;
     //            追加命令の定義処理
     // ****************************************
 
-    // ***** 追加の組み込み関数(戻り値なし)の定義情報1個の生成 *****
-    function add_one_func_tbl_A(name, param_num, param_varname_indexes, func) {
-        var i;
-
-        // (定義情報1個の生成)
-        addfunc_tbl[name] = {};
-        // (引数の数を設定(ただし省略可能な引数は数に入れない))
-        addfunc_tbl[name].param_num = param_num;
-        // (「変数名をとる引数」の指定フラグを生成)
-        addfunc_tbl[name].param_varname_flag = {};
-        if (param_varname_indexes && param_varname_indexes.length) {
-            for (i = 0; i < param_varname_indexes.length; i++) {
-                addfunc_tbl[name].param_varname_flag[param_varname_indexes[i]] = true;
-            }
-        }
-        // (戻り値の有無を設定)
-        addfunc_tbl[name].use_retval = false;
-        // (関数の本体を設定)
-        addfunc_tbl[name].func = func;
-    }
-    // ***** 追加の組み込み関数(戻り値あり)の定義情報1個の生成 *****
-    function add_one_func_tbl_B(name, param_num, param_varname_indexes, func) {
+    // ***** 追加の組み込み関数の定義情報1個の生成 *****
+    function add_one_func_tbl(name, param_num, param_varname_indexes, func) {
         var i;
 
         // (定義情報1個の生成)
@@ -6487,8 +6526,6 @@ var Interpreter;
                 addfunc_tbl[name].param_varname_flag[param_varname_indexes[i]] = true;
             }
         }
-        // (戻り値の有無を設定)
-        addfunc_tbl[name].use_retval = true;
         // (関数の本体を設定)
         addfunc_tbl[name].func = func;
     }
@@ -6498,8 +6535,7 @@ var Interpreter;
     Interpreter.add_before_run_funcs = function (name, func) { before_run_funcs[name] = func; };
     Interpreter.add_after_run_funcs = function (name, func) { after_run_funcs[name] = func; };
     Interpreter.add_clear_var_funcs = function (name, func) { clear_var_funcs[name] = func; };
-    Interpreter.add_one_func_tbl_A = add_one_func_tbl_A;
-    Interpreter.add_one_func_tbl_B = add_one_func_tbl_B;
+    Interpreter.add_one_func_tbl = add_one_func_tbl;
     Interpreter.getvarname = getvarname;
     Interpreter.toglobal = toglobal;
     Interpreter.set_canvas_axis = set_canvas_axis;

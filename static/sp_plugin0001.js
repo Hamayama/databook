@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_plugin0001.js
-// 2016-7-8 v3.74
+// 2016-7-9 v4.00
 
 
 // A Plugin to add functions to SPALM Web Interpreter
@@ -22,10 +22,7 @@
 //   インタープリターに命令を追加するプラグインです。
 //   Interpreter(名前空間)が先に初期化されている必要があります。
 //
-//   新しい命令の追加は、
-//     add_func_tbl_A()  (戻り値のない関数のとき)
-//     add_func_tbl_B()  (戻り値のある関数のとき)
-//   の中で行うことを想定しています。
+//   各命令の定義は add_func_tbl の中で行っています。
 //
 //   外部クラス一覧
 //     DigitCalc   10進数計算用クラス(staticクラス)
@@ -37,19 +34,19 @@
 //
 var Plugin0001;
 (function (Plugin0001) {
-    var stimg = {};     // 画像文字割付用  (連想配列オブジェクト)
-    var missile = {};   // ミサイル用      (連想配列オブジェクト)
-    var audplayer = {}; // 音楽再生用      (連想配列オブジェクト)
-    var sand_obj = {};  // 砂シミュレート用(連想配列オブジェクト)
-    var aud_mode;       // 音楽モード      (=0:音楽なし,=1:音楽あり,=2:音楽演奏機能有無による)
+    var stimg = {};      // 画像文字割付用  (連想配列オブジェクト)
+    var missile = {};    // ミサイル用      (連想配列オブジェクト)
+    var audplayer = {};  // 音楽再生用      (連想配列オブジェクト)
+    var sand_obj = {};   // 砂シミュレート用(連想配列オブジェクト)
+    var aud_mode;        // 音楽モード      (=0:音楽なし,=1:音楽あり,=2:音楽演奏機能有無による)
+    var nothing = 0;     // 戻り値なしの組み込み関数の戻り値
 
     // ***** インタープリター参照用 *****
     // (必要に応じてインタープリターの内部情報を参照する)
     var add_before_run_funcs = Interpreter.add_before_run_funcs;
     var add_after_run_funcs = Interpreter.add_after_run_funcs;
     var add_clear_var_funcs = Interpreter.add_clear_var_funcs;
-    var add_one_func_tbl_A = Interpreter.add_one_func_tbl_A;
-    var add_one_func_tbl_B = Interpreter.add_one_func_tbl_B;
+    var add_one_func_tbl = Interpreter.add_one_func_tbl;
     var getvarname = Interpreter.getvarname;
     var toglobal = Interpreter.toglobal;
     var set_canvas_axis = Interpreter.set_canvas_axis;
@@ -105,8 +102,7 @@ var Plugin0001;
             audstopall();
         });
         // ***** 追加命令の定義情報の生成 *****
-        add_func_tbl_A();
-        add_func_tbl_B();
+        add_func_tbl();
     }
     Plugin0001.init = init;
 
@@ -121,26 +117,82 @@ var Plugin0001;
     //            追加命令の定義処理
     // ****************************************
 
-    // ***** 追加の組み込み関数(戻り値なし)の定義情報の生成 *****
-    function add_func_tbl_A() {
-        // ***** 追加の組み込み関数(戻り値なし)の定義情報を1個ずつ生成 *****
+    // ***** 追加の組み込み関数の定義情報の生成 *****
+    function add_func_tbl() {
+        // ***** 追加の組み込み関数の定義情報を1個ずつ生成 *****
         // (第2引数は関数の引数の数を指定する(ただし省略可能な引数は数に入れない))
+        // (第2引数を-1にすると組み込み変数になり、()なしで呼び出せる)
         // (第3引数は「変数名をとる引数」がある場合にその引数番号を配列で指定する)
-        add_one_func_tbl_A("audmode", 1, [], function (param, vars, can, ctx) {
+        // (戻り値なしの組み込み関数の戻り値は nothing とする)
+        add_one_func_tbl("audcheck", 0, [], function (param, vars, can, ctx) {
+            var num;
+
+            // ***** 音楽モードチェック *****
+            if (!MMLPlayer.adctx) { num = 0; return num; }
+
+            num = 1;
+            return num;
+        });
+        add_one_func_tbl("audmakestat", 1, [], function (param, vars, can, ctx) {
+            var num;
+            var a1;
+
+            a1 = Math.trunc(param[0]);
+
+            // ***** 音楽モードチェック *****
+            if (aud_mode == 1 || aud_mode == 2) {
+                if (!MMLPlayer.adctx) { num = 0; return num; }
+            } else {
+                num = 0; return num;
+            }
+
+            num = 0;
+            if (audplayer.hasOwnProperty(a1)) {
+                if (audplayer[a1].mmlplayer.compiled == 1) {
+                    num = 1;
+                }
+            } else {
+                throw new Error("音楽プレイヤー" + a1 + " は作成されていません。");
+            }
+            return num;
+        });
+        add_one_func_tbl("audstat", 1, [], function (param, vars, can, ctx) {
+            var num;
+            var a1;
+
+            a1 = Math.trunc(param[0]);
+
+            // ***** 音楽モードチェック *****
+            if (aud_mode == 1 || aud_mode == 2) {
+                if (!MMLPlayer.adctx) { num = -1; return num; }
+            } else {
+                num = -1; return num;
+            }
+
+            num = 0;
+            if (audplayer.hasOwnProperty(a1)) {
+                num = audplayer[a1].mmlplayer.getStatus();
+            } else {
+                throw new Error("音楽プレイヤー" + a1 + " は作成されていません。");
+            }
+            if (num == 1 || num == 2) { num = 1; } else { num = 0; }
+            return num;
+        });
+        add_one_func_tbl("audmode", 1, [], function (param, vars, can, ctx) {
             var a1;
 
             a1 = Math.trunc(param[0]);
             aud_mode = a1;
-            return true;
+            return nothing;
         });
-        add_one_func_tbl_A("audmake", 2, [], function (param, vars, can, ctx) {
+        add_one_func_tbl("audmake", 2, [], function (param, vars, can, ctx) {
             var a1, a2;
 
             a1 = Math.trunc(param[0]);
             a2 = String(param[1]);
 
             // ***** 音楽モードチェック *****
-            if (audmodecheck()) { return true; }
+            if (audmodecheck()) { return nothing; }
 
             if (audplayer.hasOwnProperty(a1)) {
                 audplayer[a1].mmlplayer.stop();
@@ -151,16 +203,16 @@ var Plugin0001;
             audplayer[a1].mmlplayer.setMML(a2);
             // loop_nocount_flag = true;
             set_loop_nocount();
-            return true;
+            return nothing;
         });
-        add_one_func_tbl_A("audmakedata", 2, [], function (param, vars, can, ctx) {
+        add_one_func_tbl("audmakedata", 2, [], function (param, vars, can, ctx) {
             var a1, a2;
 
             a1 = Math.trunc(param[0]);
             a2 = String(param[1]); // 音楽データ(data URI scheme)
 
             // ***** 音楽モードチェック *****
-            if (audmodecheck()) { return true; }
+            if (audmodecheck()) { return nothing; }
 
             if (audplayer.hasOwnProperty(a1)) {
                 audplayer[a1].mmlplayer.stop();
@@ -171,9 +223,9 @@ var Plugin0001;
             audplayer[a1].mmlplayer.setAUDData(a2);
             // loop_nocount_flag = true;
             set_loop_nocount();
-            return true;
+            return nothing;
         });
-        add_one_func_tbl_A("audplay", 1, [], function (param, vars, can, ctx) {
+        add_one_func_tbl("audplay", 1, [], function (param, vars, can, ctx) {
             var a1, a2;
 
             a1 = Math.trunc(param[0]);
@@ -184,63 +236,156 @@ var Plugin0001;
             }
 
             // ***** 音楽モードチェック *****
-            if (audmodecheck()) { return true; }
+            if (audmodecheck()) { return nothing; }
 
             if (audplayer.hasOwnProperty(a1)) {
                 audplayer[a1].mmlplayer.play(a2);
             } else {
                 throw new Error("音楽プレイヤー" + a1 + " は作成されていません。");
             }
-            return true;
+            return nothing;
         });
-        add_one_func_tbl_A("audspeedrate", 2, [], function (param, vars, can, ctx) {
+        add_one_func_tbl("audspeedrate", 2, [], function (param, vars, can, ctx) {
             var a1, a2;
 
             a1 = Math.trunc(param[0]);
             a2 = (+param[1]);
 
             // ***** 音楽モードチェック *****
-            if (audmodecheck()) { return true; }
+            if (audmodecheck()) { return nothing; }
 
             if (audplayer.hasOwnProperty(a1)) {
                 audplayer[a1].mmlplayer.setSpeedRate(a2);
             } else {
                 throw new Error("音楽プレイヤー" + a1 + " は作成されていません。");
             }
-            return true;
+            return nothing;
         });
-        add_one_func_tbl_A("audstop", 1, [], function (param, vars, can, ctx) {
+        add_one_func_tbl("audstop", 1, [], function (param, vars, can, ctx) {
             var a1;
 
             a1 = Math.trunc(param[0]);
 
             // ***** 音楽モードチェック *****
-            if (audmodecheck()) { return true; }
+            if (audmodecheck()) { return nothing; }
 
             if (audplayer.hasOwnProperty(a1)) {
                 audplayer[a1].mmlplayer.stop();
             } else {
                 throw new Error("音楽プレイヤー" + a1 + " は作成されていません。");
             }
-            return true;
+            return nothing;
         });
-        add_one_func_tbl_A("audvolume", 2, [], function (param, vars, can, ctx) {
+        add_one_func_tbl("audvolume", 2, [], function (param, vars, can, ctx) {
             var a1, a2;
 
             a1 = Math.trunc(param[0]);
             a2 = Math.trunc(param[1]);
 
             // ***** 音楽モードチェック *****
-            if (audmodecheck()) { return true; }
+            if (audmodecheck()) { return nothing; }
 
             if (audplayer.hasOwnProperty(a1)) {
                 audplayer[a1].mmlplayer.setVolume(a2);
             } else {
                 throw new Error("音楽プレイヤー" + a1 + " は作成されていません。");
             }
-            return true;
+            return nothing;
         });
-        add_one_func_tbl_A("colalpha", 2, [], function (param, vars, can, ctx) {
+        add_one_func_tbl("calcfractal", 8, [], function (param, vars, can, ctx) {
+            var num;
+            var x1, y1;
+            var dr, di, mr, mi, cr, ci, tr, ti, zr, zi, rep, norm2;
+
+            x1 = (+param[0]);
+            y1 = (+param[1]);
+            dr = (+param[2]);
+            di = (+param[3]);
+            mr = (+param[4]);
+            mi = (+param[5]);
+            cr = (+param[6]);
+            ci = (+param[7]);
+            if (param.length <= 8) {
+                rep = 50;
+                norm2 = 4;
+            } else {
+                rep = Math.trunc(param[8]);
+                if (param.length <= 9) {
+                    norm2 = 4;
+                } else {
+                    norm2 = (+param[9]);
+                }
+            }
+
+            // ***** エラーチェック *****
+            if (rep > 1000) { rep = 1000; }
+
+            tr = x1 * dr + mr;
+            ti = y1 * di + mi;
+            for (num = 0; num < rep; num++) {
+                zr = tr * tr - ti * ti + cr;
+                zi = 2 * tr * ti       + ci;
+                if (zr * zr + zi * zi > norm2) { break; }
+                tr = zr;
+                ti = zi;
+            }
+            return num;
+        });
+        add_one_func_tbl("charcode", 1, [], function (param, vars, can, ctx) {
+            var num;
+            var a1, a2;
+
+            a1 = String(param[0]);
+            if (param.length <= 1) {
+                a2 = 0;
+            } else {
+                a2 = Math.trunc(param[1]);
+            }
+            num = a1.charCodeAt(a2);
+            return num;
+        });
+        add_one_func_tbl("charfrom", 1, [], function (param, vars, can, ctx) {
+            var num;
+            var a1, a2, a3, a4;
+            var pair_flag;
+
+            a1 = Math.trunc(param[0]);
+            if (param.length <= 1) {
+                a2 = 0;
+                pair_flag = false;
+            } else {
+                a2 = Math.trunc(param[1]);
+                pair_flag = true;
+            }
+            if (pair_flag) {
+                // ***** サロゲートペア指定のとき *****
+                num = String.fromCharCode(a1, a2);
+            } else {
+                // ***** UTF-16の文字コードを実際のコード(サロゲートペア)に変換 *****
+                if (a1 > 0xffff) {
+                    a2 = a1 - 0x10000;
+                    a3 = 0xd800 + (a2 >> 10);      // 上位サロゲート
+                    a4 = 0xdc00 + (a2 & 0x3ff);    // 下位サロゲート
+                    num = String.fromCharCode(a3, a4);
+                } else {
+                    num = String.fromCharCode(a1); // サロゲートペアを使用しない文字のとき
+                }
+            }
+            return num;
+        });
+        add_one_func_tbl("clamp", 3, [], function (param, vars, can, ctx) {
+            var num;
+            var a1, a2, a3;
+
+            a1 = (+param[0]);
+            a2 = (+param[1]);
+            a3 = (+param[2]);
+            if (a1 < a2)      { num = a2; }
+            else if (a1 > a3) { num = a3; }
+            else              { num = a1; }
+            return num;
+        });
+        add_one_func_tbl("colalpha", 2, [], function (param, vars, can, ctx) {
             var a1, a2;
             var col_r, col_g, col_b, alpha;
             var color_val;
@@ -255,9 +400,9 @@ var Plugin0001;
             ctx.strokeStyle = color_val;
             ctx.fillStyle = color_val;
             set_color_val(color_val);
-            return true;
+            return nothing;
         });
-        add_one_func_tbl_A("coloralpha", 4, [], function (param, vars, can, ctx) {
+        add_one_func_tbl("coloralpha", 4, [], function (param, vars, can, ctx) {
             var a1, a2, a3 ,a4;
             var alpha;
             var color_val;
@@ -271,9 +416,9 @@ var Plugin0001;
             ctx.strokeStyle = color_val;
             ctx.fillStyle = color_val;
             set_color_val(color_val);
-            return true;
+            return nothing;
         });
-        add_one_func_tbl_A("disaud", 1, [], function (param, vars, can, ctx) {
+        add_one_func_tbl("disaud", 1, [], function (param, vars, can, ctx) {
             var a1;
 
             a1 = Math.trunc(param[0]);
@@ -281,9 +426,9 @@ var Plugin0001;
                 audplayer[a1].mmlplayer.stop();
                 delete audplayer[a1];
             }
-            return true;
+            return nothing;
         });
-        add_one_func_tbl_A("dismis", 1, [], function (param, vars, can, ctx) {
+        add_one_func_tbl("dismis", 1, [], function (param, vars, can, ctx) {
             var a1;
 
             a1 = Math.trunc(param[0]);
@@ -291,9 +436,9 @@ var Plugin0001;
                 delete missile[a1];
             }
             // for (var prop_name in missile) { DebugShow(prop_name + " "); } DebugShow("\n");
-            return true;
+            return nothing;
         });
-        add_one_func_tbl_A("dissand", 1, [], function (param, vars, can, ctx) {
+        add_one_func_tbl("dissand", 1, [], function (param, vars, can, ctx) {
             var a1;
 
             a1 = Math.trunc(param[0]);
@@ -301,22 +446,22 @@ var Plugin0001;
                 delete sand_obj[a1];
             }
             // for (var prop_name in sand_obj) { DebugShow(prop_name + " "); } DebugShow("\n");
-            return true;
+            return nothing;
         });
-        add_one_func_tbl_A("disstrimg", 1, [], function (param, vars, can, ctx) {
+        add_one_func_tbl("disstrimg", 1, [], function (param, vars, can, ctx) {
             var a1;
             var ch;
 
             a1 = String(param[0]);
             ch = a1.charAt(0); // 1文字だけにする
-            if (ch.length == 0) { return true; }
+            if (ch.length == 0) { return nothing; }
             if (stimg.hasOwnProperty(ch)) {
                 delete stimg[ch];
             }
             // for (var prop_name in stimg) { DebugShow(prop_name + " "); } DebugShow("\n");
-            return true;
+            return nothing;
         });
-        add_one_func_tbl_A("drawshape", 1, [], function (param, vars, can, ctx) {
+        add_one_func_tbl("drawshape", 1, [], function (param, vars, can, ctx) {
             var a1, a2, a3, a4, a5, a6, a7;
             var mode;
             var i;
@@ -440,9 +585,9 @@ var Plugin0001;
                     }
                     break;
             }
-            return true;
+            return nothing;
         });
-        add_one_func_tbl_A("fillarea", 2, [], function (param, vars, can, ctx) {
+        add_one_func_tbl("fillarea", 2, [], function (param, vars, can, ctx) {
             var a1, a2;
             var x1, y1;
             var ret_array = [];
@@ -472,9 +617,9 @@ var Plugin0001;
             ctx.setTransform(1, 0, 0, 1, 0, 0); // 座標系を元に戻す
             FloodFill.fill(can, ctx, x1, y1, threshold, paint_mode, col, 255);
             set_canvas_axis(ctx);               // 座標系を再設定
-            return true;
+            return nothing;
         });
-        add_one_func_tbl_A("fpoly", 4, [0, 1], function (param, vars, can, ctx) {
+        add_one_func_tbl("fpoly", 4, [0, 1], function (param, vars, can, ctx) {
             var a1, a2, a3;
             var b1;
             var i;
@@ -499,8 +644,8 @@ var Plugin0001;
             i = a2;
 
             // // ***** 配列の存在チェック *****
-            // if (!vars.checkVar(a1 + "[" + i + "]")) { return true; }
-            // if (!vars.checkVar(b1 + "[" + i + "]")) { return true; }
+            // if (!vars.checkVar(a1 + "[" + i + "]")) { return nothing; }
+            // if (!vars.checkVar(b1 + "[" + i + "]")) { return nothing; }
 
             ctx.beginPath();
             // x0 = (+vars[a1 + "[" + i + "]"]);
@@ -522,9 +667,162 @@ var Plugin0001;
             }
             ctx.closePath();
             ctx.fill();
-            return true;
+            return nothing;
         });
-        add_one_func_tbl_A("mismake", 13, [1, 2, 3, 4, 5, 6], function (param, vars, can, ctx) {
+        add_one_func_tbl("frombinstr", 1, [], function (param, vars, can, ctx) {
+            var num;
+            var a1;
+
+            a1 = String(param[0]);
+            num = parseInt(a1, 2);
+            return num;
+        });
+        add_one_func_tbl("fromhexstr", 1, [], function (param, vars, can, ctx) {
+            var num;
+            var a1;
+
+            a1 = String(param[0]);
+            num = parseInt(a1, 16);
+            return num;
+        });
+        // ***** 数値の文字列を加算して文字列で返す命令 *****
+        // (例. y=intstradd("100","200")  を実行すると y="300"  となる)
+        // (例. y=intstradd("100","-200") を実行すると y="-100" となる)
+        add_one_func_tbl("intstradd", 2, [], function (param, vars, can, ctx) {
+            var num;
+            var a1, a2;
+            var x = {};
+            var y = {};
+            var z = {};
+
+            a1 = String(param[0]); // 数値の文字列1
+            a2 = String(param[1]); // 数値の文字列2
+
+            // ***** 10進数オブジェクトの生成 *****
+            DigitCalc.makeDigitObj(x, a1);
+            DigitCalc.makeDigitObj(y, a2);
+            DigitCalc.makeDigitObj(z, "NaN");
+            // ***** 10進数オブジェクトの加算 *****
+            DigitCalc.addDigitObj(x, y, z);
+            // ***** 10進数オブジェクトから符号付文字列を取得する *****
+            num = DigitCalc.getDigitObjSignedStr(z);
+            return num;
+        });
+        // ***** 数値の文字列を減算して文字列で返す命令 *****
+        // (例. y=intstrsub("100","200")  を実行すると y="-100" となる)
+        // (例. y=intstrsub("100","-200") を実行すると y="300"  となる)
+        add_one_func_tbl("intstrsub", 2, [], function (param, vars, can, ctx) {
+            var num;
+            var a1, a2;
+            var x = {};
+            var y = {};
+            var z = {};
+
+            a1 = String(param[0]); // 数値の文字列1
+            a2 = String(param[1]); // 数値の文字列2
+
+            // ***** 10進数オブジェクトの生成 *****
+            DigitCalc.makeDigitObj(x, a1);
+            DigitCalc.makeDigitObj(y, a2);
+            DigitCalc.makeDigitObj(z, "NaN");
+            // ***** 10進数オブジェクトの減算 *****
+            DigitCalc.subDigitObj(x, y, z);
+            // ***** 10進数オブジェクトから符号付文字列を取得する *****
+            num = DigitCalc.getDigitObjSignedStr(z);
+            return num;
+        });
+        // ***** 数値の文字列を乗算して文字列で返す命令 *****
+        // (例. y=intstrmul("100","200")  を実行すると y="20000"  となる)
+        // (例. y=intstrmul("100","-200") を実行すると y="-20000" となる)
+        add_one_func_tbl("intstrmul", 2, [], function (param, vars, can, ctx) {
+            var num;
+            var a1, a2;
+            var x = {};
+            var y = {};
+            var z = {};
+
+            a1 = String(param[0]); // 数値の文字列1
+            a2 = String(param[1]); // 数値の文字列2
+
+            // ***** 10進数オブジェクトの生成 *****
+            DigitCalc.makeDigitObj(x, a1);
+            DigitCalc.makeDigitObj(y, a2);
+            DigitCalc.makeDigitObj(z, "NaN");
+            // ***** 10進数オブジェクトの乗算 *****
+            DigitCalc.mulDigitObj(x, y, z);
+            // ***** 10進数オブジェクトから符号付文字列を取得する *****
+            num = DigitCalc.getDigitObjSignedStr(z);
+            return num;
+        });
+        // ***** 数値の文字列を除算して文字列で返す命令 *****
+        // (例. y=intstrdiv("10","3")   を実行すると y="3"   となる)
+        // (例. y=intstrdiv("10","-3")  を実行すると y="-3"  となる)
+        // (例. y=intstrdiv("10","3",1) を実行すると y="1"   となる(第3引数を1にすると余りを返す))
+        // (例. y=intstrdiv("10","3",2) を実行すると y="3,1" となる(第3引数を2にすると商と余りをカンマ区切りで返す))
+        add_one_func_tbl("intstrdiv", 2, [], function (param, vars, can, ctx) {
+            var num;
+            var a1, a2, a3;
+            var x = {};  // 被除数
+            var y = {};  // 除数
+            var z = {};  // 商
+            var z2 = {}; // 余り
+
+            a1 = String(param[0]); // 数値の文字列1
+            a2 = String(param[1]); // 数値の文字列2
+            if (param.length <= 2) {
+                a3 = 0;
+            } else {
+                a3 = Math.trunc(param[2]); // 戻り値のタイプ指定
+            }
+
+            // ***** 10進数オブジェクトの生成 *****
+            DigitCalc.makeDigitObj(x, a1);
+            DigitCalc.makeDigitObj(y, a2);
+            DigitCalc.makeDigitObj(z, "NaN");
+            DigitCalc.makeDigitObj(z2, "NaN");
+            // ***** 10進数オブジェクトの除算 *****
+            DigitCalc.divDigitObj(x, y, z, z2);
+            // ***** 10進数オブジェクトから符号付文字列を取得する *****
+            if (a3 == 1) {        // 余りを返す
+                num = DigitCalc.getDigitObjSignedStr(z2);
+            } else if (a3 == 2) { // 商と余りをカンマで区切って返す
+                num = DigitCalc.getDigitObjSignedStr(z) + "," + DigitCalc.getDigitObjSignedStr(z2);
+            } else {              // 商を返す
+                num = DigitCalc.getDigitObjSignedStr(z);
+            }
+            return num;
+        });
+        add_one_func_tbl("misfreeno", 0, [], function (param, vars, can, ctx) {
+            var num;
+            var mis, mis_no;
+            var range_use, min_no, max_no;
+
+            if (param.length <= 1) {
+                range_use = false;
+                min_no = 0;
+                max_no = 0;
+            } else {
+                range_use = true;
+                min_no = Math.trunc(param[0]);
+                max_no = Math.trunc(param[1]);
+            }
+            // ***** ミサイル空番号を検索 *****
+            num = -1;
+            for (mis_no in missile) {
+                if (missile.hasOwnProperty(mis_no)) {
+                    mis = missile[mis_no];
+                    if (range_use == false || (mis.no >= min_no && mis.no <= max_no)) {
+                        mis.useflag = Math.trunc(vars.getVarValue(mis.useflag_var_name));
+                        if (mis.useflag == 0) {
+                            num = mis.no;
+                            break;
+                        }
+                    }
+                }
+            }
+            return num;
+        });
+        add_one_func_tbl("mismake", 13, [1, 2, 3, 4, 5, 6], function (param, vars, can, ctx) {
             var ch;
             var no, useflag, x100, y100, degree, speed100;
             var useflag_var_name, x100_var_name, y100_var_name;
@@ -555,9 +853,9 @@ var Plugin0001;
                 min_x, max_x, min_y, max_y, div_x, div_y,
                 useflag_var_name, x100_var_name, y100_var_name,
                 degree_var_name, speed100_var_name, ch_var_name);
-            return true;
+            return nothing;
         });
-        add_one_func_tbl_A("mismove", 0, [], function (param, vars, can, ctx) {
+        add_one_func_tbl("mismove", 0, [], function (param, vars, can, ctx) {
             var mis, mis_no;
             var range_use, min_no, max_no;
 
@@ -593,9 +891,9 @@ var Plugin0001;
                     }
                 }
             }
-            return true;
+            return nothing;
         });
-        add_one_func_tbl_A("mistext", 3, [0], function (param, vars, can, ctx) {
+        add_one_func_tbl("mistext", 3, [0], function (param, vars, can, ctx) {
             var a1, a2, a3;
             var i;
             var x1, y1;
@@ -665,9 +963,9 @@ var Plugin0001;
                     }
                 }
             }
-            return true;
+            return nothing;
         });
-        add_one_func_tbl_A("poly", 4, [0, 1], function (param, vars, can, ctx) {
+        add_one_func_tbl("poly", 4, [0, 1], function (param, vars, can, ctx) {
             var a1, a2, a3, a4;
             var b1;
             var i;
@@ -697,8 +995,8 @@ var Plugin0001;
             i = a2;
 
             // // ***** 配列の存在チェック *****
-            // if (!vars.checkVar(a1 + "[" + i + "]")) { return true; }
-            // if (!vars.checkVar(b1 + "[" + i + "]")) { return true; }
+            // if (!vars.checkVar(a1 + "[" + i + "]")) { return nothing; }
+            // if (!vars.checkVar(b1 + "[" + i + "]")) { return nothing; }
 
             ctx.beginPath();
             // x0 = (+vars[a1 + "[" + i + "]"]);
@@ -720,9 +1018,43 @@ var Plugin0001;
             }
             if (a4 == 0) { ctx.closePath(); }
             ctx.stroke();
-            return true;
+            return nothing;
         });
-        add_one_func_tbl_A("sandmake", 11, [], function (param, vars, can, ctx) {
+        add_one_func_tbl("randint", 2, [], function (param, vars, can, ctx) {
+            var num;
+            var a1, a2;
+            var t;
+
+            a1 = Math.trunc(param[0]);
+            a2 = Math.trunc(param[1]);
+            if (a1 > a2) { t = a1; a1 = a2; a2 = t; }
+            // min から max までの整数の乱数を返す
+            // (Math.round() を用いると、非一様分布になるのでNG)
+            // num = Math.floor(Math.random() * (max - min + 1)) + min;
+            num = Math.floor(Math.random() * (a2 - a1 + 1)) + a1;
+            return num;
+        });
+        add_one_func_tbl("recthit", 8, [], function (param, vars, can, ctx) {
+            var num;
+            var x1, y1, x2, y2;
+            var w1, h1, w2, h2;
+
+            x1 = (+param[0]);
+            y1 = (+param[1]);
+            w1 = (+param[2]);
+            h1 = (+param[3]);
+            x2 = (+param[4]);
+            y2 = (+param[5]);
+            w2 = (+param[6]);
+            h2 = (+param[7]);
+            if (x1 < x2 + w2 && x2 < x1 + w1 && y1 < y2 + h2 && y2 < y1 + h1) {
+                num = 1;
+            } else {
+                num = 0;
+            }
+            return num;
+        });
+        add_one_func_tbl("sandmake", 11, [], function (param, vars, can, ctx) {
             var a1;
             var x1, y1;
             var w1, h1;
@@ -749,9 +1081,9 @@ var Plugin0001;
             sand_obj[a1].makeTable();
             // loop_nocount_flag = true;
             set_loop_nocount();
-            return true;
+            return nothing;
         });
-        add_one_func_tbl_A("sandmove", 1, [], function (param, vars, can, ctx) {
+        add_one_func_tbl("sandmove", 1, [], function (param, vars, can, ctx) {
             var a1;
 
             a1 = Math.trunc(param[0]);
@@ -760,9 +1092,9 @@ var Plugin0001;
             } else {
                 throw new Error("砂シミュレート用オブジェクト" + a1 + " は作成されていません。");
             }
-            return true;
+            return nothing;
         });
-        add_one_func_tbl_A("sanddraw", 1, [], function (param, vars, can, ctx) {
+        add_one_func_tbl("sanddraw", 1, [], function (param, vars, can, ctx) {
             var a1;
 
             a1 = Math.trunc(param[0]);
@@ -773,9 +1105,9 @@ var Plugin0001;
             } else {
                 throw new Error("砂シミュレート用オブジェクト" + a1 + " は作成されていません。");
             }
-            return true;
+            return nothing;
         });
-        add_one_func_tbl_A("setstrimg", 2, [1], function (param, vars, can, ctx) {
+        add_one_func_tbl("setstrimg", 2, [1], function (param, vars, can, ctx) {
             var a1, a2, a3, a4;
             var ch;
             var imgvars = get_imgvars();
@@ -791,7 +1123,7 @@ var Plugin0001;
             }
             // ***** 画像文字割付を格納 *****
             ch = a1.charAt(0); // 1文字だけにする
-            if (ch.length == 0) { return true; }
+            if (ch.length == 0) { return nothing; }
             // if (imgvars.hasOwnProperty(a2)) {
             if (hasOwn.call(imgvars, a2)) {
                 stimg[ch] = {};
@@ -801,9 +1133,128 @@ var Plugin0001;
             } else {
                 throw new Error("Image「" + a1 + "」がロードされていません。");
             }
-            return true;
+            return nothing;
         });
-        add_one_func_tbl_A("transimg", 2, [0], function (param, vars, can, ctx) {
+        add_one_func_tbl("strmake", 2, [], function (param, vars, can, ctx) {
+            var num;
+            var a1, a2;
+
+            a1 = String(param[0]);
+            a2 = Math.trunc(param[1]);
+
+            // ***** エラーチェック *****
+            // if (a2 > max_str_size) {
+            if (!(a2 <= max_str_size)) {
+                throw new Error("処理する文字数が不正です。" + max_str_size + "以下である必要があります。");
+            }
+
+            num = strrepeatsub(a1, a2);
+            return num;
+        });
+        add_one_func_tbl("strovr", 3, [], function (param, vars, can, ctx) {
+            var num;
+            var a1, a2, a3, a4;
+
+            a1 = String(param[0]);
+            a2 = Math.trunc(param[1]);
+            a3 = String(param[2]);
+            if (param.length <= 3) {
+                a4 = 0;
+            } else {
+                a4 = Math.trunc(param[3]);
+            }
+            if (a4 == 1) {
+                num = strovrsub2(a1, a2, a3);
+            } else if (a4 == 2) {
+                num = strovrsub3(a1, a2, a3);
+            } else {
+                num = strovrsub(a1, a2, a3);
+            }
+            return num;
+        });
+        add_one_func_tbl("tobinstr", 1, [], function (param, vars, can, ctx) {
+            var num;
+            var a1;
+
+            a1 = Math.trunc(param[0]);
+            num = a1.toString(2);
+            return num;
+        });
+        add_one_func_tbl("tofloat", 1, [], function (param, vars, can, ctx) {
+            var num;
+            var a1;
+
+            a1 = (+param[0]);
+            num = a1;
+            return num;
+        });
+        add_one_func_tbl("tohankaku", 1, [], function (param, vars, can, ctx) {
+            var num;
+            var a1, a2;
+
+            a1 = String(param[0]);
+            if (param.length <= 1) {
+                a2 = "";
+            } else {
+                a2 = String(param[1]);
+            }
+            num = ConvZenHan.toHankaku(a1, a2);
+            return num;
+        });
+        add_one_func_tbl("tohexstr", 1, [], function (param, vars, can, ctx) {
+            var num;
+            var a1;
+
+            a1 = Math.trunc(param[0]);
+            num = a1.toString(16);
+            return num;
+        });
+        add_one_func_tbl("toint", 1, [], function (param, vars, can, ctx) {
+            var num;
+            var a1;
+
+            a1 = (+param[0]);
+            num = Math.trunc(a1);
+            return num;
+        });
+        add_one_func_tbl("tolower", 1, [], function (param, vars, can, ctx) {
+            var num;
+            var a1;
+
+            a1 = String(param[0]);
+            num = a1.toLowerCase();
+            return num;
+        });
+        add_one_func_tbl("tostr", 1, [], function (param, vars, can, ctx) {
+            var num;
+            var a1;
+
+            a1 = String(param[0]);
+            num = a1;
+            return num;
+        });
+        add_one_func_tbl("toupper", 1, [], function (param, vars, can, ctx) {
+            var num;
+            var a1;
+
+            a1 = String(param[0]);
+            num = a1.toUpperCase();
+            return num;
+        });
+        add_one_func_tbl("tozenkaku", 1, [], function (param, vars, can, ctx) {
+            var num;
+            var a1, a2;
+
+            a1 = String(param[0]);
+            if (param.length <= 1) {
+                a2 = "";
+            } else {
+                a2 = String(param[1]);
+            }
+            num = ConvZenHan.toZenkaku(a1, a2);
+            return num;
+        });
+        add_one_func_tbl("transimg", 2, [0], function (param, vars, can, ctx) {
             var a1, a2;
             var i;
             var col_r, col_g, col_b;
@@ -835,9 +1286,9 @@ var Plugin0001;
             } else {
                 throw new Error("Image「" + a1 + "」がロードされていません。");
             }
-            return true;
+            return nothing;
         });
-        add_one_func_tbl_A("txtmake", 5, [0], function (param, vars, can, ctx) {
+        add_one_func_tbl("txtmake", 5, [0], function (param, vars, can, ctx) {
             var a1, a2, a3, a4, a5;
             var i;
             var st1;
@@ -868,9 +1319,9 @@ var Plugin0001;
                 // vars[a1 + "[" + i + "]"] = st1;
                 vars.setVarValue(a1 + "[" + i + "]", st1);
             }
-            return true;
+            return nothing;
         });
-        add_one_func_tbl_A("txtdraw", 3, [0], function (param, vars, can, ctx) {
+        add_one_func_tbl("txtdraw", 3, [0], function (param, vars, can, ctx) {
             var a1, a2, a3;
             var x1, y1;
             var anc;
@@ -931,9 +1382,9 @@ var Plugin0001;
                 ctx.fillText(st1, x1, y1);
                 y1 += font_size;
             }
-            return true;
+            return nothing;
         });
-        add_one_func_tbl_A("txtdrawimg", 7, [0], function (param, vars, can, ctx) {
+        add_one_func_tbl("txtdrawimg", 7, [0], function (param, vars, can, ctx) {
             var a1, a2, a3;
             var x1, y1, x2;
             var w1, h1;
@@ -992,9 +1443,9 @@ var Plugin0001;
                 }
                 y1 += h1;
             }
-            return true;
+            return nothing;
         });
-        add_one_func_tbl_A("txtovr", 8, [0, 5], function (param, vars, can, ctx) {
+        add_one_func_tbl("txtovr", 8, [0, 5], function (param, vars, can, ctx) {
             var a1, a2, a3, a4;
             var b1, b2, b3;
             var x1, y1;
@@ -1075,9 +1526,9 @@ var Plugin0001;
                     (i_plus < 0 && i >= i_end)) { continue; }
                 break;
             }
-            return true;
+            return nothing;
         });
-        add_one_func_tbl_A("txtpset", 6, [0], function (param, vars, can, ctx) {
+        add_one_func_tbl("txtpset", 6, [0], function (param, vars, can, ctx) {
             var a1, a2, a3, a4;
             var x1, y1;
 
@@ -1101,9 +1552,9 @@ var Plugin0001;
             // ***** 描画処理 *****
             // txtpsetsub(vars, a1, a2, a3, x1, y1, a4);
             txtovrsub(vars, a1, a2, a3, x1, y1, a4);
-            return true;
+            return nothing;
         });
-        add_one_func_tbl_A("txtline", 8, [0], function (param, vars, can, ctx) {
+        add_one_func_tbl("txtline", 8, [0], function (param, vars, can, ctx) {
             var a1, a2, a3, a4;
             var x1, y1, x2, y2;
 
@@ -1136,9 +1587,9 @@ var Plugin0001;
 
             // ***** 描画処理 *****
             txtlinesub(vars, a1, a2, a3, x1, y1, x2, y2, a4);
-            return true;
+            return nothing;
         });
-        add_one_func_tbl_A("txtbox", 8, [0], function (param, vars, can, ctx) {
+        add_one_func_tbl("txtbox", 8, [0], function (param, vars, can, ctx) {
             var a1, a2, a3, a4, a5;
             var x1, y1, x2, y2, x3, y3, x4, y4;
             var i;
@@ -1180,9 +1631,9 @@ var Plugin0001;
                 txtpsetsub(vars, a1, a2, a3, x3, i, a4);
                 txtpsetsub(vars, a1, a2, a3, x4, i, a4);
             }
-            return true;
+            return nothing;
         });
-        add_one_func_tbl_A("txtfbox", 8, [0], function (param, vars, can, ctx) {
+        add_one_func_tbl("txtfbox", 8, [0], function (param, vars, can, ctx) {
             var a1, a2, a3, a4, a5;
             var x1, y1, x2, y2, x3, y3, x4, y4;
             var i;
@@ -1221,9 +1672,9 @@ var Plugin0001;
             for (i = y3; i <= y4; i++) {
                 txtovrsub(vars, a1, a2, a3, x3, i, a5);
             }
-            return true;
+            return nothing;
         });
-        add_one_func_tbl_A("txtcircle", 9, [0], function (param, vars, can, ctx) {
+        add_one_func_tbl("txtcircle", 9, [0], function (param, vars, can, ctx) {
             var a1, a2, a3, a4;
             var x1, y1, x2, y2;
             var r1, a, b;
@@ -1254,7 +1705,7 @@ var Plugin0001;
             if (!(r1 <= max_str_size)) {
                 throw new Error("処理する文字数が不正です。" + max_str_size + "以下である必要があります。");
             }
-            if (r1 <= 0) { return true; }
+            if (r1 <= 0) { return nothing; }
 
             // ***** 描画処理 *****
             if (a < 1) { a = 1; }
@@ -1290,9 +1741,9 @@ var Plugin0001;
                 txtovrsub(vars, a1, a2, a3, x1 - x_old, y1 - y_old, strrepeatsub(a4, 2 * x_old + 1));
                 txtovrsub(vars, a1, a2, a3, x1 - x_old, y1 + y_old, strrepeatsub(a4, 2 * x_old + 1));
             }
-            return true;
+            return nothing;
         });
-        add_one_func_tbl_A("txtfcircle", 9, [0], function (param, vars, can, ctx) {
+        add_one_func_tbl("txtfcircle", 9, [0], function (param, vars, can, ctx) {
             var a1, a2, a3, a4;
             var x1, y1, x2, y2;
             var r1, a, b;
@@ -1321,7 +1772,7 @@ var Plugin0001;
             if (!(r1 <= max_str_size)) {
                 throw new Error("処理する文字数が不正です。" + max_str_size + "以下である必要があります。");
             }
-            if (r1 <= 0) { return true; }
+            if (r1 <= 0) { return nothing; }
 
             // ***** 描画処理 *****
             if (a < 1) { a = 1; }
@@ -1337,9 +1788,9 @@ var Plugin0001;
                 txtovrsub(vars, a1, a2, a3, x1 - x2, y1 - y2, strrepeatsub(a4, 2 * x2 + 1));
                 txtovrsub(vars, a1, a2, a3, x1 - x2, y1 + y2, strrepeatsub(a4, 2 * x2 + 1));
             }
-            return true;
+            return nothing;
         });
-        add_one_func_tbl_A("txtpoly", 8, [0, 3, 4], function (param, vars, can, ctx) {
+        add_one_func_tbl("txtpoly", 8, [0, 3, 4], function (param, vars, can, ctx) {
             var a1, a2, a3, a4;
             var b1, b2, b3, b4, b5;
             var i, j;
@@ -1385,8 +1836,8 @@ var Plugin0001;
             pnum = b4 - b3 + 1;
             for (i = 0; i < pnum; i++) {
                 // // ***** 配列の存在チェック *****
-                // if (!vars.checkVar(b1 + "[" + j + "]")) { return true; }
-                // if (!vars.checkVar(b2 + "[" + j + "]")) { return true; }
+                // if (!vars.checkVar(b1 + "[" + j + "]")) { return nothing; }
+                // if (!vars.checkVar(b2 + "[" + j + "]")) { return nothing; }
 
                 // x[i] = Math.trunc(vars[b1 + "[" + j + "]"]);
                 x[i] = Math.trunc(vars.getVarValue(b1 + "[" + j + "]"));
@@ -1412,9 +1863,9 @@ var Plugin0001;
                     txtlinesub(vars, a1, a2, a3, x[j], y[j], x[i], y[i], a4);
                 }
             }
-            return true;
+            return nothing;
         });
-        add_one_func_tbl_A("txtfpoly", 8, [0, 3, 4], function (param, vars, can, ctx) {
+        add_one_func_tbl("txtfpoly", 8, [0, 3, 4], function (param, vars, can, ctx) {
             var a1, a2, a3, a4;
             var b1, b2, b3, b4;
             var i, j;
@@ -1462,8 +1913,8 @@ var Plugin0001;
             pnum = b4 - b3 + 1;
             for (i = 0; i < pnum; i++) {
                 // // ***** 配列の存在チェック *****
-                // if (!vars.checkVar(b1 + "[" + j + "]")) { return true; }
-                // if (!vars.checkVar(b2 + "[" + j + "]")) { return true; }
+                // if (!vars.checkVar(b1 + "[" + j + "]")) { return nothing; }
+                // if (!vars.checkVar(b2 + "[" + j + "]")) { return nothing; }
 
                 // x[i] = Math.trunc(vars[b1 + "[" + j + "]"]);
                 x[i] = Math.trunc(vars.getVarValue(b1 + "[" + j + "]"));
@@ -1573,9 +2024,9 @@ var Plugin0001;
                     // }
                 }
             }
-            return true;
+            return nothing;
         });
-        add_one_func_tbl_A("txtreplace", 5, [0], function (param, vars, can, ctx) {
+        add_one_func_tbl("txtreplace", 5, [0], function (param, vars, can, ctx) {
             var a1, a2, a3, a4, a5;
             var i;
             var st1, st2;
@@ -1598,7 +2049,7 @@ var Plugin0001;
             if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
                 throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
             }
-            if (a4.length == 0) { return true; }
+            if (a4.length == 0) { return nothing; }
             if (a5.length > a4.length){
                 a5 = a5.substring(0, a4.length);
             } else if (a5.length < a4.length) {
@@ -1620,9 +2071,9 @@ var Plugin0001;
                 // vars[a1 + "[" + i + "]"] = st2;
                 vars.setVarValue(a1 + "[" + i + "]", st2);
             }
-            return true;
+            return nothing;
         });
-        add_one_func_tbl_A("txtreplace2", 5, [0], function (param, vars, can, ctx) {
+        add_one_func_tbl("txtreplace2", 5, [0], function (param, vars, can, ctx) {
             var a1, a2, a3, a4, a5;
             var i;
             var st1, st2;
@@ -1646,7 +2097,7 @@ var Plugin0001;
             if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
                 throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
             }
-            if (a4.length == 0) { return true; }
+            if (a4.length == 0) { return nothing; }
             if (a5.length > a4.length){
                 a5 = a5.substring(0, a4.length);
             } else if (a5.length < a4.length) {
@@ -1672,481 +2123,9 @@ var Plugin0001;
                 // vars[a1 + "[" + i + "]"] = st2;
                 vars.setVarValue(a1 + "[" + i + "]", st2);
             }
-            return true;
+            return nothing;
         });
-    }
-
-
-    // ***** 追加の組み込み関数(戻り値あり)の定義情報の生成 *****
-    function add_func_tbl_B() {
-        // ***** 追加の組み込み関数(戻り値あり)の定義情報を1個ずつ生成 *****
-        // (第2引数は関数の引数の数を指定する(ただし省略可能な引数は数に入れない))
-        // (第2引数を-1にすると組み込み変数になり、()なしで呼び出せる)
-        // (第3引数は「変数名をとる引数」がある場合にその引数番号を配列で指定する)
-        add_one_func_tbl_B("audcheck", 0, [], function (param, vars, can, ctx) {
-            var num;
-
-            // ***** 音楽モードチェック *****
-            if (!MMLPlayer.adctx) { return 0; }
-
-            num = 1;
-            return num;
-        });
-        add_one_func_tbl_B("audmakestat", 1, [], function (param, vars, can, ctx) {
-            var num;
-            var a1;
-
-            a1 = Math.trunc(param[0]);
-
-            // ***** 音楽モードチェック *****
-            if (aud_mode == 1 || aud_mode == 2) {
-                if (!MMLPlayer.adctx) { return 0; }
-            } else {
-                return 0;
-            }
-
-            num = 0;
-            if (audplayer.hasOwnProperty(a1)) {
-                if (audplayer[a1].mmlplayer.compiled == 1) {
-                    num = 1;
-                }
-            } else {
-                throw new Error("音楽プレイヤー" + a1 + " は作成されていません。");
-            }
-            return num;
-        });
-        add_one_func_tbl_B("audstat", 1, [], function (param, vars, can, ctx) {
-            var num;
-            var a1;
-
-            a1 = Math.trunc(param[0]);
-
-            // ***** 音楽モードチェック *****
-            if (aud_mode == 1 || aud_mode == 2) {
-                if (!MMLPlayer.adctx) { return -1; }
-            } else {
-                return -1;
-            }
-
-            num = 0;
-            if (audplayer.hasOwnProperty(a1)) {
-                num = audplayer[a1].mmlplayer.getStatus();
-            } else {
-                throw new Error("音楽プレイヤー" + a1 + " は作成されていません。");
-            }
-            if (num == 1 || num == 2) { num = 1; } else { num = 0; }
-            return num;
-        });
-        add_one_func_tbl_B("calcfractal", 8, [], function (param, vars, can, ctx) {
-            var num;
-            var x1, y1;
-            var dr, di, mr, mi, cr, ci, tr, ti, zr, zi, rep, norm2;
-
-            x1 = (+param[0]);
-            y1 = (+param[1]);
-            dr = (+param[2]);
-            di = (+param[3]);
-            mr = (+param[4]);
-            mi = (+param[5]);
-            cr = (+param[6]);
-            ci = (+param[7]);
-            if (param.length <= 8) {
-                rep = 50;
-                norm2 = 4;
-            } else {
-                rep = Math.trunc(param[8]);
-                if (param.length <= 9) {
-                    norm2 = 4;
-                } else {
-                    norm2 = (+param[9]);
-                }
-            }
-
-            // ***** エラーチェック *****
-            if (rep > 1000) { rep = 1000; }
-
-            tr = x1 * dr + mr;
-            ti = y1 * di + mi;
-            for (num = 0; num < rep; num++) {
-                zr = tr * tr - ti * ti + cr;
-                zi = 2 * tr * ti       + ci;
-                if (zr * zr + zi * zi > norm2) { break; }
-                tr = zr;
-                ti = zi;
-            }
-            return num;
-        });
-        add_one_func_tbl_B("charcode", 1, [], function (param, vars, can, ctx) {
-            var num;
-            var a1, a2;
-
-            a1 = String(param[0]);
-            if (param.length <= 1) {
-                a2 = 0;
-            } else {
-                a2 = Math.trunc(param[1]);
-            }
-            num = a1.charCodeAt(a2);
-            return num;
-        });
-        add_one_func_tbl_B("charfrom", 1, [], function (param, vars, can, ctx) {
-            var num;
-            var a1, a2, a3, a4;
-            var pair_flag;
-
-            a1 = Math.trunc(param[0]);
-            if (param.length <= 1) {
-                a2 = 0;
-                pair_flag = false;
-            } else {
-                a2 = Math.trunc(param[1]);
-                pair_flag = true;
-            }
-            if (pair_flag) {
-                // ***** サロゲートペア指定のとき *****
-                num = String.fromCharCode(a1, a2);
-            } else {
-                // ***** UTF-16の文字コードを実際のコード(サロゲートペア)に変換 *****
-                if (a1 > 0xffff) {
-                    a2 = a1 - 0x10000;
-                    a3 = 0xd800 + (a2 >> 10);      // 上位サロゲート
-                    a4 = 0xdc00 + (a2 & 0x3ff);    // 下位サロゲート
-                    num = String.fromCharCode(a3, a4);
-                } else {
-                    num = String.fromCharCode(a1); // サロゲートペアを使用しない文字のとき
-                }
-            }
-            return num;
-        });
-        add_one_func_tbl_B("clamp", 3, [], function (param, vars, can, ctx) {
-            var num;
-            var a1, a2, a3;
-
-            a1 = (+param[0]);
-            a2 = (+param[1]);
-            a3 = (+param[2]);
-            if (a1 < a2)      { num = a2; }
-            else if (a1 > a3) { num = a3; }
-            else              { num = a1; }
-            return num;
-        });
-        add_one_func_tbl_B("fboxchk", 8, [], function (param, vars, can, ctx) {
-            var num;
-            var x1, y1, x2, y2;
-            var w1, h1, w2, h2;
-
-            x1 = (+param[0]);
-            y1 = (+param[1]);
-            w1 = (+param[2]);
-            h1 = (+param[3]);
-            x2 = (+param[4]);
-            y2 = (+param[5]);
-            w2 = (+param[6]);
-            h2 = (+param[7]);
-            if (x1 < x2 + w2 && x2 < x1 + w1 && y1 < y2 + h2 && y2 < y1 + h1) {
-                num = 1;
-            } else {
-                num = 0;
-            }
-            return num;
-        });
-        add_one_func_tbl_B("frombinstr", 1, [], function (param, vars, can, ctx) {
-            var num;
-            var a1;
-
-            a1 = String(param[0]);
-            num = parseInt(a1, 2);
-            return num;
-        });
-        add_one_func_tbl_B("fromhexstr", 1, [], function (param, vars, can, ctx) {
-            var num;
-            var a1;
-
-            a1 = String(param[0]);
-            num = parseInt(a1, 16);
-            return num;
-        });
-        // ***** 数値の文字列を加算して文字列で返す命令 *****
-        // (例. y=intstradd("100","200")  を実行すると y="300"  となる)
-        // (例. y=intstradd("100","-200") を実行すると y="-100" となる)
-        add_one_func_tbl_B("intstradd", 2, [], function (param, vars, can, ctx) {
-            var num;
-            var a1, a2;
-            var x = {};
-            var y = {};
-            var z = {};
-
-            a1 = String(param[0]); // 数値の文字列1
-            a2 = String(param[1]); // 数値の文字列2
-
-            // ***** 10進数オブジェクトの生成 *****
-            DigitCalc.makeDigitObj(x, a1);
-            DigitCalc.makeDigitObj(y, a2);
-            DigitCalc.makeDigitObj(z, "NaN");
-            // ***** 10進数オブジェクトの加算 *****
-            DigitCalc.addDigitObj(x, y, z);
-            // ***** 10進数オブジェクトから符号付文字列を取得する *****
-            num = DigitCalc.getDigitObjSignedStr(z);
-            return num;
-        });
-        // ***** 数値の文字列を減算して文字列で返す命令 *****
-        // (例. y=intstrsub("100","200")  を実行すると y="-100" となる)
-        // (例. y=intstrsub("100","-200") を実行すると y="300"  となる)
-        add_one_func_tbl_B("intstrsub", 2, [], function (param, vars, can, ctx) {
-            var num;
-            var a1, a2;
-            var x = {};
-            var y = {};
-            var z = {};
-
-            a1 = String(param[0]); // 数値の文字列1
-            a2 = String(param[1]); // 数値の文字列2
-
-            // ***** 10進数オブジェクトの生成 *****
-            DigitCalc.makeDigitObj(x, a1);
-            DigitCalc.makeDigitObj(y, a2);
-            DigitCalc.makeDigitObj(z, "NaN");
-            // ***** 10進数オブジェクトの減算 *****
-            DigitCalc.subDigitObj(x, y, z);
-            // ***** 10進数オブジェクトから符号付文字列を取得する *****
-            num = DigitCalc.getDigitObjSignedStr(z);
-            return num;
-        });
-        // ***** 数値の文字列を乗算して文字列で返す命令 *****
-        // (例. y=intstrmul("100","200")  を実行すると y="20000"  となる)
-        // (例. y=intstrmul("100","-200") を実行すると y="-20000" となる)
-        add_one_func_tbl_B("intstrmul", 2, [], function (param, vars, can, ctx) {
-            var num;
-            var a1, a2;
-            var x = {};
-            var y = {};
-            var z = {};
-
-            a1 = String(param[0]); // 数値の文字列1
-            a2 = String(param[1]); // 数値の文字列2
-
-            // ***** 10進数オブジェクトの生成 *****
-            DigitCalc.makeDigitObj(x, a1);
-            DigitCalc.makeDigitObj(y, a2);
-            DigitCalc.makeDigitObj(z, "NaN");
-            // ***** 10進数オブジェクトの乗算 *****
-            DigitCalc.mulDigitObj(x, y, z);
-            // ***** 10進数オブジェクトから符号付文字列を取得する *****
-            num = DigitCalc.getDigitObjSignedStr(z);
-            return num;
-        });
-        // ***** 数値の文字列を除算して文字列で返す命令 *****
-        // (例. y=intstrdiv("10","3")   を実行すると y="3"   となる)
-        // (例. y=intstrdiv("10","-3")  を実行すると y="-3"  となる)
-        // (例. y=intstrdiv("10","3",1) を実行すると y="1"   となる(第3引数を1にすると余りを返す))
-        // (例. y=intstrdiv("10","3",2) を実行すると y="3,1" となる(第3引数を2にすると商と余りをカンマ区切りで返す))
-        add_one_func_tbl_B("intstrdiv", 2, [], function (param, vars, can, ctx) {
-            var num;
-            var a1, a2, a3;
-            var x = {};  // 被除数
-            var y = {};  // 除数
-            var z = {};  // 商
-            var z2 = {}; // 余り
-
-            a1 = String(param[0]); // 数値の文字列1
-            a2 = String(param[1]); // 数値の文字列2
-            if (param.length <= 2) {
-                a3 = 0;
-            } else {
-                a3 = Math.trunc(param[2]); // 戻り値のタイプ指定
-            }
-
-            // ***** 10進数オブジェクトの生成 *****
-            DigitCalc.makeDigitObj(x, a1);
-            DigitCalc.makeDigitObj(y, a2);
-            DigitCalc.makeDigitObj(z, "NaN");
-            DigitCalc.makeDigitObj(z2, "NaN");
-            // ***** 10進数オブジェクトの除算 *****
-            DigitCalc.divDigitObj(x, y, z, z2);
-            // ***** 10進数オブジェクトから符号付文字列を取得する *****
-            if (a3 == 1) {        // 余りを返す
-                num = DigitCalc.getDigitObjSignedStr(z2);
-            } else if (a3 == 2) { // 商と余りをカンマで区切って返す
-                num = DigitCalc.getDigitObjSignedStr(z) + "," + DigitCalc.getDigitObjSignedStr(z2);
-            } else {              // 商を返す
-                num = DigitCalc.getDigitObjSignedStr(z);
-            }
-            return num;
-        });
-        add_one_func_tbl_B("misfreeno", 0, [], function (param, vars, can, ctx) {
-            var num;
-            var mis, mis_no;
-            var range_use, min_no, max_no;
-
-            if (param.length <= 1) {
-                range_use = false;
-                min_no = 0;
-                max_no = 0;
-            } else {
-                range_use = true;
-                min_no = Math.trunc(param[0]);
-                max_no = Math.trunc(param[1]);
-            }
-            // ***** ミサイル空番号を検索 *****
-            num = -1;
-            for (mis_no in missile) {
-                if (missile.hasOwnProperty(mis_no)) {
-                    mis = missile[mis_no];
-                    if (range_use == false || (mis.no >= min_no && mis.no <= max_no)) {
-                        mis.useflag = Math.trunc(vars.getVarValue(mis.useflag_var_name));
-                        if (mis.useflag == 0) {
-                            num = mis.no;
-                            break;
-                        }
-                    }
-                }
-            }
-            return num;
-        });
-        add_one_func_tbl_B("randint", 2, [], function (param, vars, can, ctx) {
-            var num;
-            var a1, a2;
-            var t;
-
-            a1 = Math.trunc(param[0]);
-            a2 = Math.trunc(param[1]);
-            if (a1 > a2) { t = a1; a1 = a2; a2 = t; }
-            // min から max までの整数の乱数を返す
-            // (Math.round() を用いると、非一様分布になるのでNG)
-            // num = Math.floor(Math.random() * (max - min + 1)) + min;
-            num = Math.floor(Math.random() * (a2 - a1 + 1)) + a1;
-            return num;
-        });
-        add_one_func_tbl_B("sign", 1, [], function (param, vars, can, ctx) {
-            var num;
-            var a1;
-
-            a1 = (+param[0]);
-            if      (a1 > 0) { num =  1; }
-            else if (a1 < 0) { num = -1; }
-            else             { num =  0; }
-            return num;
-        });
-        add_one_func_tbl_B("strmake", 2, [], function (param, vars, can, ctx) {
-            var num;
-            var a1, a2;
-
-            a1 = String(param[0]);
-            a2 = Math.trunc(param[1]);
-
-            // ***** エラーチェック *****
-            // if (a2 > max_str_size) {
-            if (!(a2 <= max_str_size)) {
-                throw new Error("処理する文字数が不正です。" + max_str_size + "以下である必要があります。");
-            }
-
-            num = strrepeatsub(a1, a2);
-            return num;
-        });
-        add_one_func_tbl_B("strovr", 3, [], function (param, vars, can, ctx) {
-            var num;
-            var a1, a2, a3, a4;
-
-            a1 = String(param[0]);
-            a2 = Math.trunc(param[1]);
-            a3 = String(param[2]);
-            if (param.length <= 3) {
-                a4 = 0;
-            } else {
-                a4 = Math.trunc(param[3]);
-            }
-            if (a4 == 1) {
-                num = strovrsub2(a1, a2, a3);
-            } else if (a4 == 2) {
-                num = strovrsub3(a1, a2, a3);
-            } else {
-                num = strovrsub(a1, a2, a3);
-            }
-            return num;
-        });
-        add_one_func_tbl_B("tobinstr", 1, [], function (param, vars, can, ctx) {
-            var num;
-            var a1;
-
-            a1 = Math.trunc(param[0]);
-            num = a1.toString(2);
-            return num;
-        });
-        add_one_func_tbl_B("tofloat", 1, [], function (param, vars, can, ctx) {
-            var num;
-            var a1;
-
-            a1 = (+param[0]);
-            num = a1;
-            return num;
-        });
-        add_one_func_tbl_B("tohankaku", 1, [], function (param, vars, can, ctx) {
-            var num;
-            var a1, a2;
-
-            a1 = String(param[0]);
-            if (param.length <= 1) {
-                a2 = "";
-            } else {
-                a2 = String(param[1]);
-            }
-            num = ConvZenHan.toHankaku(a1, a2);
-            return num;
-        });
-        add_one_func_tbl_B("tohexstr", 1, [], function (param, vars, can, ctx) {
-            var num;
-            var a1;
-
-            a1 = Math.trunc(param[0]);
-            num = a1.toString(16);
-            return num;
-        });
-        add_one_func_tbl_B("toint", 1, [], function (param, vars, can, ctx) {
-            var num;
-            var a1;
-
-            a1 = (+param[0]);
-            num = Math.trunc(a1);
-            return num;
-        });
-        add_one_func_tbl_B("tolower", 1, [], function (param, vars, can, ctx) {
-            var num;
-            var a1;
-
-            a1 = String(param[0]);
-            num = a1.toLowerCase();
-            return num;
-        });
-        add_one_func_tbl_B("tostr", 1, [], function (param, vars, can, ctx) {
-            var num;
-            var a1;
-
-            a1 = String(param[0]);
-            num = a1;
-            return num;
-        });
-        add_one_func_tbl_B("toupper", 1, [], function (param, vars, can, ctx) {
-            var num;
-            var a1;
-
-            a1 = String(param[0]);
-            num = a1.toUpperCase();
-            return num;
-        });
-        add_one_func_tbl_B("tozenkaku", 1, [], function (param, vars, can, ctx) {
-            var num;
-            var a1, a2;
-
-            a1 = String(param[0]);
-            if (param.length <= 1) {
-                a2 = "";
-            } else {
-                a2 = String(param[1]);
-            }
-            num = ConvZenHan.toZenkaku(a1, a2);
-            return num;
-        });
-        add_one_func_tbl_B("txtbchk", 8, [0], function (param, vars, can, ctx) {
+        add_one_func_tbl("txtbchk", 8, [0], function (param, vars, can, ctx) {
             var num;
             var a1, a2, a3, a4;
             var x1, y1, x2, y2, x3, y3, x4, y4;
@@ -2177,7 +2156,7 @@ var Plugin0001;
             if (!(x2 <= max_str_size && y2 <= max_str_size)) {
                 throw new Error("処理する文字数が不正です。" + max_str_size + "以下である必要があります。");
             }
-            if (a4.length == 0) { return 0; }
+            if (a4.length == 0) { num = 0; return num; }
 
             // ***** 取得処理 *****
             if (x1 > x2) { x3 = x2; x4 = x1; } else { x3 = x1; x4 = x2; }
@@ -2185,7 +2164,7 @@ var Plugin0001;
             num = txtbchksub(vars, a1, a2, a3, x3, y3, x4, y4, a4);
             return num;
         });
-        add_one_func_tbl_B("txtbchk2", 10, [0], function (param, vars, can, ctx) {
+        add_one_func_tbl("txtbchk2", 10, [0], function (param, vars, can, ctx) {
             var num;
             var a1, a2, a3, a4;
             var x1, y1, x2, y2, x3, y3, x4, y4;
@@ -2226,7 +2205,7 @@ var Plugin0001;
             if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
                 throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
             }
-            if (a4.length == 0) { return 0; }
+            if (a4.length == 0) { num = 0; return num; }
 
             // ***** アンカー処理(水平方向のみ) *****
             // st1 = vars[a1 + "[" + i + "]"];
@@ -2258,7 +2237,7 @@ var Plugin0001;
             num = txtbchksub(vars, a1, a2, a3, x3, y3, x4, y4, a4);
             return num;
         });
-        add_one_func_tbl_B("txtpget", 5, [0], function (param, vars, can, ctx) {
+        add_one_func_tbl("txtpget", 5, [0], function (param, vars, can, ctx) {
             var num;
             var a1, a2, a3;
             var x1, y1;
@@ -2285,7 +2264,7 @@ var Plugin0001;
             if (y1 >= a2 && y1 <= a3) {
 
                 // ***** 配列の存在チェック *****
-                if (!vars.checkVar(a1 + "[" + y1 + "]")) { return ""; }
+                if (!vars.checkVar(a1 + "[" + y1 + "]")) { num = ""; return num; }
 
                 // st1 = vars[a1 + "[" + y1 + "]"];
                 st1 = vars.getVarValue(a1 + "[" + y1 + "]");
