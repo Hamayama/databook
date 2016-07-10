@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2016-7-9 v4.01
+// 2016-7-10 v4.02
 
 
 // SPALM Web Interpreter
@@ -1725,7 +1725,7 @@ var Interpreter;
                 code_push("label", debugpos1, i);
                 // (マイナス値を許可(特別扱い))
                 // lbl_name = token[i++];
-                if (token[i] == "-" && isDigit(token[i + 1].charAt(0))) {
+                if (token[i] == "-" && isDigit(token[i + 1])) {
                     lbl_name = token[i] + token[i + 1];
                     i += 2;
                 } else {
@@ -1904,10 +1904,17 @@ var Interpreter;
             }
 
             // ***** spmode文のとき *****
+            // (コンパイル時にも互換モードの情報を使用するため、ここで取得する)
             if (tok == "spmode") {
                 j = i;
                 i++;
                 match2("(", i++);
+                // (マイナス値を許可(特別扱い))
+                if (token[i] == "-") { i++; }
+                if (!isDigit(token[i])) {
+                    debugpos2 = i + 1;
+                    throw new Error("spmodeの引数には数値以外を指定できません。");
+                }
                 if (token[i] == "0") {
                     sp_compati_mode = 0;
                 } else {
@@ -1916,6 +1923,7 @@ var Interpreter;
                 i++;
                 match2(")", i++);
                 i = j;
+                // (このまま下におりて、組み込み関数のコードを生成する)
                 // continue;
             }
 
@@ -1926,7 +1934,7 @@ var Interpreter;
                 i++;
                 match2(",", i++);
                 // (マイナス値を許可(特別扱い))
-                if (token[i] == "-" && isDigit(token[i + 1].charAt(0))) {
+                if (token[i] == "-" && isDigit(token[i + 1])) {
                     i += 2;
                 } else {
                     i++;
@@ -2524,7 +2532,7 @@ var Interpreter;
                 tri_flag = false;
                 continue;
             }
-            // ***** 3項演算子「?:;」のとき *****
+            // ***** 3項演算子「?:」のとき *****
             if (tok == "?" && priority < 10) {
                 j = i;
                 i++;
@@ -2537,6 +2545,7 @@ var Interpreter;
                 code_push("label", debugpos1, i);
                 code_push('"tri_zero\\' + j + '"', debugpos1, i);
                 i = c_expression(i, tok_end, 9); // 右結合
+                // (互換モードのときのみ末尾のセミコロン(;)が必要(過去との互換性維持のため))
                 if (sp_compati_mode == 1) {
                     match2(";", i++);
                 }
@@ -3131,7 +3140,7 @@ var Interpreter;
                     // ***** 値の取得 *****
                     // (マイナス値を許可(特別扱い))
                     // cst_value = token[i++];
-                    if (token[i] == "-" && isDigit(token[i + 1].charAt(0))) {
+                    if (token[i] == "-" && isDigit(token[i + 1])) {
                         cst_value = token[i] + token[i + 1];
                         i += 2;
                     } else {
