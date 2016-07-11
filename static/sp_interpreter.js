@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2016-7-11 v4.03
+// 2016-7-11 v4.04
 
 
 // SPALM Web Interpreter
@@ -165,7 +165,7 @@ function get_prog_id(list_st) {
             split_flag = true;
         }
         // ***** プログラムIDの取得 *****
-        if (split_flag == true) {
+        if (split_flag) {
             split_flag = false;
             if (prog_id[prog_id_count].length > 0) {
                 prog_id_count++;
@@ -227,7 +227,7 @@ function load_srcfile(fname, auto_run_flag) {
     // ***** 要素の存在チェック *****
     if (!document.getElementById("src_text1")) { Alm("load_srcfile:0004"); return ret; }
     // ***** ロード中にする *****
-    Interpreter.setloadstat(true);
+    Interpreter.setloadstat(1);
     // ***** テキストファイルの読み込み *****
     load_textfile(fname, function (src_st) {
         // ***** ロード中を解除(ロード完了) *****
@@ -243,7 +243,7 @@ function load_srcfile(fname, auto_run_flag) {
     }, function (err_st) {
         Alm2("load_srcfile:" + err_st + ":ソースファイル読み込みエラー");
         // ***** ロード中を解除 *****
-        Interpreter.setloadstat(false);
+        Interpreter.setloadstat(0);
     });
     // ***** 戻り値を返す *****
     ret = true;
@@ -332,7 +332,7 @@ function show_runstat() {
     if (!document.getElementById("src_text1")) { Alm("show_runstat:0005"); return ret; }
     if (!document.getElementById("dummy_button1")) { Alm("show_runstat:0006"); return ret; }
     // ***** プログラム実行状態の表示 *****
-    if (Interpreter.getloadstat() == true) {
+    if (Interpreter.getloadstat() == 1) {
         document.getElementById("runstat_show1").innerHTML = "ロード中";
     } else if (Interpreter.getloadstat() == 2) {
         document.getElementById("runstat_show1").innerHTML = "ロード完了";
@@ -344,7 +344,7 @@ function show_runstat() {
         }
     }
     // ***** ボタンの有効/無効設定 *****
-    if (Interpreter.getrunstat() || Interpreter.getloadstat() == true) {
+    if (Interpreter.getrunstat() || Interpreter.getloadstat() == 1) {
         document.getElementById("run_button1").disabled = true;
         document.getElementById("load_button1").disabled = true;
         document.getElementById("prog_sel1").disabled = true;
@@ -376,7 +376,7 @@ function load_button() {
     // ***** 実行中のチェック *****
     if (Interpreter.getrunstat()) { Alm2("load_button:-:プログラム実行中です。停止してからロードしてください。"); return ret; }
     // ***** ロード中のチェック *****
-    if (Interpreter.getloadstat()) { Alm2("load_button:-:プログラムロード中です。"); return ret; }
+    if (Interpreter.getloadstat() == 1) { Alm2("load_button:-:プログラムロード中です。"); return ret; }
     // ***** ソースファイルの読み込み *****
     prog_id = document.getElementById("prog_sel1").options[document.getElementById("prog_sel1").selectedIndex].value;
     if (!check_id(prog_id, 8)) { Alm("load_button:0003"); return ret; }
@@ -400,7 +400,7 @@ function run_button() {
     // ***** 実行中のチェック *****
     if (Interpreter.getrunstat()) { Alm2("run_button:-:すでにプログラム実行中です。"); return ret; }
     // ***** ロード中のチェック *****
-    if (Interpreter.getloadstat()) { Alm2("run_button:-:プログラムロード中です。"); return ret; }
+    if (Interpreter.getloadstat() == 1) { Alm2("run_button:-:プログラムロード中です。"); return ret; }
     // ***** ソースの取得 *****
     src_st = document.getElementById("src_text1").value;
     // ***** デバッグモードの設定 *****
@@ -431,24 +431,24 @@ function stop_button() {
 //   Interpreter.init()        初期化
 //
 //   Interpreter.run(src_st)   実行
-//     src_st  プログラムのソース
+//     src_st     プログラムのソース
 //
 //   Interpreter.stop()        停止
 //
 //   Interpreter.getrunstat()  実行状態取得
-//     戻り値  =true:実行中,=false:停止
+//     戻り値     =true:実行中,=false:停止
 //
 //   Interpreter.setrunstatcallback(cb_func)  実行状態通知
-//     cb_func コールバック関数(状態変化時に呼ばれる関数を指定する)
+//     cb_func    コールバック関数(状態変化時に呼ばれる関数を指定する)
 //
 //   Interpreter.setloadstat(load_stat)  ロード中状態設定
-//     load_stat  =true:ロード中,=false:非ロード中,=2:ロード完了
+//     load_stat  =0:非ロード中,=1:ロード中,=2:ロード完了
 //
 //   Interpreter.getloadstat()  ロード中状態取得
-//     戻り値  =true:ロード中,=false:非ロード中,=2:ロード完了
+//     戻り値     =0:非ロード中,=1:ロード中,=2:ロード完了
 //
 //   Interpreter.setdebug(dbg_mode)  デバッグ用
-//     dbg_mode  =0:通常モード,=1:デバッグモード
+//     dbg_mode   =0:通常モード,=1:デバッグモード
 //
 //   Interpreter.setcolor(can1_forecolor, can1_backcolor, can2_forecolor, can2_backcolor)  色設定
 //     can1_forecolor  Canvasの文字色を文字列で指定する("#ffffff" 等。""なら設定しない)
@@ -524,7 +524,7 @@ var Interpreter;
     var debugpc;                // エラーの場所
     var end_flag;               // 終了フラグ
     var running_flag = false;   // 実行中フラグ
-    var loading_flag = false;   // ロード中フラグ
+    var loading_mode = 0;       // ロード中モード(=0:非ロード中,=1:ロード中,=2:ロード完了)
     var debug_mode = 0;         // デバッグモード(=0:通常モード,=1:デバッグモード)
     var debugpos1;              // デバッグ位置1
     var debugpos2;              // デバッグ位置2
@@ -744,15 +744,15 @@ var Interpreter;
     // ***** ロード中状態設定 *****
     function setloadstat(load_stat) {
         if (load_stat == null) { Alm("Interpreter.setloadstat:0001"); return false; }
-        loading_flag = load_stat;
+        loading_mode = load_stat;
         runstatchanged();
-        if (loading_flag == 2) { loading_flag = false; }
+        if (loading_mode == 2) { loading_mode = 0; }
     }
     Interpreter.setloadstat = setloadstat;
 
     // ***** ロード中状態取得 *****
     function getloadstat() {
-        return loading_flag;
+        return loading_mode;
     }
     Interpreter.getloadstat = getloadstat;
 
@@ -1540,8 +1540,7 @@ var Interpreter;
                     }
                     var_name = stack.pop();
                     // ***** 関数の引数のポインタ対応 *****
-                    // if (var_name.substring(0, 2) == "p\\") {
-                    if (var_name.charCodeAt(1) == 0x5C && var_name.charCodeAt(0) == 0x70) {
+                    if (var_name.substring(0, 2) == "p\\") {
                         // (引数名から「p\」を削除)
                         var_name = var_name.substring(2);
                         // (文字列化)
@@ -2556,7 +2555,7 @@ var Interpreter;
             }
 
             // (3項演算子の処理後は、優先順位10の演算子しか処理しない(過去との互換性維持のため))
-            if (sp_compati_mode == 1 && tri_flag == true) {
+            if (sp_compati_mode == 1 && tri_flag) {
                 break;
             }
 
@@ -3957,7 +3956,7 @@ var Interpreter;
         // ***** 変数を削除する *****
         Vars.prototype.deleteVar = function (var_name) {
             var i;
-            var ret_array; // = []; (遅くなるので初期化しない)
+            var ret_array; // = [];
             var now_index;
             var now_vars;
             var glb_vars;
@@ -4011,7 +4010,7 @@ var Interpreter;
         };
         // ***** 変数の存在チェック *****
         Vars.prototype.checkVar = function (var_name) {
-            var ret_array; // = []; (遅くなるので初期化しない)
+            var ret_array; // = [];
             var now_index;
             var now_vars;
             var glb_vars;
@@ -4091,7 +4090,7 @@ var Interpreter;
         // ***** 変数の値を取得する *****
         Vars.prototype.getVarValue = function (var_name) {
             var i;
-            var ret_array; // = []; (遅くなるので初期化しない)
+            var ret_array; // = [];
             var now_index;
             var now_vars;
             var glb_vars;
@@ -4157,7 +4156,7 @@ var Interpreter;
         // ***** 変数の値を設定する *****
         Vars.prototype.setVarValue = function (var_name, var_value) {
             var i;
-            var ret_array; // = []; (遅くなるので初期化しない)
+            var ret_array; // = [];
             var now_index;
             var now_vars;
             var glb_vars;
@@ -4246,7 +4245,7 @@ var Interpreter;
         // ***** 配列変数の一括コピー *****
         Vars.prototype.copyArray = function (var_name, var_name2) {
             var i;
-            var ret_array; // = []; (遅くなるので初期化しない)
+            var ret_array; // = [];
             var now_index;
             var now_vars;
             var glb_vars;
@@ -4310,7 +4309,7 @@ var Interpreter;
         };
         // ***** 配列変数の一括削除 *****
         Vars.prototype.deleteArray = function (var_name) {
-            var ret_array; // = []; (遅くなるので初期化しない)
+            var ret_array; // = [];
             var now_index;
             var now_vars;
             var glb_vars;
@@ -5446,7 +5445,7 @@ var Interpreter;
             var a1;
 
             a1 = Math.trunc(param[0]);
-            if (key_down_stat[a1] == true) { num = 1; } else { num = 0; }
+            if (key_down_stat[a1]) { num = 1; } else { num = 0; }
             return num;
         });
         make_one_func_tbl("keypresscode", -1, [], function (param) {
@@ -5623,7 +5622,7 @@ var Interpreter;
             // if (imgvars.hasOwnProperty(a1)) {
             if (hasOwn.call(imgvars, a1)) {
                 if (imgvars[a1].hasOwnProperty("loaded")) {
-                    if (imgvars[a1].loaded == false) {
+                    if (!imgvars[a1].loaded) {
                         num = 1;
                     }
                 }
@@ -5773,9 +5772,9 @@ var Interpreter;
             var num;
 
             num = 0;
-            if (mouse_btn_stat[0] == true) { num = num | 1; }        // 左ボタン
-            if (mouse_btn_stat[1] == true) { num = num | (1 << 2); } // 中ボタン(シフト値1でないので注意)
-            if (mouse_btn_stat[2] == true) { num = num | (1 << 1); } // 右ボタン(シフト値2でないので注意)
+            if (mouse_btn_stat[0]) { num = num | 1; }        // 左ボタン
+            if (mouse_btn_stat[1]) { num = num | (1 << 2); } // 中ボタン(シフト値1でないので注意)
+            if (mouse_btn_stat[2]) { num = num | (1 << 1); } // 右ボタン(シフト値2でないので注意)
             return num;
         });
         make_one_func_tbl("msgdlg", 1, [], function (param) {

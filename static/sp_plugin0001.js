@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_plugin0001.js
-// 2016-7-9 v4.00
+// 2016-7-11 v4.04
 
 
 // A Plugin to add functions to SPALM Web Interpreter
@@ -811,7 +811,7 @@ var Plugin0001;
             for (mis_no in missile) {
                 if (missile.hasOwnProperty(mis_no)) {
                     mis = missile[mis_no];
-                    if (range_use == false || (mis.no >= min_no && mis.no <= max_no)) {
+                    if (!range_use || (mis.no >= min_no && mis.no <= max_no)) {
                         mis.useflag = Math.trunc(vars.getVarValue(mis.useflag_var_name));
                         if (mis.useflag == 0) {
                             num = mis.no;
@@ -872,7 +872,7 @@ var Plugin0001;
             for (mis_no in missile) {
                 if (missile.hasOwnProperty(mis_no)) {
                     mis = missile[mis_no];
-                    if (range_use == false || (mis.no >= min_no && mis.no <= max_no)) {
+                    if (!range_use || (mis.no >= min_no && mis.no <= max_no)) {
                         mis.useflag = Math.trunc(vars.getVarValue(mis.useflag_var_name));
                         if (mis.useflag != 0) {
                             mis.x100 =     Math.trunc(vars.getVarValue(mis.x100_var_name));
@@ -928,7 +928,7 @@ var Plugin0001;
             for (mis_no in missile) {
                 if (missile.hasOwnProperty(mis_no)) {
                     mis = missile[mis_no];
-                    if (range_use == false || (mis.no >= min_no && mis.no <= max_no)) {
+                    if (!range_use || (mis.no >= min_no && mis.no <= max_no)) {
                         mis.useflag = Math.trunc(vars.getVarValue(mis.useflag_var_name));
                         // (有効フラグが0以外で1000以下のときのみ表示)
                         // if (mis.useflag != 0) {
@@ -4148,7 +4148,7 @@ var MMLPlayer = (function () {
                 // ***** 発音長の計算 *****
                 nlength2 = nlength1 * qtime[ch] / 8;
                 // ***** スラーの処理 *****
-                if (tie[ch].flag == true && tie[ch].note != note && note > 0) {
+                if (tie[ch].flag && tie[ch].note != note && note > 0) {
                     // ***** 音符または休符を追加 *****
                     if (tie[ch].note > 0) {
                         // ***** 音符追加 *****
@@ -4175,7 +4175,7 @@ var MMLPlayer = (function () {
                     tie[ch].length = tie[ch].length + nlength1;
                 } else {
                     // ***** タイの処理 *****
-                    if (tie[ch].flag == true) {
+                    if (tie[ch].flag) {
                         // ***** 音符を確定する *****
                         note = tie[ch].note;
                         nlength1 = tie[ch].length + nlength1;
