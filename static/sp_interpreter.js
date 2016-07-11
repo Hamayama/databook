@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2016-7-10 v4.02
+// 2016-7-11 v4.03
 
 
 // SPALM Web Interpreter
@@ -6346,12 +6346,14 @@ var Interpreter;
             a1 = Math.trunc(param[0]);
             if (a1 == 0) {
                 sp_compati_mode = 0;
+                use_local_vars = true;
+                font_size = font_size_set[1];
             } else {
                 sp_compati_mode = 1;
-                font_size = font_size_set[0];
-                ctx.font = font_size + "px " + font_family;
                 use_local_vars = false;
+                font_size = font_size_set[0];
             }
+            ctx.font = font_size + "px " + font_family;
             return nothing;
         });
         make_one_func_tbl("tan", 1, [], function (param) {
