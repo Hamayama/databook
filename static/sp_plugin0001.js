@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_plugin0001.js
-// 2016-7-11 v4.04
+// 2016-8-19 v4.05
 
 
 // A Plugin to add functions to SPALM Web Interpreter
@@ -133,51 +133,6 @@ var Plugin0001;
             num = 1;
             return num;
         });
-        add_one_func_tbl("audmakestat", 1, [], function (param, vars, can, ctx) {
-            var num;
-            var a1;
-
-            a1 = Math.trunc(param[0]);
-
-            // ***** 音楽モードチェック *****
-            if (aud_mode == 1 || aud_mode == 2) {
-                if (!MMLPlayer.adctx) { num = 0; return num; }
-            } else {
-                num = 0; return num;
-            }
-
-            num = 0;
-            if (audplayer.hasOwnProperty(a1)) {
-                if (audplayer[a1].mmlplayer.compiled == 1) {
-                    num = 1;
-                }
-            } else {
-                throw new Error("音楽プレイヤー" + a1 + " は作成されていません。");
-            }
-            return num;
-        });
-        add_one_func_tbl("audstat", 1, [], function (param, vars, can, ctx) {
-            var num;
-            var a1;
-
-            a1 = Math.trunc(param[0]);
-
-            // ***** 音楽モードチェック *****
-            if (aud_mode == 1 || aud_mode == 2) {
-                if (!MMLPlayer.adctx) { num = -1; return num; }
-            } else {
-                num = -1; return num;
-            }
-
-            num = 0;
-            if (audplayer.hasOwnProperty(a1)) {
-                num = audplayer[a1].mmlplayer.getStatus();
-            } else {
-                throw new Error("音楽プレイヤー" + a1 + " は作成されていません。");
-            }
-            if (num == 1 || num == 2) { num = 1; } else { num = 0; }
-            return num;
-        });
         add_one_func_tbl("audmode", 1, [], function (param, vars, can, ctx) {
             var a1;
 
@@ -225,6 +180,29 @@ var Plugin0001;
             set_loop_nocount();
             return nothing;
         });
+        add_one_func_tbl("audmakestat", 1, [], function (param, vars, can, ctx) {
+            var num;
+            var a1;
+
+            a1 = Math.trunc(param[0]);
+
+            // ***** 音楽モードチェック *****
+            if (aud_mode == 1 || aud_mode == 2) {
+                if (!MMLPlayer.adctx) { num = 0; return num; }
+            } else {
+                num = 0; return num;
+            }
+
+            num = 0;
+            if (audplayer.hasOwnProperty(a1)) {
+                if (audplayer[a1].mmlplayer.compiled == 1) {
+                    num = 1;
+                }
+            } else {
+                throw new Error("音楽プレイヤー" + a1 + " は作成されていません。");
+            }
+            return num;
+        });
         add_one_func_tbl("audplay", 1, [], function (param, vars, can, ctx) {
             var a1, a2;
 
@@ -260,6 +238,28 @@ var Plugin0001;
                 throw new Error("音楽プレイヤー" + a1 + " は作成されていません。");
             }
             return nothing;
+        });
+        add_one_func_tbl("audstat", 1, [], function (param, vars, can, ctx) {
+            var num;
+            var a1;
+
+            a1 = Math.trunc(param[0]);
+
+            // ***** 音楽モードチェック *****
+            if (aud_mode == 1 || aud_mode == 2) {
+                if (!MMLPlayer.adctx) { num = -1; return num; }
+            } else {
+                num = -1; return num;
+            }
+
+            num = 0;
+            if (audplayer.hasOwnProperty(a1)) {
+                num = audplayer[a1].mmlplayer.getStatus();
+            } else {
+                throw new Error("音楽プレイヤー" + a1 + " は作成されていません。");
+            }
+            if (num == 1 || num == 2) { num = 1; } else { num = 0; }
+            return num;
         });
         add_one_func_tbl("audstop", 1, [], function (param, vars, can, ctx) {
             var a1;
@@ -792,36 +792,6 @@ var Plugin0001;
             }
             return num;
         });
-        add_one_func_tbl("misfreeno", 0, [], function (param, vars, can, ctx) {
-            var num;
-            var mis, mis_no;
-            var range_use, min_no, max_no;
-
-            if (param.length <= 1) {
-                range_use = false;
-                min_no = 0;
-                max_no = 0;
-            } else {
-                range_use = true;
-                min_no = Math.trunc(param[0]);
-                max_no = Math.trunc(param[1]);
-            }
-            // ***** ミサイル空番号を検索 *****
-            num = -1;
-            for (mis_no in missile) {
-                if (missile.hasOwnProperty(mis_no)) {
-                    mis = missile[mis_no];
-                    if (!range_use || (mis.no >= min_no && mis.no <= max_no)) {
-                        mis.useflag = Math.trunc(vars.getVarValue(mis.useflag_var_name));
-                        if (mis.useflag == 0) {
-                            num = mis.no;
-                            break;
-                        }
-                    }
-                }
-            }
-            return num;
-        });
         add_one_func_tbl("mismake", 13, [1, 2, 3, 4, 5, 6], function (param, vars, can, ctx) {
             var ch;
             var no, useflag, x100, y100, degree, speed100;
@@ -964,6 +934,36 @@ var Plugin0001;
                 }
             }
             return nothing;
+        });
+        add_one_func_tbl("misfreeno", 0, [], function (param, vars, can, ctx) {
+            var num;
+            var mis, mis_no;
+            var range_use, min_no, max_no;
+
+            if (param.length <= 1) {
+                range_use = false;
+                min_no = 0;
+                max_no = 0;
+            } else {
+                range_use = true;
+                min_no = Math.trunc(param[0]);
+                max_no = Math.trunc(param[1]);
+            }
+            // ***** ミサイル空番号を検索 *****
+            num = -1;
+            for (mis_no in missile) {
+                if (missile.hasOwnProperty(mis_no)) {
+                    mis = missile[mis_no];
+                    if (!range_use || (mis.no >= min_no && mis.no <= max_no)) {
+                        mis.useflag = Math.trunc(vars.getVarValue(mis.useflag_var_name));
+                        if (mis.useflag == 0) {
+                            num = mis.no;
+                            break;
+                        }
+                    }
+                }
+            }
+            return num;
         });
         add_one_func_tbl("poly", 4, [0, 1], function (param, vars, can, ctx) {
             var a1, a2, a3, a4;
@@ -1528,6 +1528,105 @@ var Plugin0001;
             }
             return nothing;
         });
+        add_one_func_tbl("txtreplace", 5, [0], function (param, vars, can, ctx) {
+            var a1, a2, a3, a4, a5;
+            var i;
+            var st1, st2;
+            var src_str;
+            var rep_str;
+            var reg_exp;
+
+            a1 = getvarname(param[0]);
+            a2 = Math.trunc(param[1]);
+            a3 = Math.trunc(param[2]);
+            a4 = String(param[3]);
+            a5 = String(param[4]);
+
+            // ***** NaN対策 *****
+            a2 = a2 | 0;
+            a3 = a3 | 0;
+
+            // ***** エラーチェック *****
+            // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
+            if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
+                throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
+            }
+            if (a4.length == 0) { return nothing; }
+            if (a5.length > a4.length){
+                a5 = a5.substring(0, a4.length);
+            } else if (a5.length < a4.length) {
+                for (i = a5.length; i < a4.length; i++) {
+                    a5 += " ";
+                }
+            }
+
+            // ***** 置換処理 *****
+            // src_str = a4.replace(/([.*+?^=!:${}()|[\]\/\\])/g, "\\$1"); // 特殊文字の無効化
+            src_str = a4.replace(/([.*+?\^=!:${}()|\[\]\/\\])/g, "\\$1"); // 特殊文字の無効化
+            rep_str = a5.replace(/\$/g, "$$$$"); // 特殊文字の無効化2
+            reg_exp = new RegExp(src_str, "g");
+            for (i = a2; i <= a3; i++) {
+                // st1 = vars[a1 + "[" + i + "]"];
+                st1 = vars.getVarValue(a1 + "[" + i + "]");
+                st1 = String(st1);
+                st2 = st1.replace(reg_exp, rep_str);
+                // vars[a1 + "[" + i + "]"] = st2;
+                vars.setVarValue(a1 + "[" + i + "]", st2);
+            }
+            return nothing;
+        });
+        add_one_func_tbl("txtreplace2", 5, [0], function (param, vars, can, ctx) {
+            var a1, a2, a3, a4, a5;
+            var i;
+            var st1, st2;
+            var src_str;
+            var rep_func;
+            var reg_exp;
+            var ch_tbl;
+
+            a1 = getvarname(param[0]);
+            a2 = Math.trunc(param[1]);
+            a3 = Math.trunc(param[2]);
+            a4 = String(param[3]);
+            a5 = String(param[4]);
+
+            // ***** NaN対策 *****
+            a2 = a2 | 0;
+            a3 = a3 | 0;
+
+            // ***** エラーチェック *****
+            // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
+            if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
+                throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
+            }
+            if (a4.length == 0) { return nothing; }
+            if (a5.length > a4.length){
+                a5 = a5.substring(0, a4.length);
+            } else if (a5.length < a4.length) {
+                for (i = a5.length; i < a4.length; i++) {
+                    a5 += " ";
+                }
+            }
+
+            // ***** 置換処理 *****
+            // src_str = a4.replace(/([.*+?^=!:${}()|[\]\/\\])/g, "\\$1"); // 特殊文字の無効化
+            src_str = a4.replace(/([.*+?\^=!:${}()|\[\]\/\\])/g, "\\$1"); // 特殊文字の無効化
+            rep_func = function (c) { return ch_tbl[c]; };
+            reg_exp = new RegExp("[" + src_str + "]", "g");
+            ch_tbl = {};
+            for (i = 0; i < a4.length; i++) {
+                ch_tbl[a4.charAt(i)] = a5.charAt(i);
+            }
+            for (i = a2; i <= a3; i++) {
+                // st1 = vars[a1 + "[" + i + "]"];
+                st1 = vars.getVarValue(a1 + "[" + i + "]");
+                st1 = String(st1);
+                st2 = st1.replace(reg_exp, rep_func);
+                // vars[a1 + "[" + i + "]"] = st2;
+                vars.setVarValue(a1 + "[" + i + "]", st2);
+            }
+            return nothing;
+        });
         add_one_func_tbl("txtpset", 6, [0], function (param, vars, can, ctx) {
             var a1, a2, a3, a4;
             var x1, y1;
@@ -2026,19 +2125,17 @@ var Plugin0001;
             }
             return nothing;
         });
-        add_one_func_tbl("txtreplace", 5, [0], function (param, vars, can, ctx) {
-            var a1, a2, a3, a4, a5;
-            var i;
-            var st1, st2;
-            var src_str;
-            var rep_str;
-            var reg_exp;
+        add_one_func_tbl("txtpget", 5, [0], function (param, vars, can, ctx) {
+            var num;
+            var a1, a2, a3;
+            var x1, y1;
+            var st1;
 
             a1 = getvarname(param[0]);
             a2 = Math.trunc(param[1]);
             a3 = Math.trunc(param[2]);
-            a4 = String(param[3]);
-            a5 = String(param[4]);
+            x1 = Math.trunc(param[3]);
+            y1 = Math.trunc(param[4]);
 
             // ***** NaN対策 *****
             a2 = a2 | 0;
@@ -2049,81 +2146,22 @@ var Plugin0001;
             if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
                 throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
             }
-            if (a4.length == 0) { return nothing; }
-            if (a5.length > a4.length){
-                a5 = a5.substring(0, a4.length);
-            } else if (a5.length < a4.length) {
-                for (i = a5.length; i < a4.length; i++) {
-                    a5 += " ";
+
+            // ***** 取得処理 *****
+            num = "";
+            if (y1 >= a2 && y1 <= a3) {
+
+                // ***** 配列の存在チェック *****
+                if (!vars.checkVar(a1 + "[" + y1 + "]")) { num = ""; return num; }
+
+                // st1 = vars[a1 + "[" + y1 + "]"];
+                st1 = vars.getVarValue(a1 + "[" + y1 + "]");
+                st1 = String(st1);
+                if (x1 >= 0 && x1 < st1.length) {
+                    num = st1.substring(x1, x1 + 1);
                 }
             }
-
-            // ***** 置換処理 *****
-            // src_str = a4.replace(/([.*+?^=!:${}()|[\]\/\\])/g, "\\$1"); // 特殊文字の無効化
-            src_str = a4.replace(/([.*+?\^=!:${}()|\[\]\/\\])/g, "\\$1"); // 特殊文字の無効化
-            rep_str = a5.replace(/\$/g, "$$$$"); // 特殊文字の無効化2
-            reg_exp = new RegExp(src_str, "g");
-            for (i = a2; i <= a3; i++) {
-                // st1 = vars[a1 + "[" + i + "]"];
-                st1 = vars.getVarValue(a1 + "[" + i + "]");
-                st1 = String(st1);
-                st2 = st1.replace(reg_exp, rep_str);
-                // vars[a1 + "[" + i + "]"] = st2;
-                vars.setVarValue(a1 + "[" + i + "]", st2);
-            }
-            return nothing;
-        });
-        add_one_func_tbl("txtreplace2", 5, [0], function (param, vars, can, ctx) {
-            var a1, a2, a3, a4, a5;
-            var i;
-            var st1, st2;
-            var src_str;
-            var rep_func;
-            var reg_exp;
-            var ch_tbl;
-
-            a1 = getvarname(param[0]);
-            a2 = Math.trunc(param[1]);
-            a3 = Math.trunc(param[2]);
-            a4 = String(param[3]);
-            a5 = String(param[4]);
-
-            // ***** NaN対策 *****
-            a2 = a2 | 0;
-            a3 = a3 | 0;
-
-            // ***** エラーチェック *****
-            // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
-            if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
-                throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
-            }
-            if (a4.length == 0) { return nothing; }
-            if (a5.length > a4.length){
-                a5 = a5.substring(0, a4.length);
-            } else if (a5.length < a4.length) {
-                for (i = a5.length; i < a4.length; i++) {
-                    a5 += " ";
-                }
-            }
-
-            // ***** 置換処理 *****
-            // src_str = a4.replace(/([.*+?^=!:${}()|[\]\/\\])/g, "\\$1"); // 特殊文字の無効化
-            src_str = a4.replace(/([.*+?\^=!:${}()|\[\]\/\\])/g, "\\$1"); // 特殊文字の無効化
-            rep_func = function (c) { return ch_tbl[c]; };
-            reg_exp = new RegExp("[" + src_str + "]", "g");
-            ch_tbl = {};
-            for (i = 0; i < a4.length; i++) {
-                ch_tbl[a4.charAt(i)] = a5.charAt(i);
-            }
-            for (i = a2; i <= a3; i++) {
-                // st1 = vars[a1 + "[" + i + "]"];
-                st1 = vars.getVarValue(a1 + "[" + i + "]");
-                st1 = String(st1);
-                st2 = st1.replace(reg_exp, rep_func);
-                // vars[a1 + "[" + i + "]"] = st2;
-                vars.setVarValue(a1 + "[" + i + "]", st2);
-            }
-            return nothing;
+            return num;
         });
         add_one_func_tbl("txtbchk", 8, [0], function (param, vars, can, ctx) {
             var num;
@@ -2235,44 +2273,6 @@ var Plugin0001;
 
             // ***** 取得処理 *****
             num = txtbchksub(vars, a1, a2, a3, x3, y3, x4, y4, a4);
-            return num;
-        });
-        add_one_func_tbl("txtpget", 5, [0], function (param, vars, can, ctx) {
-            var num;
-            var a1, a2, a3;
-            var x1, y1;
-            var st1;
-
-            a1 = getvarname(param[0]);
-            a2 = Math.trunc(param[1]);
-            a3 = Math.trunc(param[2]);
-            x1 = Math.trunc(param[3]);
-            y1 = Math.trunc(param[4]);
-
-            // ***** NaN対策 *****
-            a2 = a2 | 0;
-            a3 = a3 | 0;
-
-            // ***** エラーチェック *****
-            // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
-            if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
-                throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
-            }
-
-            // ***** 取得処理 *****
-            num = "";
-            if (y1 >= a2 && y1 <= a3) {
-
-                // ***** 配列の存在チェック *****
-                if (!vars.checkVar(a1 + "[" + y1 + "]")) { num = ""; return num; }
-
-                // st1 = vars[a1 + "[" + y1 + "]"];
-                st1 = vars.getVarValue(a1 + "[" + y1 + "]");
-                st1 = String(st1);
-                if (x1 >= 0 && x1 < st1.length) {
-                    num = st1.substring(x1, x1 + 1);
-                }
-            }
             return num;
         });
     }

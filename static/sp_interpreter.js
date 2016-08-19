@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2016-7-11 v4.04
+// 2016-8-19 v4.05
 
 
 // SPALM Web Interpreter
@@ -5440,18 +5440,18 @@ var Interpreter;
             keyinput_flag = false;
             return num;
         });
+        make_one_func_tbl("keypresscode", -1, [], function (param) {
+            var num;
+
+            num = key_press_code;
+            return num;
+        });
         make_one_func_tbl("keyscan", 1, [], function (param) {
             var num;
             var a1;
 
             a1 = Math.trunc(param[0]);
             if (key_down_stat[a1]) { num = 1; } else { num = 0; }
-            return num;
-        });
-        make_one_func_tbl("keypresscode", -1, [], function (param) {
-            var num;
-
-            num = key_press_code;
             return num;
         });
         make_one_func_tbl("line", 4, [], function (param) {
@@ -5650,40 +5650,6 @@ var Interpreter;
             }
             return num;
         });
-        make_one_func_tbl("max", 2, [], function (param) {
-            var num;
-            var a1, a2, a3;
-            var i;
-
-            a1 = (+param[0]);
-            a2 = (+param[1]);
-            num = Math.max(a1, a2);
-            for (i = 2; i < param.length; i++) {
-                a3 = (+param[i]);
-                num = Math.max(num, a3);
-            }
-            return num;
-        });
-        make_one_func_tbl("millisecond", -1, [], function (param) {
-            var num;
-
-            num = new Date().getMilliseconds();
-            return num;
-        });
-        make_one_func_tbl("min", 2, [], function (param) {
-            var num;
-            var a1, a2, a3;
-            var i;
-
-            a1 = (+param[0]);
-            a2 = (+param[1]);
-            num = Math.min(a1, a2);
-            for (i = 2; i < param.length; i++) {
-                a3 = (+param[i]);
-                num = Math.min(num, a3);
-            }
-            return num;
-        });
         make_one_func_tbl("makearray", 2, [0], function (param) {
             var a1, a2, a3, a4;
             var i;
@@ -5743,6 +5709,40 @@ var Interpreter;
             // ***** Canvasの各設定の初期化 *****
             init_canvas_setting(imgvars[a1].ctx);
             return nothing;
+        });
+        make_one_func_tbl("max", 2, [], function (param) {
+            var num;
+            var a1, a2, a3;
+            var i;
+
+            a1 = (+param[0]);
+            a2 = (+param[1]);
+            num = Math.max(a1, a2);
+            for (i = 2; i < param.length; i++) {
+                a3 = (+param[i]);
+                num = Math.max(num, a3);
+            }
+            return num;
+        });
+        make_one_func_tbl("millisecond", -1, [], function (param) {
+            var num;
+
+            num = new Date().getMilliseconds();
+            return num;
+        });
+        make_one_func_tbl("min", 2, [], function (param) {
+            var num;
+            var a1, a2, a3;
+            var i;
+
+            a1 = (+param[0]);
+            a2 = (+param[1]);
+            num = Math.min(a1, a2);
+            for (i = 2; i < param.length; i++) {
+                a3 = (+param[i]);
+                num = Math.min(num, a3);
+            }
+            return num;
         });
         make_one_func_tbl("minute", -1, [], function (param) {
             var num;
@@ -6167,100 +6167,6 @@ var Interpreter;
             }
             return num;
         });
-        make_one_func_tbl("split", 3, [0], function (param) {
-            var num;
-            var a1, a2, a3, a4;
-            var i, j, k;
-
-            a1 = getvarname(param[0]);
-            a2 = String(param[1]);
-            a3 = String(param[2]);
-            if (param.length <= 3) {
-                a4 = 0;
-            } else {
-                a4 = Math.trunc(param[3]);
-            }
-            if (a2.length == 0 || a3.length == 0) {
-                num = 0;
-            } else {
-                i = 0;
-                j = 0;
-                k = 0;
-                while (k >= 0) {
-                    if (a4 > 0 && i >= (a4 - 1)) { break; }
-                    k = a2.indexOf(a3, j);
-                    if (k >= 0) {
-                        // vars[a1 + "[" + i + "]"] = a2.substring(j, k);
-                        vars.setVarValue(a1 + "[" + i + "]", a2.substring(j, k));
-                        i++;
-                        j = k + 1;
-                    }
-                }
-                // vars[a1 + "[" + i + "]"] = a2.substring(j);
-                vars.setVarValue(a1 + "[" + i + "]", a2.substring(j));
-                num = i + 1;
-            }
-            return num;
-        });
-        make_one_func_tbl("spweb", -1, [], function (param) {
-            var num;
-
-            num = 1;
-            return num;
-        });
-        make_one_func_tbl("sqrt", 1, [], function (param) {
-            var num;
-            var a1;
-
-            a1 = (+param[0]);
-            num = Math.sqrt(a1);
-            return num;
-        });
-        make_one_func_tbl("sthigh", -1, [], function (param) {
-            var num;
-
-            num = font_size;
-            return num;
-        });
-        make_one_func_tbl("strat", 2, [], function (param) {
-            var num;
-            var a1, a2;
-
-            a1 = String(param[0]);
-            a2 = Math.trunc(param[1]);
-            num = a1.charAt(a2);
-            return num;
-        });
-        make_one_func_tbl("strlen", 1, [], function (param) {
-            var num;
-            var a1;
-
-            a1 = String(param[0]);
-            num = a1.length;
-            return num;
-        });
-        make_one_func_tbl("stwide", 1, [], function (param) {
-            var num;
-            var a1;
-
-            a1 = String(param[0]);
-            num = ctx.measureText(a1).width;
-            return num;
-        });
-        make_one_func_tbl("substr", 2, [], function (param) {
-            var num;
-            var a1, a2, a3;
-
-            a1 = String(param[0]);
-            a2 = Math.trunc(param[1]);
-            if (param.length <= 2) {
-                a3 = a1.length - a2;
-            } else {
-                a3 = Math.trunc(param[2]);
-            }
-            num = a1.substring(a2, a2 + a3);
-            return num;
-        });
         make_one_func_tbl("sleep", 1, [], function (param) {
             var a1;
 
@@ -6339,6 +6245,41 @@ var Interpreter;
             disp_softkey();
             return nothing;
         });
+        make_one_func_tbl("split", 3, [0], function (param) {
+            var num;
+            var a1, a2, a3, a4;
+            var i, j, k;
+
+            a1 = getvarname(param[0]);
+            a2 = String(param[1]);
+            a3 = String(param[2]);
+            if (param.length <= 3) {
+                a4 = 0;
+            } else {
+                a4 = Math.trunc(param[3]);
+            }
+            if (a2.length == 0 || a3.length == 0) {
+                num = 0;
+            } else {
+                i = 0;
+                j = 0;
+                k = 0;
+                while (k >= 0) {
+                    if (a4 > 0 && i >= (a4 - 1)) { break; }
+                    k = a2.indexOf(a3, j);
+                    if (k >= 0) {
+                        // vars[a1 + "[" + i + "]"] = a2.substring(j, k);
+                        vars.setVarValue(a1 + "[" + i + "]", a2.substring(j, k));
+                        i++;
+                        j = k + 1;
+                    }
+                }
+                // vars[a1 + "[" + i + "]"] = a2.substring(j);
+                vars.setVarValue(a1 + "[" + i + "]", a2.substring(j));
+                num = i + 1;
+            }
+            return num;
+        });
         make_one_func_tbl("spmode", 1, [], function (param) {
             var a1;
 
@@ -6354,6 +6295,65 @@ var Interpreter;
             }
             ctx.font = font_size + "px " + font_family;
             return nothing;
+        });
+        make_one_func_tbl("spweb", -1, [], function (param) {
+            var num;
+
+            num = 1;
+            return num;
+        });
+        make_one_func_tbl("sqrt", 1, [], function (param) {
+            var num;
+            var a1;
+
+            a1 = (+param[0]);
+            num = Math.sqrt(a1);
+            return num;
+        });
+        make_one_func_tbl("sthigh", -1, [], function (param) {
+            var num;
+
+            num = font_size;
+            return num;
+        });
+        make_one_func_tbl("strat", 2, [], function (param) {
+            var num;
+            var a1, a2;
+
+            a1 = String(param[0]);
+            a2 = Math.trunc(param[1]);
+            num = a1.charAt(a2);
+            return num;
+        });
+        make_one_func_tbl("strlen", 1, [], function (param) {
+            var num;
+            var a1;
+
+            a1 = String(param[0]);
+            num = a1.length;
+            return num;
+        });
+        make_one_func_tbl("stwide", 1, [], function (param) {
+            var num;
+            var a1;
+
+            a1 = String(param[0]);
+            num = ctx.measureText(a1).width;
+            return num;
+        });
+        make_one_func_tbl("substr", 2, [], function (param) {
+            var num;
+            var a1, a2, a3;
+
+            a1 = String(param[0]);
+            a2 = Math.trunc(param[1]);
+            if (param.length <= 2) {
+                a3 = a1.length - a2;
+            } else {
+                a3 = Math.trunc(param[2]);
+            }
+            num = a1.substring(a2, a2 + a3);
+            return num;
         });
         make_one_func_tbl("tan", 1, [], function (param) {
             var num;
@@ -6436,7 +6436,7 @@ var Interpreter;
             var a1;
 
             a1 = String(param[0]);
-            num = a1.replace(/^\s+|\s+$/g,"");
+            num = a1.replace(/^\s+|\s+$/g, "");
             return num;
         });
         make_one_func_tbl("unlock", 0, [], function (param) {
