@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2016-8-19 v4.05
+// 2016-8-21 v4.06
 
 
 // SPALM Web Interpreter
@@ -52,7 +52,7 @@ function BrowserType() {
 }
 
 // ***** 初期化 *****
-function init_func() {
+function init_func(load_skip_flag) {
     var list_id;
 
     // ***** FlashCanvas用 *****
@@ -65,14 +65,16 @@ function init_func() {
     Interpreter.init();
     Interpreter.setrunstatcallback(show_runstat);
     // ***** プログラムリストの読み込み *****
-    list_id = get_one_url_para("list");
-    if (list_id == "") {
-        load_listfile("list0001.txt", false);
-    } else {
-        if (check_id(list_id, 8)) {
-            load_listfile("list" + list_id + ".txt", true);
+    if (!load_skip_flag) {
+        list_id = get_one_url_para("list");
+        if (list_id == "") {
+            load_listfile("list0001.txt", false);
         } else {
-            Alm2("init_func:-:リストファイル指定エラー");
+            if (check_id(list_id, 8)) {
+                load_listfile("list" + list_id + ".txt", true);
+            } else {
+                Alm2("init_func:-:リストファイル指定エラー");
+            }
         }
     }
     // ***** デバッグモードの初期選択 *****
