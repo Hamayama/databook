@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_plugin0001.js
-// 2016-8-19 v4.05
+// 2016-11-16 v4.07
 
 
 // A Plugin to add functions to SPALM Web Interpreter
@@ -1975,7 +1975,7 @@ var Plugin0001;
             var y_min, y_max;
             var e1 = {};
             var edge = [];  // 辺情報
-            var edge_sort = function (a,b) { return (a.x - b.x); }; // ソート用(比較関数)
+            var edge_sort = function (a, b) { return (a.x - b.x); }; // ソート用(比較関数)
             var edge_num;   // 辺の数
             var wn;         // 巻き数
             var line_start; // 線分開始フラグ
@@ -2275,6 +2275,118 @@ var Plugin0001;
             num = txtbchksub(vars, a1, a2, a3, x3, y3, x4, y4, a4);
             return num;
         });
+        add_one_func_tbl("txtbchk2pt", 10, [0], function (param, vars, can, ctx) {
+            var num;
+            var a1, a2, a3, a4;
+            var x1, y1, x2, y2, x3, y3, x4, y4;
+            var chw, chh;
+            var offx, offy;
+            var anc;
+            var i;
+            var st1;
+            var hit_points = [];
+            var sortmode;
+            // var sort0 = function (a, b) { // ソート用(昇順でY座標優先)
+            //     if (a[1] == b[1]) { return (a[0] - b[0]); }
+            //     return (a[1] - b[1]);
+            // }
+            var sort1 = function (a, b) { // ソート用(昇順でX座標優先)
+                if (a[0] == b[0]) { return (a[1] - b[1]); }
+                return (a[0] - b[0]);
+            }
+            var sort2 = function (a, b) { // ソート用(降順でY座標優先)
+                if (b[1] == a[1]) { return (b[0] - a[0]); }
+                return (b[1] - a[1]);
+            }
+            var sort3 = function (a, b) { // ソート用(降順でX座標優先)
+                if (b[0] == a[0]) { return (b[1] - a[1]); }
+                return (b[0] - a[0]);
+            }
+
+            a1 = getvarname(param[0]);
+            a2 = Math.trunc(param[1]);
+            a3 = Math.trunc(param[2]);
+            x1 = Math.trunc(param[3]);
+            y1 = Math.trunc(param[4]);
+            x2 = Math.trunc(param[5]);
+            y2 = Math.trunc(param[6]);
+            a4 = String(param[7]);
+            chw = Math.trunc(param[8]);
+            chh = Math.trunc(param[9]);
+            if (param.length <= 11) {
+                offx = 0;
+                offy = 0;
+            } else {
+                offx = Math.trunc(param[10]);
+                offy = Math.trunc(param[11]);
+            }
+            if (param.length <= 12) {
+                anc = 0;
+            } else {
+                anc = Math.trunc(param[12]);
+            }
+            if (param.length <= 13) {
+                sortmode = 0;
+            } else {
+                sortmode = Math.trunc(param[13]);
+            }
+
+            // ***** NaN対策 *****
+            a2 = a2 | 0;
+            a3 = a3 | 0;
+
+            // ***** エラーチェック *****
+            // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
+            if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
+                throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
+            }
+            if (a4.length == 0) { num = 0; return num; }
+
+            // ***** アンカー処理(水平方向のみ) *****
+            // st1 = vars[a1 + "[" + i + "]"];
+            st1 = vars.getVarValue(a1 + "[" + a2 + "]");
+            st1 = String(st1);
+            // if (anc & 4)   { }                               // 左
+            if (anc & 8)      { offx -= chw * st1.length; }     // 右
+            else if (anc & 1) { offx -= chw * st1.length / 2; } // 中央
+
+            // ***** 座標変換 *****
+            if (x1 > x2) { x3 = x2; x4 = x1; } else { x3 = x1; x4 = x2; }
+            if (y1 > y2) { y3 = y2; y4 = y1; } else { y3 = y1; y4 = y2; }
+            x3 = Math.floor((x3 - offx) / chw);
+            y3 = Math.floor((y3 - offy) / chh);
+            x4 = Math.ceil((x4 - offx) / chw) - 1;
+            y4 = Math.ceil((y4 - offy) / chh) - 1;
+
+            // ***** エラーチェック *****
+            // if (x3 > max_str_size || y3 > max_str_size) {
+            if (!(x3 <= max_str_size && y3 <= max_str_size)) {
+                throw new Error("処理する文字数が不正です。" + max_str_size + "以下である必要があります。");
+            }
+            // if (x4 > max_str_size || y4 > max_str_size) {
+            if (!(x4 <= max_str_size && y4 <= max_str_size)) {
+                throw new Error("処理する文字数が不正です。" + max_str_size + "以下である必要があります。");
+            }
+
+            // ***** 取得処理 *****
+            hit_points = txtbchksub2(vars, a1, a2, a3, x3, y3, x4, y4, a4);
+
+            // ***** 座標でソート *****
+            switch (sortmode) {
+                // case 0: hit_points.sort(sort0); break;
+                case 1: hit_points.sort(sort1); break;
+                case 2: hit_points.sort(sort2); break;
+                case 3: hit_points.sort(sort3); break;
+            }
+
+            // ***** 戻り値の設定 *****
+            num = "";
+            for (i = 0; i < hit_points.length; i++) {
+                if (i > 0) { num += ","; }
+                num += hit_points[i].join(",");
+            }
+            return num;
+        });
     }
 
     // ****************************************
@@ -2282,6 +2394,7 @@ var Plugin0001;
     // ****************************************
 
     // ***** 文字列配列の四角領域の文字チェックサブ *****
+    // (ヒットした場合に 1 を返す。そうでなければ 0 を返す)
     function txtbchksub(vars, var_name, min_y, max_y, x1, y1, x2, y2, st1) {
         var num;
         var i, j;
@@ -2310,6 +2423,34 @@ var Plugin0001;
             if (num == 1) { break; }
         }
         return num;
+    }
+    // ***** 文字列配列の四角領域の文字チェックサブ2 *****
+    // (ヒットした座標と文字を配列にして返す)
+    function txtbchksub2(vars, var_name, min_y, max_y, x1, y1, x2, y2, st1) {
+        var i, j;
+        var ch;
+        var st2;
+        var hit_points = [];
+
+        for (i = y1; i <= y2; i++) {
+            if (!(i >= min_y && i <= max_y)) { continue; }
+
+            // ***** 配列の存在チェック *****
+            if (!vars.checkVar(var_name + "[" + i + "]")) { continue; }
+
+            // st2 = vars[a1 + "[" + i + "]"];
+            st2 = vars.getVarValue(var_name + "[" + i + "]");
+            st2 = String(st2);
+            for (j = x1; j <= x2; j++) {
+                if (j >= 0 && j < st2.length) {
+                    ch = st2.charAt(j);
+                    if (st1.indexOf(ch) >= 0) {
+                        hit_points.push([j, i, ch]);
+                    }
+                }
+            }
+        }
+        return hit_points;
     }
     // ***** 文字列配列のライン表示処理サブ *****
     function txtlinesub(vars, var_name, min_y, max_y, x1, y1, x2, y2, ch) {
@@ -3791,7 +3932,7 @@ var MMLPlayer = (function () {
         var i;
         var addata_len;  // 必要な音声バッファのサイズ
         var chdata_len;  // チャンネル1個の音声バッファのサイズ
-        var tempo_sort = function (a,b) { return (a.pos - b.pos); }; // ソート用(比較関数)
+        var tempo_sort = function (a, b) { return (a.pos - b.pos); }; // ソート用(比較関数)
 
         // ***** 音声コンテキストの存在チェック *****
         if (!MMLPlayer.adctx) { return false; }
@@ -4031,7 +4172,7 @@ var MMLPlayer = (function () {
         var loop = [];      // ループ状態(配列)
         // ***** テンポ変更情報 *****
         var tempo_obj = {}; // テンポ変更情報格納用(連想配列オブジェクト)
-        // var tempo_sort = function (a,b) { return (a.pos - b.pos); }; // ソート用(比較関数)
+        // var tempo_sort = function (a, b) { return (a.pos - b.pos); }; // ソート用(比較関数)
         // ***** その他の変数 *****
         var i, j;
         var val;
