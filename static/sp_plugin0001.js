@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_plugin0001.js
-// 2016-11-16 v4.07
+// 2016-11-21 v4.08
 
 
 // A Plugin to add functions to SPALM Web Interpreter
@@ -2294,10 +2294,10 @@ var Plugin0001;
                 if (a[0] == b[0]) { return (a[1] - b[1]); }
                 return (a[0] - b[0]);
             }
-            var sort2 = function (a, b) { // ソート用(降順でY座標優先)
-                if (b[1] == a[1]) { return (b[0] - a[0]); }
-                return (b[1] - a[1]);
-            }
+            // var sort2 = function (a, b) { // ソート用(降順でY座標優先)
+            //     if (b[1] == a[1]) { return (b[0] - a[0]); }
+            //     return (b[1] - a[1]);
+            // }
             var sort3 = function (a, b) { // ソート用(降順でX座標優先)
                 if (b[0] == a[0]) { return (b[1] - a[1]); }
                 return (b[0] - a[0]);
@@ -2373,10 +2373,10 @@ var Plugin0001;
 
             // ***** 座標でソート *****
             switch (sortmode) {
-                // case 0: hit_points.sort(sort0); break;
-                case 1: hit_points.sort(sort1); break;
-                case 2: hit_points.sort(sort2); break;
-                case 3: hit_points.sort(sort3); break;
+                // case 0: hit_points.sort(sort0); break; // (昇順でY座標優先)
+                case 1: hit_points.sort(sort1); break;    // (昇順でX座標優先)
+                case 2: hit_points.reverse(); break;      // (降順でY座標優先)
+                case 3: hit_points.sort(sort3); break;    // (降順でX座標優先)
             }
 
             // ***** 戻り値の設定 *****
