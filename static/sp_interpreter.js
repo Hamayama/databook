@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2017-3-1 v4.09
+// 2017-3-1 v4.10
 
 
 // SPALM Web Interpreter
@@ -985,11 +985,13 @@ var Interpreter;
             execcode();
             // if (prof_obj) { prof_obj.stop("execcode"); }
             // ***** スリープ *****
-            if (sleep_flag && !end_flag) {
+            if (sleep_flag) {
                 sleep_flag = false;
                 // ***** 継続実行(再帰的に実行) *****
-                sleep_id = setTimeout(run_continuously, sleep_time);
-                return ret;
+                if (!end_flag) {
+                    sleep_id = setTimeout(run_continuously, sleep_time);
+                    return ret;
+                }
             }
         } catch (ex) {
             // ***** エラー終了 *****
@@ -1580,8 +1582,8 @@ var Interpreter;
             }
             // ***** 各種フラグのチェックと処理時間の測定 *****
             if (loop_nocount_flag || loop_nocount_flag2) {
-                // (ループ時間ノーカウントフラグがONのときは、処理時間の測定をリセットする)
-                if (loop_nocount_flag && !loop_nocount_flag2) {
+                // (ループ時間ノーカウントフラグ2がOFFのときは、処理時間の測定をリセットする)
+                if (!loop_nocount_flag2) {
                     loop_nocount_flag = false;
                     // loop_time_start = new Date().getTime();
                     loop_time_start = Date.now();
@@ -4676,10 +4678,12 @@ var Interpreter;
 
             a1 = Math.trunc(param[0]);
             if (a1 == 0) {
-                loop_nocount_flag2 = false;
-                // (ループ時間ノーカウントフラグをONにして、処理時間の測定をリセットする)
                 loop_nocount_flag = true;
+                // (ループ時間ノーカウントフラグ2をOFFにして、処理時間の測定をリセットする)
+                loop_nocount_flag2 = false;
             } else {
+                loop_nocount_flag = true;
+                // (ループ時間ノーカウントフラグ2をONにして、ノーカウントの状態を延長する)
                 loop_nocount_flag2 = true;
             }
             return nothing;
