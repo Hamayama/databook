@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2016-11-21 v4.08
+// 2017-3-1 v4.09
 
 
 // SPALM Web Interpreter
@@ -538,7 +538,7 @@ var Interpreter;
     var loop_time_start;        // ループ開始時間(msec)
     var loop_time_count;        // ループ経過時間(msec)
     var loop_nocount_flag;      // ループ時間ノーカウントフラグ
-    var loop_nocount_mode;      // ループ時間ノーカウントモード
+    var loop_nocount_flag2;     // ループ時間ノーカウントフラグ2(dbgloopset用)
     var input_flag;             // キー入力待ちフラグ1(携帯互換用)
     var keyinput_flag;          // キー入力待ちフラグ2(PC用)
     var funccall_stack = [];    // 関数呼び出し情報保存用(配列)
@@ -556,7 +556,7 @@ var Interpreter;
     var mousey;                 // マウスY座標(px)
     var mouse_btn_stat = {};    // マウスボタン状態(ボタンごと)(連想配列オブジェクト)
 
-    var sp_compati_mode;        // 互換モード(=0:通常モード,=1:互換モード)
+    var sp_compati_flag;        // 互換モードフラグ
     var use_local_vars;         // ローカル変数使用有無
     var save_data = {};         // セーブデータ(連想配列オブジェクト)(仮)
     var prof_obj = {};          // プロファイラ実行用(Profilerクラスのインスタンス)
@@ -817,8 +817,8 @@ var Interpreter;
 
         // ***** 戻り値の初期化 *****
         ret = false;
-        // ***** 互換モードの初期化 *****
-        sp_compati_mode = 0;
+        // ***** 互換モードフラグの初期化 *****
+        sp_compati_flag = false;
         // ***** Canvasのコンテキストを取得 *****
         ctx1 = can1.getContext("2d");
         ctx2 = can2.getContext("2d");
@@ -935,7 +935,7 @@ var Interpreter;
         sleep_flag = false;
         sleep_data = {};
         loop_nocount_flag = false;
-        loop_nocount_mode = false;
+        loop_nocount_flag2 = false;
         input_flag = false;
         keyinput_flag = false;
         funccall_stack = [];
@@ -949,7 +949,7 @@ var Interpreter;
         mousex = -10000;
         mousey = -10000;
         mouse_btn_stat = {};
-        // sp_compati_mode = 0;
+        // sp_compati_flag = false;
         use_local_vars = true;
         save_data = {};
         prof_obj = null;
@@ -1159,7 +1159,7 @@ var Interpreter;
                 case 16: // loaddiv
                     num = stack.pop();
                     var_name = stack.pop();
-                    if (sp_compati_mode == 1) {
+                    if (sp_compati_flag) {
                         num = Math.trunc(vars.getVarValue(var_name) / num);
                     } else {
                         num = vars.getVarValue(var_name) / num;
@@ -1215,7 +1215,7 @@ var Interpreter;
                 case 24: // div
                     num2 = stack.pop();
                     num = stack.pop();
-                    if (sp_compati_mode == 1) {
+                    if (sp_compati_flag) {
                         num = Math.trunc(num / num2);
                     } else {
                         num = num / num2;
@@ -1579,9 +1579,9 @@ var Interpreter;
                     // break;
             }
             // ***** 各種フラグのチェックと処理時間の測定 *****
-            if (loop_nocount_flag || loop_nocount_mode) {
+            if (loop_nocount_flag || loop_nocount_flag2) {
                 // (ループ時間ノーカウントフラグがONのときは、処理時間の測定をリセットする)
-                if (loop_nocount_flag && !loop_nocount_mode) {
+                if (loop_nocount_flag && !loop_nocount_flag2) {
                     loop_nocount_flag = false;
                     // loop_time_start = new Date().getTime();
                     loop_time_start = Date.now();
@@ -1793,7 +1793,7 @@ var Interpreter;
                     func_tbl.hasOwnProperty(func_name) ||
                     addfunc_tbl.hasOwnProperty(func_name)) {
                     // (一部の関数定義エラーを発生させない(過去との互換性維持のため))
-                    if (!(sp_compati_mode == 1 && func_name == "int")) {
+                    if (!(sp_compati_flag && func_name == "int")) {
                         debugpos2 = i;
                         throw new Error("名前 '" + func_name + "' は予約されています。関数の定義に失敗しました。");
                     }
@@ -1877,7 +1877,7 @@ var Interpreter;
                 continue;
             }
 
-            // ***** global/local/var文のとき *****
+            // ***** global/glb/local/loc文のとき *****
             // (loc a,b,c のように、複数の変数をカンマ区切りで一括宣言可能とする)
             if (tok == "global" || tok == "glb" || tok == "local" || tok == "loc") {
                 i++;
@@ -1917,9 +1917,9 @@ var Interpreter;
                     throw new Error("spmodeの引数には数値以外を指定できません。");
                 }
                 if (token[i] == "0") {
-                    sp_compati_mode = 0;
+                    sp_compati_flag = false;
                 } else {
-                    sp_compati_mode = 1;
+                    sp_compati_flag = true;
                 }
                 i++;
                 match2(")", i++);
@@ -2547,7 +2547,7 @@ var Interpreter;
                 code_push('"tri_zero\\' + j + '"', debugpos1, i);
                 i = c_expression(i, tok_end, 9); // 右結合
                 // (互換モードのときのみ末尾のセミコロン(;)が必要(過去との互換性維持のため))
-                if (sp_compati_mode == 1) {
+                if (sp_compati_flag) {
                     match2(";", i++);
                 }
                 code_push("label", debugpos1, i);
@@ -2557,7 +2557,7 @@ var Interpreter;
             }
 
             // (3項演算子の処理後は、優先順位10の演算子しか処理しない(過去との互換性維持のため))
-            if (sp_compati_mode == 1 && tri_flag) {
+            if (sp_compati_flag && tri_flag) {
                 break;
             }
 
@@ -2966,7 +2966,7 @@ var Interpreter;
         }
         // ***** 構文エラー *****
         // (一部の構文エラーを発生させない(過去との互換性維持のため))
-        if (sp_compati_mode == 1 && tok == ")") {
+        if (sp_compati_flag && tok == ")") {
             i++;
             code_push("store0", debugpos1, i);
             return i;
@@ -3255,23 +3255,6 @@ var Interpreter;
                         line_no++;
                         if (ch == "\r" && ch2 == "\n") { i++; }
                         break;
-                    }
-                }
-                continue;
-            }
-            // ***** コメント「/* */」のとき *****
-            if (ch == "/" && ch2 == "*") {
-                i++;
-                while (i < src_len) {
-                    // ***** 1文字取り出す *****
-                    ch = src.charAt(i++);
-                    if (i < src_len) { ch2 = src.charAt(i); } else { ch2 = ""; }
-                    // ***** デリミタのとき *****
-                    if (ch == "*" && ch2 == "/") { i++; break; }
-                    // ***** 改行のとき *****
-                    if (ch == "\r" || ch == "\n") {
-                        line_no++;
-                        if (ch == "\r" && ch2 == "\n") { i++; }
                     }
                 }
                 continue;
@@ -3631,7 +3614,7 @@ var Interpreter;
     function init_canvas_setting(ctx) {
         // ***** フォント設定 *****
         // (フォントサイズだけはリセットしない(過去との互換性維持のため))
-        // if (sp_compati_mode == 1) {
+        // if (sp_compati_flag) {
         //     font_size = font_size_set[0];
         // } else {
         //     font_size = font_size_set[1];
@@ -3859,12 +3842,13 @@ var Interpreter;
             this.array_cache[0] = {}; // グローバル配列変数名キャッシュ用(連想配列オブジェクト)
         }
 
-        // ***** 定数 *****
+        // ***** Object.keysの使用可能チェック *****
         // (Object.keysと配列操作のsome,filter,forEachがあるときは、そちらを利用する)
+        var keysAvailable;
         if (Object.keys && Array.prototype.some && Array.prototype.filter && Array.prototype.forEach) {
-            Vars.KeysAvailable = true;
+            keysAvailable = true;
         } else {
-            Vars.KeysAvailable = false;
+            keysAvailable = false;
         }
 
         // ***** グローバル変数を取得する(デバッグ用) *****
@@ -4063,7 +4047,7 @@ var Interpreter;
             }
 
             // ***** 配列変数の存在チェック *****
-            if (Vars.KeysAvailable) {
+            if (keysAvailable) {
                 if (Object.keys(now_vars).some(function (v) {
                     return (v.substring(0, i) == array_name);
                 })) {
@@ -4229,7 +4213,7 @@ var Interpreter;
 
             // ***** 配列変数の一括操作 *****
             // (見つかった配列変数のそれぞれについて関数funcを適用する)
-            if (Vars.KeysAvailable) {
+            if (keysAvailable) {
                 Object.keys(now_vars).filter(function (v) {
                     return (v.substring(0, var_name_len) == var_name);
                 }).forEach(func);
@@ -4668,7 +4652,7 @@ var Interpreter;
             var a1;
 
             a1 = (+param[0]);
-            if (sp_compati_mode == 1) {
+            if (sp_compati_flag) {
                 num = Math.trunc(Math.cos(a1 * Math.PI / 180) * 100);
             } else {
                 num = Math.cos(a1 * Math.PI / 180);
@@ -4692,11 +4676,11 @@ var Interpreter;
 
             a1 = Math.trunc(param[0]);
             if (a1 == 0) {
-                loop_nocount_mode = false;
+                loop_nocount_flag2 = false;
                 // (ループ時間ノーカウントフラグをONにして、処理時間の測定をリセットする)
                 loop_nocount_flag = true;
             } else {
-                loop_nocount_mode = true;
+                loop_nocount_flag2 = true;
             }
             return nothing;
         });
@@ -6162,7 +6146,7 @@ var Interpreter;
             var a1;
 
             a1 = (+param[0]);
-            if (sp_compati_mode == 1) {
+            if (sp_compati_flag) {
                 num = Math.trunc(Math.sin(a1 * Math.PI / 180) * 100);
             } else {
                 num = Math.sin(a1 * Math.PI / 180);
@@ -6287,21 +6271,21 @@ var Interpreter;
 
             a1 = Math.trunc(param[0]);
             if (a1 == 0) {
-                sp_compati_mode = 0;
+                sp_compati_flag = false;
                 use_local_vars = true;
                 font_size = font_size_set[1];
             } else {
-                sp_compati_mode = 1;
+                sp_compati_flag = true;
                 use_local_vars = false;
                 font_size = font_size_set[0];
             }
             ctx.font = font_size + "px " + font_family;
             return nothing;
         });
-        make_one_func_tbl("spweb", -1, [], function (param) {
+        make_one_func_tbl("sptype", -1, [], function (param) {
             var num;
 
-            num = 1;
+            num = "spweb";
             return num;
         });
         make_one_func_tbl("sqrt", 1, [], function (param) {
@@ -6362,7 +6346,7 @@ var Interpreter;
             var a1;
 
             a1 = (+param[0]);
-            if (sp_compati_mode == 1) {
+            if (sp_compati_flag) {
                 num = Math.trunc(Math.tan(a1 * Math.PI / 180) * 100);
             } else {
                 num = Math.tan(a1 * Math.PI / 180);
