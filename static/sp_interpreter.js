@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2017-3-1 v4.10
+// 2017-3-2 v4.11
 
 
 // SPALM Web Interpreter
@@ -537,7 +537,7 @@ var Interpreter;
     var loop_time_max = 3000;   // 最大ループ時間(msec)(これ以上時間がかかったらエラーとする)
     var loop_time_start;        // ループ開始時間(msec)
     var loop_time_count;        // ループ経過時間(msec)
-    var loop_nocount_flag;      // ループ時間ノーカウントフラグ
+    var loop_nocount_flag1;     // ループ時間ノーカウントフラグ1(ダイアログや時間のかかる処理用)
     var loop_nocount_flag2;     // ループ時間ノーカウントフラグ2(dbgloopset用)
     var input_flag;             // キー入力待ちフラグ1(携帯互換用)
     var keyinput_flag;          // キー入力待ちフラグ2(PC用)
@@ -934,7 +934,7 @@ var Interpreter;
         running_flag = true; runstatchanged();
         sleep_flag = false;
         sleep_data = {};
-        loop_nocount_flag = false;
+        loop_nocount_flag1 = false;
         loop_nocount_flag2 = false;
         input_flag = false;
         keyinput_flag = false;
@@ -1581,10 +1581,10 @@ var Interpreter;
                     // break;
             }
             // ***** 各種フラグのチェックと処理時間の測定 *****
-            if (loop_nocount_flag || loop_nocount_flag2) {
+            if (loop_nocount_flag1) {
                 // (ループ時間ノーカウントフラグ2がOFFのときは、処理時間の測定をリセットする)
                 if (!loop_nocount_flag2) {
-                    loop_nocount_flag = false;
+                    loop_nocount_flag1 = false;
                     // loop_time_start = new Date().getTime();
                     loop_time_start = Date.now();
                 }
@@ -1716,7 +1716,7 @@ var Interpreter;
             debugpos1 = i;
             tok = token[i];
 
-            // ***** 「;」のとき *****
+            // ***** セミコロンのとき *****
             if (tok == ";") {
                 i++;
                 continue;
@@ -2563,112 +2563,97 @@ var Interpreter;
                 break;
             }
 
-            // ***** 「<<」のとき *****
+            // ***** 各種2項演算子のとき *****
             if (tok == "<<" && priority < 20) {
                 i++;
                 i = c_expression(i, tok_end, 20);
                 code_push("shl", debugpos1, i);
                 continue;
             }
-            // ***** 「<」のとき *****
             if (tok == "<" && priority < 20) {
                 i++;
                 i = c_expression(i, tok_end, 20);
                 code_push("cmplt", debugpos1, i);
                 continue;
             }
-            // ***** 「<=」のとき *****
             if (tok == "<=" && priority < 20) {
                 i++;
                 i = c_expression(i, tok_end, 20);
                 code_push("cmple", debugpos1, i);
                 continue;
             }
-            // ***** 「>>>」のとき *****
             if (tok == ">>>" && priority < 20) {
                 i++;
                 i = c_expression(i, tok_end, 20);
                 code_push("ushr", debugpos1, i);
                 continue;
             }
-            // ***** 「>>」のとき *****
             if (tok == ">>" && priority < 20) {
                 i++;
                 i = c_expression(i, tok_end, 20);
                 code_push("shr", debugpos1, i);
                 continue;
             }
-            // ***** 「>」のとき *****
             if (tok == ">" && priority < 20) {
                 i++;
                 i = c_expression(i, tok_end, 20);
                 code_push("cmpgt", debugpos1, i);
                 continue;
             }
-            // ***** 「>=」のとき *****
             if (tok == ">=" && priority < 20) {
                 i++;
                 i = c_expression(i, tok_end, 20);
                 code_push("cmpge", debugpos1, i);
                 continue;
             }
-            // ***** 「==」のとき *****
             if (tok == "==" && priority < 20) {
                 i++;
                 i = c_expression(i, tok_end, 20);
                 code_push("cmpeq", debugpos1, i);
                 continue;
             }
-            // ***** 「!=」のとき *****
             if (tok == "!=" && priority < 20) {
                 i++;
                 i = c_expression(i, tok_end, 20);
                 code_push("cmpne", debugpos1, i);
                 continue;
             }
-            // ***** 「+」のとき *****
             if (tok == "+" && priority < 30) {
                 i++;
                 i = c_expression(i, tok_end, 30);
                 code_push("add", debugpos1, i);
                 continue;
             }
-            // ***** 「.」のとき *****
             if (tok == "." && priority < 30) {
                 i++;
                 i = c_expression(i, tok_end, 30);
                 code_push("addstr", debugpos1, i);
                 continue;
             }
-            // ***** 「-」のとき *****
             if (tok == "-" && priority < 30) {
                 i++;
                 i = c_expression(i, tok_end, 30);
                 code_push("sub", debugpos1, i);
                 continue;
             }
-            // ***** 「*」のとき *****
             if (tok == "*" && priority < 40) {
                 i++;
                 i = c_expression(i, tok_end, 40);
                 code_push("mul", debugpos1, i);
                 continue;
             }
-            // ***** 「/」のとき *****
             if (tok == "/" && priority < 40) {
                 i++;
                 i = c_expression(i, tok_end, 40);
                 code_push("div", debugpos1, i);
                 continue;
             }
-            // ***** 「\」のとき *****
             if (tok == "\\" && priority < 40) {
                 i++;
                 i = c_expression(i, tok_end, 40);
                 code_push("divint", debugpos1, i);
                 continue;
             }
-            // ***** 「%」のとき *****
             if (tok == "%" && priority < 40) {
                 i++;
                 i = c_expression(i, tok_end, 40);
@@ -2716,35 +2701,32 @@ var Interpreter;
         i = tok_start;
         // debugpos1 = i;
         tok = token[i];
-        // ***** 「!」のとき *****
+        // ***** 各種単項演算子のとき *****
         if (tok == "!") {
             i++;
             i = c_factor(i, tok_end);
             code_push("lognot", debugpos1, i);
             return i;
         }
-        // ***** 「~」のとき *****
         if (tok == "~") {
             i++;
             i = c_factor(i, tok_end);
             code_push("not", debugpos1, i);
             return i;
         }
-        // ***** 「+」のとき *****
         if (tok == "+") {
             i++;
             i = c_factor(i, tok_end);
             code_push("positive", debugpos1, i);
             return i;
         }
-        // ***** 「-」のとき *****
         if (tok == "-") {
             i++;
             i = c_factor(i, tok_end);
             code_push("negative", debugpos1, i);
             return i;
         }
-        // ***** 「(」のとき *****
+        // ***** 括弧のとき *****
         if (tok == "(") {
             i++;
             i = c_expression2(i, tok_end);
@@ -2764,7 +2746,7 @@ var Interpreter;
             }
             return i;
         }
-        // ***** プレインクリメント(「++」「--」)のとき *****
+        // ***** プレインクリメント/デクリメントのとき *****
         if (tok == "++") {
             i++;
             i = c_getvarname(i, tok_end);
@@ -2900,7 +2882,7 @@ var Interpreter;
 
             // ***** トークン取り出し *****
             tok = token[i];
-            // ***** ポストインクリメント(「++」「--」)のとき *****
+            // ***** ポストインクリメント/デクリメントのとき *****
             if (tok == "++") {
                 i++;
                 code_push("postinc", debugpos1, i);
@@ -4678,11 +4660,11 @@ var Interpreter;
 
             a1 = Math.trunc(param[0]);
             if (a1 == 0) {
-                loop_nocount_flag = true;
+                loop_nocount_flag1 = true;
                 // (ループ時間ノーカウントフラグ2をOFFにして、処理時間の測定をリセットする)
                 loop_nocount_flag2 = false;
             } else {
-                loop_nocount_flag = true;
+                loop_nocount_flag1 = true;
                 // (ループ時間ノーカウントフラグ2をONにして、ノーカウントの状態を延長する)
                 loop_nocount_flag2 = true;
             }
@@ -5332,7 +5314,7 @@ var Interpreter;
             num = prompt(a1, a2) || ""; // nullのときは空文字列にする
             keyclear();
             mousebuttonclear();
-            loop_nocount_flag = true;
+            loop_nocount_flag1 = true;
             return num;
         });
         make_one_func_tbl("int", 1, [], function (param) {
@@ -5777,7 +5759,7 @@ var Interpreter;
             alert(a1);
             keyclear();
             mousebuttonclear();
-            loop_nocount_flag = true;
+            loop_nocount_flag1 = true;
             return nothing;
         });
         make_one_func_tbl("onlocal", 0, [], function (param) {
@@ -6469,7 +6451,7 @@ var Interpreter;
             if (confirm(a1)) { num = "YES"; } else { num = "NO"; }
             keyclear();
             mousebuttonclear();
-            loop_nocount_flag = true;
+            loop_nocount_flag1 = true;
             return num;
         });
         make_one_func_tbl("@", 1, [0], function (param) {
@@ -6545,7 +6527,7 @@ var Interpreter;
     Interpreter.get_imgvars = function () { return imgvars; };
     Interpreter.get_font_size = function () { return font_size; };
     Interpreter.set_color_val = function (v) { color_val = v; };
-    Interpreter.set_loop_nocount = function () { loop_nocount_flag = true; };
+    Interpreter.set_loop_nocount = function () { loop_nocount_flag1 = true; };
 
 
 })(Interpreter || (Interpreter = {}));
