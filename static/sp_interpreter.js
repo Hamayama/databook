@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2017-3-4 v4.12
+// 2017-3-5 v4.13
 
 
 // SPALM Web Interpreter
@@ -608,10 +608,9 @@ var Interpreter;
         negative:31,    and:32,         or:33,          xor:34,         not:35,
         lognot:36,      cmpeq:37,       cmpne:38,       cmplt:39,       cmple:40,
         cmpgt:41,       cmpge:42,       label:43,       "goto":44,      ifgoto:45,
-        ifnotgoto:46,   ifgotopop:47,   gotostack:48,   gosubstack:49,  "return":50,
+        ifnotgoto:46,   switchgoto:47,  gotostack:48,   gosubstack:49,  "return":50,
         func:51,        funcend:52,     call:53,        callwait:54,    calladdfunc:55,
-        calluser:56,    gotouser:57,    loadparam:58,   pop:59,         dup:60,
-        end:61 };
+        calluser:56,    gotouser:57,    loadparam:58,   pop:59,         end:60 };
 
     var reserved = {            // 予約名
         "label":1,      "goto":2,       "gosub":3,      "return":4,     "end":5,
@@ -1350,12 +1349,15 @@ var Interpreter;
                         pc = label[lbl_name];
                     }
                     break;
-                case 47: // ifgotopop (switch文専用)
+                case 47: // switchgoto
                     lbl_name = code[pc++];
+                    num2 = stack.pop();
                     num = stack.pop();
-                    if (num != 0) {
+                    if (num == num2) {
                         pc = label[lbl_name];
-                        stack.pop(); // 条件成立時にはdup元のスタック値を解放
+                    } else {
+                        // ***** 条件不成立時は式の値を残す *****
+                        stack.push(num);
                     }
                     break;
                 case 48: // gotostack
@@ -1576,12 +1578,7 @@ var Interpreter;
                 case 59: // pop
                     stack.pop();
                     break;
-                case 60: // dup
-                    num = stack.pop();
-                    stack.push(num);
-                    stack.push(num);
-                    break;
-                case 61: // end
+                case 60: // end
                     end_flag = true;
                     break;
                 default:
@@ -2064,15 +2061,13 @@ var Interpreter;
                 i = c_expression2(switch_exp, switch_stm - 3);
                 for (switch_case_no = 0; switch_case_no < switch_case_exp.length; switch_case_no++) {
                     if (switch_case_stm[switch_case_no] == switch_default_stm) { continue; }
-                    code_push("dup", debugpos1, i);
                     // (caseの式はカンマ区切りなしに変更)
                     // i = c_expression2(switch_case_exp[switch_case_no], switch_case_stm[switch_case_no] - 2);
                     i = c_expression(switch_case_exp[switch_case_no], switch_case_stm[switch_case_no] - 2);
-                    code_push("cmpeq", debugpos1, i);
-                    code_push("ifgotopop", debugpos1, i); // 条件成立時にはdup元のスタック値を解放
+                    code_push("switchgoto", debugpos1, i);
                     code_push('"switch_case_stm' + switch_case_no + '\\' + j + '"', debugpos1, i);
                 }
-                code_push("pop", debugpos1, i); // スタック値を解放
+                code_push("pop", debugpos1, i); // 式の値を捨てる
                 if (switch_default_stm >= 0) {
                     code_push("goto", debugpos1, i);
                     code_push('"switch_default_stm\\' + j + '"', debugpos1, i);
