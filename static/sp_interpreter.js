@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2017-3-2 v4.11
+// 2017-3-4 v4.12
 
 
 // SPALM Web Interpreter
@@ -608,9 +608,10 @@ var Interpreter;
         negative:31,    and:32,         or:33,          xor:34,         not:35,
         lognot:36,      cmpeq:37,       cmpne:38,       cmplt:39,       cmple:40,
         cmpgt:41,       cmpge:42,       label:43,       "goto":44,      ifgoto:45,
-        ifnotgoto:46,   gotostack:47,   gosubstack:48,  "return":49,    func:50,
-        funcend:51,     call:52,        callwait:53,    calladdfunc:54, calluser:55,
-        gotouser:56,    loadparam:57,   pop:58,         dup:59,         end:60 };
+        ifnotgoto:46,   ifgotopop:47,   gotostack:48,   gosubstack:49,  "return":50,
+        func:51,        funcend:52,     call:53,        callwait:54,    calladdfunc:55,
+        calluser:56,    gotouser:57,    loadparam:58,   pop:59,         dup:60,
+        end:61 };
 
     var reserved = {            // 予約名
         "label":1,      "goto":2,       "gosub":3,      "return":4,     "end":5,
@@ -1349,7 +1350,15 @@ var Interpreter;
                         pc = label[lbl_name];
                     }
                     break;
-                case 47: // gotostack
+                case 47: // ifgotopop (switch文専用)
+                    lbl_name = code[pc++];
+                    num = stack.pop();
+                    if (num != 0) {
+                        pc = label[lbl_name];
+                        stack.pop(); // 条件成立時にはdup元のスタック値を解放
+                    }
+                    break;
+                case 48: // gotostack
                     lbl_name = stack.pop();
                     // ***** ラベルへジャンプ *****
                     // if (!label.hasOwnProperty(lbl_name)) {
@@ -1368,7 +1377,7 @@ var Interpreter;
                     }
                     pc = goto_pc;
                     break;
-                case 48: // gosubstack
+                case 49: // gosubstack
                     lbl_name = stack.pop();
                     // ***** 関数内のとき *****
                     if (funccall_stack.length > 0) {
@@ -1382,7 +1391,7 @@ var Interpreter;
                     gosub_back.push(pc);
                     pc = label[lbl_name];
                     break;
-                case 49: // return
+                case 50: // return
                     // ***** 関数内のとき *****
                     if (funccall_stack.length > 0) {
                         // ***** ローカル変数を解放 *****
@@ -1403,10 +1412,10 @@ var Interpreter;
                     // ***** 戻り先がない *****
                     throw new Error("予期しない return が見つかりました。");
                     // break;
-                case 50: // func
+                case 51: // func
                     pc = func[code[pc] + "\\end"];
                     break;
-                case 51: // funcend
+                case 52: // funcend
                     // ***** 関数内のとき *****
                     if (funccall_stack.length > 0) {
                         // ***** 戻り値は0とする *****
@@ -1421,7 +1430,7 @@ var Interpreter;
                     // ***** 戻り先がない *****
                     throw new Error("予期しない '}' が見つかりました。");
                     // break;
-                case 52: // call
+                case 53: // call
                     // ***** 引数の取得 *****
                     param_num = code[pc++];
                     // param = stack.splice(stack.length - param_num, param_num);
@@ -1436,7 +1445,7 @@ var Interpreter;
                     num = func_tbl[func_name].func(param);
                     stack.push(num);
                     break;
-                case 53: // callwait
+                case 54: // callwait
                     // ***** 入力待ち状態のチェック *****
                     if (!(input_flag || keyinput_flag)) {
                         // ***** 引数の取得 *****
@@ -1463,7 +1472,7 @@ var Interpreter;
                     stack.push(func_name);
                     pc -= 2;
                     break;
-                case 54: // calladdfunc
+                case 55: // calladdfunc
                     // ***** 引数の取得 *****
                     param_num = code[pc++];
                     // param = stack.splice(stack.length - param_num, param_num);
@@ -1478,7 +1487,7 @@ var Interpreter;
                     num = addfunc_tbl[func_name].func(param, vars, can, ctx);
                     stack.push(num);
                     break;
-                case 55: // calluser
+                case 56: // calluser
                     // ***** 引数の取得 *****
                     param_num = code[pc++];
                     // param = stack.splice(stack.length - param_num, param_num);
@@ -1505,7 +1514,7 @@ var Interpreter;
                     // ***** 関数の呼び出し *****
                     pc = funccall_info.func_start;
                     break;
-                case 56: // gotouser
+                case 57: // gotouser
                     // ***** 引数の取得 *****
                     param_num = code[pc++];
                     // param = stack.splice(stack.length - param_num, param_num);
@@ -1536,7 +1545,7 @@ var Interpreter;
                     // ***** ここでは使用不可 *****
                     throw new Error("funcgoto はユーザ定義の関数内でなければ使用できません。");
                     // break;
-                case 57: // loadparam
+                case 58: // loadparam
                     if (param.length > 0) {
                         num = param.shift();
                     } else {
@@ -1564,15 +1573,15 @@ var Interpreter;
                     }
                     vars.setVarValue(var_name, num);
                     break;
-                case 58: // pop
+                case 59: // pop
                     stack.pop();
                     break;
-                case 59: // dup
+                case 60: // dup
                     num = stack.pop();
                     stack.push(num);
                     stack.push(num);
                     break;
-                case 60: // end
+                case 61: // end
                     end_flag = true;
                     break;
                 default:
@@ -2060,9 +2069,10 @@ var Interpreter;
                     // i = c_expression2(switch_case_exp[switch_case_no], switch_case_stm[switch_case_no] - 2);
                     i = c_expression(switch_case_exp[switch_case_no], switch_case_stm[switch_case_no] - 2);
                     code_push("cmpeq", debugpos1, i);
-                    code_push("ifgoto", debugpos1, i);
+                    code_push("ifgotopop", debugpos1, i); // 条件成立時にはdup元のスタック値を解放
                     code_push('"switch_case_stm' + switch_case_no + '\\' + j + '"', debugpos1, i);
                 }
+                code_push("pop", debugpos1, i); // スタック値を解放
                 if (switch_default_stm >= 0) {
                     code_push("goto", debugpos1, i);
                     code_push('"switch_default_stm\\' + j + '"', debugpos1, i);
@@ -2089,7 +2099,6 @@ var Interpreter;
                 // 終了
                 code_push("label", debugpos1, i);
                 code_push('"switch_end\\' + j + '"', debugpos1, i);
-                code_push("pop", debugpos1, i);
                 i = switch_end;
                 continue;
             }
