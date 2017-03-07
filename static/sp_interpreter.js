@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2017-3-5 v4.13
+// 2017-3-8 v4.14
 
 
 // SPALM Web Interpreter
@@ -519,7 +519,7 @@ var Interpreter;
     var label = {};             // ラベル用          (連想配列オブジェクト)
     var func = {};              // 関数用            (連想配列オブジェクト)
     var stack = [];             // スタック          (配列)
-    var param = [];             // 関数の引数        (配列)
+    var param = [];             // 関数の引数        (配列)(ユーザ定義関数のときは逆順に格納)
     var nothing = 0;            // 戻り値なしの組み込み関数の戻り値
 
     var pc;                     // プログラムカウンタ
@@ -1373,7 +1373,7 @@ var Interpreter;
                         // ***** 関数呼び出し情報の取得 *****
                         funccall_info = funccall_stack[funccall_stack.length - 1];
                         // ***** ジャンプ先がfunc内のときだけgotoが可能 *****
-                        if ((goto_pc < funccall_info.func_start) || (goto_pc >= funccall_info.func_end)) {
+                        if ((goto_pc < funccall_info.func_adrs[0]) || (goto_pc >= funccall_info.func_adrs[1])) {
                             throw new Error("funcの外へは goto できません。");
                         }
                     }
@@ -1415,7 +1415,7 @@ var Interpreter;
                     throw new Error("予期しない return が見つかりました。");
                     // break;
                 case 51: // func
-                    pc = func[code[pc] + "\\end"];
+                    pc = func[code[pc]][1];
                     break;
                 case 52: // funcend
                     // ***** 関数内のとき *****
@@ -1435,14 +1435,12 @@ var Interpreter;
                 case 53: // call
                     // ***** 引数の取得 *****
                     param_num = code[pc++];
-                    // param = stack.splice(stack.length - param_num, param_num);
                     param = [];
                     for (i = 0; i < param_num; i++) {
                         param[param_num - i - 1] = stack.pop();
                     }
                     // ***** 関数名の取得 *****
                     func_name = stack.pop();
-                    // func_name = toglobal(func_name);
                     // ***** 組み込み関数の呼び出し *****
                     num = func_tbl[func_name].func(param);
                     stack.push(num);
@@ -1452,7 +1450,6 @@ var Interpreter;
                     if (!(input_flag || keyinput_flag)) {
                         // ***** 引数の取得 *****
                         param_num = code[pc++];
-                        // param = stack.splice(stack.length - param_num, param_num);
                         param = [];
                         for (i = 0; i < param_num; i++) {
                             param[param_num - i - 1] = stack.pop();
@@ -1462,7 +1459,6 @@ var Interpreter;
                     }
                     // ***** 関数名の取得 *****
                     func_name = stack.pop();
-                    // func_name = toglobal(func_name);
                     // ***** 組み込み関数の呼び出し *****
                     num = func_tbl[func_name].func(param);
                     // ***** 入力待ち状態でなければ完了 *****
@@ -1477,14 +1473,12 @@ var Interpreter;
                 case 55: // calladdfunc
                     // ***** 引数の取得 *****
                     param_num = code[pc++];
-                    // param = stack.splice(stack.length - param_num, param_num);
                     param = [];
                     for (i = 0; i < param_num; i++) {
                         param[param_num - i - 1] = stack.pop();
                     }
                     // ***** 関数名の取得 *****
                     func_name = stack.pop();
-                    // func_name = toglobal(func_name);
                     // ***** 組み込み関数の呼び出し *****
                     num = addfunc_tbl[func_name].func(param, vars, can, ctx);
                     stack.push(num);
@@ -1492,14 +1486,13 @@ var Interpreter;
                 case 56: // calluser
                     // ***** 引数の取得 *****
                     param_num = code[pc++];
-                    // param = stack.splice(stack.length - param_num, param_num);
                     param = [];
                     for (i = 0; i < param_num; i++) {
-                        param[param_num - i - 1] = stack.pop();
+                        param[i] = stack.pop(); // 逆順に格納
                     }
                     // ***** 関数名の取得 *****
-                    func_name = stack.pop();
-                    func_name = toglobal(func_name);
+                    // func_name = stack.pop();
+                    func_name = toglobal(stack.pop()); // 関数ポインタ対応
                     // ***** 関数の存在チェック *****
                     // if (!func.hasOwnProperty(func_name)) {
                     if (!hasOwn.call(func, func_name)) {
@@ -1510,23 +1503,21 @@ var Interpreter;
                     // ***** 関数呼び出し情報の生成 *****
                     funccall_info = {};
                     funccall_info.func_back = pc;
-                    funccall_info.func_start = func[func_name];
-                    funccall_info.func_end = func[func_name + "\\end"];
+                    funccall_info.func_adrs = func[func_name];
                     funccall_stack.push(funccall_info);
                     // ***** 関数の呼び出し *****
-                    pc = funccall_info.func_start;
+                    pc = funccall_info.func_adrs[0];
                     break;
                 case 57: // gotouser
                     // ***** 引数の取得 *****
                     param_num = code[pc++];
-                    // param = stack.splice(stack.length - param_num, param_num);
                     param = [];
                     for (i = 0; i < param_num; i++) {
-                        param[param_num - i - 1] = stack.pop();
+                        param[i] = stack.pop(); // 逆順に格納
                     }
                     // ***** 関数名の取得 *****
-                    func_name = stack.pop();
-                    func_name = toglobal(func_name);
+                    // func_name = stack.pop();
+                    func_name = toglobal(stack.pop()); // 関数ポインタ対応
                     // ***** 関数内のとき *****
                     if (funccall_stack.length > 0) {
                         // ***** 関数の存在チェック *****
@@ -1538,10 +1529,9 @@ var Interpreter;
                         // ***** ローカル変数をクリア *****
                         vars.clearLocalVars();
                         // ***** 関数呼び出し情報を更新 *****
-                        funccall_stack[funccall_stack.length - 1].func_start = func[func_name];
-                        funccall_stack[funccall_stack.length - 1].func_end = func[func_name + "\\end"];
+                        funccall_stack[funccall_stack.length - 1].func_adrs = func[func_name];
                         // ***** 関数の呼び出し *****
-                        pc = funccall_stack[funccall_stack.length - 1].func_start;
+                        pc = funccall_stack[funccall_stack.length - 1].func_adrs[0];
                         break;
                     }
                     // ***** ここでは使用不可 *****
@@ -1549,7 +1539,7 @@ var Interpreter;
                     // break;
                 case 58: // loadparam
                     if (param.length > 0) {
-                        num = param.shift();
+                        num = param.pop(); // 逆順に取得
                     } else {
                         num = 0;
                     }
@@ -1650,7 +1640,8 @@ var Interpreter;
                     debugpos2 = debugpos1 + 2;
                     throw new Error("関数 '" + func_name + "' の定義が重複しています。");
                 }
-                func[func_name] = i;
+                func[func_name] = [];
+                func[func_name][0] = i; // 開始位置
                 j = i;
                 k = 1;
                 while (j < code_len) {
@@ -1660,7 +1651,7 @@ var Interpreter;
                     if (cod == "funcend") {
                         k--;
                         if (k == 0) {
-                            func[func_name + "\\end"] = j;
+                            func[func_name][1] = j; // 終了位置
                             break;
                         }
                     }
