@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2017-3-8 v4.14
+// 2017-3-8 v4.15
 
 
 // SPALM Web Interpreter
@@ -1087,7 +1087,7 @@ var Interpreter;
                 case 3: // array
                     num = stack.pop();
                     var_name = stack.pop();
-                    var_name = var_name + "[" + num + "]";
+                    var_name += "[" + num + "]";
                     stack.push(var_name);
                     break;
                 case 4: // store
@@ -1373,7 +1373,7 @@ var Interpreter;
                         // ***** 関数呼び出し情報の取得 *****
                         funccall_info = funccall_stack[funccall_stack.length - 1];
                         // ***** ジャンプ先がfunc内のときだけgotoが可能 *****
-                        if ((goto_pc < funccall_info.func_adrs[0]) || (goto_pc >= funccall_info.func_adrs[1])) {
+                        if (goto_pc < funccall_info.func_adrs[0] || goto_pc >= funccall_info.func_adrs[1]) {
                             throw new Error("funcの外へは goto できません。");
                         }
                     }
@@ -1491,8 +1491,8 @@ var Interpreter;
                         param[i] = stack.pop(); // 逆順に格納
                     }
                     // ***** 関数名の取得 *****
-                    // func_name = stack.pop();
-                    func_name = toglobal(stack.pop()); // 関数ポインタ対応
+                    func_name = stack.pop();
+                    func_name = toglobal(func_name); // 関数ポインタ対応
                     // ***** 関数の存在チェック *****
                     // if (!func.hasOwnProperty(func_name)) {
                     if (!hasOwn.call(func, func_name)) {
@@ -1516,8 +1516,8 @@ var Interpreter;
                         param[i] = stack.pop(); // 逆順に格納
                     }
                     // ***** 関数名の取得 *****
-                    // func_name = stack.pop();
-                    func_name = toglobal(stack.pop()); // 関数ポインタ対応
+                    func_name = stack.pop();
+                    func_name = toglobal(func_name); // 関数ポインタ対応
                     // ***** 関数内のとき *****
                     if (funccall_stack.length > 0) {
                         // ***** 関数の存在チェック *****
