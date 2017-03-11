@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2017-3-8 v4.15
+// 2017-3-11 v4.16
 
 
 // SPALM Web Interpreter
@@ -601,16 +601,15 @@ var Interpreter;
     var opecode = {             // スタックマシンの命令コード
         load:1,         pointer:2,      array:3,        store:4,        storenum:5,
         storestr:6,     store0:7,       store1:8,       preinc:9,       predec:10,
-        postinc:11,     postdec:12,     loadadd:13,     loadsub:14,     loadmul:15,
-        loaddiv:16,     loaddivint:17,  loadmod:18,     loadaddstr:19,  add:20,
-        addstr:21,      sub:22,         mul:23,         div:24,         divint:25,
-        mod:26,         shl:27,         shr:28,         ushr:29,        positive:30,
-        negative:31,    and:32,         or:33,          xor:34,         not:35,
-        lognot:36,      cmpeq:37,       cmpne:38,       cmplt:39,       cmple:40,
-        cmpgt:41,       cmpge:42,       label:43,       "goto":44,      ifgoto:45,
-        ifnotgoto:46,   switchgoto:47,  gotostack:48,   gosubstack:49,  "return":50,
-        func:51,        funcend:52,     call:53,        callwait:54,    calladdfunc:55,
-        calluser:56,    gotouser:57,    loadparam:58,   pop:59,         end:60 };
+        postinc:11,     postdec:12,     add:13,         addstr:14,      sub:15,
+        mul:16,         div:17,         divint:18,      mod:19,         shl:20,
+        shr:21,         ushr:22,        positive:23,    negative:24,    and:25,
+        or:26,          xor:27,         not:28,         lognot:29,      cmpeq:30,
+        cmpne:31,       cmplt:32,       cmple:33,       cmpgt:34,       cmpge:35,
+        label:36,       "goto":37,      ifgoto:38,      ifnotgoto:39,   switchgoto:40,
+        gotostack:41,   gosubstack:42,  "return":43,    func:44,        funcend:45,
+        call:46,        callwait:47,    calladdfunc:48, calluser:49,    gotouser:50,
+        loadparam:51,   pop:52,         dup:53,         end:54 };
 
     var reserved = {            // 予約名
         "label":1,      "goto":2,       "gosub":3,      "return":4,     "end":5,
@@ -1137,84 +1136,31 @@ var Interpreter;
                     num--;
                     vars.setVarValue(var_name, num);
                     break;
-                case 13: // loadadd
-                    num = stack.pop();
-                    var_name = stack.pop();
-                    num = (+vars.getVarValue(var_name)) + (+num); // 文字の連結にならないように数値にする
-                    vars.setVarValue(var_name, num);
-                    stack.push(num);
-                    break;
-                case 14: // loadsub
-                    num = stack.pop();
-                    var_name = stack.pop();
-                    num = vars.getVarValue(var_name) - num;
-                    vars.setVarValue(var_name, num);
-                    stack.push(num);
-                    break;
-                case 15: // loadmul
-                    num = stack.pop();
-                    var_name = stack.pop();
-                    num = vars.getVarValue(var_name) * num;
-                    vars.setVarValue(var_name, num);
-                    stack.push(num);
-                    break;
-                case 16: // loaddiv
-                    num = stack.pop();
-                    var_name = stack.pop();
-                    if (sp_compati_flag) {
-                        num = Math.trunc(vars.getVarValue(var_name) / num);
-                    } else {
-                        num = vars.getVarValue(var_name) / num;
-                    }
-                    vars.setVarValue(var_name, num);
-                    stack.push(num);
-                    break;
-                case 17: // loaddivint
-                    num = stack.pop();
-                    var_name = stack.pop();
-                    num = Math.trunc(vars.getVarValue(var_name) / num);
-                    vars.setVarValue(var_name, num);
-                    stack.push(num);
-                    break;
-                case 18: // loadmod
-                    num = stack.pop();
-                    var_name = stack.pop();
-                    num = vars.getVarValue(var_name) % num;
-                    vars.setVarValue(var_name, num);
-                    stack.push(num);
-                    break;
-                case 19: // loadaddstr
-                    num = stack.pop();
-                    var_name = stack.pop();
-                    num = String(vars.getVarValue(var_name)) + String(num);
-                    vars.setVarValue(var_name, num);
-                    stack.push(num);
-                    break;
-                case 20: // add
+                case 13: // add
                     num2 = stack.pop();
                     num = stack.pop();
                     num = (+num) + (+num2); // 文字の連結にならないように数値にする
                     stack.push(num);
                     break;
-                case 21: // addstr
+                case 14: // addstr
                     num2 = stack.pop();
                     num = stack.pop();
                     num = String(num) + String(num2);
                     stack.push(num);
                     break;
-                case 22: // sub
+                case 15: // sub
                     num2 = stack.pop();
                     num = stack.pop();
                     num = num - num2;
                     stack.push(num);
                     break;
-                case 23: // mul
+                case 16: // mul
                     num2 = stack.pop();
                     num = stack.pop();
                     num = num * num2;
                     stack.push(num);
                     break;
-                case 24: // div
+                case 17: // div
                     num2 = stack.pop();
                     num = stack.pop();
                     if (sp_compati_flag) {
@@ -1224,132 +1170,132 @@ var Interpreter;
                     }
                     stack.push(num);
                     break;
-                case 25: // divint
+                case 18: // divint
                     num2 = stack.pop();
                     num = stack.pop();
                     num = Math.trunc(num / num2);
                     stack.push(num);
                     break;
-                case 26: // mod
+                case 19: // mod
                     num2 = stack.pop();
                     num = stack.pop();
                     num = num % num2;
                     stack.push(num);
                     break;
-                case 27: // shl
+                case 20: // shl
                     num2 = stack.pop();
                     num = stack.pop();
                     num = num << num2;
                     stack.push(num);
                     break;
-                case 28: // shr
+                case 21: // shr
                     num2 = stack.pop();
                     num = stack.pop();
                     num = num >> num2;
                     stack.push(num);
                     break;
-                case 29: // ushr
+                case 22: // ushr
                     num2 = stack.pop();
                     num = stack.pop();
                     num = num >>> num2;
                     stack.push(num);
                     break;
-                case 30: // positive
+                case 23: // positive
                     num = stack.pop();
                     num = +num;
                     stack.push(num);
                     break;
-                case 31: // negative
+                case 24: // negative
                     num = stack.pop();
                     num = -num;
                     stack.push(num);
                     break;
-                case 32: // and
+                case 25: // and
                     num2 = stack.pop();
                     num = stack.pop();
                     num = num & num2;
                     stack.push(num);
                     break;
-                case 33: // or
+                case 26: // or
                     num2 = stack.pop();
                     num = stack.pop();
                     num = num | num2;
                     stack.push(num);
                     break;
-                case 34: // xor
+                case 27: // xor
                     num2 = stack.pop();
                     num = stack.pop();
                     num = num ^ num2;
                     stack.push(num);
                     break;
-                case 35: // not
+                case 28: // not
                     num = stack.pop();
                     num = ~num;
                     stack.push(num);
                     break;
-                case 36: // lognot
+                case 29: // lognot
                     num = stack.pop();
                     num = (num == 0) ? 1 : 0;
                     stack.push(num);
                     break;
-                case 37: // cmpeq
+                case 30: // cmpeq
                     num2 = stack.pop();
                     num = stack.pop();
                     num = (num == num2) ? 1 : 0;
                     stack.push(num);
                     break;
-                case 38: // cmpne
+                case 31: // cmpne
                     num2 = stack.pop();
                     num = stack.pop();
                     num = (num != num2) ? 1 : 0;
                     stack.push(num);
                     break;
-                case 39: // cmplt
+                case 32: // cmplt
                     num2 = stack.pop();
                     num = stack.pop();
                     num = (num < num2) ? 1 : 0;
                     stack.push(num);
                     break;
-                case 40: // cmple
+                case 33: // cmple
                     num2 = stack.pop();
                     num = stack.pop();
                     num = (num <= num2) ? 1 : 0;
                     stack.push(num);
                     break;
-                case 41: // cmpgt
+                case 34: // cmpgt
                     num2 = stack.pop();
                     num = stack.pop();
                     num = (num > num2) ? 1 : 0;
                     stack.push(num);
                     break;
-                case 42: // cmpge
+                case 35: // cmpge
                     num2 = stack.pop();
                     num = stack.pop();
                     num = (num >= num2) ? 1 : 0;
                     stack.push(num);
                     break;
-                case 43: // label
+                case 36: // label
                     pc++;
                     break;
-                case 44: // goto
+                case 37: // goto
                     lbl_name = code[pc++];
                     pc = label[lbl_name];
                     break;
-                case 45: // ifgoto
+                case 38: // ifgoto
                     lbl_name = code[pc++];
                     num = stack.pop();
                     if (num != 0) {
                         pc = label[lbl_name];
                     }
                     break;
-                case 46: // ifnotgoto
+                case 39: // ifnotgoto
                     lbl_name = code[pc++];
                     num = stack.pop();
                     if (num == 0) {
                         pc = label[lbl_name];
                     }
                     break;
-                case 47: // switchgoto
+                case 40: // switchgoto
                     lbl_name = code[pc++];
                     num2 = stack.pop();
                     num = stack.pop();
@@ -1360,7 +1306,7 @@ var Interpreter;
                         stack.push(num);
                     }
                     break;
-                case 48: // gotostack
+                case 41: // gotostack
                     lbl_name = stack.pop();
                     // ***** ラベルへジャンプ *****
                     // if (!label.hasOwnProperty(lbl_name)) {
@@ -1379,7 +1325,7 @@ var Interpreter;
                     }
                     pc = goto_pc;
                     break;
-                case 49: // gosubstack
+                case 42: // gosubstack
                     lbl_name = stack.pop();
                     // ***** 関数内のとき *****
                     if (funccall_stack.length > 0) {
@@ -1393,7 +1339,7 @@ var Interpreter;
                     gosub_back.push(pc);
                     pc = label[lbl_name];
                     break;
-                case 50: // return
+                case 43: // return
                     // ***** 関数内のとき *****
                     if (funccall_stack.length > 0) {
                         // ***** ローカル変数を解放 *****
@@ -1414,10 +1360,10 @@ var Interpreter;
                     // ***** 戻り先がない *****
                     throw new Error("予期しない return が見つかりました。");
                     // break;
-                case 51: // func
+                case 44: // func
                     pc = func[code[pc]][1];
                     break;
-                case 52: // funcend
+                case 45: // funcend
                     // ***** 関数内のとき *****
                     if (funccall_stack.length > 0) {
                         // ***** 戻り値は0とする *****
@@ -1432,7 +1378,7 @@ var Interpreter;
                     // ***** 戻り先がない *****
                     throw new Error("予期しない '}' が見つかりました。");
                     // break;
-                case 53: // call
+                case 46: // call
                     // ***** 引数の取得 *****
                     param_num = code[pc++];
                     param = [];
@@ -1445,7 +1391,7 @@ var Interpreter;
                     num = func_tbl[func_name].func(param);
                     stack.push(num);
                     break;
-                case 54: // callwait
+                case 47: // callwait
                     // ***** 入力待ち状態のチェック *****
                     if (!(input_flag || keyinput_flag)) {
                         // ***** 引数の取得 *****
@@ -1470,7 +1416,7 @@ var Interpreter;
                     stack.push(func_name);
                     pc -= 2;
                     break;
-                case 55: // calladdfunc
+                case 48: // calladdfunc
                     // ***** 引数の取得 *****
                     param_num = code[pc++];
                     param = [];
@@ -1483,7 +1429,7 @@ var Interpreter;
                     num = addfunc_tbl[func_name].func(param, vars, can, ctx);
                     stack.push(num);
                     break;
-                case 56: // calluser
+                case 49: // calluser
                     // ***** 引数の取得 *****
                     param_num = code[pc++];
                     param = [];
@@ -1508,7 +1454,7 @@ var Interpreter;
                     // ***** 関数の呼び出し *****
                     pc = funccall_info.func_adrs[0];
                     break;
-                case 57: // gotouser
+                case 50: // gotouser
                     // ***** 引数の取得 *****
                     param_num = code[pc++];
                     param = [];
@@ -1537,7 +1483,7 @@ var Interpreter;
                     // ***** ここでは使用不可 *****
                     throw new Error("funcgoto はユーザ定義の関数内でなければ使用できません。");
                     // break;
-                case 58: // loadparam
+                case 51: // loadparam
                     if (param.length > 0) {
                         num = param.pop(); // 逆順に取得
                     } else {
@@ -1565,10 +1511,15 @@ var Interpreter;
                     }
                     vars.setVarValue(var_name, num);
                     break;
-                case 59: // pop
+                case 52: // pop
                     stack.pop();
                     break;
-                case 60: // end
+                case 53: // dup
+                    num = stack.pop();
+                    stack.push(num);
+                    stack.push(num);
+                    break;
+                case 54: // end
                     end_flag = true;
                     break;
                 default:
@@ -2896,46 +2847,54 @@ var Interpreter;
                 return i;
             }
             // ***** 複合代入のとき *****
-            if (tok == "+=") {
+            if (tok == "+="   || tok == "-="   || tok == "*="   || tok == "/="   ||
+                tok == "\\="  || tok == "%="   || tok == ".="   ||
+                tok == "&="   || tok == "|="   || tok == "^="   ||
+                tok == "<<="  || tok == ">>>=" || tok == ">>=") {
                 i++;
+                code_push("dup", debugpos1, i);
+                code_push("store", debugpos1, i);
                 i = c_expression(i, tok_end);
-                code_push("loadadd", debugpos1, i);
-                return i;
-            }
-            if (tok == "-=") {
-                i++;
-                i = c_expression(i, tok_end);
-                code_push("loadsub", debugpos1, i);
-                return i;
-            }
-            if (tok == "*=") {
-                i++;
-                i = c_expression(i, tok_end);
-                code_push("loadmul", debugpos1, i);
-                return i;
-            }
-            if (tok == "/=") {
-                i++;
-                i = c_expression(i, tok_end);
-                code_push("loaddiv", debugpos1, i);
-                return i;
-            }
-            if (tok == "\\=") {
-                i++;
-                i = c_expression(i, tok_end);
-                code_push("loaddivint", debugpos1, i);
-                return i;
-            }
-            if (tok == "%=") {
-                i++;
-                i = c_expression(i, tok_end);
-                code_push("loadmod", debugpos1, i);
-                return i;
-            }
-            if (tok == ".=") {
-                i++;
-                i = c_expression(i, tok_end);
-                code_push("loadaddstr", debugpos1, i);
+                if (tok == "+=") {
+                    code_push("add", debugpos1, i);
+                }
+                if (tok == "-=") {
+                    code_push("sub", debugpos1, i);
+                }
+                if (tok == "*=") {
+                    code_push("mul", debugpos1, i);
+                }
+                if (tok == "/=") {
+                    code_push("div", debugpos1, i);
+                }
+                if (tok == "\\=") {
+                    code_push("divint", debugpos1, i);
+                }
+                if (tok == "%=") {
+                    code_push("mod", debugpos1, i);
+                }
+                if (tok == ".=") {
+                    code_push("addstr", debugpos1, i);
+                }
+                if (tok == "&=") {
+                    code_push("and", debugpos1, i);
+                }
+                if (tok == "|=") {
+                    code_push("or", debugpos1, i);
+                }
+                if (tok == "^=") {
+                    code_push("xor", debugpos1, i);
+                }
+                if (tok == "<<=") {
+                    code_push("shl", debugpos1, i);
+                }
+                if (tok == ">>>=") {
+                    code_push("ushr", debugpos1, i);
+                }
+                if (tok == ">>=") {
+                    code_push("shr", debugpos1, i);
+                }
+                code_push("load", debugpos1, i);
                 return i;
             }
 
@@ -3193,7 +3152,7 @@ var Interpreter;
     function tokenize() {
         var i;
         var src_len;
-        var ch, ch2;
+        var ch, ch2, ch3;
         var tok_start;
         var dot_count;
         var zero_flag;
@@ -3339,21 +3298,32 @@ var Interpreter;
                 continue;
             }
             // ***** 演算子その他のとき *****
-            if (ch == "&" || ch == "|") {
-                if (ch2 == ch) { i++; }
+            if (ch == "+" || ch == "-"  || ch == "&" || ch == "|") {
+                if (ch2 == ch)  { i++; }
+                if (ch2 == "=") { i++; }
             }
-            if (ch == "+" || ch == "-" || ch == "<") {
-                if (ch2 == ch || ch2 == "=") { i++; }
+            if (ch == "=" || ch == "!"  || ch == "*" || ch == "/" ||
+                ch == "%" || ch == "\\" || ch == "." || ch == "^") {
+                if (ch2 == "=") { i++; }
+            }
+            if (ch == "<") {
+                if (ch2 == "=") { i++; }
+                if (ch2 == "<") {
+                    i++;
+                    if (i < src_len && src.charAt(i) == "=") { i++; }
+                }
             }
             if (ch == ">") {
                 if (ch2 == "=") { i++; }
                 if (ch2 == ">") {
                     i++;
-                    if (i < src_len && src.charAt(i) == ">") { i++; }
+                    if (i < src_len) { ch3 = src.charAt(i); } else { ch3 = ""; }
+                    if (ch3 == "=") { i++; }
+                    if (ch3 == ">") {
+                        i++;
+                        if (i < src_len && src.charAt(i) == "=") { i++; }
+                    }
                 }
-            }
-            if (ch == "=" || ch == "!" || ch == "*" || ch == "/" || ch == "%" || ch == "\\" || ch == ".") {
-                if (ch2 == "=") { i++; }
             }
             token_push(src.substring(tok_start, i), line_no_s);
         }
