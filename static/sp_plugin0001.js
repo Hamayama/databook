@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_plugin0001.js
-// 2016-11-21 v4.08
+// 2017-3-13 v4.17
 
 
 // A Plugin to add functions to SPALM Web Interpreter
@@ -376,10 +376,12 @@ var Plugin0001;
         add_one_func_tbl("clamp", 3, [], function (param, vars, can, ctx) {
             var num;
             var a1, a2, a3;
+            var t;
 
-            a1 = (+param[0]);
-            a2 = (+param[1]);
-            a3 = (+param[2]);
+            a1 = (+param[0]); // value
+            a2 = (+param[1]); // min
+            a3 = (+param[2]); // max
+            if (a2 > a3) { t = a2; a2 = a3; a3 = t; }
             if (a1 < a2)      { num = a2; }
             else if (a1 > a3) { num = a3; }
             else              { num = a1; }
@@ -1025,8 +1027,8 @@ var Plugin0001;
             var a1, a2;
             var t;
 
-            a1 = Math.trunc(param[0]);
-            a2 = Math.trunc(param[1]);
+            a1 = Math.trunc(param[0]); // min
+            a2 = Math.trunc(param[1]); // max
             if (a1 > a2) { t = a1; a1 = a2; a2 = t; }
             // min から max までの整数の乱数を返す
             // (Math.round() を用いると、非一様分布になるのでNG)
@@ -1052,6 +1054,19 @@ var Plugin0001;
             } else {
                 num = 0;
             }
+            return num;
+        });
+        add_one_func_tbl("remap", 5, [], function (param, vars, can, ctx) {
+            var num;
+            var a1, a2, a3, a4, a5;
+
+            a1 = (+param[0]); // x
+            a2 = (+param[1]); // minx
+            a3 = (+param[2]); // maxx
+            a4 = (+param[3]); // miny
+            a5 = (+param[4]); // maxy
+            if (a2 == a3) { num = 0; }
+            else          { num = a4 + (a1 - a2) * (a5 - a4) / (a3 - a2); }
             return num;
         });
         add_one_func_tbl("sandmake", 11, [], function (param, vars, can, ctx) {
@@ -2289,19 +2304,19 @@ var Plugin0001;
             // var sort0 = function (a, b) { // ソート用(昇順でY座標優先)
             //     if (a[1] == b[1]) { return (a[0] - b[0]); }
             //     return (a[1] - b[1]);
-            // }
+            // };
             var sort1 = function (a, b) { // ソート用(昇順でX座標優先)
                 if (a[0] == b[0]) { return (a[1] - b[1]); }
                 return (a[0] - b[0]);
-            }
+            };
             // var sort2 = function (a, b) { // ソート用(降順でY座標優先)
             //     if (b[1] == a[1]) { return (b[0] - a[0]); }
             //     return (b[1] - a[1]);
-            // }
+            // };
             var sort3 = function (a, b) { // ソート用(降順でX座標優先)
                 if (b[0] == a[0]) { return (b[1] - a[1]); }
                 return (b[0] - a[0]);
-            }
+            };
 
             a1 = getvarname(param[0]);
             a2 = Math.trunc(param[1]);
@@ -2385,6 +2400,21 @@ var Plugin0001;
                 if (i > 0) { num += ","; }
                 num += hit_points[i].join(",");
             }
+            return num;
+        });
+        add_one_func_tbl("wrap", 3, [], function (param, vars, can, ctx) {
+            var num;
+            var a1, a2, a3;
+            var t, w;
+
+            a1 = (+param[0]); // value
+            a2 = (+param[1]); // min
+            a3 = (+param[2]); // max
+            if (a2 > a3) { t = a2; a2 = a3; a3 = t; }
+            w = a3 - a2;
+            if (w == 0)        { num = a2; }
+            else if (a1 >= a2) { num = (a1 - a2) % w + a2; }
+            else               { num = (a1 - a2) % w + w + a2; }
             return num;
         });
     }
