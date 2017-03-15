@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2017-3-15 v5.00
+// 2017-3-15 v5.01
 
 
 // SPALM Web Interpreter
@@ -595,7 +595,7 @@ var Interpreter;
         40:(1 << 15),
         // 決定ボタン は スペースキーとEnterキーとCtrlキーにする
         32:(1 << 16), 13:(1 << 16), 17:(1 << 16),
-        // [Soft1][Soft2] は [c][v]にする
+        // [Soft1][Soft2] は [c][v] にする
         67:(1 << 17), 86:(1 << 18) };
 
     var opecode = {             // スタックマシンの命令コード
@@ -3760,19 +3760,23 @@ var Interpreter;
     // ***** グローバル変数化 *****
     // (画像変数名や関数名に変換するときに使用)
     function toglobal(var_name) {
-        var i = 0;
-        var pre_word;
+        var i;
+        // var pre_word;
+
         // ***** 接頭語ありのとき *****
         // if (var_name.charAt(1) == "\\") {
         if (var_name.charCodeAt(1) == 0x5C) {
             // ***** 変数名から「a\」と数字を削除 *****
             if (var_name.substring(0, 2) == "a\\") {
                 i = var_name.indexOf("\\", 2) + 1;
+            } else {
+                i = 0;
             }
             // ***** 接頭語の削除 *****
-            pre_word = var_name.substring(i, i + 2);
-            if (pre_word == "g\\" || pre_word == "l\\") { i += 2; }
-            return (i > 0) ? var_name.substring(i) : var_name;
+            // pre_word = var_name.substring(i, i + 2);
+            // if (pre_word == "g\\" || pre_word == "l\\") { i += 2; }
+            if (var_name.charCodeAt(i + 1) == 0x5C) { i += 2; }
+            return var_name.substring(i);
         }
         return var_name;
     }
@@ -3847,7 +3851,9 @@ var Interpreter;
                     }
                     break;
                 default:   // その他
-                    throw new Error("変数のタイプチェックエラーが発生しました。");
+                    i = 2;
+                    ret_now_index = use_local_vars ? local_scope_num : 0;
+                    ret_loc_flag = false;
                     // break;
             }
             // ***** 接頭語の削除 *****
@@ -3949,7 +3955,7 @@ var Interpreter;
                 array_cache.pop();
             }
         };
-        // ***** ローカル変数のスコープの保存数を返(staticメソッド)す *****
+        // ***** ローカル変数のスコープの保存数を取得する(staticメソッド) *****
         Vars.getLocalScopeNum = function () {
             return local_scope_num;
         };
@@ -4231,12 +4237,13 @@ var Interpreter;
             var_name  += "[";
             var_name2 += "[";
 
-            // ***** コピー元とコピー先の変数名が一致するときはエラーにする *****
+            // ***** コピー元とコピー先の配列変数名が一致するときはエラーにする *****
             // (例えば、a[]をa[1][]にコピーすると無限ループのおそれがある)
             i = var_name2.indexOf(var_name);
             if (i >= 0) {
                 if (i == 0 || var_name2.charAt(i - 1) == "\\") {
-                    throw new Error("コピー元とコピー先の変数名が同一です。");
+                    var_name = var_name.substring(0, var_name.length - 1);
+                    throw new Error("コピー元とコピー先の配列変数名が同一です。('" + var_name + "')");
                 }
             }
 
