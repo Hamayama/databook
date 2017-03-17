@@ -16,6 +16,9 @@
 #canvas2 {        /* ソフトキー表示エリア */
     background-color: #fffca8; /* 背景色 */
 }
+#draw_fix1 {      /* Chrome v57 の Canvas の 不具合対策 */
+    color: #fffca8;            /* 背景色 */
+}
 -->
 </style>
 <!--[if lt IE 9]>
@@ -28,7 +31,7 @@
 // ***** 動作開始 *****
 window.onload = function () {
     // ***** 初期化 *****
-    init_func();
+    init_func(true);
     // ***** 色設定 *****
     // (引数は、Canvas要素の文字色,背景色,ソフトキー表示エリアの文字色,背景色)
     Interpreter.setcolor("", "", "#000000", "#fffca8");
@@ -67,6 +70,7 @@ Cannot use canvas tag.
 </tr></table>
 
 <input type="checkbox" name="debug_chk1" id="debug_chk1" value="1" style="margin-top: 1px;"><span style="font-size: 90%;">詳細表示</span>
+</span><span id="draw_fix1"></span>
 
 </form>
 

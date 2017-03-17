@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_plugin0001.js
-// 2017-3-15 v5.00
+// 2017-3-17 v5.02
 
 
 // A Plugin to add functions to SPALM Web Interpreter
@@ -2432,7 +2432,7 @@ var Plugin0001;
             w = a3 - a2;
             if (w == 0)        { num = a2; }
             else if (a1 >= a2) { num = (a1 - a2) % w + a2; }
-            else               { num = (a1 - a2) % w + w + a2; }
+            else               { num = (a1 - a2) % w + a3; }
             return num;
         });
     }

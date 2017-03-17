@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2017-3-15 v5.01
+// 2017-3-17 v5.02
 
 
 // SPALM Web Interpreter
@@ -4648,6 +4648,18 @@ var Interpreter;
             num = new Date().getDay() + 1; // =1:日曜日,=2:月曜日 ... =7:土曜日
             return num;
         });
+        make_one_func_tbl("dbgdrawfix", 0, [], function (param) {
+            var a1;
+            // ***** Chrome v57 の Canvas の 不具合対策 *****
+            // Chrome で GPU使用あり設定 (accelerated-2d-canvas : ON) のとき、
+            // 256x256 より大きい Canvas を生成して、getImageData → drawImage
+            // の順に実行すると、Canvas の表示が更新されない状態になる。
+            // このとき、HTML上で何か表示を変更すると、復旧する。
+            // (Intel HD Graphics 5500 で確認)
+            a1 = document.getElementById("draw_fix1").textContent;
+            document.getElementById("draw_fix1").textContent = (a1 != ".") ? "." : "";
+            return nothing;
+        });
         make_one_func_tbl("dbgloopset", 1, [], function (param) {
             var a1;
 
@@ -4679,8 +4691,9 @@ var Interpreter;
         make_one_func_tbl("dbgstop", 0, [], function (param) {
             var a1;
 
-            a1 = "";
-            if (param.length >= 1) {
+            if (param.length <= 0) {
+                a1 = "";
+            } else {
                 a1 = String(param[0]);
             }
             if (a1 != "") { a1 = "('" + a1 + "')"; }
