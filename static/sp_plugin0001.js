@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_plugin0001.js
-// 2017-3-17 v5.02
+// 2017-3-27 v5.03
 
 
 // A Plugin to add functions to SPALM Web Interpreter
@@ -2423,16 +2423,22 @@ var Plugin0001;
         add_one_func_tbl("wrap", 3, [], function (param) {
             var num;
             var a1, a2, a3;
-            var t, w;
+            var t;
 
             a1 = (+param[0]); // value
             a2 = (+param[1]); // min
             a3 = (+param[2]); // max
             if (a2 > a3) { t = a2; a2 = a3; a3 = t; }
-            w = a3 - a2;
-            if (w == 0)        { num = a2; }
-            else if (a1 >= a2) { num = (a1 - a2) % w + a2; }
-            else               { num = (a1 - a2) % w + a3; }
+            if (a2 == a3) {
+                num = a2;
+            } else {
+                t = (a1 - a2) % (a3 - a2);
+                if (t < 0) {
+                    num = t + a3;
+                } else {
+                    num = t + a2;
+                }
+            }
             return num;
         });
     }
