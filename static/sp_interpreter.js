@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2017-3-31 v6.01
+// 2017-3-31 v6.02
 
 
 // SPALM Web Interpreter
@@ -2927,7 +2927,7 @@ var Interpreter;
     function c_getvarname(tok_start, tok_end) {
         var i;
         var var_name;
-        var var_name2;
+        var pre_char;
 
         // ***** 変数名取得 *****
         i = tok_start;
@@ -2958,9 +2958,10 @@ var Interpreter;
         }
         // ***** 接頭語のチェック *****
         if (var_name == "global" || var_name == "glb" || var_name == "local" || var_name == "loc") {
-            var_name2 = token[i++];
-            checkvarname(var_name2, i);
-            var_name = var_name.charAt(0) + "\\" + var_name2;
+            pre_char = var_name.charAt(0);
+            var_name = token[i++];
+            checkvarname(var_name, i);
+            var_name = pre_char + "\\" + var_name;
         } else {
             checkvarname(var_name, i);
             // ***** 関数の解析情報のチェック *****
@@ -2974,6 +2975,7 @@ var Interpreter;
                     funcparse_stack[funcparse_stack.length - 1].localstatement = false;
                 }
             } else {
+                // ***** グローバル変数とする *****
                 var_name = "g\\" + var_name;
             }
         }
@@ -3000,7 +3002,7 @@ var Interpreter;
     function c_getvarname2(tok_start, tok_end, pointer_flag) {
         var i;
         var var_name;
-        var var_name2;
+        var pre_char;
 
         // ***** 引数のチェック *****
         if (pointer_flag == null) { pointer_flag = false; }
@@ -3024,9 +3026,10 @@ var Interpreter;
         }
         // ***** 接頭語のチェック *****
         if (var_name == "global" || var_name == "glb" || var_name == "local" || var_name == "loc") {
-            var_name2 = token[i++];
-            checkvarname(var_name2, i);
-            var_name = var_name.charAt(0) + "\\" + var_name2;
+            pre_char = var_name.charAt(0);
+            var_name = token[i++];
+            checkvarname(var_name, i);
+            var_name = pre_char + "\\" + var_name;
         } else {
             checkvarname(var_name, i);
             // ***** 関数の仮引数はデフォルトでローカル変数とする *****
@@ -3100,9 +3103,10 @@ var Interpreter;
             }
         }
         // ***** ラベル名のチェック *****
-        if (lbl_name == "") {
+        if (!(isAlpha(lbl_name.charAt(0)) || lbl_name.charAt(0) == "_" ||
+              isDigit(lbl_name.charAt(0)) || lbl_name.charAt(0) == "-")) {
             debugpos2 = i;
-            throw new Error("ラベル名が不正です。");
+            throw new Error("ラベル名が不正です。('" + lbl_name + "')");
         }
         if (reserved.hasOwnProperty(lbl_name) ||
             func_tbl.hasOwnProperty(lbl_name) ||
