@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2017-4-2 v6.04
+// 2017-4-2 v6.05
 
 
 // SPALM Web Interpreter
@@ -1971,10 +1971,10 @@ var Interpreter;
                                 debugpos2 = i + 1;
                                 throw new Error("case文の値がありません。");
                             }
-                            k2 = 1;                  // caseに式を可能とする
+                            k2 = 1; // caseで式を使用可能とする
                             k3 = 0;
                             while (i < tok_end) {
-                                // if (token[i] == "?") { k2++; }
+                                if (token[i] == "?") { k2++; }
                                 if (token[i] == ":") { k2--; }
                                 if (token[i] == "(") { k3++; }
                                 if (token[i] == ")") { k3--; }
@@ -2205,7 +2205,7 @@ var Interpreter;
                 k = 1;
                 k2 = 0;
                 while (i < tok_end) {
-                    // if (token[i] == "?") { k++; }
+                    if (token[i] == "?" && sp_compati_flag) { k++; }
                     if (token[i] == ";") { k--; }
                     if (token[i] == "(") { k2++; }
                     if (token[i] == ")") { k2--; }
@@ -2218,7 +2218,7 @@ var Interpreter;
                 k = 1;
                 k2 = 0;
                 while (i < tok_end) {
-                    // if (token[i] == "?") { k++; }
+                    if (token[i] == "?" && sp_compati_flag) { k++; }
                     if (token[i] == ";") { k--; }
                     if (token[i] == "(") { k2++; }
                     if (token[i] == ")") { k2--; }
@@ -3297,7 +3297,9 @@ var Interpreter;
             if (ch == "0" && ch2 == "x") {
                 i++;
                 while (i < src_len) {
+                    // ***** 1文字取り出す(iの加算なし) *****
                     ch = src.charAt(i);
+                    // ***** 16進数チェック *****
                     if (isHex(ch)) { i++; } else { break; }
                 }
                 temp_st = src.substring(tok_start, i);
@@ -3324,9 +3326,9 @@ var Interpreter;
                     // ***** 1文字取り出す(iの加算なし) *****
                     ch = src.charAt(i);
                     if (i + 1 < src_len) { ch2 = src.charAt(i + 1); } else { ch2 = ""; }
-                    // ***** 小数点のチェック *****
+                    // ***** 小数点チェック *****
                     if (ch == "." && isDigit(ch2)) { i++; dot_count++; continue; }
-                    // ***** 数値のチェック *****
+                    // ***** 数値チェック *****
                     if (isDigit(ch)) { i++; } else { break; }
                     // ***** 先頭の0をカット *****
                     if (zero_flag && ch == "0" && isDigit(ch2)) { tok_start = i; } else { zero_flag = false; }
@@ -3336,13 +3338,14 @@ var Interpreter;
                 continue;
             }
             // ***** アルファベットかアンダースコアのとき(名前) *****
-            // (名前の途中には数字も使用可能)
-            // (名前の途中には「::」を挿入可能)
             if (isAlpha(ch) || ch == "_") {
                 while (i < src_len) {
+                    // ***** 1文字取り出す(iの加算なし) *****
                     ch = src.charAt(i);
                     if (i + 1 < src_len) { ch2 = src.charAt(i + 1); } else { ch2 = ""; }
+                    // ***** 「::」のチェック *****
                     if (ch == ":" && ch2 == ":") { i += 2; continue; }
+                    // ***** アルファベットかアンダースコアか数字のチェック *****
                     if (isAlpha(ch) || ch == "_" || isDigit(ch)) { i++; } else { break; }
                 }
                 token_push(src.substring(tok_start, i), line_no_s);
