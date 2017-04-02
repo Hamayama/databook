@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2017-4-2 v6.03
+// 2017-4-2 v6.04
 
 
 // SPALM Web Interpreter
@@ -1677,7 +1677,7 @@ var Interpreter;
             }
 
             // ***** spmode文のとき *****
-            // (互換モードの情報をコンパイル時にも使用するため、取得しておく)
+            // (互換モードの情報を取得する(コンパイル時にも使用するため))
             if (tok == "spmode") {
                 j = i;
                 i++;
@@ -1688,15 +1688,15 @@ var Interpreter;
                     debugpos2 = i + 1;
                     throw new Error("spmodeの引数には数値以外を指定できません。");
                 }
-                if (token[i] == "0") {
-                    sp_compati_flag = false;
-                } else {
+                if (token[i] == "1" && token[i - 1] != "-") {
                     sp_compati_flag = true;
+                } else {
+                    sp_compati_flag = false;
                 }
                 i++;
                 match2(")", i++);
                 i = j;
-                // (このまま下におりて、組み込み関数のコードを生成する)
+                // (そのまま下におりて組み込み関数のコードを生成する)
                 // continue;
             }
 
@@ -6102,14 +6102,14 @@ var Interpreter;
             var a1;
 
             a1 = Math.trunc(param[0]);
-            if (a1 == 0) {
-                sp_compati_flag = false;
-                use_local_vars = true;
-                font_size = font_size_set[1];
-            } else {
+            if (a1 == 1) {
                 sp_compati_flag = true;
                 use_local_vars = false;
                 font_size = font_size_set[0];
+            } else {
+                sp_compati_flag = false;
+                use_local_vars = true;
+                font_size = font_size_set[1];
             }
             ctx.font = font_size + "px " + font_family;
             return nothing;
