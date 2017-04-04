@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_plugin0001.js
-// 2017-3-30 v6.00
+// 2017-4-4 v7.00
 
 
 // A Plugin to add functions to SPALM Web Interpreter

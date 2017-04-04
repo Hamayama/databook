@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2017-4-2 v6.05
+// 2017-4-4 v7.00
 
 
 // SPALM Web Interpreter
@@ -512,7 +512,7 @@ var Interpreter;
     var token_len = 0;          // トークン数        (token.lengthのキャッシュ用)
     var code = [];              // コード            (配列)
     var code_info = [];         // コード情報        (配列)(エラー表示用)
-    var code_str = [];          // コード文字列      (配列)(表示用とラベル設定用)
+    var code_str = [];          // コード文字列      (配列)(表示用とアドレス解決時用)
     var code_len = 0;           // コード数          (code.lengthのキャッシュ用)
     // var vars = {};           // 変数用            (Varsクラスに移行)
     var imgvars = {};           // 画像変数用        (連想配列オブジェクト)
@@ -818,8 +818,6 @@ var Interpreter;
 
         // ***** 戻り値の初期化 *****
         ret = false;
-        // ***** 互換モードフラグの初期化 *****
-        sp_compati_flag = false;
         // ***** Canvasのコンテキストを取得 *****
         ctx1 = can1.getContext("2d");
         ctx2 = can2.getContext("2d");
@@ -950,8 +948,6 @@ var Interpreter;
         mousex = -10000;
         mousey = -10000;
         mouse_btn_stat = {};
-        // sp_compati_flag = false;
-        use_local_vars = true;
         save_data = {};
         prof_obj = null;
         if (typeof (Profiler) == "function") { prof_obj = new Profiler(); }
@@ -1345,7 +1341,7 @@ var Interpreter;
                     // ***** 関数内のとき *****
                     if (funccall_stack.length > 0) {
                         // ***** ローカル変数を解放 *****
-                        Vars.deleteLocalScope();
+                        if (use_local_vars) { Vars.deleteLocalScope(); }
                         // ***** 呼び出し元に復帰 *****
                         funccall_info = funccall_stack.pop();
                         pc = funccall_info.func_back;
@@ -1371,7 +1367,7 @@ var Interpreter;
                         // ***** 戻り値は0とする *****
                         stack.push(0);
                         // ***** ローカル変数を解放 *****
-                        Vars.deleteLocalScope();
+                        if (use_local_vars) { Vars.deleteLocalScope(); }
                         // ***** 呼び出し元に復帰 *****
                         funccall_info = funccall_stack.pop();
                         pc = funccall_info.func_back;
@@ -1447,7 +1443,7 @@ var Interpreter;
                         throw new Error("関数 '" + func_name + "' の呼び出しに失敗しました(関数が未定義もしくはユーザ定義関数ではない等)。");
                     }
                     // ***** ローカル変数を生成 *****
-                    Vars.makeLocalScope();
+                    if (use_local_vars) { Vars.makeLocalScope(); }
                     // ***** 関数呼び出し情報の生成 *****
                     funccall_info = {};
                     funccall_info.func_back = pc;
@@ -1475,7 +1471,7 @@ var Interpreter;
                         }
                         // ***** コールスタックを増加させないで関数を呼び出す *****
                         // ***** ローカル変数をクリア *****
-                        Vars.clearLocalVars();
+                        if (use_local_vars) { Vars.clearLocalVars(); }
                         // ***** 関数呼び出し情報の更新 *****
                         funccall_stack[funccall_stack.length - 1].func_adrs = func[func_name];
                         // ***** 関数の呼び出し *****
@@ -1493,7 +1489,7 @@ var Interpreter;
                     }
                     var_name = stack.pop();
                     // ***** 関数の引数のポインタ対応 *****
-                    if (var_name.substring(0, 2) == "p\\") {
+                    if (use_local_vars && var_name.substring(0, 2) == "p\\") {
                         // (引数名から「p\」を削除)
                         var_name = var_name.substring(2);
                         // (文字列化)
@@ -1504,9 +1500,9 @@ var Interpreter;
                         if (!((c >= 0x41 && c <= 0x5A) || (c >= 0x61 && c <= 0x7A) || c == 0x5F)) {
                             throw new Error("ポインタの指す先が不正です。('" + num + "')");
                         }
-                        // (引数の内容に「a\」と数字を結合して、ローカル/グローバル変数のスコープを
+                        // (引数の内容に「a\」と数字を結合して、ローカル変数のスコープを
                         //  さかのぼれるようにする)
-                        if (num.substring(0, 2) != "a\\") {
+                        if (num.substring(0, 2) == "l\\") {
                             num2 = Vars.getLocalScopeNum() - 1;
                             // if (num2 < 0) { num2 = 0; }
                             num = "a\\" + num2 + "\\" + num;
@@ -1677,27 +1673,30 @@ var Interpreter;
             }
 
             // ***** spmode文のとき *****
-            // (互換モードの情報を取得する(コンパイル時にも使用するため))
             if (tok == "spmode") {
-                j = i;
                 i++;
                 match2("(", i++);
                 // (マイナス値を許可(特別扱い))
                 if (token[i] == "-") { i++; }
-                if (!isDigit(token[i])) {
-                    debugpos2 = i + 1;
-                    throw new Error("spmodeの引数には数値以外を指定できません。");
-                }
-                if (token[i] == "1" && token[i - 1] != "-") {
-                    sp_compati_flag = true;
-                } else {
-                    sp_compati_flag = false;
-                }
                 i++;
                 match2(")", i++);
-                i = j;
-                // (そのまま下におりて組み込み関数のコードを生成する)
-                // continue;
+                continue;
+            }
+
+            // ***** onlocal文のとき *****
+            if (tok == "onlocal") {
+                i++;
+                match2("(", i++);
+                match2(")", i++);
+                continue;
+            }
+
+            // ***** offlocal文のとき *****
+            if (tok == "offlocal") {
+                i++;
+                match2("(", i++);
+                match2(")", i++);
+                continue;
             }
 
             // ***** defconst文のとき *****
@@ -1707,11 +1706,8 @@ var Interpreter;
                 i++;
                 match2(",", i++);
                 // (マイナス値を許可(特別扱い))
-                if (token[i] == "-" && isDigit(token[i + 1])) {
-                    i += 2;
-                } else {
-                    i++;
-                }
+                if (token[i] == "-") { i++; }
+                i++;
                 match2(")", i++);
                 continue;
             }
@@ -1781,7 +1777,7 @@ var Interpreter;
                 loc_flag = (tok.charAt(0) == "l");
                 while (i < tok_end) {
                     // ***** ローカル文フラグON *****
-                    if (loc_flag) { locstatement_flag = true; }
+                    if (use_local_vars && loc_flag) { locstatement_flag = true; }
                     // ***** 因子のコンパイル *****
                     j = code_len + 1;
                     i = c_factor(i, tok_end);
@@ -1792,7 +1788,7 @@ var Interpreter;
                         checkvarname(var_name, i);
                     }
                     // ***** ローカル文フラグOFF *****
-                    if (loc_flag) { locstatement_flag = false; }
+                    if (use_local_vars && loc_flag) { locstatement_flag = false; }
                     // ***** カンマ区切りのチェック *****
                     if (token[i] == ",") {
                         i++;
@@ -1824,8 +1820,10 @@ var Interpreter;
                 }
                 code_push('"' + func_name + '"', debugpos1, i);
                 // ***** ローカル変数名情報1個の生成 *****
-                locvarnames = {};
-                locvarnames_stack.push(locvarnames);
+                if (use_local_vars) {
+                    locvarnames = {};
+                    locvarnames_stack.push(locvarnames);
+                }
                 // ***** 仮引数 *****
                 match2("(", i++);
                 if (token[i] == ")") {
@@ -1862,7 +1860,9 @@ var Interpreter;
                 code_push("funcend", debugpos1, i);
                 // i = func_end;
                 // ***** ローカル変数名情報1個の削除 *****
-                locvarnames_stack.pop();
+                if (use_local_vars) {
+                    locvarnames_stack.pop();
+                }
                 continue;
             }
 
@@ -2788,7 +2788,7 @@ var Interpreter;
         // ***** 数値のとき *****
         // (マイナス値を許可(定数展開の関係で特別扱い))
         // if (isDigit(ch)) {
-        if (isDigit(ch) || ch == "-") {
+        if (isDigit(ch) || (ch == "-" && isDigit(tok.charAt(1)))) {
             i++;
             num = +tok; // 数値にする
             code_push("storenum", debugpos1, i);
@@ -2924,7 +2924,7 @@ var Interpreter;
     function c_getvarname(tok_start, tok_end) {
         var i;
         var var_name;
-        var pre_char;
+        var loc_flag;
 
         // ***** 変数名取得 *****
         i = tok_start;
@@ -2955,28 +2955,28 @@ var Interpreter;
         }
         // ***** ローカル/グローバル指定のチェック *****
         if (var_name == "global" || var_name == "glb" || var_name == "local" || var_name == "loc") {
-            pre_char = var_name.charAt(0);
+            loc_flag = (var_name.charAt(0) == "l");
             var_name = token[i++];
             checkvarname(var_name, i);
-            var_name = pre_char + "\\" + var_name;
+            if (use_local_vars && loc_flag) {
+                var_name = "l\\" + var_name;
+            }
         } else {
             checkvarname(var_name, i);
-            // ***** ローカル変数名情報のチェック *****
             // ***** ローカル文フラグのチェック *****
-            if ((locvarnames_stack.length > 0 &&
-                 hasOwn.call(locvarnames_stack[locvarnames_stack.length - 1], var_name)) ||
-                locstatement_flag) {
-                // (ローカル変数である)
+            // ***** ローカル変数名情報のチェック *****
+            if (use_local_vars &&
+                (locstatement_flag ||
+                 (locvarnames_stack.length > 0 &&
+                  hasOwn.call(locvarnames_stack[locvarnames_stack.length - 1], var_name)))) {
                 var_name = "l\\" + var_name;
                 // ***** ローカル文フラグOFF *****
                 if (locstatement_flag) { locstatement_flag = false; }
-            } else {
-                // (指定のない変数はデフォルトでグローバル変数とする)
-                var_name = "g\\" + var_name;
             }
         }
         // ***** ローカル変数名情報の更新 *****
-        if (locvarnames_stack.length > 0 && var_name.substring(0, 2) == "l\\" &&
+        if (use_local_vars &&
+            locvarnames_stack.length > 0 && var_name.substring(0, 2) == "l\\" &&
             !hasOwn.call(locvarnames_stack[locvarnames_stack.length - 1], var_name.substring(2))) {
             locvarnames_stack[locvarnames_stack.length - 1][var_name.substring(2)] = true;
         }
@@ -2999,7 +2999,7 @@ var Interpreter;
     function c_getvarname2(tok_start, tok_end, pointer_flag) {
         var i;
         var var_name;
-        var pre_char;
+        var loc_flag;
 
         // ***** 引数のチェック *****
         if (pointer_flag == null) { pointer_flag = false; }
@@ -3023,24 +3023,29 @@ var Interpreter;
         }
         // ***** ローカル/グローバル指定のチェック *****
         if (var_name == "global" || var_name == "glb" || var_name == "local" || var_name == "loc") {
-            pre_char = var_name.charAt(0);
+            loc_flag = (var_name.charAt(0) == "l");
             var_name = token[i++];
             checkvarname(var_name, i);
-            var_name = pre_char + "\\" + var_name;
+            if (use_local_vars && loc_flag) {
+                var_name = "l\\" + var_name;
+            }
         } else {
             checkvarname(var_name, i);
             // (関数の仮引数はデフォルトでローカル変数とする)
-            var_name = "l\\" + var_name;
+            if (use_local_vars) {
+                var_name = "l\\" + var_name;
+            }
         }
         // ***** ローカル変数名情報の更新 *****
-        if (locvarnames_stack.length > 0 && var_name.substring(0, 2) == "l\\" &&
+        if (use_local_vars &&
+            locvarnames_stack.length > 0 && var_name.substring(0, 2) == "l\\" &&
             !hasOwn.call(locvarnames_stack[locvarnames_stack.length - 1], var_name.substring(2))) {
             locvarnames_stack[locvarnames_stack.length - 1][var_name.substring(2)] = true;
         }
         // ***** ポインタ的なもののとき *****
-        // (関数の仮引数に「p\」を結合して、ローカル/グローバル変数のスコープを
+        // (関数の仮引数に「p\」を結合して、ローカル変数のスコープを
         //  さかのぼれるようにする)
-        if (pointer_flag && var_name.substring(0, 2) != "p\\") {
+        if (use_local_vars && pointer_flag && var_name.substring(0, 2) != "p\\") {
             var_name = "p\\" + var_name;
         }
         // ***** 変数名を設定 *****
@@ -3122,15 +3127,22 @@ var Interpreter;
     // ****************************************
     //             プリプロセス処理
     // ****************************************
-    // (トークン中の定数の置き換え等を行う)
+    // (互換モードの設定や定数の置き換え等を行う)
 
     // ***** プリプロセス *****
     function preprocess() {
         var i;
         var ch;
         var tok;
+        var sp_value;
         var cst_name;
         var cst_value;
+
+        // ***** 互換モードフラグの初期化 *****
+        sp_compati_flag = false;
+
+        // ***** ローカル変数使用有無の初期化 *****
+        use_local_vars = true;
 
         // ***** 定数の定義情報の生成 *****
         make_const_tbl();
@@ -3141,6 +3153,57 @@ var Interpreter;
             // ***** トークン取り出し *****
             debugpos1 = i;
             tok = token[i];
+
+            // ***** spmode文のとき *****
+            if (tok == "spmode") {
+                i++;
+                match2("(", i++);
+                // ***** 値の取得 *****
+                // (マイナス値を許可(特別扱い))
+                if (token[i] == "-" && isDigit(token[i + 1])) {
+                    sp_value = token[i] + token[i + 1];
+                    i += 2;
+                } else if (isDigit(token[i])) {
+                    sp_value = token[i];
+                    i++;
+                } else {
+                    debugpos2 = i + 1;
+                    throw new Error("spmodeの引数には数値以外を指定できません。");
+                }
+                // ***** 互換モードの設定 *****
+                if (sp_value == "1") {
+                    sp_compati_flag = true;
+                    use_local_vars = false;
+                    font_size = font_size_set[0];
+                } else {
+                    sp_compati_flag = false;
+                    use_local_vars = true;
+                    font_size = font_size_set[1];
+                }
+                ctx.font = font_size + "px " + font_family;
+                match2(")", i++);
+                continue;
+            }
+
+            // ***** onlocal文のとき *****
+            if (tok == "onlocal") {
+                i++;
+                match2("(", i++);
+                match2(")", i++);
+                // ***** ローカル変数使用 *****
+                use_local_vars = true;
+                continue;
+            }
+
+            // ***** offlocal文のとき *****
+            if (tok == "offlocal") {
+                i++;
+                match2("(", i++);
+                match2(")", i++);
+                // ***** ローカル変数未使用 *****
+                use_local_vars = false;
+                continue;
+            }
 
             // ***** defconst文のとき *****
             if (tok == "defconst") {
@@ -3846,16 +3909,16 @@ var Interpreter;
         var i;
 
         // ***** 接頭語のチェック *****
-        // if (var_name.charAt(1) == "\\") {
-        if (var_name.charCodeAt(1) == 0x5C) {
-            // ***** 「a\」と数字を削除 *****
+        if (use_local_vars && var_name.charCodeAt(1) == 0x5C) {
+            // ***** 「a\」(スコープ指定)のとき *****
             if (var_name.charCodeAt(0) == 0x61) {
                 i = var_name.indexOf("\\", 2) + 1;
+                i += 2; // 「l\」の分
+            // ***** その他の接頭語のとき *****
             } else {
-                i = 0;
+                i = 2;
             }
-            // ***** さらに接頭語を削除 *****
-            if (var_name.charCodeAt(i + 1) == 0x5C) { i += 2; }
+            // ***** 接頭語を削除する *****
             return var_name.substring(i);
         }
         return var_name;
@@ -3891,43 +3954,25 @@ var Interpreter;
             var now_index;
 
             // ***** 接頭語のチェック *****
-            // if (var_name.charAt(1) == "\\") {
             if (var_name.charCodeAt(1) == 0x5C) {
-                switch (var_name.charCodeAt(0)) {
-                    case 0x6C: // 「l」(ローカル変数)
-                        i = 2;
-                        now_index = use_local_vars ? local_scope_num : 0;
-                        break;
-                    case 0x67: // 「g」(グローバル変数)
-                        i = 2;
-                        now_index = 0;
-                        break;
-                    case 0x61: // 「a」(スコープ指定)
-                        // ***** 関数の引数のポインタ対応 *****
-                        // (「a\」の後に続く数字により、ローカル/グローバル変数のスコープをさかのぼる)
-                        i = var_name.indexOf("\\", 2) + 1;
-                        if (use_local_vars) {
-                            now_index = Math.trunc(var_name.substring(2, i - 1));
-                            if (now_index < 0 || now_index > local_scope_num) {
-                                throw new Error("ポインタの指す先が不正です(スコープ指定エラー)。");
-                            }
-                        } else {
-                            now_index = 0;
-                        }
-                        // ***** さらに接頭語をチェック *****
-                        if (var_name.charCodeAt(i + 1) == 0x5C) {
-                            if (var_name.charCodeAt(i) == 0x67) { // 「g」(グローバル変数)
-                                now_index = 0;
-                            }
-                            i += 2;
-                        }
-                        break;
-                    default:   // その他
-                        i = 2;
-                        now_index = 0;
-                        // break;
+                // ***** 「a\」(スコープ指定)のとき *****
+                if (var_name.charCodeAt(0) == 0x61) {
+                    // ***** 関数の引数のポインタ対応 *****
+                    // (「a\」の後に続く数字により、ローカル変数のスコープをさかのぼる)
+                    i = var_name.indexOf("\\", 2) + 1;
+                    now_index = Math.trunc(var_name.substring(2, i - 1));
+                    if (now_index < 0 || now_index > local_scope_num) {
+                        throw new Error("ポインタの指す先が不正です(スコープ指定エラー)。");
+                    }
+                    i += 2; // 「l\」の分
+                // ***** その他の接頭語のとき *****
+                } else {
+                    // ***** ローカル変数とする *****
+                    i = 2;
+                    now_index = local_scope_num;
                 }
             } else {
+                // ***** グローバル変数とする *****
                 i = 0;
                 now_index = 0;
             }
@@ -4013,10 +4058,14 @@ var Interpreter;
             // if (var_name == "") { return true; }
 
             // ***** 変数のタイプチェック *****
-            ret_array = checkType(var_name);
-            i = ret_array[0];
-            now_index = ret_array[1];
-            if (i > 0) { var_name = var_name.substring(i); }
+            if (use_local_vars) {
+                ret_array = checkType(var_name);
+                i = ret_array[0];
+                now_index = ret_array[1];
+                if (i > 0) { var_name = var_name.substring(i); }
+            } else {
+                now_index = 0;
+            }
 
             // ***** ローカル/グローバル変数のスコープを取得 *****
             now_vars = vars_stack[now_index];
@@ -4038,10 +4087,14 @@ var Interpreter;
             // if (var_name == "") { return true; }
 
             // ***** 変数のタイプチェック *****
-            ret_array = checkType(var_name);
-            i = ret_array[0];
-            now_index = ret_array[1];
-            if (i > 0) { var_name = var_name.substring(i); }
+            if (use_local_vars) {
+                ret_array = checkType(var_name);
+                i = ret_array[0];
+                now_index = ret_array[1];
+                if (i > 0) { var_name = var_name.substring(i); }
+            } else {
+                now_index = 0;
+            }
 
             // ***** ローカル/グローバル変数のスコープを取得 *****
             now_vars = vars_stack[now_index];
@@ -4063,10 +4116,14 @@ var Interpreter;
             // if (var_name == "") { return true; }
 
             // ***** 変数のタイプチェック *****
-            ret_array = checkType(var_name);
-            i = ret_array[0];
-            now_index = ret_array[1];
-            if (i > 0) { var_name = var_name.substring(i); }
+            if (use_local_vars) {
+                ret_array = checkType(var_name);
+                i = ret_array[0];
+                now_index = ret_array[1];
+                if (i > 0) { var_name = var_name.substring(i); }
+            } else {
+                now_index = 0;
+            }
 
             // ***** ローカル/グローバル変数のスコープを取得 *****
             now_vars = vars_stack[now_index];
@@ -4089,10 +4146,14 @@ var Interpreter;
             // if (var_name == "") { return true; }
 
             // ***** 変数のタイプチェック *****
-            ret_array = checkType(var_name);
-            i = ret_array[0];
-            now_index = ret_array[1];
-            if (i > 0) { var_name = var_name.substring(i); }
+            if (use_local_vars) {
+                ret_array = checkType(var_name);
+                i = ret_array[0];
+                now_index = ret_array[1];
+                if (i > 0) { var_name = var_name.substring(i); }
+            } else {
+                now_index = 0;
+            }
 
             // ***** ローカル/グローバル変数のスコープを取得 *****
             now_vars = vars_stack[now_index];
@@ -4114,10 +4175,14 @@ var Interpreter;
             // if (var_name2 == "") { return true; }
 
             // ***** 変数のタイプチェック *****
-            ret_array = checkType(var_name);
-            i = ret_array[0];
-            now_index = ret_array[1];
-            if (i > 0) { var_name = var_name.substring(i); }
+            if (use_local_vars) {
+                ret_array = checkType(var_name);
+                i = ret_array[0];
+                now_index = ret_array[1];
+                if (i > 0) { var_name = var_name.substring(i); }
+            } else {
+                now_index = 0;
+            }
 
             // ***** 変数に[を付加 *****
             var_name  += "[";
@@ -4156,10 +4221,14 @@ var Interpreter;
             // if (var_name == "") { return true; }
 
             // ***** 変数のタイプチェック *****
-            ret_array = checkType(var_name);
-            i = ret_array[0];
-            now_index = ret_array[1];
-            if (i > 0) { var_name = var_name.substring(i); }
+            if (use_local_vars) {
+                ret_array = checkType(var_name);
+                i = ret_array[0];
+                now_index = ret_array[1];
+                if (i > 0) { var_name = var_name.substring(i); }
+            } else {
+                now_index = 0;
+            }
 
             // ***** 変数に[を付加 *****
             var_name += "[";
@@ -5611,14 +5680,6 @@ var Interpreter;
             loop_nocount_flag1 = true;
             return nothing;
         });
-        make_one_func_tbl("onlocal", 0, [], function (param) {
-            use_local_vars = true;
-            return nothing;
-        });
-        make_one_func_tbl("offlocal", 0, [], function (param) {
-            use_local_vars = false;
-            return nothing;
-        });
         make_one_func_tbl("origin", 2, [], function (param) {
             var a1, a2;
 
@@ -6100,22 +6161,6 @@ var Interpreter;
                 num = i + 1;
             }
             return num;
-        });
-        make_one_func_tbl("spmode", 1, [], function (param) {
-            var a1;
-
-            a1 = Math.trunc(param[0]);
-            if (a1 == 1) {
-                sp_compati_flag = true;
-                use_local_vars = false;
-                font_size = font_size_set[0];
-            } else {
-                sp_compati_flag = false;
-                use_local_vars = true;
-                font_size = font_size_set[1];
-            }
-            ctx.font = font_size + "px " + font_family;
-            return nothing;
         });
         make_one_func_tbl("sptype", -1, [], function (param) {
             var num;
