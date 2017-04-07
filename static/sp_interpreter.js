@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2017-4-6 v7.02
+// 2017-4-7 v7.03
 
 
 // SPALM Web Interpreter
@@ -521,6 +521,7 @@ var Interpreter;
     var stack = [];             // スタック          (配列)
     var param = [];             // 関数の引数        (配列)(ユーザ定義関数のときは逆順に格納)
     var nothing = 0;            // 戻り値なしの組み込み関数の戻り値
+    var end_token_len = 4;      // 終端のトークン数
 
     var pc;                     // プログラムカウンタ
     var debugpc;                // エラーの場所
@@ -558,20 +559,19 @@ var Interpreter;
 
     var sp_compati_flag;        // 互換モードフラグ
     var use_local_vars;         // ローカル変数使用有無
+    var locstatement_flag;      // ローカル文フラグ
+    var locvarnames_stack = []; // ローカル変数名情報のスタック(配列)
     var save_data = {};         // セーブデータ(連想配列オブジェクト)(仮)
     var prof_obj = {};          // プロファイラ実行用(Profilerクラスのインスタンス)
     var out_data = {};          // 外部データ(連想配列オブジェクト)
 
     var func_tbl = {};          // 組み込み関数の定義情報(連想配列オブジェクト)
     var addfunc_tbl = {};       // 追加の組み込み関数の定義情報(連想配列オブジェクト)
+    var const_tbl = {};         // 定数の定義情報(連想配列オブジェクト)
 
     var before_run_funcs = {};  // プラグイン用の実行前処理(連想配列オブジェクト)
     var after_run_funcs = {};   // プラグイン用の実行後処理(連想配列オブジェクト)
     var clear_var_funcs = {};   // プラグイン用の全変数クリア時処理(連想配列オブジェクト)
-
-    var const_tbl = {};         // 定数の定義情報(連想配列オブジェクト)
-    var locvarnames_stack = []; // ローカル変数名情報のスタック(配列)
-    var locstatement_flag;      // ローカル文フラグ
 
     var constants = {           // 組み込み定数
         LEFT:4, HCENTER:1, RIGHT:8, TOP:16, VCENTER:2, BASELINE:64, BOTTOM:32,
@@ -839,7 +839,7 @@ var Interpreter;
         // ***** フォントサイズの初期化 *****
         font_size = font_size_set[1];
         // ctx2.font = can2_font_size_init + "px " + font_family;
-        // ***** Canvasの各設定の初期化 *****
+        // ***** Canvasの各種設定の初期化 *****
         init_canvas_setting(ctx1);
         // ***** 現在の描画先にセット *****
         can = can1;
@@ -1525,9 +1525,9 @@ var Interpreter;
         var cod;
         var lbl_name;
         var func_name;
+        var labelinfo = {};
         var jumpinfo = {};
         var jumpinfo_array = [];
-        var goto_pc;
 
         // ***** コード解析のループ *****
         i = 0;
@@ -1549,12 +1549,14 @@ var Interpreter;
                     throw new Error("ラベル '" + lbl_name + "' の定義が重複しています。");
                 }
                 label[lbl_name] = i;
+                labelinfo[lbl_name] = {}
+                labelinfo[lbl_name].func_name = func_name;
                 continue;
             }
-            // ***** 関数開始のとき *****
+            // ***** 関数の定義開始のとき *****
             if (cod == "func") {
                 if (func_name != "") {
-                    debugpos2 = debugpos1 + 1;
+                    debugpos2 = debugpos1 + 2;
                     throw new Error("funcの中にfuncを入れることはできません。");
                 }
                 func_name = code[i++];
@@ -1564,14 +1566,14 @@ var Interpreter;
                     throw new Error("関数 '" + func_name + "' の定義が重複しています。");
                 }
                 func[func_name] = [];
-                func[func_name][0] = i;            // 開始位置
-                func[func_name][1] = code_len - 4; // 終了位置(仮)(終端のend(4個)は対象外)
+                func[func_name][0] = i;     // 開始位置
+                func[func_name][1] = code_len - end_token_len; // 終了位置(仮)
                 continue;
             }
-            // ***** 関数終了のとき *****
+            // ***** 関数の定義終了のとき *****
             if (cod == "funcend") {
                 if (func_name != "") {
-                    func[func_name][1] = i;        // 終了位置(確定)
+                    func[func_name][1] = i; // 終了位置(確定)
                     func_name = "";
                 }
                 continue;
@@ -1595,7 +1597,7 @@ var Interpreter;
             debugpos1 = jumpinfo.debugpos1;
             lbl_name = jumpinfo.lbl_name;
             func_name = jumpinfo.func_name;
-            if (func_name != "" && cod == "gosubuser") {
+            if (cod == "gosubuser" && func_name != "") {
                 debugpos2 = debugpos1 + 2;
                 throw new Error("func内では gosub を使用できません。");
             }
@@ -1604,12 +1606,9 @@ var Interpreter;
                 debugpos2 = debugpos1 + 2;
                 throw new Error("ラベル '" + lbl_name + "' は未定義です。");
             }
-            if (func_name != "" && cod == "gotouser") {
-                goto_pc = label[lbl_name];
-                if (goto_pc < func[func_name][0] || goto_pc >= func[func_name][1]) {
-                    debugpos2 = debugpos1 + 2;
-                    throw new Error("funcの外へは goto でジャンプできません。");
-                }
+            if (func_name != labelinfo[lbl_name].func_name) {
+                debugpos2 = debugpos1 + 2;
+                throw new Error("funcの境界を越えてジャンプすることはできません。");
             }
         }
     }
@@ -1626,14 +1625,14 @@ var Interpreter;
         code_info = [];
         code_str = [];
         code_len = 0;
-        locvarnames_stack = [];
         locstatement_flag = false;
+        locvarnames_stack = [];
         c_statement(0, token_len, "", "");
     }
 
     // ***** 文(ステートメント)のコンパイル *****
     function c_statement(tok_start, tok_end, break_lbl, continue_lbl) {
-        var i, j, k, k2, k3;
+        var i, j, k, k2;
         var ch;
         var tok;
         var loc_flag;
@@ -1970,13 +1969,10 @@ var Interpreter;
                                 throw new Error("case文の値がありません。");
                             }
                             k2 = 1; // caseで式を使用可能とする
-                            k3 = 0;
                             while (i < tok_end) {
                                 if (token[i] == "?") { k2++; }
                                 if (token[i] == ":") { k2--; }
-                                if (token[i] == "(") { k3++; }
-                                if (token[i] == ")") { k3--; }
-                                if (k2 == 0 && k3 == 0) { break; }
+                                if (k2 == 0) { break; }
                                 i++;
                             }
                             match2(":", i++);
@@ -2011,11 +2007,10 @@ var Interpreter;
                     code_push('"switch_case_stm' + switch_case_no + '\\' + j + '"', debugpos1, i);
                 }
                 code_push("pop", debugpos1, i); // 式の値を捨てる
+                code_push("goto", debugpos1, i);
                 if (switch_default_stm >= 0) {
-                    code_push("goto", debugpos1, i);
                     code_push('"switch_default_stm\\' + j + '"', debugpos1, i);
                 } else {
-                    code_push("goto", debugpos1, i);
                     code_push('"switch_end\\' + j + '"', debugpos1, i);
                 }
                 // 文
@@ -2201,26 +2196,20 @@ var Interpreter;
                 // 式1
                 for_exp1 = i;
                 k = 1;
-                k2 = 0;
                 while (i < tok_end) {
                     if (token[i] == "?" && sp_compati_flag) { k++; }
                     if (token[i] == ";") { k--; }
-                    if (token[i] == "(") { k2++; }
-                    if (token[i] == ")") { k2--; }
-                    if (k == 0 && k2 == 0) { break; }
+                    if (k == 0) { break; }
                     i++;
                 }
                 match2(";", i++);
                 // 式2
                 for_exp2 = i;
                 k = 1;
-                k2 = 0;
                 while (i < tok_end) {
                     if (token[i] == "?" && sp_compati_flag) { k++; }
                     if (token[i] == ";") { k--; }
-                    if (token[i] == "(") { k2++; }
-                    if (token[i] == ")") { k2--; }
-                    if (k == 0 && k2 == 0) { break; }
+                    if (k == 0) { break; }
                     i++;
                 }
                 match2(";", i++);
@@ -3155,7 +3144,7 @@ var Interpreter;
 
         // ***** トークン解析のループ *****
         i = 0;
-        while (i < token_len - 4) { // 終端のend(4個)は対象外
+        while (i < token_len - end_token_len) { // 終端のトークンは対象外
             // ***** トークン取り出し *****
             debugpos1 = i;
             tok = token[i];
@@ -3389,9 +3378,9 @@ var Interpreter;
             if (isDigit(ch)) {
                 dot_count = 0;
                 zero_flag = true;
-                // ***** 先頭の0をカット *****
-                if (ch == "0" && isDigit(ch2)) { tok_start = i; } else { zero_flag = false; }
                 while (i < src_len) {
+                    // ***** 先頭の0をカット *****
+                    if (zero_flag && ch == "0" && isDigit(ch2)) { tok_start = i; } else { zero_flag = false; }
                     // ***** 1文字取り出す(iの加算なし) *****
                     ch = src.charAt(i);
                     if (i + 1 < src_len) { ch2 = src.charAt(i + 1); } else { ch2 = ""; }
@@ -3399,8 +3388,6 @@ var Interpreter;
                     if (ch == "." && isDigit(ch2)) { i++; dot_count++; continue; }
                     // ***** 数値チェック *****
                     if (isDigit(ch)) { i++; } else { break; }
-                    // ***** 先頭の0をカット *****
-                    if (zero_flag && ch == "0" && isDigit(ch2)) { tok_start = i; } else { zero_flag = false; }
                 }
                 if (dot_count >= 2) { throw new Error("数値の小数点重複エラー"); }
                 token_push(src.substring(tok_start, i), line_no_s);
@@ -3479,11 +3466,10 @@ var Interpreter;
             }
             token_push(src.substring(tok_start, i), line_no_s);
         }
-        // ***** 終端のend(4個)を追加(安全のため) *****
-        token_push("end", line_no);
-        token_push("end", line_no);
-        token_push("end", line_no);
-        token_push("end", line_no);
+        // ***** 終端のトークンを追加(安全のため) *****
+        for (i = 0; i < end_token_len; i++) {
+            token_push("end", line_no);
+        }
     }
 
     // ****************************************
@@ -3711,7 +3697,7 @@ var Interpreter;
         }
     }
 
-    // ***** Canvasの各設定の初期化 *****
+    // ***** Canvasの各種設定の初期化 *****
     function init_canvas_setting(ctx) {
         // ***** フォント設定 *****
         // (フォントサイズだけはリセットしない(過去との互換性維持のため))
@@ -3745,14 +3731,14 @@ var Interpreter;
         // ***** 現在状態を保存 *****
         ctx.save();
     }
-    // ***** Canvasの各設定のリセット(各種設定もリセット) *****
+    // ***** Canvasの各種設定のリセット *****
     function reset_canvas_setting(ctx) {
         // ***** 前回状態に復帰 *****
         ctx.restore();
-        // ***** Canvasの各設定の初期化 *****
+        // ***** Canvasの各種設定の初期化 *****
         init_canvas_setting(ctx);
     }
-    // ***** Canvasの各設定のリセット2(各種設定は保持) *****
+    // ***** Canvasの各種設定のリセット2(設定内容は保持) *****
     function reset_canvas_setting2(ctx) {
         // ***** 前回状態に復帰 *****
         ctx.restore();
@@ -4433,7 +4419,7 @@ var Interpreter;
             a3 = Math.trunc(param[2]); // W
             a4 = Math.trunc(param[3]); // H
 
-            // ***** Canvasの各設定のリセット2 *****
+            // ***** Canvasの各種設定のリセット2 *****
             reset_canvas_setting2(ctx); // clipを解除する方法がrestoreしかない
 
             ctx.beginPath();
@@ -5452,7 +5438,7 @@ var Interpreter;
             imgvars[a1].can.width = img_w;
             imgvars[a1].can.height = img_h;
             imgvars[a1].ctx = imgvars[a1].can.getContext("2d");
-            // ***** Canvasの各設定の初期化 *****
+            // ***** Canvasの各種設定の初期化 *****
             init_canvas_setting(imgvars[a1].ctx);
             // ***** 画像を格納 *****
             imgvars[a1].ctx.putImageData(img_data, 0, 0);
@@ -5476,7 +5462,7 @@ var Interpreter;
             imgvars[a1].can.width = 16;
             imgvars[a1].can.height = 16;
             imgvars[a1].ctx = imgvars[a1].can.getContext("2d");
-            // ***** Canvasの各設定の初期化 *****
+            // ***** Canvasの各種設定の初期化 *****
             init_canvas_setting(imgvars[a1].ctx);
             // ***** デバッグ用 *****
             imgvars[a1].ctx.fillRect(0,0,16,16);
@@ -5489,7 +5475,7 @@ var Interpreter;
                 // ***** Canvasのリサイズ *****
                 imgvars[a1].can.width = img_obj.width;
                 imgvars[a1].can.height = img_obj.height;
-                // ***** Canvasの各設定の初期化 *****
+                // ***** Canvasの各種設定の初期化 *****
                 init_canvas_setting(imgvars[a1].ctx);
                 // ***** 画像を描画 *****
                 imgvars[a1].ctx.drawImage(img_obj, 0, 0);
@@ -5594,7 +5580,7 @@ var Interpreter;
             imgvars[a1].can.width = a2;
             imgvars[a1].can.height = a3;
             imgvars[a1].ctx = imgvars[a1].can.getContext("2d");
-            // ***** Canvasの各設定の初期化 *****
+            // ***** Canvasの各種設定の初期化 *****
             init_canvas_setting(imgvars[a1].ctx);
             return nothing;
         });
@@ -6021,7 +6007,7 @@ var Interpreter;
                 can2.style.width = a3 + "px";
                 disp_softkey();
             }
-            // ***** Canvasの各設定のリセット *****
+            // ***** Canvasの各種設定のリセット *****
             reset_canvas_setting(ctx1);
             return nothing;
         });
@@ -6291,7 +6277,7 @@ var Interpreter;
             } else {
                 throw new Error("Image「" + a1 + "」がロードされていません。");
             }
-            // ***** Canvasの各設定のリセット *****
+            // ***** Canvasの各種設定のリセット *****
             reset_canvas_setting(ctx);
             return nothing;
         });
