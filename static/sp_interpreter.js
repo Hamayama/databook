@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2017-4-7 v7.03
+// 2017-4-8 v7.04
 
 
 // SPALM Web Interpreter
@@ -1521,7 +1521,7 @@ var Interpreter;
 
     // ***** アドレス解決 *****
     function resolveaddress() {
-        var i;
+        var i, i2;
         var cod;
         var lbl_name;
         var func_name;
@@ -1549,7 +1549,7 @@ var Interpreter;
                     throw new Error("ラベル '" + lbl_name + "' の定義が重複しています。");
                 }
                 label[lbl_name] = i;
-                labelinfo[lbl_name] = {}
+                labelinfo[lbl_name] = {};
                 labelinfo[lbl_name].func_name = func_name;
                 continue;
             }
@@ -1591,8 +1591,8 @@ var Interpreter;
             }
         }
         // ***** ジャンプ情報のチェック *****
-        for (i = 0; i < jumpinfo_array.length; i++) {
-            jumpinfo = jumpinfo_array[i];
+        for (i2 = 0; i2 < jumpinfo_array.length; i2++) {
+            jumpinfo = jumpinfo_array[i2];
             cod = jumpinfo.cod;
             debugpos1 = jumpinfo.debugpos1;
             lbl_name = jumpinfo.lbl_name;
@@ -1839,7 +1839,6 @@ var Interpreter;
                     match2(")", i++);
                 }
                 // ***** 本体 *****
-                // j = i;
                 match2("{", i++);
                 func_stm = i;
                 k = 1;
@@ -1852,10 +1851,9 @@ var Interpreter;
                 match2("}", i++);
                 func_end = i;
                 // ***** 文(ステートメント)のコンパイル(再帰的に実行) *****
-                c_statement(func_stm, func_end - 1, "", "");
-                debugpos1 = i - 1; // エラー表示位置調整
+                i = c_statement(func_stm, func_end - 1, "", "");
                 code_push("funcend", debugpos1, i);
-                // i = func_end;
+                i = func_end;
                 // ***** ローカル変数名情報1個の削除 *****
                 if (use_local_vars) {
                     locvarnames_stack.pop();
@@ -2027,7 +2025,7 @@ var Interpreter;
                         switch_case_stm_end = switch_end;
                     }
                     // ***** 文(ステートメント)のコンパイル(再帰的に実行) *****
-                    c_statement(switch_case_stm[switch_case_no], switch_case_stm_end - 1, '"switch_end\\' + j + '"', continue_lbl);
+                    i = c_statement(switch_case_stm[switch_case_no], switch_case_stm_end - 1, '"switch_end\\' + j + '"', continue_lbl);
                 }
                 // 終了
                 code_push("label", debugpos1, i);
@@ -2144,7 +2142,7 @@ var Interpreter;
                 }
                 // 文
                 // ***** 文(ステートメント)のコンパイル(再帰的に実行) *****
-                c_statement(if_stm, if_stm_end - 1, break_lbl, continue_lbl);
+                i = c_statement(if_stm, if_stm_end - 1, break_lbl, continue_lbl);
                 if (elsif_exp.length > 0 || else_stm >=0) {
                     code_push("goto", debugpos1, i);
                     code_push('"if_end\\' + j + '"', debugpos1, i);
@@ -2165,7 +2163,7 @@ var Interpreter;
                     }
                     // 文
                     // ***** 文(ステートメント)のコンパイル(再帰的に実行) *****
-                    c_statement(elsif_stm[elsif_no], elsif_stm_end[elsif_no] - 1, break_lbl, continue_lbl);
+                    i = c_statement(elsif_stm[elsif_no], elsif_stm_end[elsif_no] - 1, break_lbl, continue_lbl);
                     if (elsif_exp.length > elsif_no + 1 || else_stm >=0) {
                         code_push("goto", debugpos1, i);
                         code_push('"if_end\\' + j + '"', debugpos1, i);
@@ -2177,7 +2175,7 @@ var Interpreter;
                     code_push("label", debugpos1, i);
                     code_push('"else_stm\\' + j + '"', debugpos1, i);
                     // ***** 文(ステートメント)のコンパイル(再帰的に実行) *****
-                    c_statement(else_stm, if_end - 1, break_lbl, continue_lbl);
+                    i = c_statement(else_stm, if_end - 1, break_lbl, continue_lbl);
                 }
                 // 終了
                 code_push("label", debugpos1, i);
@@ -2261,10 +2259,7 @@ var Interpreter;
                 }
                 // 文
                 // ***** 文(ステートメント)のコンパイル(再帰的に実行) *****
-                c_statement(for_stm, for_end - 1, '"for_end\\' + j + '"', '"for_exp3\\' + j + '"');
-                // for (i = for_stm; i < for_end - 1; i++) {
-                //     code_push(token[i], debugpos1, i);
-                // }
+                i = c_statement(for_stm, for_end - 1, '"for_end\\' + j + '"', '"for_exp3\\' + j + '"');
                 code_push("goto", debugpos1, i);
                 code_push('"for_exp3\\' + j + '"', debugpos1, i);
                 // 終了
@@ -2317,7 +2312,7 @@ var Interpreter;
                 code_push('"while_end\\' + j + '"', debugpos1, i);
                 // 文
                 // ***** 文(ステートメント)のコンパイル(再帰的に実行) *****
-                c_statement(while_stm, while_end - 1, '"while_end\\' + j + '"', '"while_exp\\' + j + '"');
+                i = c_statement(while_stm, while_end - 1, '"while_end\\' + j + '"', '"while_exp\\' + j + '"');
                 code_push("goto", debugpos1, i);
                 code_push('"while_exp\\' + j + '"', debugpos1, i);
                 // 終了
@@ -2371,7 +2366,7 @@ var Interpreter;
                 code_push("label", debugpos1, i);
                 code_push('"do_stm\\' + j + '"', debugpos1, i);
                 // ***** 文(ステートメント)のコンパイル(再帰的に実行) *****
-                c_statement(do_stm, do_exp - 3, '"do_end\\' + j + '"', '"do_stm\\' + j + '"');
+                i = c_statement(do_stm, do_exp - 3, '"do_end\\' + j + '"', '"do_stm\\' + j + '"');
                 // 式
                 i = c_expression2(do_exp, do_end - 2);
                 code_push("ifgoto", debugpos1, i);
@@ -2387,6 +2382,8 @@ var Interpreter;
             i = c_expression(i, tok_end);
             code_push("pop", debugpos1, i);
         }
+        // ***** 戻り値を返す *****
+        return i;
     }
 
     // ***** 式のコンパイル *****
@@ -3135,13 +3132,10 @@ var Interpreter;
 
         // ***** 互換モードフラグの初期化 *****
         sp_compati_flag = false;
-
         // ***** ローカル変数使用有無の初期化 *****
         use_local_vars = true;
-
         // ***** 定数の定義情報の生成 *****
         make_const_tbl();
-
         // ***** トークン解析のループ *****
         i = 0;
         while (i < token_len - end_token_len) { // 終端のトークンは対象外
@@ -3153,6 +3147,13 @@ var Interpreter;
             if (tok == "spmode") {
                 i++;
                 match2("(", i++);
+                // ***** 定数の置換 *****
+                // (マイナス値を許可(特別扱い))
+                if (token[i] == "-") {
+                    replace_const(token[i + 1], i + 1);
+                } else {
+                    replace_const(token[i], i);
+                }
                 // ***** 値の取得 *****
                 // (マイナス値を許可(特別扱い))
                 if (token[i] == "-" && isDigit(token[i + 1])) {
@@ -3210,6 +3211,13 @@ var Interpreter;
                 // ***** アルファベットかアンダースコアのとき *****
                 if (isAlpha(ch) || ch == "_") {
                     match2(",", i++);
+                    // ***** 定数の置換 *****
+                    // (マイナス値を許可(特別扱い))
+                    if (token[i] == "-") {
+                        replace_const(token[i + 1], i + 1);
+                    } else {
+                        replace_const(token[i], i);
+                    }
                     // ***** 値の取得 *****
                     // (マイナス値を許可(特別扱い))
                     // cst_value = token[i++];
@@ -3249,17 +3257,17 @@ var Interpreter;
                 continue;
             }
 
-            // ***** 定数のとき *****
-            // if (const_tbl.hasOwnProperty(tok)) {
-            if (hasOwn.call(const_tbl, tok)) {
-                i++;
-                // ***** 定数を実際の値に置換する *****
-                token[i - 1] = const_tbl[tok];
-                continue;
-            }
-
-            // ***** その他のとき *****
+            // ***** 定数の置換 *****
+            replace_const(tok, i);
             i++;
+        }
+    }
+
+    // ***** 定数の置換 *****
+    function replace_const(tok, i) {
+        // if (const_tbl.hasOwnProperty(tok)) {
+        if (hasOwn.call(const_tbl, tok)) {
+            token[i] = const_tbl[tok];
         }
     }
 
@@ -3284,7 +3292,7 @@ var Interpreter;
 
     // ***** トークン分割 *****
     function tokenize() {
-        var i;
+        var i, i2;
         var src_len;
         var ch, ch2, ch3;
         var tok_start;
@@ -3467,7 +3475,7 @@ var Interpreter;
             token_push(src.substring(tok_start, i), line_no_s);
         }
         // ***** 終端のトークンを追加(安全のため) *****
-        for (i = 0; i < end_token_len; i++) {
+        for (i2 = 0; i2 < end_token_len; i2++) {
             token_push("end", line_no);
         }
     }
