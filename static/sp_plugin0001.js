@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_plugin0001.js
-// 2017-4-9 v7.05
+// 2017-4-11 v7.06
 
 
 // A Plugin to add functions to SPALM Web Interpreter
@@ -104,7 +104,7 @@ var Plugin0001;
             // ***** 音楽全停止 *****
             audstopall();
         });
-        // ***** 追加命令の定義情報の生成 *****
+        // ***** 追加の組み込み関数の定義情報の生成 *****
         add_func_tbl();
     }
     Plugin0001.init = init;

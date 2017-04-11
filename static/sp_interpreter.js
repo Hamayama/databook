@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2017-4-9 v7.05
+// 2017-4-11 v7.06
 
 
 // SPALM Web Interpreter
@@ -635,6 +635,26 @@ var Interpreter;
         Math.trunc = function (x) { return (x < 0) ? Math.ceil(x) : Math.floor(x); };
     }
 
+    // ***** 連想配列オブジェクトの初期化 *****
+    // (Object.create(null) により、プロトタイプチェーンを無効にして、
+    //  連想配列オブジェクトの検索を効率化する
+    //  (ただし、常にヒットするような検索では性能は変わらない)
+    //  (また、hasOwnProperty 等のメソッドは使用できなくなる))
+    var hashInit = (function () {
+        var f = Object.create ?
+            function () { return Object.create(null); } :
+            (function () {
+                var F = function () {};
+                F.prototype = null;
+                return function () {
+                    var r = new F();
+                    if (r.__proto__) { r.__proto__ = null; }
+                    return r;
+                };
+            })();
+        return f;
+    })();
+
     // ****************************************
     //                 公開I/F
     // ****************************************
@@ -693,7 +713,11 @@ var Interpreter;
         } else {
             Alm2("Interpreter.init:-:Canvas内のマウスの状態が取得できません。");
         }
-        // ***** 命令の定義情報の生成 *****
+        // ***** 組み込み関数の定義情報の初期化 *****
+        func_tbl = {};
+        // ***** 追加の組み込み関数の定義情報の初期化 *****
+        addfunc_tbl = {};
+        // ***** 組み込み関数の定義情報の生成 *****
         make_func_tbl();
         // ***** 戻り値を返す *****
         ret = true;
@@ -1051,6 +1075,7 @@ var Interpreter;
         var func_name;
         var param_num;
         var time_cnt;
+        var f;
 
         // ***** コード実行のループ *****
         loop_time_start = Date.now();
@@ -1290,12 +1315,10 @@ var Interpreter;
                 case 40: // switchgoto
                     lbl_name = code[pc++];
                     num2 = stack.pop();
-                    num = stack.pop();
+                    num = stack[stack.length - 1]; // 条件不成立時は式の値を残す
                     if (num == num2) {
+                        stack.pop();
                         pc = label[lbl_name];
-                    } else {
-                        // ***** 条件不成立時は式の値を残す *****
-                        stack.push(num);
                     }
                     break;
                 case 41: // gotouser
@@ -1408,7 +1431,9 @@ var Interpreter;
                     func_name = toglobal(func_name); // 関数ポインタ対応
                     // ***** 関数の存在チェック *****
                     // if (!func.hasOwnProperty(func_name)) {
-                    if (!hasOwn.call(func, func_name)) {
+                    // if (!hasOwn.call(func, func_name)) {
+                    f = func[func_name];
+                    if (f == null) {
                         throw new Error("関数 '" + func_name + "' の呼び出しに失敗しました(関数が未定義もしくはユーザ定義関数ではない等)。");
                     }
                     // ***** ローカル変数を生成 *****
@@ -1416,7 +1441,8 @@ var Interpreter;
                     // ***** 関数の呼び出し元を保存 *****
                     func_back.push(pc);
                     // ***** 関数の呼び出し *****
-                    pc = func[func_name][0];
+                    // pc = func[func_name][0];
+                    pc = f[0];
                     break;
                 case 50: // callgoto
                     // ***** 引数の取得 *****
@@ -1432,14 +1458,17 @@ var Interpreter;
                     if (funccall_stack.length > 0) {
                         // ***** 関数の存在チェック *****
                         // if (!func.hasOwnProperty(func_name)) {
-                        if (!hasOwn.call(func, func_name)) {
+                        // if (!hasOwn.call(func, func_name)) {
+                        f = func[func_name];
+                        if (f == null) {
                             throw new Error("関数 '" + func_name + "' の呼び出しに失敗しました(関数が未定義もしくはユーザ定義関数ではない等)。");
                         }
                         // ***** コールスタックを増加させないで関数を呼び出す *****
                         // ***** ローカル変数をクリア *****
                         if (use_local_vars) { Vars.clearLocalVars(); }
                         // ***** 関数の呼び出し *****
-                        pc = func[func_name][0];
+                        // pc = func[func_name][0];
+                        pc = f[0];
                         break;
                     }
                     // ***** ここでは使用不可 *****
@@ -1478,9 +1507,10 @@ var Interpreter;
                     stack.pop();
                     break;
                 case 53: // dup
-                    num = stack.pop();
-                    stack.push(num);
-                    stack.push(num);
+                    // num = stack.pop();
+                    // stack.push(num);
+                    // stack.push(num);
+                    stack.push(stack[stack.length - 1]);
                     break;
                 case 54: // end
                     end_flag = true;
@@ -1531,8 +1561,10 @@ var Interpreter;
 
         // ***** コード解析のループ *****
         i = 0;
-        label = {};
-        func = {};
+        // label = {};
+        label = hashInit();
+        // func = {};
+        func = hashInit();
         func_name = "";
         jumpinfo_array = [];
         while (i < code_len) {
@@ -1544,7 +1576,8 @@ var Interpreter;
             if (cod == "label") {
                 lbl_name = code[i++];
                 // if (label.hasOwnProperty(lbl_name)) {
-                if (hasOwn.call(label, lbl_name)) {
+                // if (hasOwn.call(label, lbl_name)) {
+                if (label[lbl_name] != null) {
                     debugpos2 = debugpos1 + 2;
                     throw new Error("ラベル '" + lbl_name + "' の定義が重複しています。");
                 }
@@ -1561,7 +1594,8 @@ var Interpreter;
                 }
                 func_name = code[i++];
                 // if (func.hasOwnProperty(func_name)) {
-                if (hasOwn.call(func, func_name)) {
+                // if (hasOwn.call(func, func_name)) {
+                if (func[func_name] != null) {
                     debugpos2 = debugpos1 + 2;
                     throw new Error("関数 '" + func_name + "' の定義が重複しています。");
                 }
@@ -1602,7 +1636,8 @@ var Interpreter;
                 throw new Error("func内では gosub を使用できません。");
             }
             // if (!label.hasOwnProperty(lbl_name)) {
-            if (!hasOwn.call(label, lbl_name)) {
+            // if (!hasOwn.call(label, lbl_name)) {
+            if (label[lbl_name] == null) {
                 debugpos2 = debugpos1 + 2;
                 throw new Error("ラベル '" + lbl_name + "' は未定義です。");
             }
@@ -4008,7 +4043,8 @@ var Interpreter;
         // ***** 変数初期化(staticメソッド) *****
         Vars.init = function () {
             vars_stack = [];     // グローバル/ローカル変数のスコープ(配列)の初期化
-            vars_stack[0] = {};  // グローバル変数のスコープの初期化
+            // vars_stack[0] = {};  // グローバル変数のスコープの初期化
+            vars_stack[0] = hashInit(); // グローバル変数のスコープの初期化
             local_scope_num = 0; // ローカル変数のスコープ数の初期化
         };
         // ***** グローバル変数を取得する(staticメソッド)(デバッグ用) *****
@@ -4025,7 +4061,8 @@ var Interpreter;
         // ***** ローカル変数のスコープを1個生成する(staticメソッド) *****
         Vars.makeLocalScope = function () {
             local_scope_num++;
-            vars_stack[local_scope_num] = {};
+            // vars_stack[local_scope_num] = {};
+            vars_stack[local_scope_num] = hashInit();
         };
         // ***** ローカル変数のスコープを1個解放する(staticメソッド) *****
         Vars.deleteLocalScope = function () {
@@ -4042,13 +4079,15 @@ var Interpreter;
         Vars.clearVars = function () {
             var i;
             for (i = 0; i <= local_scope_num; i++) {
-                vars_stack[i] = {};
+                // vars_stack[i] = {};
+                vars_stack[i] = hashInit();
             }
         };
         // ***** ローカル変数を削除する(staticメソッド) *****
         Vars.clearLocalVars = function () {
             if (local_scope_num > 0) {
-                vars_stack[local_scope_num] = {};
+                // vars_stack[local_scope_num] = {};
+                vars_stack[local_scope_num] = hashInit();
             }
         };
         // ***** 変数を削除する(staticメソッド) *****
@@ -4110,6 +4149,7 @@ var Interpreter;
             var i;
             var now_index;
             var now_vars;
+            var v;
 
             // // ***** 引数のチェック *****
             // if (var_name == "") { return true; }
@@ -4127,9 +4167,11 @@ var Interpreter;
             now_vars = vars_stack[now_index];
             // ***** 変数の値を取得する *****
             // if (now_vars.hasOwnProperty(var_name)) {
-            if (hasOwn.call(now_vars, var_name)) {
-                return now_vars[var_name];
-            }
+            // if (hasOwn.call(now_vars, var_name)) {
+            //     return now_vars[var_name];
+            // }
+            v = now_vars[var_name];
+            if (v != null) { return v; }
             now_vars[var_name] = 0;
             return 0;
         };
