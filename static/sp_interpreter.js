@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2017-4-11 v7.06
+// 2017-4-11 v7.07
 
 
 // SPALM Web Interpreter
@@ -3973,15 +3973,6 @@ var Interpreter;
         var local_scope_num;  // ローカル変数のスコープ数
         var ret_now_index;    // グローバル/ローカル変数のスコープの番号の戻り値
 
-        // ***** Object.keysの使用可能チェック *****
-        // (Object.keysと配列操作のsome,filter,forEachがあるときは、そちらを利用する)
-        var keysAvailable;
-        if (Object.keys && Array.prototype.some && Array.prototype.filter && Array.prototype.forEach) {
-            keysAvailable = true;
-        } else {
-            keysAvailable = false;
-        }
-
         // ***** 変数のタイプチェック(内部処理用) *****
         // (戻り値は、接頭語の文字数を返し、また、
         //  グローバル/ローカル変数のスコープの番号を、
@@ -4019,26 +4010,31 @@ var Interpreter;
             return i;
         }
         // ***** 配列変数の一括操作(内部処理用) *****
-        function controlArray(now_vars, var_name, var_name_len, func) {
-            var var_name2;
-
-            // ***** 配列変数の一括操作 *****
-            // (見つかった配列変数のそれぞれについて関数funcを適用する)
-            if (keysAvailable) {
-                Object.keys(now_vars).filter(function (v) {
-                    return (v.substring(0, var_name_len) == var_name);
-                }).forEach(func);
+        var controlArray = (function () {
+            var f;
+            if (Object.keys && Array.prototype.filter && Array.prototype.forEach) {
+                f = function (now_vars, var_name, var_name_len, func) {
+                    Object.keys(now_vars).filter(function (v) {
+                        return (v.substring(0, var_name_len) == var_name);
+                    }).forEach(func);
+                };
             } else {
-                for (var_name2 in now_vars) {
-                    if (var_name2.substring(0, var_name_len) == var_name) {
-                        // if (now_vars.hasOwnProperty(var_name2)) {
-                        if (hasOwn.call(now_vars, var_name2)) {
-                            func(var_name2);
+                f = function (now_vars, var_name, var_name_len, func) {
+                    var v;
+                    for (v in now_vars) {
+                        if (v.substring(0, var_name_len) == var_name) {
+                            // (ここでは安全のため hasOwn のままにしておく)
+                            // if (now_vars.hasOwnProperty(v)) {
+                            if (hasOwn.call(now_vars, v)) {
+                            // if (now_vars[v] != null) {
+                                func(v);
+                            }
                         }
                     }
-                }
+                };
             }
-        }
+            return f;
+        })();
 
         // ***** 変数初期化(staticメソッド) *****
         Vars.init = function () {
@@ -4097,7 +4093,7 @@ var Interpreter;
             var now_vars;
 
             // // ***** 引数のチェック *****
-            // if (var_name == "") { return true; }
+            // if (var_name == "") { return false; }
 
             // ***** 変数のタイプチェック *****
             if (use_local_vars) {
@@ -4112,10 +4108,10 @@ var Interpreter;
             now_vars = vars_stack[now_index];
             // ***** 変数を削除する *****
             // if (now_vars.hasOwnProperty(var_name)) {
-            if (hasOwn.call(now_vars, var_name)) {
+            // if (hasOwn.call(now_vars, var_name)) {
+            if (now_vars[var_name] != null) {
                 delete now_vars[var_name];
             }
-            return true;
         };
         // ***** 変数の存在チェック(staticメソッド) *****
         Vars.checkVar = function (var_name) {
@@ -4124,7 +4120,7 @@ var Interpreter;
             var now_vars;
 
             // // ***** 引数のチェック *****
-            // if (var_name == "") { return true; }
+            // if (var_name == "") { return false; }
 
             // ***** 変数のタイプチェック *****
             if (use_local_vars) {
@@ -4139,7 +4135,8 @@ var Interpreter;
             now_vars = vars_stack[now_index];
             // ***** 変数の存在チェック *****
             // if (now_vars.hasOwnProperty(var_name)) {
-            if (hasOwn.call(now_vars, var_name)) {
+            // if (hasOwn.call(now_vars, var_name)) {
+            if (now_vars[var_name] != null) {
                 return true;
             }
             return false;
@@ -4152,7 +4149,7 @@ var Interpreter;
             var v;
 
             // // ***** 引数のチェック *****
-            // if (var_name == "") { return true; }
+            // if (var_name == "") { return false; }
 
             // ***** 変数のタイプチェック *****
             if (use_local_vars) {
@@ -4182,7 +4179,7 @@ var Interpreter;
             var now_vars;
 
             // // ***** 引数のチェック *****
-            // if (var_name == "") { return true; }
+            // if (var_name == "") { return false; }
 
             // ***** 変数のタイプチェック *****
             if (use_local_vars) {
@@ -4197,7 +4194,6 @@ var Interpreter;
             now_vars = vars_stack[now_index];
             // ***** 変数の値を設定する *****
             now_vars[var_name] = var_value;
-            return true;
         };
         // ***** 配列変数の一括コピー(staticメソッド) *****
         Vars.copyArray = function (var_name, var_name2) {
@@ -4208,8 +4204,8 @@ var Interpreter;
             var self;
 
             // // ***** 引数のチェック *****
-            // if (var_name == "") { return true; }
-            // if (var_name2 == "") { return true; }
+            // if (var_name == "") { return false; }
+            // if (var_name2 == "") { return false; }
 
             // ***** 変数のタイプチェック *****
             if (use_local_vars) {
@@ -4243,7 +4239,6 @@ var Interpreter;
                 var var_name_to = var_name2 + v.substring(var_name_len);
                 self.setVarValue(var_name_to, now_vars[v]);
             });
-            return true;
         };
         // ***** 配列変数の一括削除(staticメソッド) *****
         Vars.deleteArray = function (var_name) {
@@ -4253,7 +4248,7 @@ var Interpreter;
             var var_name_len;
 
             // // ***** 引数のチェック *****
-            // if (var_name == "") { return true; }
+            // if (var_name == "") { return false; }
 
             // ***** 変数のタイプチェック *****
             if (use_local_vars) {
@@ -4273,7 +4268,6 @@ var Interpreter;
             controlArray(now_vars, var_name, var_name_len, function (v) {
                 delete now_vars[v];
             });
-            return true;
         };
         return Vars; // これがないとクラスが動かないので注意
     })();
