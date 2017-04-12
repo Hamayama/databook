@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2017-4-11 v7.07
+// 2017-4-12 v7.08
 
 
 // SPALM Web Interpreter
@@ -169,20 +169,20 @@ function get_prog_id(list_st) {
         // ***** プログラムIDの取得 *****
         if (split_flag) {
             split_flag = false;
-            if (prog_id[prog_id_count].length > 0) {
-                prog_id_count++;
-                prog_id[prog_id_count] = "";
-            }
+            if (check_id(prog_id[prog_id_count], 8)) { prog_id_count++; }
+            prog_id[prog_id_count] = "";
         } else {
             prog_id[prog_id_count] += ch;
         }
     }
+    // ***** 最後のIDをチェック *****
+    if (!check_id(prog_id[prog_id_count], 8)) { prog_id.pop(); }
     // ***** 戻り値を返す *****
     return prog_id;
 }
 
 // ***** リストファイルの読み込み *****
-function load_listfile(fname, error_show_flag) {
+function load_listfile(fname, err_show_flag) {
     var ret;
 
     // ***** 戻り値の初期化 *****
@@ -190,7 +190,7 @@ function load_listfile(fname, error_show_flag) {
     // ***** 引数のチェック *****
     if (fname == null) { Alm("load_listfile:0001"); return ret; }
     if (fname == "") { Alm("load_listfile:0002"); return ret; }
-    if (error_show_flag == null) { Alm("load_listfile:0003"); return ret; }
+    if (err_show_flag == null) { Alm("load_listfile:0003"); return ret; }
     // ***** 要素の存在チェック *****
     if (!document.getElementById("prog_sel1")) { Alm("load_listfile:0004"); return ret; }
     // ***** テキストファイルの読み込み *****
@@ -202,14 +202,12 @@ function load_listfile(fname, error_show_flag) {
         elm = document.getElementById("prog_sel1");
         elm.length = 0;
         for (i = 0; i < prog_id.length; i++) {
-            if (check_id(prog_id[i], 8)) {
-                elm.length++;
-                elm.options[elm.length - 1].value = prog_id[i];
-                elm.options[elm.length - 1].text  = prog_id[i];
-            }
+            elm.length++;
+            elm.options[elm.length - 1].value = prog_id[i];
+            elm.options[elm.length - 1].text  = prog_id[i];
         }
     }, function (err_st) {
-        if (error_show_flag) { Alm2("load_listfile:" + err_st + ":リストファイル読み込みエラー"); }
+        if (err_show_flag) { Alm2("load_listfile:" + err_st + ":リストファイル読み込みエラー"); }
     });
     // ***** 戻り値を返す *****
     ret = true;
@@ -217,7 +215,7 @@ function load_listfile(fname, error_show_flag) {
 }
 
 // ***** ソースファイルの読み込み *****
-function load_srcfile(fname, auto_run_flag) {
+function load_srcfile(fname) {
     var ret;
 
     // ***** 戻り値の初期化 *****
@@ -225,7 +223,6 @@ function load_srcfile(fname, auto_run_flag) {
     // ***** 引数のチェック *****
     if (fname == null) { Alm("load_srcfile:0001"); return ret; }
     if (fname == "") { Alm("load_srcfile:0002"); return ret; }
-    if (auto_run_flag == null) { Alm("load_srcfile:0003"); return ret; }
     // ***** 要素の存在チェック *****
     if (!document.getElementById("src_text1")) { Alm("load_srcfile:0004"); return ret; }
     // ***** ロード中にする *****
@@ -240,8 +237,6 @@ function load_srcfile(fname, auto_run_flag) {
         if (document.getElementById("src_text1").scrollTop) {
             document.getElementById("src_text1").scrollTop = 0;
         }
-        // ***** 自動実行 *****
-        if (auto_run_flag) { run_button(); }
     }, function (err_st) {
         Alm2("load_srcfile:" + err_st + ":ソースファイル読み込みエラー");
         // ***** ロード中を解除 *****
@@ -382,7 +377,7 @@ function load_button() {
     // ***** ソースファイルの読み込み *****
     prog_id = document.getElementById("prog_sel1").options[document.getElementById("prog_sel1").selectedIndex].value;
     if (!check_id(prog_id, 8)) { Alm("load_button:0003"); return ret; }
-    load_srcfile("prog" + prog_id + ".txt", false);
+    load_srcfile("prog" + prog_id + ".txt");
     // ***** 戻り値を返す *****
     ret = true;
     return ret;
@@ -595,12 +590,12 @@ var Interpreter;
         38:(1 << 12), // 13でないので注意
         39:(1 << 14),
         40:(1 << 15),
-        // 決定ボタン は スペースキーとEnterキーとCtrlキーにする
+        // 決定ボタン は スペースキーとEnterキーとCtrlキー にする
         32:(1 << 16), 13:(1 << 16), 17:(1 << 16),
         // [Soft1][Soft2] は [c][v] にする
         67:(1 << 17), 86:(1 << 18) };
 
-    var opecode = {             // スタックマシンの命令コード
+    var opcode = {              // スタックマシンの命令コード
         load:1,         pointer:2,      array:3,        store:4,        storenum:5,
         storestr:6,     store0:7,       store1:8,       preinc:9,       predec:10,
         postinc:11,     postdec:12,     add:13,         addstr:14,      sub:15,
@@ -807,7 +802,7 @@ var Interpreter;
     function setoutdata(no, data) {
         if (no == null) { Alm("Interpreter.setoutdata:0001"); return false; }
         if (data == null) { Alm("Interpreter.setoutdata:0002"); return false; }
-        no = no | 0;
+        no |= 0;
         data = String(data);
         out_data[no] = data;
     }
@@ -816,7 +811,7 @@ var Interpreter;
     // ***** 外部データ取得 *****
     function getoutdata(no) {
         if (no == null) { Alm("Interpreter.getoutdata:0001"); return false; }
-        no = no | 0;
+        no |= 0;
         if (out_data.hasOwnProperty(no)) { return out_data[no]; }
         return "";
     }
@@ -983,7 +978,7 @@ var Interpreter;
         }
         if (prof_obj) { prof_obj.start("result"); }
 
-        // run_continuously(); // 再帰的になるので別関数にした
+        // run_continuously();
         setTimeout(run_continuously, 10);
 
         // ***** 戻り値を返す *****
@@ -991,24 +986,24 @@ var Interpreter;
         return ret;
     }
 
-    // ***** 継続実行 *****
+    // ***** 実行 *****
+    // (本関数は再帰的に呼び出される)
     function run_continuously() {
         var ret;
         var name;
 
         // ***** 戻り値の初期化 *****
         ret = false;
-        // ***** 継続実行 *****
+        // ***** コード実行開始 *****
         sleep_id = null;
         try {
             // ***** コード実行 *****
             // if (prof_obj) { prof_obj.start("execcode"); }
             execcode();
             // if (prof_obj) { prof_obj.stop("execcode"); }
-            // ***** スリープ *****
+            // ***** スリープ後に実行を継続(再帰的に実行) *****
             if (sleep_flag) {
                 sleep_flag = false;
-                // ***** 継続実行(再帰的に実行) *****
                 if (!end_flag) {
                     sleep_id = setTimeout(run_continuously, sleep_time);
                     return ret;
@@ -1086,7 +1081,7 @@ var Interpreter;
             cod = code[pc++];
             // ***** スタックマシンのコードを実行 *****
             switch (cod) {
-                // ( case opecode.load: が遅かったので数値を直接指定する)
+                // ( case opcode.load: が遅かったので数値を直接指定する)
                 case 1: // load
                     num = stack.pop();
                     var_name = stack.pop();
@@ -1510,7 +1505,8 @@ var Interpreter;
                     // num = stack.pop();
                     // stack.push(num);
                     // stack.push(num);
-                    stack.push(stack[stack.length - 1]);
+                    num = stack[stack.length - 1];
+                    stack.push(num);
                     break;
                 case 54: // end
                     end_flag = true;
@@ -1715,16 +1711,8 @@ var Interpreter;
                 continue;
             }
 
-            // ***** onlocal文のとき *****
-            if (tok == "onlocal") {
-                i++;
-                match2("(", i++);
-                match2(")", i++);
-                continue;
-            }
-
-            // ***** offlocal文のとき *****
-            if (tok == "offlocal") {
+            // ***** onlocal/offlocal文のとき *****
+            if (tok == "onlocal" || tok == "offlocal") {
                 i++;
                 match2("(", i++);
                 match2(")", i++);
@@ -2965,11 +2953,10 @@ var Interpreter;
                 i++;
                 i = c_getvarname(i, tok_end);
                 match2(")", i++);
-                code_push("pointer", debugpos1, i);
             } else {
                 i = c_getvarname(i, tok_end);
-                code_push("pointer", debugpos1, i);
             }
+            code_push("pointer", debugpos1, i);
             // ***** 配列変数のとき *****
             while (token[i] == "[") {
                 i++;
@@ -3216,23 +3203,13 @@ var Interpreter;
                 continue;
             }
 
-            // ***** onlocal文のとき *****
-            if (tok == "onlocal") {
+            // ***** onlocal/offlocal文のとき *****
+            if (tok == "onlocal" || tok == "offlocal") {
                 i++;
                 match2("(", i++);
                 match2(")", i++);
-                // ***** ローカル変数使用 *****
-                use_local_vars = true;
-                continue;
-            }
-
-            // ***** offlocal文のとき *****
-            if (tok == "offlocal") {
-                i++;
-                match2("(", i++);
-                match2(")", i++);
-                // ***** ローカル変数未使用 *****
-                use_local_vars = false;
+                // ***** ローカル変数使用有無の設定 *****
+                use_local_vars = (tok == "onlocal");
                 continue;
             }
 
@@ -3407,7 +3384,7 @@ var Interpreter;
                 temp_no = parseInt(temp_st, 16); // 16進数変換
 
                 // ***** NaN対策 *****
-                temp_no = temp_no | 0;
+                temp_no |= 0;
 
                 if (temp_no < 0) { // 負のときは符号を分離する
                     token_push("-", line_no_s);
@@ -3586,7 +3563,7 @@ var Interpreter;
         if (phone_key_code.hasOwnProperty(key_code)) {
             num = phone_key_code[key_code];
             // ***** キースキャン状態を更新 *****
-            key_scan_stat = key_scan_stat | num; // ビットをON
+            key_scan_stat |= num; // ビットをON
             // ***** キー入力バッファ1に追加 *****
             if (input_buf.length >= 40) { input_buf.shift(); }
             input_buf.push(num);
@@ -3624,7 +3601,7 @@ var Interpreter;
         if (phone_key_code.hasOwnProperty(key_code)) {
             num = phone_key_code[key_code];
             // ***** キースキャン状態を更新 *****
-            key_scan_stat = key_scan_stat & ~num; // ビットをOFF
+            key_scan_stat &= ~num; // ビットをOFF
         }
     }
     function keypress(ev) {
@@ -3820,24 +3797,24 @@ var Interpreter;
         // ***** 座標系の変換の分を補正 *****
         x1 = x;
         y1 = y;
-        x1 = x1 - axis.scaleox;  // 拡大縮小の中心座標を移動
-        y1 = y1 - axis.scaleoy;
-        x1 = x1 * axis.scalex;   // 拡大縮小
-        y1 = y1 * axis.scaley;
-        x1 = x1 + axis.scaleox;  // 拡大縮小の中心座標を元に戻す
-        y1 = y1 + axis.scaleoy;
-        x1 = x1 - axis.rotateox; // 回転の中心座標を移動
-        y1 = y1 - axis.rotateoy;
+        x1 -= axis.scaleox;  // 拡大縮小の中心座標を移動
+        y1 -= axis.scaleoy;
+        x1 *= axis.scalex;   // 拡大縮小
+        y1 *= axis.scaley;
+        x1 += axis.scaleox;  // 拡大縮小の中心座標を元に戻す
+        y1 += axis.scaleoy;
+        x1 -= axis.rotateox; // 回転の中心座標を移動
+        y1 -= axis.rotateoy;
         // ここでtを使わないと、計算結果がおかしくなるので注意
         t  = x1 * Math.cos(axis.rotate) - y1 * Math.sin(axis.rotate); // 回転
         y1 = x1 * Math.sin(axis.rotate) + y1 * Math.cos(axis.rotate);
-        // x1 = t;
-        x1 = t  + axis.rotateox; // 回転の中心座標を元に戻す
-        y1 = y1 + axis.rotateoy;
-        x1 = x1 + axis.originx;  // 原点座標を移動
-        y1 = y1 + axis.originy;
-        x1 = x1 | 0; // 整数化
-        y1 = y1 | 0; // 整数化
+        x1 = t;
+        x1 += axis.rotateox; // 回転の中心座標を元に戻す
+        y1 += axis.rotateoy;
+        x1 += axis.originx;  // 原点座標を移動
+        y1 += axis.originy;
+        x1 |= 0; // 整数化
+        y1 |= 0; // 整数化
         return [x1, y1];
     }
 
@@ -3884,8 +3861,8 @@ var Interpreter;
     // ***** コード追加 *****
     function code_push(tok, pos1, pos2) {
         // (命令コードは数値に変換)
-        if (opecode.hasOwnProperty(tok)) {
-            code[code_len] = opecode[tok];
+        if (opcode.hasOwnProperty(tok)) {
+            code[code_len] = opcode[tok];
         // (文字列はダブルクォートを外す)
         } else if (tok.charAt && tok.charAt(0) == '"') {
             if (tok.length >= 2 && tok.charAt(tok.length - 1) == '"') {
@@ -4362,7 +4339,7 @@ var Interpreter;
             }
 
             // ***** NaN対策 *****
-            a2 = a2 | 0;
+            a2 |= 0;
 
             // ***** エラーチェック *****
             // if (a3 != null && (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size)) {
@@ -4515,9 +4492,9 @@ var Interpreter;
             a5 = Math.trunc(param[4]);
 
             // ***** NaN対策 *****
-            a2 = a2 | 0;
-            a4 = a4 | 0;
-            a5 = a5 | 0;
+            a2 |= 0;
+            a4 |= 0;
+            a5 |= 0;
 
             // ***** エラーチェック *****
             // if (a5 > max_array_size) {
@@ -4804,26 +4781,26 @@ var Interpreter;
             a4 = Math.trunc(param[3]); // アンカー
             if (a1 == "screen") {
                 // ***** 水平方向 *****
-                // if (a4 & 4)   { }                            // 左
-                if (a4 & 8)      { a2 = a2 - can1.width; }      // 右
-                else if (a4 & 1) { a2 = a2 - can1.width / 2; }  // 中央
+                // if (a4 & 4)   { }                        // 左
+                if (a4 & 8)      { a2 -= can1.width; }      // 右
+                else if (a4 & 1) { a2 -= can1.width / 2; }  // 中央
                 // ***** 垂直方向 *****
-                // if (a4 & 16)  { }                            // 上
-                if (a4 & 32)     { a3 = a3 - can1.height; }     // 下
-                else if (a4 & 2) { a3 = a3 - can1.height / 2; } // 中央
+                // if (a4 & 16)  { }                        // 上
+                if (a4 & 32)     { a3 -= can1.height; }     // 下
+                else if (a4 & 2) { a3 -= can1.height / 2; } // 中央
                 // ***** 画像を描画(表示画面→ターゲット) *****
                 ctx.drawImage(can1, a2, a3);
             } else {
                 // if (imgvars.hasOwnProperty(a1)) {
                 if (hasOwn.call(imgvars, a1)) {
                     // ***** 水平方向 *****
-                    // if (a4 & 4)   { }                                       // 左
-                    if (a4 & 8)      { a2 = a2 - imgvars[a1].can.width; }      // 右
-                    else if (a4 & 1) { a2 = a2 - imgvars[a1].can.width / 2; }  // 中央
+                    // if (a4 & 4)   { }                                   // 左
+                    if (a4 & 8)      { a2 -= imgvars[a1].can.width; }      // 右
+                    else if (a4 & 1) { a2 -= imgvars[a1].can.width / 2; }  // 中央
                     // ***** 垂直方向 *****
-                    // if (a4 & 16)  { }                                       // 上
-                    if (a4 & 32)     { a3 = a3 - imgvars[a1].can.height; }     // 下
-                    else if (a4 & 2) { a3 = a3 - imgvars[a1].can.height / 2; } // 中央
+                    // if (a4 & 16)  { }                                   // 上
+                    if (a4 & 32)     { a3 -= imgvars[a1].can.height; }     // 下
+                    else if (a4 & 2) { a3 -= imgvars[a1].can.height / 2; } // 中央
                     // ***** 画像を描画(画像変数→ターゲット) *****
                     ctx.drawImage(imgvars[a1].can, a2, a3);
                 } else {
@@ -4870,13 +4847,13 @@ var Interpreter;
                 img_h = a5;
             }
             // (水平方向の座標を計算)
-            // if (a9 & 4)   { }                      // 左
-            if (a9 & 8)      { a7 = a7 - img_w; }     // 右
-            else if (a9 & 1) { a7 = a7 - img_w / 2; } // 中央
+            // if (a9 & 4)   { }                  // 左
+            if (a9 & 8)      { a7 -= img_w; }     // 右
+            else if (a9 & 1) { a7 -= img_w / 2; } // 中央
             // (垂直方向の座標を計算)
-            // if (a9 & 16)  { }                      // 上
-            if (a9 & 32)     { a8 = a8 - img_h; }     // 下
-            else if (a9 & 2) { a8 = a8 - img_h / 2; } // 中央
+            // if (a9 & 16)  { }                  // 上
+            if (a9 & 32)     { a8 -= img_h; }     // 下
+            else if (a9 & 2) { a8 -= img_h / 2; } // 中央
 
             // ***** 描画処理 *****
             ctx.save();
@@ -5043,7 +5020,7 @@ var Interpreter;
             rad1 = - a5 * Math.PI / 180; // PC上の角度は逆方向なのでマイナスを付ける
             rad2 = - a6 * Math.PI / 180; // PC上の角度は逆方向なのでマイナスを付ける
             if (rad2 < 0) { // パスを右巻きに統一する
-                rad1 = rad1 + rad2;
+                rad1 += rad2;
                 rad2 = -rad2;
             }
             ctx.beginPath();
@@ -5291,7 +5268,7 @@ var Interpreter;
             }
 
             // ***** NaN対策 *****
-            a3 = a3 | 0;
+            a3 |= 0;
 
             // ***** エラーチェック *****
             // if (a4 != null && (a4 - a3 + 1 < 1 || a4 - a3 + 1 > max_array_size)) {
@@ -5307,11 +5284,11 @@ var Interpreter;
                 if (a4 == null && !Vars.checkVar(a1 + "[" + i + "]")) { break; }
 
                 if (num == "") {
-                    // num = num + vars[a1 + "[" + i + "]"];
-                    num = num + Vars.getVarValue(a1 + "[" + i + "]");
+                    // num += vars[a1 + "[" + i + "]"];
+                    num += Vars.getVarValue(a1 + "[" + i + "]");
                 } else {
-                    // num = num + a2 + vars[a1 + "[" + i + "]"];
-                    num = num + a2 + Vars.getVarValue(a1 + "[" + i + "]");
+                    // num += a2 + vars[a1 + "[" + i + "]"];
+                    num += a2 + Vars.getVarValue(a1 + "[" + i + "]");
                 }
                 i++;
             } while (a4 == null || i <= a4);
@@ -5690,9 +5667,9 @@ var Interpreter;
             var num;
 
             num = 0;
-            if (mouse_btn_stat[0]) { num = num | 1; }        // 左ボタン
-            if (mouse_btn_stat[1]) { num = num | (1 << 2); } // 中ボタン(シフト値1でないので注意)
-            if (mouse_btn_stat[2]) { num = num | (1 << 1); } // 右ボタン(シフト値2でないので注意)
+            if (mouse_btn_stat[0]) { num |= 1; }        // 左ボタン
+            if (mouse_btn_stat[1]) { num |= (1 << 2); } // 中ボタン(シフト値1でないので注意)
+            if (mouse_btn_stat[2]) { num |= (1 << 1); } // 右ボタン(シフト値2でないので注意)
             return num;
         });
         make_one_func_tbl("msgdlg", 1, [], function (param) {
@@ -5836,12 +5813,12 @@ var Interpreter;
                     if (a5 >= 0 && i >= a5) { break; }
                     k = a1.indexOf(a2, j);
                     if (k >= 0) {
-                        num = num + a1.substring(j, k) + a3;
+                        num += a1.substring(j, k) + a3;
                         i++;
                         j = k + a2.length;
                     }
                 }
-                num = num + a1.substring(j);
+                num += a1.substring(j);
             }
             return num;
         });
@@ -6667,7 +6644,7 @@ var Profiler = (function () {
             time_max = 0;
             time_min = 0;
             for (i = 0; i < rec.length; i++) {
-                time_total = time_total + rec[i];
+                time_total += rec[i];
                 if (i == 0) { time_max = rec[i]; time_min = rec[i]; }
                 if (time_max < rec[i]) { time_max = rec[i]; }
                 if (time_min > rec[i]) { time_min = rec[i]; }
@@ -6692,7 +6669,7 @@ var Profiler = (function () {
         for (key_name in this.records) {
             // if (this.records.hasOwnProperty(key_name)) {
             if (hasOwn.call(this.records, key_name)) {
-                ret = ret + this.getResult(key_name) + "\n";
+                ret += this.getResult(key_name) + "\n";
             }
         }
         return ret;

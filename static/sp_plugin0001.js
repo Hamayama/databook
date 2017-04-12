@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_plugin0001.js
-// 2017-4-11 v7.06
+// 2017-4-12 v7.08
 
 
 // A Plugin to add functions to SPALM Web Interpreter
@@ -644,8 +644,8 @@ var Plugin0001;
             a3 = Math.trunc(param[3]);
 
             // ***** NaN対策 *****
-            a2 = a2 | 0;
-            a3 = a3 | 0;
+            a2 |= 0;
+            a3 |= 0;
 
             // ***** エラーチェック *****
             // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
@@ -898,8 +898,8 @@ var Plugin0001;
             }
 
             // ***** NaN対策 *****
-            a2 = a2 | 0;
-            a3 = a3 | 0;
+            a2 |= 0;
+            a3 |= 0;
 
             // ***** エラーチェック *****
             // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
@@ -925,8 +925,8 @@ var Plugin0001;
                             // (複数行文字列指定のとき)
                             if (ch.length >= 7 && "#$%&".indexOf(ch.charAt(0)) >= 0) {
                                 chs = ch.split(ch.charAt(0));
-                                x1 = x1 + (chs[1] | 0);
-                                y1 = y1 + (chs[2] | 0);
+                                x1 += chs[1] | 0;
+                                y1 += chs[2] | 0;
                                 ovr = chs[3] | 0;
                                 for (i = 4; i < chs.length; i++) {
                                     if (ovr == 1) {
@@ -996,8 +996,8 @@ var Plugin0001;
             }
 
             // ***** NaN対策 *****
-            a2 = a2 | 0;
-            a3 = a3 | 0;
+            a2 |= 0;
+            a3 |= 0;
 
             // ***** エラーチェック *****
             // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
@@ -1306,10 +1306,10 @@ var Plugin0001;
                     if (img_data.data[i    ] == col_r &&
                         img_data.data[i + 1] == col_g &&
                         img_data.data[i + 2] == col_b) {
-                            img_data.data[i    ] = 0;
-                            img_data.data[i + 1] = 0;
-                            img_data.data[i + 2] = 0;
-                            img_data.data[i + 3] = 0;
+                        img_data.data[i    ] = 0;
+                        img_data.data[i + 1] = 0;
+                        img_data.data[i + 2] = 0;
+                        img_data.data[i + 3] = 0;
                     }
                 }
                 // ***** 画像を格納 *****
@@ -1331,8 +1331,8 @@ var Plugin0001;
             a5 = Math.trunc(param[4]);
 
             // ***** NaN対策 *****
-            a2 = a2 | 0;
-            a3 = a3 | 0;
+            a2 |= 0;
+            a3 |= 0;
 
             // ***** エラーチェック *****
             // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
@@ -1378,8 +1378,8 @@ var Plugin0001;
             }
 
             // ***** NaN対策 *****
-            a2 = a2 | 0;
-            a3 = a3 | 0;
+            a2 |= 0;
+            a3 |= 0;
 
             // ***** エラーチェック *****
             // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
@@ -1440,8 +1440,8 @@ var Plugin0001;
             }
 
             // ***** NaN対策 *****
-            a2 = a2 | 0;
-            a3 = a3 | 0;
+            a2 |= 0;
+            a3 |= 0;
 
             // ***** エラーチェック *****
             // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
@@ -1501,10 +1501,10 @@ var Plugin0001;
             }
 
             // ***** NaN対策 *****
-            a2 = a2 | 0;
-            a3 = a3 | 0;
-            b2 = b2 | 0;
-            b3 = b3 | 0;
+            a2 |= 0;
+            a3 |= 0;
+            b2 |= 0;
+            b3 |= 0;
 
             // ***** エラーチェック *****
             // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
@@ -1576,8 +1576,8 @@ var Plugin0001;
             a5 = String(param[4]);
 
             // ***** NaN対策 *****
-            a2 = a2 | 0;
-            a3 = a3 | 0;
+            a2 |= 0;
+            a3 |= 0;
 
             // ***** エラーチェック *****
             // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
@@ -1624,8 +1624,8 @@ var Plugin0001;
             a5 = String(param[4]);
 
             // ***** NaN対策 *****
-            a2 = a2 | 0;
-            a3 = a3 | 0;
+            a2 |= 0;
+            a3 |= 0;
 
             // ***** エラーチェック *****
             // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
@@ -1672,8 +1672,8 @@ var Plugin0001;
             a4 = String(param[5]);
 
             // ***** NaN対策 *****
-            a2 = a2 | 0;
-            a3 = a3 | 0;
+            a2 |= 0;
+            a3 |= 0;
 
             // ***** エラーチェック *****
             // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
@@ -1700,8 +1700,8 @@ var Plugin0001;
             a4 = String(param[7]);
 
             // ***** NaN対策 *****
-            a2 = a2 | 0;
-            a3 = a3 | 0;
+            a2 |= 0;
+            a3 |= 0;
 
             // ***** エラーチェック *****
             // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
@@ -1736,8 +1736,8 @@ var Plugin0001;
             a4 = String(param[7]);
 
             // ***** NaN対策 *****
-            a2 = a2 | 0;
-            a3 = a3 | 0;
+            a2 |= 0;
+            a3 |= 0;
 
             // ***** エラーチェック *****
             // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
@@ -1780,8 +1780,8 @@ var Plugin0001;
             a4 = String(param[7]);
 
             // ***** NaN対策 *****
-            a2 = a2 | 0;
-            a3 = a3 | 0;
+            a2 |= 0;
+            a3 |= 0;
 
             // ***** エラーチェック *****
             // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
@@ -1825,8 +1825,8 @@ var Plugin0001;
             a4 = String(param[8]);
 
             // ***** NaN対策 *****
-            a2 = a2 | 0;
-            a3 = a3 | 0;
+            a2 |= 0;
+            a3 |= 0;
 
             // ***** エラーチェック *****
             // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
@@ -1892,8 +1892,8 @@ var Plugin0001;
             a4 = String(param[8]);
 
             // ***** NaN対策 *****
-            a2 = a2 | 0;
-            a3 = a3 | 0;
+            a2 |= 0;
+            a3 |= 0;
 
             // ***** エラーチェック *****
             // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
@@ -1946,10 +1946,10 @@ var Plugin0001;
             }
 
             // ***** NaN対策 *****
-            a2 = a2 | 0;
-            a3 = a3 | 0;
-            b3 = b3 | 0;
-            b4 = b4 | 0;
+            a2 |= 0;
+            a3 |= 0;
+            b3 |= 0;
+            b4 |= 0;
 
             // ***** エラーチェック *****
             // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
@@ -2023,10 +2023,10 @@ var Plugin0001;
             a4 = String(param[7]);
 
             // ***** NaN対策 *****
-            a2 = a2 | 0;
-            a3 = a3 | 0;
-            b3 = b3 | 0;
-            b4 = b4 | 0;
+            a2 |= 0;
+            a3 |= 0;
+            b3 |= 0;
+            b4 |= 0;
 
             // ***** エラーチェック *****
             // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
@@ -2171,8 +2171,8 @@ var Plugin0001;
             y1 = Math.trunc(param[4]);
 
             // ***** NaN対策 *****
-            a2 = a2 | 0;
-            a3 = a3 | 0;
+            a2 |= 0;
+            a3 |= 0;
 
             // ***** エラーチェック *****
             // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
@@ -2211,8 +2211,8 @@ var Plugin0001;
             a4 = String(param[7]);
 
             // ***** NaN対策 *****
-            a2 = a2 | 0;
-            a3 = a3 | 0;
+            a2 |= 0;
+            a3 |= 0;
 
             // ***** エラーチェック *****
             // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
@@ -2268,8 +2268,8 @@ var Plugin0001;
             }
 
             // ***** NaN対策 *****
-            a2 = a2 | 0;
-            a3 = a3 | 0;
+            a2 |= 0;
+            a3 |= 0;
 
             // ***** エラーチェック *****
             // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
@@ -2365,8 +2365,8 @@ var Plugin0001;
             }
 
             // ***** NaN対策 *****
-            a2 = a2 | 0;
-            a3 = a3 | 0;
+            a2 |= 0;
+            a3 |= 0;
 
             // ***** エラーチェック *****
             // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
@@ -3694,8 +3694,8 @@ var FloodFill = (function () {
         // ***** 各種パラメータの取得 *****
         width = can.width;
         height = can.height;
-        x0 = x0 | 0; // 整数化
-        y0 = y0 | 0; // 整数化
+        x0 |= 0; // 整数化
+        y0 |= 0; // 整数化
         threshold = threshold0;
         paint_mode = paint_mode0;
         bound_col.r = (bound_col0 & 0xff0000) >> 16; // 境界色 R
@@ -3920,8 +3920,8 @@ var Missile = (function () {
             // ***** 次の座標を計算 *****
             this.x100 += this.speed100 * Math.cos(this.degree * Math.PI / 180) / this.div_x;
             this.y100 += this.speed100 * Math.sin(this.degree * Math.PI / 180) / this.div_y;
-            this.x100 = this.x100 | 0; // 整数化
-            this.y100 = this.y100 | 0; // 整数化
+            this.x100 |= 0; // 整数化
+            this.y100 |= 0; // 整数化
 
             // ***** 移動後の座標 *****
             x1 = (this.x100 / 100) | 0;
@@ -4341,13 +4341,13 @@ var MMLPlayer = (function () {
             }
         }
         // ***** 音声データ位置を計算 *****
-        this.pos[ch] = this.pos[ch] + nlength1;
+        this.pos[ch] += nlength1;
     };
     // ***** 休符追加(内部処理用) *****
     // MMLPlayer.prototype.addRest = function (ch, nlength1, nlength2) {
     MMLPlayer.prototype.addRest = function (ch, nlength1) {
         // ***** 音声データ位置を計算 *****
-        this.pos[ch] = this.pos[ch] + nlength1;
+        this.pos[ch] += nlength1;
     };
     // ***** コンパイル(内部処理用) *****
     MMLPlayer.prototype.compile = function (mml_st, pass_no) {
@@ -4481,7 +4481,7 @@ var MMLPlayer = (function () {
                 // ***** 付点があるときは音長を1.5倍 *****
                 if (mml_st.charAt(i) == ".") {
                     i++;
-                    nlength1 = nlength1 * 3 / 2;
+                    nlength1 *= 3 / 2;
                 }
                 // ***** 発音長の計算 *****
                 nlength2 = nlength1 * qtime[ch] / 8;
@@ -4510,7 +4510,7 @@ var MMLPlayer = (function () {
                     // ***** タイのフラグを立てて、処理は次回にまわす *****
                     tie[ch].flag = true;
                     if (note > 0) { tie[ch].note = note; }
-                    tie[ch].length = tie[ch].length + nlength1;
+                    tie[ch].length += nlength1;
                 } else {
                     // ***** タイの処理 *****
                     if (tie[ch].flag) {
@@ -4643,7 +4643,7 @@ var MMLPlayer = (function () {
                     // ***** 付点があるときは音長を1.5倍 *****
                     if (mml_st.charAt(i) == ".") {
                         i++;
-                        alength[ch] = alength[ch] * 3 / 2;
+                        alength[ch] *= 3 / 2;
                     }
                     break;
                 case "q": // 発音割合指定(1-8)
@@ -4869,10 +4869,10 @@ var SandSim = (function () {
         if (this.left + this.width > this.can.width)  { this.width = this.can.width - this.left; }
         if (this.top + this.height > this.can.height) { this.height = this.can.height - this.top; }
         // ***** 端を超えて移動するかの設定 *****
-        this.over_top    = (border_mode & 1)? this.height - 1: 0;
-        this.over_bottom = (border_mode & 1)? 0: this.height - 1;
-        this.over_left   = (border_mode & 2)? this.width - 1: 0;
-        this.over_right  = (border_mode & 2)? 0: this.width - 1;
+        this.over_top    = (border_mode & 1) ? this.height - 1 : 0;
+        this.over_bottom = (border_mode & 1) ? 0 : this.height - 1;
+        this.over_left   = (border_mode & 2) ? this.width - 1 : 0;
+        this.over_right  = (border_mode & 2) ? 0 : this.width - 1;
     }
     // ***** テーブル生成 *****
     SandSim.prototype.makeTable = function () {
