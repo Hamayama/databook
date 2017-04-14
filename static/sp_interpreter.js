@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2017-4-14 v8.01
+// 2017-4-14 v8.02
 
 
 // SPALM Web Interpreter
@@ -586,8 +586,8 @@ var Interpreter;
         // [*][#] は [z][x] にする
         90:(1 << 10), 88:(1 << 11),
         // [←][↑][→][↓]
-        37:(1 << 13), // 12でないので注意
-        38:(1 << 12), // 13でないので注意
+        37:(1 << 13), // 12ではないので注意
+        38:(1 << 12), // 13ではないので注意
         39:(1 << 14),
         40:(1 << 15),
         // 決定ボタン は スペースキーとEnterキーとCtrlキー にする
@@ -605,15 +605,16 @@ var Interpreter;
         cmpeq:31,      cmpne:32,      cmplt:33,      cmple:34,      cmpgt:35,
         cmpge:36,      label:37,      "goto":38,     ifgoto:39,     ifnotgoto:40,
         switchgoto:41, gosub:42,      "return":43,   func:44,       funcend:45,
-        callfunc1:46,  callwait:47,   callfunc2:48,  calluser:49,   callgoto:50,
+        callfunc:46,   callwait:47,   callfunc2:48,  calluser:49,   callgoto:50,
         loadparam:51,  end:52 };
 
     var reserved = {            // 予約名
-        "label":1,     "goto":2,      "gosub":3,     "return":4,    "end":5,
-        "func":6,      "funcgoto":7,  "break":8,     "continue":9,  "switch":10,
-        "case":11,     "default":12,  "if":13,       "elsif":14,    "else":15,
-        "for":16,      "while":17,    "do":18,       "global":19,   "glb":20,
-        "local":21,    "loc":22,      "defconst":23, "disconst":24 };
+        "spmode":1,    "onlocal":2,   "offlocal":3,  "defconst":4,  "disconst":5,
+        "label":6,     "goto":7,      "gosub":8,     "return":9,    "end":10,
+        "global":11,   "glb":12,      "local":13,    "loc":14,      "func":15,
+        "break":16,    "continue":17, "switch":18,   "case":19,     "default":20,
+        "if":21,       "elsif":22,    "else":23,     "for":24,      "while":25,
+        "do":26 };
 
     // ***** hasOwnPropertyをプロパティ名に使うかもしれない場合の対策 *****
     // (変数名、関数名、ラベル名、画像変数名について、
@@ -1369,7 +1370,7 @@ var Interpreter;
                     // ***** 呼び出し元がない *****
                     throw new Error("予期しない '}' が見つかりました。");
                     // break;
-                case 46: // callfunc1
+                case 46: // callfunc
                     // ***** 引数の取得 *****
                     param_num = code[pc++];
                     param = [];
@@ -1454,7 +1455,7 @@ var Interpreter;
                     func_name = stack.pop();
                     func_name = toglobal(func_name); // 関数ポインタ対応
                     // ***** 関数内のとき *****
-                    if (funccall_stack.length > 0) {
+                    if (func_back.length > 0) {
                         // ***** 関数の存在チェック *****
                         // if (!func.hasOwnProperty(func_name)) {
                         // if (!hasOwn.call(func, func_name)) {
@@ -1470,7 +1471,7 @@ var Interpreter;
                         pc = f;
                         break;
                     }
-                    // ***** ここでは使用不可 *****
+                    // ***** 関数の外では使用不可 *****
                     throw new Error("funcgoto はユーザ定義の関数内でなければ使用できません。");
                     // break;
                 case 51: // loadparam
@@ -2735,7 +2736,7 @@ var Interpreter;
             code_push('"' + func_name + '"', debugpos1, i);
             // ***** 組み込み変数のとき *****
             if (func_type == 1 && func_tbl[func_name].param_num == -1) {
-                code_push("callfunc1", debugpos1, i);
+                code_push("callfunc", debugpos1, i);
                 code_push(0, debugpos1, i);
                 return i;
             }
@@ -2743,6 +2744,11 @@ var Interpreter;
                 code_push("callfunc2", debugpos1, i);
                 code_push(0, debugpos1, i);
                 return i;
+            }
+            // ***** funcgotoは式の中では使用不可 *****
+            if (func_name == "funcgoto") {
+                debugpos2 = i;
+                throw new Error("funcgoto は式の中では使用できません。");
             }
             // ***** 組み込み関数のとき *****
             match2("(", i++);
@@ -2778,7 +2784,7 @@ var Interpreter;
                 if (func_name == "input" || func_name == "keyinput") {
                     code_push("callwait", debugpos1, i);
                 } else {
-                    code_push("callfunc1", debugpos1, i);
+                    code_push("callfunc", debugpos1, i);
                 }
             } else {
                 code_push("callfunc2", debugpos1, i);
@@ -5098,9 +5104,8 @@ var Interpreter;
             return nothing;
         });
         make_one_func_tbl("funcgoto", 1, [], function (param) {
-            // ***** ここでは使用不可 *****
-            throw new Error("funcgoto は戻り値を使用できません。");
-            // return nothing;
+            // ***** NOP *****
+            return nothing;
         });
         make_one_func_tbl("gc", 0, [], function (param) {
             // ***** NOP *****
@@ -5671,8 +5676,8 @@ var Interpreter;
 
             num = 0;
             if (mouse_btn_stat[0]) { num |= 1; }        // 左ボタン
-            if (mouse_btn_stat[1]) { num |= (1 << 2); } // 中ボタン(シフト値1でないので注意)
-            if (mouse_btn_stat[2]) { num |= (1 << 1); } // 右ボタン(シフト値2でないので注意)
+            if (mouse_btn_stat[1]) { num |= (1 << 2); } // 中ボタン(シフト値1ではないので注意)
+            if (mouse_btn_stat[2]) { num |= (1 << 1); } // 右ボタン(シフト値2ではないので注意)
             return num;
         });
         make_one_func_tbl("msgdlg", 1, [], function (param) {
