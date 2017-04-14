@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_plugin0001.js
-// 2017-4-12 v7.08
+// 2017-4-14 v8.00
 
 
 // A Plugin to add functions to SPALM Web Interpreter
@@ -2422,91 +2422,90 @@ var Plugin0001;
         });
         add_one_func_tbl("vec3set", 4, [0], function (param) {
             var v1name;
-            var v1 = [];
+            var v1;
             var i;
 
             v1name = getvarname(param[0]);
             for (i = 0; i < 3; i++) {
-                v1[i] = (+param[i + 1]);
-                Vars.setVarValue(v1name + "[" + i + "]", v1[i]);
+                v1 = (+param[i + 1]);
+                Vars.setVarValue(v1name + "[" + i + "]", v1);
             }
             return nothing;
         });
         add_one_func_tbl("vec3copy", 2, [0, 1], function (param) {
             var v1name, v2name;
-            var v1 = [];
+            var v1;
             var i;
 
             v1name = getvarname(param[0]);
             v2name = getvarname(param[1]);
             for (i = 0; i < 3; i++) {
-                v1[i] = Vars.getVarValue(v1name + "[" + i + "]");
-                Vars.setVarValue(v2name + "[" + i + "]", v1[i]);
+                v1 = Vars.getVarValue(v1name + "[" + i + "]");
+                Vars.setVarValue(v2name + "[" + i + "]", v1);
             }
             return nothing;
         });
         add_one_func_tbl("vec3add", 3, [0, 1, 2], function (param) {
             var v1name, v2name, v3name;
-            var v1 = [], v2 = [], v3 = [];
+            var v1, v2, v3;
             var i;
 
             v1name = getvarname(param[0]);
             v2name = getvarname(param[1]);
             v3name = getvarname(param[2]);
             for (i = 0; i < 3; i++) {
-                v1[i] = Vars.getVarValue(v1name + "[" + i + "]");
-                v2[i] = Vars.getVarValue(v2name + "[" + i + "]");
-                v3[i] = v1[i] + v2[i];
-                Vars.setVarValue(v3name + "[" + i + "]", v3[i]);
+                v1 = Vars.getVarValue(v1name + "[" + i + "]");
+                v2 = Vars.getVarValue(v2name + "[" + i + "]");
+                v3 = v1 + v2;
+                Vars.setVarValue(v3name + "[" + i + "]", v3);
             }
             return nothing;
         });
         add_one_func_tbl("vec3sub", 3, [0, 1, 2], function (param) {
             var v1name, v2name, v3name;
-            var v1 = [], v2 = [], v3 = [];
+            var v1, v2, v3;
             var i;
 
             v1name = getvarname(param[0]);
             v2name = getvarname(param[1]);
             v3name = getvarname(param[2]);
             for (i = 0; i < 3; i++) {
-                v1[i] = Vars.getVarValue(v1name + "[" + i + "]");
-                v2[i] = Vars.getVarValue(v2name + "[" + i + "]");
-                v3[i] = v1[i] - v2[i];
-                Vars.setVarValue(v3name + "[" + i + "]", v3[i]);
+                v1 = Vars.getVarValue(v1name + "[" + i + "]");
+                v2 = Vars.getVarValue(v2name + "[" + i + "]");
+                v3 = v1 - v2;
+                Vars.setVarValue(v3name + "[" + i + "]", v3);
             }
             return nothing;
         });
         add_one_func_tbl("vec3scale", 3, [0, 2], function (param) {
             var v1name, v2name;
-            var v1 = [], v2 = [];
-            var i, k;
+            var v1, v2, k;
+            var i;
 
             v1name = getvarname(param[0]);
             k = (+param[1]);
             v2name = getvarname(param[2]);
             for (i = 0; i < 3; i++) {
-                v1[i] = Vars.getVarValue(v1name + "[" + i + "]");
-                v2[i] = v1[i] * k;
-                Vars.setVarValue(v2name + "[" + i + "]", v2[i]);
+                v1 = Vars.getVarValue(v1name + "[" + i + "]");
+                v2 = v1 * k;
+                Vars.setVarValue(v2name + "[" + i + "]", v2);
             }
             return nothing;
         });
         add_one_func_tbl("vec3dot", 2, [0, 1], function (param) {
             var num;
             var v1name, v2name;
-            var v1 = [], v2 = [];
-            var i, n;
+            var v1, v2;
+            var i;
 
             v1name = getvarname(param[0]);
             v2name = getvarname(param[1]);
-            n = 0;
+            num = 0;
             for (i = 0; i < 3; i++) {
-                v1[i] = Vars.getVarValue(v1name + "[" + i + "]");
-                v2[i] = Vars.getVarValue(v2name + "[" + i + "]");
-                n += v1[i] * v2[i];
+                v1 = Vars.getVarValue(v1name + "[" + i + "]");
+                v2 = Vars.getVarValue(v2name + "[" + i + "]");
+                num += v1 * v2;
             }
-            num = n;
             return num;
         });
         add_one_func_tbl("vec3cross", 3, [0, 1, 2], function (param) {
