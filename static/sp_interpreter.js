@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2017-4-14 v8.02
+// 2017-4-17 v8.03
 
 
 // SPALM Web Interpreter
@@ -942,7 +942,7 @@ var Interpreter;
             return ret;
         }
         // if (debug_mode == 1) {
-        //     DebugShow("codeR:(" + code_len + "個): ");
+        //     DebugShow("code2:(" + code_len + "個): ");
         //     msg = code.join(" ");
         //     DebugShow(msg + "\n");
         // }
@@ -1086,7 +1086,7 @@ var Interpreter;
             cod = code[pc++];
             // ***** スタックマシンのコードを実行 *****
             switch (cod) {
-                // ( case opcode.load: が遅かったので数値を直接指定する)
+                // ( case opcode.xxx: が遅かったので数値を直接指定する)
                 case 1: // push
                     num = code[pc++];
                     stack.push(num);
@@ -1307,17 +1307,17 @@ var Interpreter;
                     num = stack.pop();
                     if (num != 0) {
                         pc = code[pc];
-                    } else {
-                        pc++;
+                        break;
                     }
+                    pc++;
                     break;
                 case 40: // ifnotgoto
                     num = stack.pop();
                     if (num == 0) {
                         pc = code[pc];
-                    } else {
-                        pc++;
+                        break;
                     }
+                    pc++;
                     break;
                 case 41: // switchgoto
                     num2 = stack.pop();
@@ -1325,9 +1325,9 @@ var Interpreter;
                     if (num == num2) {
                         stack.pop();
                         pc = code[pc];
-                    } else {
-                        pc++;
+                        break;
                     }
+                    pc++;
                     break;
                 case 42: // gosub
                     gosub_back.push(pc + 1);
@@ -1726,8 +1726,8 @@ var Interpreter;
             if (tok == "spmode") {
                 i++;
                 match2("(", i++);
-                // (マイナス値を許可(特別扱い))
-                if (token[i] == "-") { i++; }
+                // (符号のトークンを許可(特別扱い))
+                if (isSign(token[i])) { i++; }
                 i++;
                 match2(")", i++);
                 continue;
@@ -1747,8 +1747,8 @@ var Interpreter;
                 match2("(", i++);
                 i++;
                 match2(",", i++);
-                // (マイナス値を許可(特別扱い))
-                if (token[i] == "-") { i++; }
+                // (符号のトークンを許可(特別扱い))
+                if (isSign(token[i])) { i++; }
                 i++;
                 match2(")", i++);
                 continue;
@@ -1830,7 +1830,8 @@ var Interpreter;
                 code_push("func", debugpos1, i);
                 func_name = token[i++];
                 // ***** 関数名のチェック *****
-                if (!(isAlpha(func_name.charAt(0)) || func_name.charAt(0) == "_")) {
+                ch = func_name.charAt(0);
+                if (!(isAlpha(ch) || ch == "_")) {
                     debugpos2 = i;
                     throw new Error("関数名が不正です。('" + func_name + "')");
                 }
@@ -1893,9 +1894,8 @@ var Interpreter;
                 i++;
                 match2("(", i++);
                 func_name = token[i];
-                // ***** 1文字取り出す *****
+                // ***** 関数名または関数ポインタのチェック *****
                 ch = func_name.charAt(0);
-                // ***** アルファベットかアンダースコアかポインタのとき *****
                 if (isAlpha(ch) || ch == "_" || ch == "*") {
                     // ***** 変数名のコンパイル *****
                     i = c_getvarname(i, tok_end);
@@ -2806,9 +2806,8 @@ var Interpreter;
             return i;
         }
         // ***** 数値のとき *****
-        // (マイナス値を許可(定数展開の関係で特別扱い))
-        // if (isDigit(ch)) {
-        if (isDigit(ch) || (ch == "-" && isDigit(tok.charAt(1)))) {
+        // (符号ありの数値を許可(定数展開の関係で特別扱い))
+        if (isDigit(ch) || (isSign(ch) && isDigit(tok.charAt(1)))) {
             i++;
             num = +tok; // 数値にする
             code_push("push", debugpos1, i);
@@ -3088,10 +3087,13 @@ var Interpreter;
 
     // ***** 変数名のチェック *****
     function checkvarname(var_name, tok_start) {
-        var i = tok_start;
+        var i;
+        var ch;
 
         // ***** 変数名のチェック *****
-        if (!(isAlpha(var_name.charAt(0)) || var_name.charAt(0) == "_")) {
+        i = tok_start;
+        ch = var_name.charAt(0);
+        if (!(isAlpha(ch) || ch == "_")) {
             debugpos2 = i;
             throw new Error("変数名が不正です。('" + var_name + "')");
         }
@@ -3108,18 +3110,18 @@ var Interpreter;
     // (ラベル名にはダブルクォート付きも許可する(過去との互換性維持のため))
     function c_labelname(tok_start) {
         var i;
+        var ch;
         var lbl_name;
 
         // ***** ラベル名の取得 *****
         i = tok_start;
-        // (マイナス値を許可(特別扱い))
+        // (符号のトークンを許可(特別扱い))
         // lbl_name = token[i++];
-        if (token[i] == "-" && isDigit(token[i + 1])) {
+        if (isSign(token[i]) && isDigit(token[i + 1])) {
             lbl_name = token[i] + token[i + 1];
             i += 2;
         } else {
-            lbl_name = token[i];
-            i++;
+            lbl_name = token[i++];
         }
         // (ダブルクォート付きも許可(ここでダブルクォートを外す))
         if (lbl_name.charAt(0) == '"') {
@@ -3130,8 +3132,10 @@ var Interpreter;
             }
         }
         // ***** ラベル名のチェック *****
-        if (!(isAlpha(lbl_name.charAt(0)) || lbl_name.charAt(0) == "_" ||
-              isDigit(lbl_name.charAt(0)) || lbl_name.charAt(0) == "-")) {
+        // (符号ありの数値を許可(特別扱い))
+        ch = lbl_name.charAt(0);
+        if (!(isAlpha(ch) || ch == "_" ||
+              isDigit(ch) || (isSign(ch) && isDigit(lbl_name.charAt(1))))) {
             debugpos2 = i;
             throw new Error("ラベル名が不正です。('" + lbl_name + "')");
         }
@@ -3157,6 +3161,7 @@ var Interpreter;
         var i;
         var ch;
         var tok;
+        var sp_val_st;
         var sp_value;
         var cst_name;
         var cst_value;
@@ -3179,26 +3184,26 @@ var Interpreter;
                 i++;
                 match2("(", i++);
                 // ***** 定数の置換 *****
-                // (マイナス値を許可(特別扱い))
-                if (token[i] == "-") {
-                    replace_const(token[i + 1], i + 1);
-                } else {
-                    replace_const(token[i], i);
-                }
+                replace_const(token[i], i);
                 // ***** 値の取得 *****
-                // (マイナス値を許可(特別扱い))
-                if (token[i] == "-" && isDigit(token[i + 1])) {
-                    sp_value = token[i] + token[i + 1];
+                // (符号のトークンを許可(特別扱い))
+                if (isSign(token[i]) && isDigit(token[i + 1])) {
+                    sp_val_st = token[i] + token[i + 1];
                     i += 2;
-                } else if (isDigit(token[i])) {
-                    sp_value = token[i];
-                    i++;
+                } else {
+                    sp_val_st = token[i++];
+                }
+                // ***** 値のチェック *****
+                // (符号ありの数値を許可(定数展開の関係で特別扱い))
+                ch = sp_val_st.charAt(0);
+                if (isDigit(ch) || (isSign(ch) && isDigit(sp_val_st.charAt(1)))) {
+                    sp_value = +sp_val_st; // 数値にする
                 } else {
                     debugpos2 = i + 1;
                     throw new Error("spmode の引数には数値以外を指定できません。");
                 }
                 // ***** 互換モードの設定 *****
-                if (sp_value == "1") {
+                if (sp_value == 1) {
                     sp_compati_flag = true;
                     use_local_vars = false;
                     font_size = font_size_set[0];
@@ -3226,28 +3231,22 @@ var Interpreter;
             if (tok == "defconst") {
                 i++;
                 match2("(", i++);
+                // ***** 定数名の取得 *****
                 cst_name = token[i++];
-                // ***** 1文字取り出す *****
+                // ***** 定数名のチェック *****
                 ch = cst_name.charAt(0);
-                // ***** アルファベットかアンダースコアのとき *****
                 if (isAlpha(ch) || ch == "_") {
                     match2(",", i++);
                     // ***** 定数の置換 *****
-                    // (マイナス値を許可(特別扱い))
-                    if (token[i] == "-") {
-                        replace_const(token[i + 1], i + 1);
-                    } else {
-                        replace_const(token[i], i);
-                    }
+                    replace_const(token[i], i);
                     // ***** 値の取得 *****
-                    // (マイナス値を許可(特別扱い))
+                    // (符号のトークンを許可(特別扱い))
                     // cst_value = token[i++];
-                    if (token[i] == "-" && isDigit(token[i + 1])) {
+                    if (isSign(token[i]) && isDigit(token[i + 1])) {
                         cst_value = token[i] + token[i + 1];
                         i += 2;
                     } else {
-                        cst_value = token[i];
-                        i++;
+                        cst_value = token[i++];
                     }
                     // ***** 定数の定義情報1個の生成 *****
                     const_tbl[cst_name] = cst_value;
@@ -3263,10 +3262,10 @@ var Interpreter;
             if (tok == "disconst") {
                 i++;
                 match2("(", i++);
+                // ***** 定数名の取得 *****
                 cst_name = token[i++];
-                // ***** 1文字取り出す *****
+                // ***** 定数名のチェック *****
                 ch = cst_name.charAt(0);
-                // ***** アルファベットかアンダースコアのとき *****
                 if (isAlpha(ch) || ch == "_") {
                     // ***** 定数の定義情報1個の削除 *****
                     delete const_tbl[cst_name];
@@ -3317,10 +3316,9 @@ var Interpreter;
         var src_len;
         var ch, ch2, ch3;
         var tok_start;
-        var dot_count;
-        var zero_flag;
+        var hex_flag;
+        var digit_mode;
         var temp_st;
-        var temp_no;
         var line_no;
         var line_no_s;
 
@@ -3383,42 +3381,55 @@ var Interpreter;
             // ***** 16進数のとき *****
             if (ch == "0" && ch2 == "x") {
                 i++;
+                hex_flag = false;
                 while (i < src_len) {
                     // ***** 1文字取り出す(iの加算なし) *****
                     ch = src.charAt(i);
                     // ***** 16進数チェック *****
-                    if (isHex(ch)) { i++; } else { break; }
+                    if (isHex(ch)) { i++; hex_flag = true; } else { break; }
                 }
-                temp_st = src.substring(tok_start, i);
-                temp_no = parseInt(temp_st, 16); // 16進数変換
-
-                // ***** NaN対策 *****
-                temp_no |= 0;
-
-                if (temp_no < 0) { // 負のときは符号を分離する
-                    token_push("-", line_no_s);
-                    token_push(String(-temp_no), line_no_s);
-                } else {
-                    token_push(String(temp_no), line_no_s);
+                token_push(src.substring(tok_start, i), line_no_s);
+                if (!hex_flag) {
+                    throw new Error("16進数表記エラー");
                 }
                 continue;
             }
             // ***** 10進数のとき *****
             if (isDigit(ch)) {
-                dot_count = 0;
-                zero_flag = true;
+                digit_mode = 1;
                 while (i < src_len) {
-                    // ***** 先頭の0をカット *****
-                    if (zero_flag && ch == "0" && isDigit(ch2)) { tok_start = i; } else { zero_flag = false; }
                     // ***** 1文字取り出す(iの加算なし) *****
                     ch = src.charAt(i);
                     if (i + 1 < src_len) { ch2 = src.charAt(i + 1); } else { ch2 = ""; }
                     // ***** 小数点チェック *****
-                    if (ch == "." && isDigit(ch2)) { i++; dot_count++; continue; }
+                    if (ch == ".") {
+                        i++;
+                        if (digit_mode == 1 && isDigit(ch2)) {
+                            digit_mode = 2;
+                            continue;
+                        }
+                        if (digit_mode == 1) { i--; break; } // 文字列連結演算子と判断
+                        token_push(src.substring(tok_start, i), line_no_s);
+                        throw new Error("数値の小数点エラー");
+                    }
+                    // ***** 指数表記チェック *****
+                    if (ch == "e" || ch == "E") {
+                        i++;
+                        // ***** 1文字取り出す *****
+                        ch = src.charAt(i++);
+                        if (i < src_len) { ch2 = src.charAt(i); } else { ch2 = ""; }
+                        // ***** 条件チェック *****
+                        if (digit_mode <= 2 &&
+                            (isDigit(ch) || (isSign(ch) && isDigit(ch2)))) {
+                            digit_mode = 3;
+                            continue;
+                        }
+                        token_push(src.substring(tok_start, i), line_no_s);
+                        throw new Error("数値の指数表記エラー");
+                    }
                     // ***** 数値チェック *****
                     if (isDigit(ch)) { i++; } else { break; }
                 }
-                if (dot_count >= 2) { throw new Error("数値の小数点重複エラー"); }
                 token_push(src.substring(tok_start, i), line_no_s);
                 continue;
             }
@@ -3448,6 +3459,7 @@ var Interpreter;
                             i++;
                             continue;
                         } else {
+                            token_push('"', line_no_s);
                             throw new Error("文字列のエスケープエラー");
                         }
                     }
@@ -3505,10 +3517,9 @@ var Interpreter;
     //                補助関数等
     // ****************************************
 
-    // ***** 正負と小数も含めた数値チェック(-0.123等) *****
+    // ***** 正負と小数と指数も含めた数値チェック(-1.23e4等) *****
     function isFullDigit(num_st) {
-        // if (num_st.match(/^[+-]?[0-9]*[\.]?[0-9]+$/)) { return true; } // 間違い
-        if (num_st.match(/^[+\-]?([1-9]\d*|0)(\.\d+)?$/)) { return true; }
+        if (num_st.match(/^[+\-]?\d+(?:\.\d+)?(?:[eE][+\-]?\d+)?$/)) { return true; }
         return false;
     }
     // ***** 数値チェック *****
@@ -3530,6 +3541,11 @@ var Interpreter;
         // if (ch.match(/^[a-fA-F0-9]+$/)) { return true; }
         var c = ch.charCodeAt(0);
         if ((c >= 0x30 && c <= 0x39) || (c >= 0x41 && c <= 0x46) || (c >= 0x61 && c <= 0x66)) { return true; }
+        return false;
+    }
+    // ***** 符号チェック *****
+    function isSign(ch) {
+        if (ch == "+" || ch == "-") { return true; }
         return false;
     }
     // ***** 文字チェック *****
@@ -3953,11 +3969,11 @@ var Interpreter;
         function Vars() { }
 
         // ***** 内部変数 *****
-        var vars_stack = [];  // グローバル/ローカル変数のスコープ(配列)
-                              //   (配列の0はグローバル変数用)
-                              //   (配列の1以降はローカル変数用)
-        var local_scope_num;  // ローカル変数のスコープ数
-        var ret_now_index;    // グローバル/ローカル変数のスコープの番号の戻り値
+        var vars_stack = []; // グローバル/ローカル変数のスコープ(配列)
+                             //   (配列の0はグローバル変数用)
+                             //   (配列の1以降はローカル変数用)
+        var local_scope_num; // ローカル変数のスコープ数
+        var ret_now_index;   // グローバル/ローカル変数のスコープの番号の戻り値
 
         // ***** 変数のタイプチェック(内部処理用) *****
         // (戻り値は、接頭語の文字数を返し、また、
@@ -5392,7 +5408,7 @@ var Interpreter;
             } else {
                 num = save_data[a1];
             }
-            // ***** 正負と小数も含めた数値チェック(-0.123等) *****
+            // ***** 正負と小数と指数も含めた数値チェック(-1.23e4等) *****
             if (isFullDigit(num)) {
                 num = +num; // 数値にする
             }
