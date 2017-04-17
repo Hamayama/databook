@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_plugin0001.js
-// 2017-4-17 v8.04
+// 2017-4-17 v8.05
 
 
 // A Plugin to add functions to SPALM Web Interpreter
@@ -4417,7 +4417,7 @@ var MMLPlayer = (function () {
         i = 0;
         mml_st_len = mml_st.length;
         while (i < mml_st_len) {
-            // ***** 1文字取り出す *****
+            // ***** 文字を取り出す *****
             c = mml_st.charAt(i);
             i++;
             // ***** 音符または休符のとき *****
@@ -4795,7 +4795,7 @@ var MMLPlayer = (function () {
         start = 0;
         mml_st_len = mml_st.length;
         while (i < mml_st_len) {
-            // ***** 1文字取り出す *****
+            // ***** 文字を取り出す *****
             c = mml_st.charAt(i++);
             // ***** チャンネル切替のとき *****
             if (c == "!") {
