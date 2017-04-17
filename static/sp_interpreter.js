@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2017-4-17 v8.03
+// 2017-4-17 v8.04
 
 
 // SPALM Web Interpreter
@@ -3319,6 +3319,7 @@ var Interpreter;
         var hex_flag;
         var digit_mode;
         var temp_st;
+        var temp_no;
         var line_no;
         var line_no_s;
 
@@ -3379,7 +3380,7 @@ var Interpreter;
             tok_start = i - 1;
             line_no_s = line_no;
             // ***** 16進数のとき *****
-            if (ch == "0" && ch2 == "x") {
+            if (ch == "0" && (ch2 == "x" || ch2 == "X")) {
                 i++;
                 hex_flag = false;
                 while (i < src_len) {
@@ -3388,10 +3389,15 @@ var Interpreter;
                     // ***** 16進数チェック *****
                     if (isHex(ch)) { i++; hex_flag = true; } else { break; }
                 }
-                token_push(src.substring(tok_start, i), line_no_s);
                 if (!hex_flag) {
-                    throw new Error("16進数表記エラー");
+                    // (数値の0および後続の変数名と判断)
+                    token_push("0", line_no_s);
+                    i--;
+                    continue;
                 }
+                temp_st = src.substring(tok_start, i);
+                temp_no = +temp_st; // 数値にする
+                token_push(String(temp_no), line_no_s);
                 continue;
             }
             // ***** 10進数のとき *****
@@ -3403,29 +3409,30 @@ var Interpreter;
                     if (i + 1 < src_len) { ch2 = src.charAt(i + 1); } else { ch2 = ""; }
                     // ***** 小数点チェック *****
                     if (ch == ".") {
-                        i++;
                         if (digit_mode == 1 && isDigit(ch2)) {
+                            i++;
                             digit_mode = 2;
                             continue;
                         }
-                        if (digit_mode == 1) { i--; break; } // 文字列連結演算子と判断
-                        token_push(src.substring(tok_start, i), line_no_s);
-                        throw new Error("数値の小数点エラー");
+                        // (後続の文字列連結演算子と判断)
+                        break;
                     }
                     // ***** 指数表記チェック *****
                     if (ch == "e" || ch == "E") {
                         i++;
-                        // ***** 1文字取り出す *****
-                        ch = src.charAt(i++);
-                        if (i < src_len) { ch2 = src.charAt(i); } else { ch2 = ""; }
-                        // ***** 条件チェック *****
-                        if (digit_mode <= 2 &&
-                            (isDigit(ch) || (isSign(ch) && isDigit(ch2)))) {
+                        // ***** 1文字取り出す(iの加算なし) *****
+                        ch = src.charAt(i);
+                        if (i + 1 < src_len) { ch2 = src.charAt(i + 1); } else { ch2 = ""; }
+                        // ***** 指数チェック *****
+                        // (符号ありの数値を許可)
+                        if (digit_mode <= 2 && (isDigit(ch) || (isSign(ch) && isDigit(ch2)))) {
+                            i++;
                             digit_mode = 3;
                             continue;
                         }
-                        token_push(src.substring(tok_start, i), line_no_s);
-                        throw new Error("数値の指数表記エラー");
+                        // (後続の変数名と判断)
+                        i--;
+                        break;
                     }
                     // ***** 数値チェック *****
                     if (isDigit(ch)) { i++; } else { break; }
@@ -3519,7 +3526,7 @@ var Interpreter;
 
     // ***** 正負と小数と指数も含めた数値チェック(-1.23e4等) *****
     function isFullDigit(num_st) {
-        if (num_st.match(/^[+\-]?\d+(?:\.\d+)?(?:[eE][+\-]?\d+)?$/)) { return true; }
+        if (num_st.match(/^\s*[+\-]?\d+(?:\.\d+)?(?:[eE][+\-]?\d+)?\s*$/)) { return true; }
         return false;
     }
     // ***** 数値チェック *****

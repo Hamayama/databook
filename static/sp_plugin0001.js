@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_plugin0001.js
-// 2017-4-17 v8.03
+// 2017-4-17 v8.04
 
 
 // A Plugin to add functions to SPALM Web Interpreter
@@ -2935,7 +2935,7 @@ var DigitCalc = (function () {
             return;
         }
         // ***** 符号と数値(整数部のみ)を取り出す *****
-        reg_exp = /^([+\-])?0*(\d+)(?:\.(\d+))?(?:[eE]([+\-]?\d+))?/;
+        reg_exp = /^\s*([+\-])?0*(\d+)(?:\.(\d+))?(?:[eE]([+\-]?\d+))?\s*$/;
         ret = reg_exp.exec(num_st);
         if (ret) {
             // (符号)
