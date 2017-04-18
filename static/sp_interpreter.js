@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2017-4-18 v8.09
+// 2017-4-18 v8.10
 
 
 // SPALM Web Interpreter
@@ -152,19 +152,23 @@ function get_prog_id(list_st) {
         // ***** 空白かTABのとき *****
         if (ch == " " || ch == "\t") { split_flag = true; }
         // ***** 改行のとき *****
-        if (ch == "\r" && ch2 == "\n") { i++; split_flag = true; }
-        else if (ch == "\r" || ch == "\n") { split_flag = true; }
+        if (ch == "\r" || ch == "\n") {
+            split_flag = true;
+            if (ch == "\r" && ch2 == "\n") { i++; }
+        }
         // ***** コメント「;」のとき *****
         if (ch == ";") {
+            split_flag = true;
             while (i < list_st_len) {
                 // ***** 1文字取り出す *****
                 ch = list_st.charAt(i++);
                 ch2 = list_st.charAt(i);
                 // ***** 改行のとき *****
-                if (ch == "\r" && ch2 == "\n") { i++; break; }
-                else if (ch == "\r" || ch == "\n") { break; }
+                if (ch == "\r" || ch == "\n") {
+                    if (ch == "\r" && ch2 == "\n") { i++; }
+                    break;
+                }
             }
-            split_flag = true;
         }
         // ***** プログラムIDの取得 *****
         if (split_flag) {
@@ -3313,7 +3317,7 @@ var Interpreter;
     function tokenize() {
         var i, i2;
         var src_len;
-        var ch, ch2;
+        var ch, ch2, ch3, ch4;
         var tok_start;
         var hex_flag;
         var digit_mode;
@@ -3496,20 +3500,20 @@ var Interpreter;
                 if (ch2 == "=") { i++; }
                 if (ch2 == "<") {
                     i++;
-                    ch = src.charAt(i);
-                    if (ch == "=") { i++; }
+                    ch3 = src.charAt(i);
+                    if (ch3 == "=") { i++; }
                 }
             }
             if (ch == ">") {
                 if (ch2 == "=") { i++; }
                 if (ch2 == ">") {
                     i++;
-                    ch = src.charAt(i);
-                    if (ch == "=") { i++; }
-                    if (ch == ">") {
+                    ch3 = src.charAt(i);
+                    if (ch3 == "=") { i++; }
+                    if (ch3 == ">") {
                         i++;
-                        ch = src.charAt(i);
-                        if (ch == "=") { i++; }
+                        ch4 = src.charAt(i);
+                        if (ch4 == "=") { i++; }
                     }
                 }
             }
