@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2017-4-18 v8.07
+// 2017-4-18 v8.08
 
 
 // SPALM Web Interpreter
@@ -3314,7 +3314,7 @@ var Interpreter;
     function tokenize() {
         var i, i2;
         var src_len;
-        var ch, ch2, ch3, ch4;
+        var ch, ch2;
         var tok_start;
         var hex_flag;
         var digit_mode;
@@ -3497,7 +3497,7 @@ var Interpreter;
                 if (ch2 == "=") { i++; }
                 if (ch2 == "<") {
                     i++;
-                    ch3 = src.charAt(i);
+                    ch = src.charAt(i);
                     if (ch == "=") { i++; }
                 }
             }
@@ -3505,12 +3505,12 @@ var Interpreter;
                 if (ch2 == "=") { i++; }
                 if (ch2 == ">") {
                     i++;
-                    ch3 = src.charAt(i);
-                    if (ch3 == "=") { i++; }
-                    if (ch3 == ">") {
+                    ch = src.charAt(i);
+                    if (ch == "=") { i++; }
+                    if (ch == ">") {
                         i++;
-                        ch4 = src.charAt(i);
-                        if (ch4 == "=") { i++; }
+                        ch = src.charAt(i);
+                        if (ch == "=") { i++; }
                     }
                 }
             }
