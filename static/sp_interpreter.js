@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2017-4-18 v8.06
+// 2017-4-18 v8.07
 
 
 // SPALM Web Interpreter
@@ -146,7 +146,7 @@ function get_prog_id(list_st) {
     i = 0;
     list_st_len = list_st.length;
     while (i < list_st_len) {
-        // ***** 文字を取り出す *****
+        // ***** 1文字取り出す *****
         ch = list_st.charAt(i++);
         ch2 = list_st.charAt(i);
         // ***** 空白かTABのとき *****
@@ -157,7 +157,7 @@ function get_prog_id(list_st) {
         // ***** コメント「;」のとき *****
         if (ch == ";") {
             while (i < list_st_len) {
-                // ***** 文字を取り出す *****
+                // ***** 1文字取り出す *****
                 ch = list_st.charAt(i++);
                 ch2 = list_st.charAt(i);
                 // ***** 改行のとき *****
@@ -2795,7 +2795,7 @@ var Interpreter;
             return i;
         }
 
-        // ***** 文字を取り出す *****
+        // ***** 1文字取り出す *****
         ch = tok.charAt(0);
         // ***** 文字列のとき *****
         if (ch == '"') {
@@ -3331,7 +3331,7 @@ var Interpreter;
         token_len = 0;
         src_len = src.length;
         while (i < src_len) {
-            // ***** 文字を取り出す *****
+            // ***** 1文字取り出す *****
             ch = src.charAt(i++);
             ch2 = src.charAt(i);
 
@@ -3347,7 +3347,7 @@ var Interpreter;
             if (ch == "/" && ch2 == "/") {
                 i++;
                 while (i < src_len) {
-                    // ***** 文字を取り出す *****
+                    // ***** 1文字取り出す *****
                     ch = src.charAt(i++);
                     ch2 = src.charAt(i);
                     // ***** 改行のとき *****
@@ -3362,7 +3362,7 @@ var Interpreter;
             // ***** コメント「'」のとき *****
             if (ch == "'") {
                 while (i < src_len) {
-                    // ***** 文字を取り出す *****
+                    // ***** 1文字取り出す *****
                     ch = src.charAt(i++);
                     ch2 = src.charAt(i);
                     // ***** デリミタのとき *****
@@ -3384,7 +3384,7 @@ var Interpreter;
                 i++;
                 hex_flag = false;
                 while (i < src_len) {
-                    // ***** 文字を取り出す(iの加算なし) *****
+                    // ***** 1文字取り出す(iの加算なし) *****
                     ch = src.charAt(i);
                     // ***** 16進数チェック *****
                     if (isHex1(ch)) { i++; hex_flag = true; } else { break; }
@@ -3404,7 +3404,7 @@ var Interpreter;
             if (isDigit1(ch)) {
                 digit_mode = 1;
                 while (i < src_len) {
-                    // ***** 文字を取り出す(iの加算なし) *****
+                    // ***** 1文字取り出す(iの加算なし) *****
                     ch = src.charAt(i);
                     ch2 = src.charAt(i + 1);
                     // ***** 小数点チェック *****
@@ -3420,7 +3420,7 @@ var Interpreter;
                     // ***** 指数表記チェック *****
                     if (ch == "e" || ch == "E") {
                         i++;
-                        // ***** 文字を取り出す(iの加算なし) *****
+                        // ***** 1文字取り出す(iの加算なし) *****
                         ch = src.charAt(i);
                         ch2 = src.charAt(i + 1);
                         // ***** 指数チェック *****
@@ -3443,7 +3443,7 @@ var Interpreter;
             // ***** アルファベットかアンダースコアのとき(名前) *****
             if (isAlpha1(ch) || ch == "_") {
                 while (i < src_len) {
-                    // ***** 文字を取り出す(iの加算なし) *****
+                    // ***** 1文字取り出す(iの加算なし) *****
                     ch = src.charAt(i);
                     ch2 = src.charAt(i + 1);
                     // ***** 「::」のチェック *****
@@ -3457,7 +3457,7 @@ var Interpreter;
             // ***** 文字列のとき *****
             if (ch == '"') {
                 while (i < src_len) {
-                    // ***** 文字を取り出す *****
+                    // ***** 1文字取り出す *****
                     ch = src.charAt(i++);
                     ch2 = src.charAt(i);
                     // ***** エスケープのとき *****
