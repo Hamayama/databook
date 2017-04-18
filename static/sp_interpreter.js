@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2017-4-18 v8.08
+// 2017-4-18 v8.09
 
 
 // SPALM Web Interpreter
@@ -516,7 +516,7 @@ var Interpreter;
     var stack = [];             // スタック          (配列)
     var param = [];             // 関数の引数        (配列)(ユーザ定義関数のときは逆順に格納)
     var nothing = 0;            // 戻り値なしの組み込み関数の戻り値
-    var end_token_len = 4;      // 終端のトークン数
+    var end_token_num = 4;      // 終端のトークン数
 
     var pc;                     // プログラムカウンタ
     var debugpc;                // エラーの場所
@@ -546,7 +546,7 @@ var Interpreter;
     var key_scan_stat;          // キースキャン状態(携帯互換用)
     var input_buf = [];         // キー入力バッファ1(携帯互換用)(配列)
     var keyinput_buf = [];      // キー入力バッファ2(PC用)(配列)
-    var softkey = [];           // ソフトキー表示(配列)
+    var softkeys = [];          // ソフトキー情報(配列)
 
     var mousex;                 // マウスX座標(px)
     var mousey;                 // マウスY座標(px)
@@ -865,13 +865,13 @@ var Interpreter;
         can = can1;
         ctx = ctx1;
         // ***** ソフトキー表示 *****
-        softkey[0] = {};
-        softkey[1] = {};
-        softkey[0].text = "";
-        softkey[1].text = "";
-        softkey[0].font_size = can2_font_size_init;
-        softkey[1].font_size = can2_font_size_init;
-        disp_softkey();
+        softkeys[0] = {};
+        softkeys[1] = {};
+        softkeys[0].text = "";
+        softkeys[1].text = "";
+        softkeys[0].font_size = can2_font_size_init;
+        softkeys[1].font_size = can2_font_size_init;
+        disp_softkeys();
         // ***** デバッグ表示クリア *****
         DebugShowClear();
         // ***** 実行開始 *****
@@ -1593,7 +1593,7 @@ var Interpreter;
                 }
                 func[func_name] = i;
                 funcinfo[func_name] = {};
-                funcinfo[func_name].func_end = code_len - end_token_len; // 終了位置(仮)
+                funcinfo[func_name].func_end = code_len - end_token_num; // 終了位置(仮)
                 // ***** ジャンプ情報を生成 *****
                 jumpinfo = {};
                 jumpinfo.i = i - 1;
@@ -1608,7 +1608,7 @@ var Interpreter;
             if (cod == "funcend") {
                 if (func_name != "") {
                     funcinfo[func_name].func_end = i; // 終了位置(確定)
-                    func_name = "";
+                    func_name = ""; // 関数名をここでクリア
                 }
                 continue;
             }
@@ -3174,7 +3174,7 @@ var Interpreter;
         make_const_tbl();
         // ***** トークン解析のループ *****
         i = 0;
-        while (i < token_len - end_token_len) { // 終端のトークンは対象外
+        while (i < token_len - end_token_num) { // 終端のトークンは対象外
             // ***** トークンを取り出す *****
             debugpos1 = i;
             tok = token[i];
@@ -3295,7 +3295,6 @@ var Interpreter;
     function make_const_tbl() {
         var cst_name;
 
-        // ***** 定数の定義情報の生成 *****
         const_tbl = {};
         for (cst_name in constants) {
             // if (constants.hasOwnProperty(cst_name)) {
@@ -3517,7 +3516,7 @@ var Interpreter;
             token_push(src.substring(tok_start, i), line_no_s);
         }
         // ***** 終端のトークンを追加(安全のため) *****
-        for (i2 = 0; i2 < end_token_len; i2++) {
+        for (i2 = 0; i2 < end_token_num; i2++) {
             token_push("end", line_no);
         }
     }
@@ -3837,33 +3836,34 @@ var Interpreter;
     }
 
     // ***** ソフトキー表示 *****
-    function disp_softkey() {
-        var softkey_text;
+    function disp_softkeys() {
+        var text_st;
 
+        // ***** ソフトキー表示エリアのクリアと表示 *****
         ctx2.clearRect(0, 0, can2.width, can2.height);
         ctx2.fillStyle = can2_forecolor_init;
         ctx2.textAlign = "left";
         ctx2.textBaseline = "top";
-        softkey_text = softkey[0].text;
-        if (softkey_text != "") {
-            ctx2.font = softkey[0].font_size + "px " + font_family;
-            if (softkey_text.charAt(0) == "*") {
-                softkey_text = softkey_text.substring(1);
+        text_st = softkeys[0].text;
+        if (text_st != "") {
+            ctx2.font = softkeys[0].font_size + "px " + font_family;
+            if (text_st.charAt(0) == "*") {
+                text_st = text_st.substring(1);
             } else {
-                softkey_text = "[c]:" + softkey_text;
+                text_st = "[c]:" + text_st;
             }
-            ctx2.fillText(softkey_text, 0, 2);
+            ctx2.fillText(text_st, 0, 2);
         }
         ctx2.textAlign = "right";
-        softkey_text = softkey[1].text;
-        if (softkey_text != "") {
-            ctx2.font = softkey[1].font_size + "px " + font_family;
-            if (softkey_text.charAt(0) == "*") {
-                softkey_text = softkey_text.substring(1);
+        text_st = softkeys[1].text;
+        if (text_st != "") {
+            ctx2.font = softkeys[1].font_size + "px " + font_family;
+            if (text_st.charAt(0) == "*") {
+                text_st = text_st.substring(1);
             } else {
-                softkey_text = "[v]:" + softkey_text;
+                text_st = "[v]:" + text_st;
             }
-            ctx2.fillText(softkey_text, can2.width, 2);
+            ctx2.fillText(text_st, can2.width, 2);
         }
     }
 
@@ -6035,11 +6035,15 @@ var Interpreter;
             can1.height = a2;
             can1.style.width = a3 + "px";
             can1.style.height = a4 + "px";
+            // ***** ソフトキー表示 *****
             if (a3 > can2_width_init) {
                 can2.width = a3;
                 can2.style.width = a3 + "px";
-                disp_softkey();
+            } else {
+                can2.width = can2_width_init;
+                can2.style.width = can2_width_init + "px";
             }
+            disp_softkeys();
             // ***** Canvasの各種設定のリセット *****
             reset_canvas_setting(ctx1);
             return nothing;
@@ -6118,9 +6122,10 @@ var Interpreter;
                 throw new Error("フォントサイズが不正です。1-" + max_font_size2 + "の範囲で指定してください。");
             }
 
-            softkey[0].text = a1;
-            softkey[0].font_size = a2;
-            disp_softkey();
+            // ***** ソフトキー表示 *****
+            softkeys[0].text = a1;
+            softkeys[0].font_size = a2;
+            disp_softkeys();
             return nothing;
         });
         make_one_func_tbl("soft2", 1, [], function (param) {
@@ -6139,9 +6144,10 @@ var Interpreter;
                 throw new Error("フォントサイズが不正です。1-" + max_font_size2 + "の範囲で指定してください。");
             }
 
-            softkey[1].text = a1;
-            softkey[1].font_size = a2;
-            disp_softkey();
+            // ***** ソフトキー表示 *****
+            softkeys[1].text = a1;
+            softkeys[1].font_size = a2;
+            disp_softkeys();
             return nothing;
         });
         make_one_func_tbl("split", 3, [0], function (param) {
