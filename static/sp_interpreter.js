@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2017-4-18 v8.10
+// 2017-4-20 v8.11
 
 
 // SPALM Web Interpreter
@@ -1900,13 +1900,12 @@ var Interpreter;
                 func_name = token[i];
                 // ***** 関数名または関数ポインタのチェック *****
                 ch = func_name.charAt(0);
-                if (isAlpha1(ch) || ch == "_" || ch == "*") {
-                    // ***** 変数名のコンパイル *****
-                    i = c_varname(i, tok_end);
-                } else {
+                if (!(isAlpha1(ch) || ch == "_" || ch == "*")) {
                     debugpos2 = i + 1;
                     throw new Error("関数名が不正です。('" + func_name + "')");
                 }
+                // ***** 変数名のコンパイル *****
+                i = c_varname(i, tok_end);
                 // ***** 引数の取得 *****
                 token_match("(", i++);
                 param_num = 0;
@@ -3200,12 +3199,11 @@ var Interpreter;
                 // ***** 値のチェック *****
                 // (符号ありの数値を許可(定数展開の関係で特別扱い))
                 ch = sp_val_st.charAt(0);
-                if (isDigit1(ch) || (isSign1(ch) && isDigit1(sp_val_st.charAt(1)))) {
-                    sp_value = +sp_val_st; // 数値にする
-                } else {
+                if (!(isDigit1(ch) || (isSign1(ch) && isDigit1(sp_val_st.charAt(1))))) {
                     debugpos2 = i + 1;
                     throw new Error("spmode の引数には数値以外を指定できません。");
                 }
+                sp_value = +sp_val_st; // 数値にする
                 // ***** 互換モードの設定 *****
                 if (sp_value == 1) {
                     sp_compati_flag = true;
@@ -3239,25 +3237,24 @@ var Interpreter;
                 cst_name = token[i++];
                 // ***** 定数名のチェック *****
                 ch = cst_name.charAt(0);
-                if (isAlpha1(ch) || ch == "_") {
-                    token_match(",", i++);
-                    // ***** 定数の置換 *****
-                    replace_const(token[i], i);
-                    // ***** 値の取得 *****
-                    // (符号のトークンを許可(特別扱い))
-                    // cst_value = token[i++];
-                    if (isSign1(token[i]) && isDigit1(token[i + 1])) {
-                        cst_value = token[i] + token[i + 1];
-                        i += 2;
-                    } else {
-                        cst_value = token[i++];
-                    }
-                    // ***** 定数の定義情報1個の生成 *****
-                    const_tbl[cst_name] = cst_value;
-                } else {
+                if (!(isAlpha1(ch) || ch == "_")) {
                     debugpos2 = i;
                     throw new Error("定数名が不正です。('" + cst_name + "')");
                 }
+                token_match(",", i++);
+                // ***** 定数の置換 *****
+                replace_const(token[i], i);
+                // ***** 値の取得 *****
+                // (符号のトークンを許可(特別扱い))
+                // cst_value = token[i++];
+                if (isSign1(token[i]) && isDigit1(token[i + 1])) {
+                    cst_value = token[i] + token[i + 1];
+                    i += 2;
+                } else {
+                    cst_value = token[i++];
+                }
+                // ***** 定数の定義情報1個の生成 *****
+                const_tbl[cst_name] = cst_value;
                 token_match(")", i++);
                 continue;
             }
@@ -3270,13 +3267,12 @@ var Interpreter;
                 cst_name = token[i++];
                 // ***** 定数名のチェック *****
                 ch = cst_name.charAt(0);
-                if (isAlpha1(ch) || ch == "_") {
-                    // ***** 定数の定義情報1個の削除 *****
-                    delete const_tbl[cst_name];
-                } else {
+                if (!(isAlpha1(ch) || ch == "_")) {
                     debugpos2 = i;
                     throw new Error("定数名が不正です。('" + cst_name + "')");
                 }
+                // ***** 定数の定義情報1個の削除 *****
+                delete const_tbl[cst_name];
                 token_match(")", i++);
                 continue;
             }
