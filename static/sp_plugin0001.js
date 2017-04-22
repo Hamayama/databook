@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_plugin0001.js
-// 2017-4-17 v8.07
+// 2017-4-23 v9.00
 
 
 // A Plugin to add functions to SPALM Web Interpreter
@@ -48,8 +48,8 @@ var Plugin0001;
     var add_clear_var_funcs = Interpreter.add_clear_var_funcs;
     var add_one_func_tbl = Interpreter.add_one_func_tbl;
     var Vars = Interpreter.Vars;
-    var getvarname = Interpreter.getvarname;
-    var toglobal = Interpreter.toglobal;
+    var get_var_obj = Interpreter.get_var_obj;
+    var to_global = Interpreter.to_global;
     var set_canvas_axis = Interpreter.set_canvas_axis;
     var conv_axis_point = Interpreter.conv_axis_point;
     var max_array_size = Interpreter.max_array_size;
@@ -638,8 +638,8 @@ var Plugin0001;
             var x0, y0, x1, y1;
             var ctx = get_ctx();
 
-            a1 = getvarname(param[0]);
-            b1 = getvarname(param[1]);
+            a1 = get_var_obj(param[0]);
+            b1 = get_var_obj(param[1]);
             a2 = Math.trunc(param[2]);
             a3 = Math.trunc(param[3]);
 
@@ -657,25 +657,25 @@ var Plugin0001;
             i = a2;
 
             // // ***** 配列の存在チェック *****
-            // if (!Vars.checkVar(a1 + "[" + i + "]")) { return nothing; }
-            // if (!Vars.checkVar(b1 + "[" + i + "]")) { return nothing; }
+            // if (!Vars.checkVar(a1, [i])) { return nothing; }
+            // if (!Vars.checkVar(b1, [i])) { return nothing; }
 
             ctx.beginPath();
             // x0 = (+vars[a1 + "[" + i + "]"]);
-            x0 = (+Vars.getVarValue(a1 + "[" + i + "]"));
+            x0 = (+Vars.getVarValue(a1, [i]));
             // y0 = (+vars[b1 + "[" + i + "]"]);
-            y0 = (+Vars.getVarValue(b1 + "[" + i + "]"));
+            y0 = (+Vars.getVarValue(b1, [i]));
             ctx.moveTo(x0, y0);
             for (i = a2 + 1; i <= a3; i++) {
 
                 // // ***** 配列の存在チェック *****
-                // if (!Vars.checkVar(a1 + "[" + i + "]")) { break; }
-                // if (!Vars.checkVar(b1 + "[" + i + "]")) { break; }
+                // if (!Vars.checkVar(a1, [i])) { break; }
+                // if (!Vars.checkVar(b1, [i])) { break; }
 
                 // x1 = (+vars[a1 + "[" + i + "]"]);
-                x1 = (+Vars.getVarValue(a1 + "[" + i + "]"));
+                x1 = (+Vars.getVarValue(a1, [i]));
                 // y1 = (+vars[b1 + "[" + i + "]"]);
-                y1 = (+Vars.getVarValue(b1 + "[" + i + "]"));
+                y1 = (+Vars.getVarValue(b1, [i]));
                 ctx.lineTo(x1, y1);
             }
             ctx.closePath();
@@ -813,12 +813,12 @@ var Plugin0001;
             var min_x, max_x, min_y, max_y, div_x, div_y;
 
             no = Math.trunc(param[0]);
-            useflag_var_name =  getvarname(param[1]); // 制御用の変数名を取得
-            x100_var_name =     getvarname(param[2]); // 制御用の変数名を取得
-            y100_var_name =     getvarname(param[3]); // 制御用の変数名を取得
-            degree_var_name =   getvarname(param[4]); // 制御用の変数名を取得
-            speed100_var_name = getvarname(param[5]); // 制御用の変数名を取得
-            ch_var_name =       getvarname(param[6]); // 制御用の変数名を取得
+            useflag_var_name =  get_var_obj(param[1]); // 制御用の変数オブジェクトを取得
+            x100_var_name =     get_var_obj(param[2]); // 制御用の変数オブジェクトを取得
+            y100_var_name =     get_var_obj(param[3]); // 制御用の変数オブジェクトを取得
+            degree_var_name =   get_var_obj(param[4]); // 制御用の変数オブジェクトを取得
+            speed100_var_name = get_var_obj(param[5]); // 制御用の変数オブジェクトを取得
+            ch_var_name =       get_var_obj(param[6]); // 制御用の変数オブジェクトを取得
             min_x = Math.trunc(param[7]);
             max_x = Math.trunc(param[8]);
             min_y = Math.trunc(param[9]);
@@ -884,7 +884,7 @@ var Plugin0001;
             var mis, mis_no;
             var range_use, min_no, max_no;
 
-            a1 = getvarname(param[0]);
+            a1 = get_var_obj(param[0]);
             a2 = Math.trunc(param[1]);
             a3 = Math.trunc(param[2]);
             if (param.length <= 4) {
@@ -985,8 +985,8 @@ var Plugin0001;
             var x0, y0, x1, y1;
             var ctx = get_ctx();
 
-            a1 = getvarname(param[0]);
-            b1 = getvarname(param[1]);
+            a1 = get_var_obj(param[0]);
+            b1 = get_var_obj(param[1]);
             a2 = Math.trunc(param[2]);
             a3 = Math.trunc(param[3]);
             if (param.length <= 4) {
@@ -1009,25 +1009,25 @@ var Plugin0001;
             i = a2;
 
             // // ***** 配列の存在チェック *****
-            // if (!Vars.checkVar(a1 + "[" + i + "]")) { return nothing; }
-            // if (!Vars.checkVar(b1 + "[" + i + "]")) { return nothing; }
+            // if (!Vars.checkVar(a1, [i])) { return nothing; }
+            // if (!Vars.checkVar(b1, [i])) { return nothing; }
 
             ctx.beginPath();
             // x0 = (+vars[a1 + "[" + i + "]"]);
-            x0 = (+Vars.getVarValue(a1 + "[" + i + "]"));
+            x0 = (+Vars.getVarValue(a1, [i]));
             // y0 = (+vars[b1 + "[" + i + "]"]);
-            y0 = (+Vars.getVarValue(b1 + "[" + i + "]"));
+            y0 = (+Vars.getVarValue(b1, [i]));
             ctx.moveTo(x0, y0);
             for (i = a2 + 1; i <= a3; i++) {
 
                 // // ***** 配列の存在チェック *****
-                // if (!Vars.checkVar(a1 + "[" + i + "]")) { break; }
-                // if (!Vars.checkVar(b1 + "[" + i + "]")) { break; }
+                // if (!Vars.checkVar(a1, [i])) { break; }
+                // if (!Vars.checkVar(b1, [i])) { break; }
 
                 // x1 = (+vars[a1 + "[" + i + "]"]);
-                x1 = (+Vars.getVarValue(a1 + "[" + i + "]"));
+                x1 = (+Vars.getVarValue(a1, [i]));
                 // y1 = (+vars[b1 + "[" + i + "]"]);
-                y1 = (+Vars.getVarValue(b1 + "[" + i + "]"));
+                y1 = (+Vars.getVarValue(b1, [i]));
                 ctx.lineTo(x1, y1);
             }
             if (a4 == 0) { ctx.closePath(); }
@@ -1143,7 +1143,7 @@ var Plugin0001;
             var imgvars = get_imgvars();
 
             a1 = String(param[0]);
-            a2 = toglobal(getvarname(param[1])); // 画像変数名取得
+            a2 = to_global(get_var_obj(param[1])); // 画像変数名取得
             if (param.length <= 3) {
                 a3 = 0;
                 a4 = 0;
@@ -1292,7 +1292,7 @@ var Plugin0001;
             var img_data = {};
             var imgvars = get_imgvars();
 
-            a1 = toglobal(getvarname(param[0])); // 画像変数名取得
+            a1 = to_global(get_var_obj(param[0])); // 画像変数名取得
             a2 = Math.trunc(param[1]); // RGB
             // if (imgvars.hasOwnProperty(a1)) {
             if (hasOwn.call(imgvars, a1)) {
@@ -1324,7 +1324,7 @@ var Plugin0001;
             var i;
             var st1;
 
-            a1 = getvarname(param[0]);
+            a1 = get_var_obj(param[0]);
             a2 = Math.trunc(param[1]);
             a3 = Math.trunc(param[2]);
             a4 = String(param[3]);
@@ -1348,7 +1348,7 @@ var Plugin0001;
             st1 = strrepeatsub(a4, a5);
             for (i = a2; i <= a3; i++) {
                 // vars[a1 + "[" + i + "]"] = st1;
-                Vars.setVarValue(a1 + "[" + i + "]", st1);
+                Vars.setVarValue(a1, st1, [i]);
             }
             return nothing;
         });
@@ -1361,7 +1361,7 @@ var Plugin0001;
             var ctx = get_ctx();
             var font_size = get_font_size();
 
-            a1 = getvarname(param[0]);
+            a1 = get_var_obj(param[0]);
             a2 = Math.trunc(param[1]);
             a3 = Math.trunc(param[2]);
             if (param.length <= 4) {
@@ -1397,12 +1397,10 @@ var Plugin0001;
             for (i = a2; i <= a3; i++) {
 
                 // // ***** 配列の存在チェック *****
-                // if (!Vars.checkVar(a1 + "[" + i + "]")) { break; }
+                // if (!Vars.checkVar(a1, [i])) { break; }
 
                 // st1 = vars[a1 + "[" + i + "]"];
-                st1 = Vars.getVarValue(a1 + "[" + i + "]");
-
-                // ***** 文字列に変換 *****
+                st1 = Vars.getVarValue(a1, [i]);
                 st1 = String(st1);
 
                 // ***** Chrome v24 で全角スペースが半角のサイズで表示される件の対策 *****
@@ -1426,7 +1424,7 @@ var Plugin0001;
             var st1;
             var ctx = get_ctx();
 
-            a1 = getvarname(param[0]);
+            a1 = get_var_obj(param[0]);
             a2 = Math.trunc(param[1]);
             a3 = Math.trunc(param[2]);
             x1 = Math.trunc(param[3]);
@@ -1453,10 +1451,10 @@ var Plugin0001;
             for (i = a2; i <= a3; i++) {
 
                 // // ***** 配列の存在チェック *****
-                // if (!Vars.checkVar(a1 + "[" + i + "]")) { break; }
+                // if (!Vars.checkVar(a1, [i])) { break; }
 
                 // st1 = vars[a1 + "[" + i + "]"];
-                st1 = Vars.getVarValue(a1 + "[" + i + "]");
+                st1 = Vars.getVarValue(a1, [i]);
                 st1 = String(st1);
 
                 if (i == a2) {
@@ -1486,12 +1484,12 @@ var Plugin0001;
             var i_start, i_end, i_plus;
             var st1, st2;
 
-            a1 = getvarname(param[0]);
+            a1 = get_var_obj(param[0]);
             a2 = Math.trunc(param[1]);
             a3 = Math.trunc(param[2]);
             x1 = Math.trunc(param[3]);
             y1 = Math.trunc(param[4]);
-            b1 = getvarname(param[5]);
+            b1 = get_var_obj(param[5]);
             b2 = Math.trunc(param[6]);
             b3 = Math.trunc(param[7]);
             if (param.length <= 8) {
@@ -1517,7 +1515,8 @@ var Plugin0001;
             }
 
             // ***** 描画処理 *****
-            if (a1 == b1 && b2 < y1) {
+            // if (a1 == b1 && b2 < y1) {
+            if (a1.name == b1.name && b2 < y1) {
                 // (後から処理)
                 i_start = b3;
                 i_end   = b2;
@@ -1534,14 +1533,14 @@ var Plugin0001;
                 if (y1 >= a2 && y1 <= a3) {
 
                     // // ***** 配列の存在チェック *****
-                    // if (!Vars.checkVar(a1 + "[" + y1 + "]")) { break; }
-                    // if (!Vars.checkVar(b1 + "[" + i + "]")) { break; }
+                    // if (!Vars.checkVar(a1, [y1])) { break; }
+                    // if (!Vars.checkVar(b1, [i])) { break; }
 
                     // st1 = vars[a1 + "[" + y1 + "]"];
-                    st1 = Vars.getVarValue(a1 + "[" + y1 + "]");
+                    st1 = Vars.getVarValue(a1, [y1]);
                     st1 = String(st1);
                     // st2 = vars[b1 + "[" + i + "]"];
-                    st2 = Vars.getVarValue(b1 + "[" + i + "]");
+                    st2 = Vars.getVarValue(b1, [i]);
                     st2 = String(st2);
                     if (a4 == 1) {
                         st1 = strovrsub2(st1, x1, st2);
@@ -1551,7 +1550,7 @@ var Plugin0001;
                         st1 = strovrsub(st1, x1, st2);
                     }
                     // vars[a1 + "[" + y1 + "]"] = st1;
-                    Vars.setVarValue(a1 + "[" + y1 + "]", st1);
+                    Vars.setVarValue(a1, st1, [y1]);
                 }
                 i  += i_plus;
                 y1 += i_plus;
@@ -1569,7 +1568,7 @@ var Plugin0001;
             var rep_str;
             var reg_exp;
 
-            a1 = getvarname(param[0]);
+            a1 = get_var_obj(param[0]);
             a2 = Math.trunc(param[1]);
             a3 = Math.trunc(param[2]);
             a4 = String(param[3]);
@@ -1600,11 +1599,11 @@ var Plugin0001;
             reg_exp = new RegExp(src_str, "g");
             for (i = a2; i <= a3; i++) {
                 // st1 = vars[a1 + "[" + i + "]"];
-                st1 = Vars.getVarValue(a1 + "[" + i + "]");
+                st1 = Vars.getVarValue(a1, [i]);
                 st1 = String(st1);
                 st2 = st1.replace(reg_exp, rep_str);
                 // vars[a1 + "[" + i + "]"] = st2;
-                Vars.setVarValue(a1 + "[" + i + "]", st2);
+                Vars.setVarValue(a1, st2, [i]);
             }
             return nothing;
         });
@@ -1617,7 +1616,7 @@ var Plugin0001;
             var reg_exp;
             var ch_tbl;
 
-            a1 = getvarname(param[0]);
+            a1 = get_var_obj(param[0]);
             a2 = Math.trunc(param[1]);
             a3 = Math.trunc(param[2]);
             a4 = String(param[3]);
@@ -1652,11 +1651,11 @@ var Plugin0001;
             }
             for (i = a2; i <= a3; i++) {
                 // st1 = vars[a1 + "[" + i + "]"];
-                st1 = Vars.getVarValue(a1 + "[" + i + "]");
+                st1 = Vars.getVarValue(a1, [i]);
                 st1 = String(st1);
                 st2 = st1.replace(reg_exp, rep_func);
                 // vars[a1 + "[" + i + "]"] = st2;
-                Vars.setVarValue(a1 + "[" + i + "]", st2);
+                Vars.setVarValue(a1, st2, [i]);
             }
             return nothing;
         });
@@ -1664,7 +1663,7 @@ var Plugin0001;
             var a1, a2, a3, a4;
             var x1, y1;
 
-            a1 = getvarname(param[0]);
+            a1 = get_var_obj(param[0]);
             a2 = Math.trunc(param[1]);
             a3 = Math.trunc(param[2]);
             x1 = Math.trunc(param[3]);
@@ -1690,7 +1689,7 @@ var Plugin0001;
             var a1, a2, a3, a4;
             var x1, y1, x2, y2;
 
-            a1 = getvarname(param[0]);
+            a1 = get_var_obj(param[0]);
             a2 = Math.trunc(param[1]);
             a3 = Math.trunc(param[2]);
             x1 = Math.trunc(param[3]);
@@ -1726,7 +1725,7 @@ var Plugin0001;
             var x1, y1, x2, y2, x3, y3, x4, y4;
             var i;
 
-            a1 = getvarname(param[0]);
+            a1 = get_var_obj(param[0]);
             a2 = Math.trunc(param[1]);
             a3 = Math.trunc(param[2]);
             x1 = Math.trunc(param[3]);
@@ -1770,7 +1769,7 @@ var Plugin0001;
             var x1, y1, x2, y2, x3, y3, x4, y4;
             var i;
 
-            a1 = getvarname(param[0]);
+            a1 = get_var_obj(param[0]);
             a2 = Math.trunc(param[1]);
             a3 = Math.trunc(param[2]);
             x1 = Math.trunc(param[3]);
@@ -1814,7 +1813,7 @@ var Plugin0001;
             var drawflag;
             var x_old, y_old;
 
-            a1 = getvarname(param[0]);
+            a1 = get_var_obj(param[0]);
             a2 = Math.trunc(param[1]);
             a3 = Math.trunc(param[2]);
             x1 = Math.trunc(param[3]);
@@ -1881,7 +1880,7 @@ var Plugin0001;
             var r1, a, b;
             var rr, aaxx, bb;
 
-            a1 = getvarname(param[0]);
+            a1 = get_var_obj(param[0]);
             a2 = Math.trunc(param[1]);
             a3 = Math.trunc(param[2]);
             x1 = Math.trunc(param[3]);
@@ -1931,11 +1930,11 @@ var Plugin0001;
             var y = [];
             var line_num;
 
-            a1 = getvarname(param[0]);
+            a1 = get_var_obj(param[0]);
             a2 = Math.trunc(param[1]);
             a3 = Math.trunc(param[2]);
-            b1 = getvarname(param[3]);
-            b2 = getvarname(param[4]);
+            b1 = get_var_obj(param[3]);
+            b2 = get_var_obj(param[4]);
             b3 = Math.trunc(param[5]);
             b4 = Math.trunc(param[6]);
             a4 = String(param[7]);
@@ -1968,13 +1967,13 @@ var Plugin0001;
             pnum = b4 - b3 + 1;
             for (i = 0; i < pnum; i++) {
                 // // ***** 配列の存在チェック *****
-                // if (!Vars.checkVar(b1 + "[" + j + "]")) { return nothing; }
-                // if (!Vars.checkVar(b2 + "[" + j + "]")) { return nothing; }
+                // if (!Vars.checkVar(b1, [j])) { return nothing; }
+                // if (!Vars.checkVar(b2, [j])) { return nothing; }
 
                 // x[i] = Math.trunc(vars[b1 + "[" + j + "]"]);
-                x[i] = Math.trunc(Vars.getVarValue(b1 + "[" + j + "]"));
+                x[i] = Math.trunc(Vars.getVarValue(b1, [j]));
                 // y[i] = Math.trunc(vars[b2 + "[" + j + "]"]);
-                y[i] = Math.trunc(Vars.getVarValue(b2 + "[" + j + "]"));
+                y[i] = Math.trunc(Vars.getVarValue(b2, [j]));
                 j++;
 
                 // ***** エラーチェック *****
@@ -2013,11 +2012,11 @@ var Plugin0001;
             var wn;         // 巻き数
             var line_start; // 線分開始フラグ
 
-            a1 = getvarname(param[0]);
+            a1 = get_var_obj(param[0]);
             a2 = Math.trunc(param[1]);
             a3 = Math.trunc(param[2]);
-            b1 = getvarname(param[3]);
-            b2 = getvarname(param[4]);
+            b1 = get_var_obj(param[3]);
+            b2 = get_var_obj(param[4]);
             b3 = Math.trunc(param[5]);
             b4 = Math.trunc(param[6]);
             a4 = String(param[7]);
@@ -2045,13 +2044,13 @@ var Plugin0001;
             pnum = b4 - b3 + 1;
             for (i = 0; i < pnum; i++) {
                 // // ***** 配列の存在チェック *****
-                // if (!Vars.checkVar(b1 + "[" + j + "]")) { return nothing; }
-                // if (!Vars.checkVar(b2 + "[" + j + "]")) { return nothing; }
+                // if (!Vars.checkVar(b1, [j])) { return nothing; }
+                // if (!Vars.checkVar(b2, [j])) { return nothing; }
 
                 // x[i] = Math.trunc(vars[b1 + "[" + j + "]"]);
-                x[i] = Math.trunc(Vars.getVarValue(b1 + "[" + j + "]"));
+                x[i] = Math.trunc(Vars.getVarValue(b1, [j]));
                 // y[i] = Math.trunc(vars[b2 + "[" + j + "]"]);
-                y[i] = Math.trunc(Vars.getVarValue(b2 + "[" + j + "]"));
+                y[i] = Math.trunc(Vars.getVarValue(b2, [j]));
                 j++;
 
                 // ***** エラーチェック *****
@@ -2164,7 +2163,7 @@ var Plugin0001;
             var x1, y1;
             var st1;
 
-            a1 = getvarname(param[0]);
+            a1 = get_var_objy(param[0]);
             a2 = Math.trunc(param[1]);
             a3 = Math.trunc(param[2]);
             x1 = Math.trunc(param[3]);
@@ -2185,10 +2184,10 @@ var Plugin0001;
             if (y1 >= a2 && y1 <= a3) {
 
                 // ***** 配列の存在チェック *****
-                if (!Vars.checkVar(a1 + "[" + y1 + "]")) { num = ""; return num; }
+                if (!Vars.checkVar(a1, [y1])) { num = ""; return num; }
 
                 // st1 = vars[a1 + "[" + y1 + "]"];
-                st1 = Vars.getVarValue(a1 + "[" + y1 + "]");
+                st1 = Vars.getVarValue(a1, [y1]);
                 st1 = String(st1);
                 if (x1 >= 0 && x1 < st1.length) {
                     num = st1.substring(x1, x1 + 1);
@@ -2201,7 +2200,7 @@ var Plugin0001;
             var a1, a2, a3, a4;
             var x1, y1, x2, y2, x3, y3, x4, y4;
 
-            a1 = getvarname(param[0]);
+            a1 = get_var_obj(param[0]);
             a2 = Math.trunc(param[1]);
             a3 = Math.trunc(param[2]);
             x1 = Math.trunc(param[3]);
@@ -2244,7 +2243,7 @@ var Plugin0001;
             var anc;
             var st1;
 
-            a1 = getvarname(param[0]);
+            a1 = get_var_obj(param[0]);
             a2 = Math.trunc(param[1]);
             a3 = Math.trunc(param[2]);
             x1 = Math.trunc(param[3]);
@@ -2279,8 +2278,8 @@ var Plugin0001;
             if (a4.length == 0) { num = 0; return num; }
 
             // ***** アンカー処理(水平方向のみ) *****
-            // st1 = vars[a1 + "[" + i + "]"];
-            st1 = Vars.getVarValue(a1 + "[" + a2 + "]");
+            // st1 = vars[a1 + "[" + a2 + "]"];
+            st1 = Vars.getVarValue(a1, [a2]);
             st1 = String(st1);
             // if (anc & 4)   { }                               // 左
             if (anc & 8)      { offx -= chw * st1.length; }     // 右
@@ -2336,7 +2335,7 @@ var Plugin0001;
                 return (b[0] - a[0]);
             };
 
-            a1 = getvarname(param[0]);
+            a1 = get_var_obj(param[0]);
             a2 = Math.trunc(param[1]);
             a3 = Math.trunc(param[2]);
             x1 = Math.trunc(param[3]);
@@ -2376,8 +2375,8 @@ var Plugin0001;
             if (a4.length == 0) { num = ""; return num; }
 
             // ***** アンカー処理(水平方向のみ) *****
-            // st1 = vars[a1 + "[" + i + "]"];
-            st1 = Vars.getVarValue(a1 + "[" + a2 + "]");
+            // st1 = vars[a1 + "[" + a2 + "]"];
+            st1 = Vars.getVarValue(a1, [a2]);
             st1 = String(st1);
             // if (anc & 4)   { }                               // 左
             if (anc & 8)      { offx -= chw * st1.length; }     // 右
@@ -2425,10 +2424,10 @@ var Plugin0001;
             var v1;
             var i;
 
-            v1name = getvarname(param[0]);
+            v1name = get_var_obj(param[0]);
             for (i = 0; i < 3; i++) {
                 v1 = (+param[i + 1]);
-                Vars.setVarValue(v1name + "[" + i + "]", v1);
+                Vars.setVarValue(v1name, v1, [i]);
             }
             return nothing;
         });
@@ -2437,11 +2436,11 @@ var Plugin0001;
             var v1;
             var i;
 
-            v1name = getvarname(param[0]);
-            v2name = getvarname(param[1]);
+            v1name = get_var_obj(param[0]);
+            v2name = get_var_obj(param[1]);
             for (i = 0; i < 3; i++) {
-                v1 = Vars.getVarValue(v1name + "[" + i + "]");
-                Vars.setVarValue(v2name + "[" + i + "]", v1);
+                v1 = Vars.getVarValue(v1name, [i]);
+                Vars.setVarValue(v2name, v1, [i]);
             }
             return nothing;
         });
@@ -2450,14 +2449,14 @@ var Plugin0001;
             var v1, v2, v3;
             var i;
 
-            v1name = getvarname(param[0]);
-            v2name = getvarname(param[1]);
-            v3name = getvarname(param[2]);
+            v1name = get_var_obj(param[0]);
+            v2name = get_var_obj(param[1]);
+            v3name = get_var_obj(param[2]);
             for (i = 0; i < 3; i++) {
-                v1 = Vars.getVarValue(v1name + "[" + i + "]");
-                v2 = Vars.getVarValue(v2name + "[" + i + "]");
+                v1 = Vars.getVarValue(v1name, [i]);
+                v2 = Vars.getVarValue(v2name, [i]);
                 v3 = v1 + v2;
-                Vars.setVarValue(v3name + "[" + i + "]", v3);
+                Vars.setVarValue(v3name, v3, [i]);
             }
             return nothing;
         });
@@ -2466,14 +2465,14 @@ var Plugin0001;
             var v1, v2, v3;
             var i;
 
-            v1name = getvarname(param[0]);
-            v2name = getvarname(param[1]);
-            v3name = getvarname(param[2]);
+            v1name = get_var_obj(param[0]);
+            v2name = get_var_obj(param[1]);
+            v3name = get_var_obj(param[2]);
             for (i = 0; i < 3; i++) {
-                v1 = Vars.getVarValue(v1name + "[" + i + "]");
-                v2 = Vars.getVarValue(v2name + "[" + i + "]");
+                v1 = Vars.getVarValue(v1name, [i]);
+                v2 = Vars.getVarValue(v2name, [i]);
                 v3 = v1 - v2;
-                Vars.setVarValue(v3name + "[" + i + "]", v3);
+                Vars.setVarValue(v3name, v3, [i]);
             }
             return nothing;
         });
@@ -2482,13 +2481,13 @@ var Plugin0001;
             var v1, v2, k;
             var i;
 
-            v1name = getvarname(param[0]);
+            v1name = get_var_obj(param[0]);
             k = (+param[1]);
-            v2name = getvarname(param[2]);
+            v2name = get_var_obj(param[2]);
             for (i = 0; i < 3; i++) {
-                v1 = Vars.getVarValue(v1name + "[" + i + "]");
+                v1 = Vars.getVarValue(v1name, [i]);
                 v2 = v1 * k;
-                Vars.setVarValue(v2name + "[" + i + "]", v2);
+                Vars.setVarValue(v2name, v2, [i]);
             }
             return nothing;
         });
@@ -2498,12 +2497,12 @@ var Plugin0001;
             var v1, v2;
             var i;
 
-            v1name = getvarname(param[0]);
-            v2name = getvarname(param[1]);
+            v1name = get_var_obj(param[0]);
+            v2name = get_var_obj(param[1]);
             num = 0;
             for (i = 0; i < 3; i++) {
-                v1 = Vars.getVarValue(v1name + "[" + i + "]");
-                v2 = Vars.getVarValue(v2name + "[" + i + "]");
+                v1 = Vars.getVarValue(v1name, [i]);
+                v2 = Vars.getVarValue(v2name, [i]);
                 num += v1 * v2;
             }
             return num;
@@ -2513,18 +2512,18 @@ var Plugin0001;
             var v1 = [], v2 = [], v3 = [];
             var i;
 
-            v1name = getvarname(param[0]);
-            v2name = getvarname(param[1]);
-            v3name = getvarname(param[2]);
+            v1name = get_var_obj(param[0]);
+            v2name = get_var_obj(param[1]);
+            v3name = get_var_obj(param[2]);
             for (i = 0; i < 3; i++) {
-                v1[i] = Vars.getVarValue(v1name + "[" + i + "]");
-                v2[i] = Vars.getVarValue(v2name + "[" + i + "]");
+                v1[i] = Vars.getVarValue(v1name, [i]);
+                v2[i] = Vars.getVarValue(v2name, [i]);
             }
             v3[0] = v1[1] * v2[2] - v1[2] * v2[1];
             v3[1] = v1[2] * v2[0] - v1[0] * v2[2];
             v3[2] = v1[0] * v2[1] - v1[1] * v2[0];
             for (i = 0; i < 3; i++) {
-                Vars.setVarValue(v3name + "[" + i + "]", v3[i]);
+                Vars.setVarValue(v3name, v3[i], [i]);
             }
             return nothing;
         });
@@ -2533,17 +2532,17 @@ var Plugin0001;
             var v1 = [];
             var i, n;
 
-            v1name = getvarname(param[0]);
+            v1name = get_var_obj(param[0]);
             n = 0;
             for (i = 0; i < 3; i++) {
-                v1[i] = Vars.getVarValue(v1name + "[" + i + "]");
+                v1[i] = Vars.getVarValue(v1name, [i]);
                 n += v1[i] * v1[i];
             }
             n = Math.sqrt(n);
             if (Math.abs(n) > 1.0e-17) {
                 for (i = 0; i < 3; i++) {
                     v1[i] /= n;
-                    Vars.setVarValue(v1name + "[" + i + "]", v1[i]);
+                    Vars.setVarValue(v1name, v1[i], [i]);
                 }
             }
             return nothing;
@@ -2591,10 +2590,10 @@ var Plugin0001;
             if (!(i >= min_y && i <= max_y)) { continue; }
 
             // ***** 配列の存在チェック *****
-            if (!Vars.checkVar(var_name + "[" + i + "]")) { continue; }
+            if (!Vars.checkVar(var_name, [i])) { continue; }
 
             // st2 = vars[a1 + "[" + i + "]"];
-            st2 = Vars.getVarValue(var_name + "[" + i + "]");
+            st2 = Vars.getVarValue(var_name, [i]);
             st2 = String(st2);
             st2_len = st2.length;
             for (j = x1; j <= x2; j++) {
@@ -2626,10 +2625,10 @@ var Plugin0001;
             if (!(i >= min_y && i <= max_y)) { continue; }
 
             // ***** 配列の存在チェック *****
-            if (!Vars.checkVar(var_name + "[" + i + "]")) { continue; }
+            if (!Vars.checkVar(var_name, [i])) { continue; }
 
             // st2 = vars[a1 + "[" + i + "]"];
-            st2 = Vars.getVarValue(var_name + "[" + i + "]");
+            st2 = Vars.getVarValue(var_name, [i]);
             st2 = String(st2);
             st2_len = st2.length;
             for (j = x1; j <= x2; j++) {
@@ -2698,15 +2697,15 @@ var Plugin0001;
         if (y >= min_y && y <= max_y) {
 
             // // ***** 配列の存在チェック *****
-            // if (!Vars.checkVar(var_name + "[" + y + "]")) { return; }
+            // if (!Vars.checkVar(var_name, [y])) { return; }
 
             // st1 = vars[var_name + "[" + y + "]"];
-            st1 = Vars.getVarValue(var_name + "[" + y + "]");
+            st1 = Vars.getVarValue(var_name, [y]);
             st1 = String(st1);
             if (x >= 0 && x < st1.length) {
                 st1 = st1.substring(0, x) + ch + st1.substring(x + 1);
                 // vars[var_name + "[" + y + "]"] = st1;
-                Vars.setVarValue(var_name + "[" + y + "]", st1);
+                Vars.setVarValue(var_name, st1, [y]);
             }
         }
     }
@@ -2717,11 +2716,11 @@ var Plugin0001;
         // ***** 上書き処理 *****
         if (y >= min_y && y <= max_y) {
             // st1 = vars[var_name + "[" + y + "]"];
-            st1 = Vars.getVarValue(var_name + "[" + y + "]");
+            st1 = Vars.getVarValue(var_name, [y]);
             st1 = String(st1);
             st1 = strovrsub(st1, x, st2);
             // vars[var_name + "[" + y + "]"] = st1;
-            Vars.setVarValue(var_name + "[" + y + "]", st1);
+            Vars.setVarValue(var_name, st1, [y]);
         }
     }
     // ***** 文字列配列の上書き処理サブ2 *****
@@ -2733,11 +2732,11 @@ var Plugin0001;
         // (半角/全角スペース以外を上書きする)
         if (y >= min_y && y <= max_y) {
             // st1 = vars[var_name + "[" + y + "]"];
-            st1 = Vars.getVarValue(var_name + "[" + y + "]");
+            st1 = Vars.getVarValue(var_name, [y]);
             st1 = String(st1);
             st1 = strovrsub2(st1, x, st2);
             // vars[var_name + "[" + y + "]"] = st1;
-            Vars.setVarValue(var_name + "[" + y + "]", st1);
+            Vars.setVarValue(var_name, st1, [y]);
         }
     }
     // ***** 文字列配列の上書き処理サブ3 *****
@@ -2749,11 +2748,11 @@ var Plugin0001;
         // (半角/全角スペースのみ上書きする)
         if (y >= min_y && y <= max_y) {
             // st1 = vars[var_name + "[" + y + "]"];
-            st1 = Vars.getVarValue(var_name + "[" + y + "]");
+            st1 = Vars.getVarValue(var_name, [y]);
             st1 = String(st1);
             st1 = strovrsub3(st1, x, st2);
             // vars[var_name + "[" + y + "]"] = st1;
-            Vars.setVarValue(var_name + "[" + y + "]", st1);
+            Vars.setVarValue(var_name, st1, [y]);
         }
     }
     // ***** 文字列の繰り返し処理サブ *****
@@ -3889,12 +3888,12 @@ var Missile = (function () {
         this.max_y = max_y;                         // yの最大値
         this.div_x = div_x;                         // x方向の速度の倍率の逆数
         this.div_y = div_y;                         // y方向の速度の倍率の逆数
-        this.useflag_var_name = useflag_var_name;   // 有効フラグ の変数名
-        this.x100_var_name = x100_var_name;         // 座標x(文字で数える)の100倍の値 の変数名
-        this.y100_var_name = y100_var_name;         // 座標y(文字で数える)の100倍の値 の変数名
-        this.degree_var_name = degree_var_name;     // 角度(0-360) の変数名
-        this.speed100_var_name = speed100_var_name; // 速度の100倍の値 の変数名
-        this.ch_var_name = ch_var_name;             // 表示する文字列 の変数名
+        this.useflag_var_name = useflag_var_name;   // 有効フラグ の変数オブジェクト
+        this.x100_var_name = x100_var_name;         // 座標x(文字で数える)の100倍の値 の変数オブジェクト
+        this.y100_var_name = y100_var_name;         // 座標y(文字で数える)の100倍の値 の変数オブジェクト
+        this.degree_var_name = degree_var_name;     // 角度(0-360) の変数オブジェクト
+        this.speed100_var_name = speed100_var_name; // 速度の100倍の値 の変数オブジェクト
+        this.ch_var_name = ch_var_name;             // 表示する文字列 の変数オブジェクト
 
         this.x100_add = 0;                          // x方向の増分の100倍の値(一時保存用)
         this.y100_add = 0;                          // y方向の増分の100倍の値(一時保存用)
