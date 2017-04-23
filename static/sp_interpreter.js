@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2017-4-23 v9.02
+// 2017-4-23 v9.03
 
 
 // SPALM Web Interpreter
@@ -946,7 +946,15 @@ var Interpreter;
             return ret;
         }
         // if (debug_mode == 1) {
-        //     DebugShow("code2:(" + code_len + "個): " + JSON.stringify(code) + "\n");
+        //     DebugShow("code2:(" + code_len + "個): " + JSON.stringify(code, function (k, v) {
+        //         var func_name;
+        //         if (typeof (v) == "function") { 
+        //             func_name = code_str[(+k)];
+        //             func_name = func_name.substring(1, func_name.length - 1);
+        //             return "func\\" + func_name;
+        //         }
+        //         return v;
+        //     }) + "\n");
         // }
         // ***** 実行 *****
         // vars = {};
@@ -1074,6 +1082,7 @@ var Interpreter;
         var num, num2;
         var var_obj;
         var var_obj2;
+        var func_body;
         var func_name;
         var param_num;
         var time_cnt;
@@ -1377,10 +1386,10 @@ var Interpreter;
                     for (i = 0; i < param_num; i++) {
                         param[param_num - i - 1] = stack.pop();
                     }
-                    // ***** 関数名の取得 *****
-                    func_name = stack.pop();
+                    // ***** 関数の本体を取得 *****
+                    func_body = stack.pop();
                     // ***** 組み込み関数の呼び出し *****
-                    num = func_tbl[func_name].func(param);
+                    num = func_body(param);
                     stack.push(num);
                     break;
                 case 47: // callwait
@@ -1390,17 +1399,17 @@ var Interpreter;
                     for (i = 0; i < param_num; i++) {
                         param[param_num - i - 1] = stack.pop();
                     }
-                    // ***** 関数名の取得 *****
-                    func_name = stack.pop();
+                    // ***** 関数の本体を取得 *****
+                    func_body = stack.pop();
                     // ***** 組み込み関数の呼び出し *****
-                    num = func_tbl[func_name].func(param);
+                    num = func_body(param);
                     // ***** 入力待ち状態でなければ完了 *****
                     if (!(input_flag || keyinput_flag)) {
                         stack.push(num);
                         break;
                     }
                     // ***** 同じ命令を繰り返す *****
-                    stack.push(func_name);
+                    stack.push(func_body);
                     for (i = 0; i < param_num; i++) {
                         stack.push(param[i]);
                     }
@@ -1413,10 +1422,10 @@ var Interpreter;
                     for (i = 0; i < param_num; i++) {
                         param[param_num - i - 1] = stack.pop();
                     }
-                    // ***** 関数名の取得 *****
-                    func_name = stack.pop();
+                    // ***** 関数の本体を取得 *****
+                    func_body = stack.pop();
                     // ***** 追加の組み込み関数の呼び出し *****
-                    num = addfunc_tbl[func_name].func(param);
+                    num = func_body(param);
                     stack.push(num);
                     break;
                 case 49: // calluser
@@ -2726,7 +2735,8 @@ var Interpreter;
             i++;
             func_name = tok;
             code_push("push", debugpos1, i);
-            code_push('"' + func_name + '"', debugpos1, i);
+            // code_push('"' + func_name + '"', debugpos1, i);
+            code_push('"' + func_name + '"', debugpos1, i, func_type);
             // ***** 組み込み変数のとき *****
             if (func_type == 1 && func_tbl[func_name].param_num == -1) {
                 code_push("callfunc", debugpos1, i);
@@ -2998,7 +3008,7 @@ var Interpreter;
         // ***** 変数名を設定 *****
         code_push("push", debugpos1, i);
         // code_push('"' + var_name + '"', debugpos1, i);
-        code_push('"' + var_name + '"', debugpos1, i, true);
+        code_push('"' + var_name + '"', debugpos1, i, 10);
         // ***** 配列変数のとき *****
         while (token[i] == "[") {
             i++;
@@ -3067,7 +3077,7 @@ var Interpreter;
         // ***** 変数名を設定 *****
         code_push("push", debugpos1, i);
         // code_push('"' + var_name + '"', debugpos1, i);
-        code_push('"' + var_name + '"', debugpos1, i, true);
+        code_push('"' + var_name + '"', debugpos1, i, 10);
         // ***** 配列変数のとき *****
         while (token[i] == "[") {
             i++;
@@ -3546,319 +3556,6 @@ var Interpreter;
         return false;
     }
 
-    // ***** キーボード処理 *****
-    function keydown(ev) {
-        var key_code;
-        var num;
-        // ***** IE8対策 *****
-        ev = ev || window.event;
-        key_code = ev.keyCode;
-        // ***** プログラムの実行中は ブラウザのスクロール等を抑制する *****
-        if (running_flag) {
-            // ***** スペース/矢印/PageUp/PageDown/Home/Endキーを無効化 *****
-            if (key_code >= 32 && key_code <= 40) {
-                // ***** IE8対策 *****
-                if (ev.preventDefault) {
-                    ev.preventDefault();
-                } else {
-                    ev.returnValue = false;
-                }
-            }
-        }
-        // ***** キーダウン *****
-        key_down_stat[key_code] = true;
-        key_down_code = key_code;
-        // ***** 携帯のキーコードに変換 *****
-        if (phone_key_code.hasOwnProperty(key_code)) {
-            num = phone_key_code[key_code];
-            // ***** キースキャン状態を更新 *****
-            key_scan_stat |= num; // ビットをON
-            // ***** キー入力バッファ1に追加 *****
-            if (input_buf.length >= 40) { input_buf.shift(); }
-            input_buf.push(num);
-            // ***** キー入力待ちならば解除 *****
-            if (input_flag && sleep_id != null) {
-                clearTimeout(sleep_id);
-                run_continuously();
-            }
-        }
-        // ***** スペースキーのとき *****
-        // スペースキーを上で無効化したためkeypressが発生しないので、ここで処理する
-        if (key_code == 32) {
-            key_press_code = 32;
-            // ***** キー入力バッファ2に追加 *****
-            if (keyinput_buf.length >= 40) { keyinput_buf.shift(); }
-            keyinput_buf.push(key_press_code);
-            // ***** キー入力待ちならば解除 *****
-            if (keyinput_flag && sleep_id != null) {
-                clearTimeout(sleep_id);
-                run_continuously();
-            }
-        }
-    }
-    function keyup(ev) {
-        var key_code;
-        var num;
-        // ***** IE8対策 *****
-        ev = ev || window.event;
-        key_code = ev.keyCode;
-        // ***** キーアップ *****
-        key_down_stat[key_code] = false;
-        key_down_code = 0;
-        key_press_code = 0;
-        // ***** 携帯のキーコードに変換 *****
-        if (phone_key_code.hasOwnProperty(key_code)) {
-            num = phone_key_code[key_code];
-            // ***** キースキャン状態を更新 *****
-            key_scan_stat &= ~num; // ビットをOFF
-        }
-    }
-    function keypress(ev) {
-        var key_code;
-        // ***** IE8対策 *****
-        ev = ev || window.event;
-        key_code = ev.keyCode;
-        // ***** キープレス *****
-        key_press_code = key_code;
-        // ***** キー入力バッファ2に追加 *****
-        if (keyinput_buf.length >= 40) { keyinput_buf.shift(); }
-        keyinput_buf.push(key_press_code);
-        // ***** キー入力待ちならば解除 *****
-        if (keyinput_flag && sleep_id != null) {
-            clearTimeout(sleep_id);
-            run_continuously();
-        }
-    }
-    // ダイアログを表示するとkeyupが発生しないことがあるので、
-    // この関数を呼んでクリア可能とする
-    function keyclear() {
-        var key_code;
-        // ***** すべてのキー状態をクリア *****
-        for (key_code in key_down_stat) {
-            if (key_down_stat.hasOwnProperty(key_code)) {
-                key_down_stat[key_code] = false;
-            }
-        }
-        key_scan_stat = 0;
-        key_down_code = 0;
-        key_press_code = 0;
-    }
-
-    // ***** マウス処理 *****
-    function mousedown(ev) {
-        var btn_code;
-        // ***** マウスボタン状態を取得 *****
-        btn_code = ev.button;
-        // ***** FlashCanvas用 *****
-        if (typeof (FlashCanvas) != "undefined") {
-            if (btn_code == 1) { btn_code =  0; } // 中ボタンは左ボタンに変換
-            if (btn_code == 2) { btn_code = -1; } // 右ボタンは無効化
-        }
-        if (btn_code >= 0) { mouse_btn_stat[btn_code] = true; }
-        // ***** マウス座標を取得 *****
-        getmousepos(ev);
-    }
-    function mousedown_canvas(ev) {
-        // ***** プログラムの実行中は Canvas内でのマウスの機能(領域選択等)を抑制する *****
-        if (running_flag) {
-            // ***** IE8対策 *****
-            if (ev.preventDefault) {
-                ev.preventDefault();
-            } else {
-                ev.returnValue = false;
-            }
-        }
-    }
-    function mouseup(ev) {
-        var btn_code;
-        // ***** マウスボタン状態を取得 *****
-        btn_code = ev.button;
-        // ***** FlashCanvas用 *****
-        if (typeof (FlashCanvas) != "undefined") {
-            if (btn_code == 1) { btn_code =  0; } // 中ボタンは左ボタンに変換
-            if (btn_code == 2) { btn_code = -1; } // 右ボタンは無効化
-        }
-        if (btn_code >= 0) { mouse_btn_stat[btn_code] = false; }
-        // ***** マウス座標を取得 *****
-        getmousepos(ev);
-    }
-    function mousemove(ev) {
-        // ***** マウス座標を取得 *****
-        getmousepos(ev);
-    }
-    function mouseout(ev) {
-        // ***** すべてのマウスボタン状態をクリア *****
-        mousebuttonclear();
-        // ***** マウス座標を範囲外とする *****
-        mousex = -10000;
-        mousey = -10000;
-    }
-    function contextmenu_canvas(ev) {
-        // ***** プログラムの実行中は Canvas内でのマウスの機能(メニュー表示等)を抑制する *****
-        if (running_flag) {
-            // ***** IE8対策 *****
-            if (ev.preventDefault) {
-                ev.preventDefault();
-            } else {
-                ev.returnValue = false;
-            }
-        }
-    }
-    function getmousepos(ev) {
-        var rect;
-        // ***** IE8対策 *****
-        // rect = ev.target.getBoundingClientRect();
-        rect = can1.getBoundingClientRect();
-        // ***** マウス座標を取得 *****
-        mousex = ev.clientX - rect.left;
-        mousey = ev.clientY - rect.top;
-    }
-    // マウスカーソルが画面外に出たり ダイアログを表示すると、
-    // mouseupが発生しないことがあるので、
-    // この関数を呼んでクリア可能とする
-    function mousebuttonclear() {
-        var btn_code;
-        // ***** すべてのマウスボタン状態をクリア *****
-        for (btn_code in mouse_btn_stat) {
-            if (mouse_btn_stat.hasOwnProperty(btn_code)) {
-                mouse_btn_stat[btn_code] = false;
-            }
-        }
-    }
-
-    // ***** Canvasの各種設定の初期化 *****
-    function init_canvas_setting(ctx) {
-        // ***** フォント設定 *****
-        // (フォントサイズだけはリセットしない(過去との互換性維持のため))
-        // if (sp_compati_flag) {
-        //     font_size = font_size_set[0];
-        // } else {
-        //     font_size = font_size_set[1];
-        // }
-        ctx.font = font_size + "px " + font_family;
-        ctx.textAlign = "left";
-        ctx.textBaseline = "top";
-        // ***** 色設定 *****
-        color_val = can1_forecolor_init;
-        ctx.strokeStyle = color_val;
-        ctx.fillStyle = color_val;
-        // ***** 線の幅設定 *****
-        line_width = 1;
-        ctx.lineWidth = line_width;
-        // ***** 座標系設定 *****
-        axis = {};
-        axis.originx  = 0; // 座標系の原点座標X(px)
-        axis.originy  = 0; // 座標系の原点座標Y(px)
-        axis.rotate   = 0; // 座標系の回転の角度(rad)
-        axis.rotateox = 0; // 座標系の回転の中心座標X(px)
-        axis.rotateoy = 0; // 座標系の回転の中心座標Y(px)
-        axis.scalex   = 1; // 座標系の拡大縮小のX方向倍率
-        axis.scaley   = 1; // 座標系の拡大縮小のY方向倍率
-        axis.scaleox  = 0; // 座標系の拡大縮小の中心座標X(px)
-        axis.scaleoy  = 0; // 座標系の拡大縮小の中心座標Y(px)
-        ctx.setTransform(1, 0, 0, 1, 0, 0); // 座標系を初期化
-        // ***** 現在状態を保存 *****
-        ctx.save();
-    }
-    // ***** Canvasの各種設定のリセット *****
-    function reset_canvas_setting(ctx) {
-        // ***** 前回状態に復帰 *****
-        ctx.restore();
-        // ***** Canvasの各種設定の初期化 *****
-        init_canvas_setting(ctx);
-    }
-    // ***** Canvasの各種設定のリセット2(設定内容は保持) *****
-    function reset_canvas_setting2(ctx) {
-        // ***** 前回状態に復帰 *****
-        ctx.restore();
-        // ***** フォント設定 *****
-        ctx.font = font_size + "px " + font_family;
-        ctx.textAlign = "left";
-        ctx.textBaseline = "top";
-        // ***** 色設定 *****
-        ctx.strokeStyle = color_val;
-        ctx.fillStyle = color_val;
-        // ***** 線の幅設定 *****
-        ctx.lineWidth = line_width;
-        // ***** 座標系設定 *****
-        ctx.setTransform(1, 0, 0, 1, 0, 0); // 座標系を元に戻す
-        set_canvas_axis(ctx);               // 座標系を再設定
-        // ***** 現在状態を再び保存 *****
-        ctx.save();
-    }
-    // ***** Canvasの座標系の設定 *****
-    // (基本的に座標系を元に戻してから呼ぶこと)
-    function set_canvas_axis(ctx) {
-        // (これらの変換は、記述と逆の順番で実行されるので注意)
-        ctx.translate( axis.originx,   axis.originy);  // 原点座標を移動
-        ctx.translate( axis.rotateox,  axis.rotateoy); // 回転の中心座標を元に戻す
-        ctx.rotate(axis.rotate);                       // 回転の角度を指定
-        ctx.translate(-axis.rotateox, -axis.rotateoy); // 回転の中心座標を移動
-        ctx.translate( axis.scaleox,   axis.scaleoy);  // 拡大縮小の中心座標を元に戻す
-        ctx.scale(axis.scalex, axis.scaley);           // 拡大縮小の倍率を指定
-        ctx.translate(-axis.scaleox,  -axis.scaleoy);  // 拡大縮小の中心座標を移動
-    }
-    // ***** Canvasの座標変換 *****
-    // (グラフィック上の座標(x,y)から、
-    //  実際の画面上の座標(x1,y1)を計算して、配列にして返す)
-    function conv_axis_point(x, y) {
-        var x1, y1, t;
-        // ***** 座標系の変換の分を補正 *****
-        x1 = x;
-        y1 = y;
-        x1 -= axis.scaleox;  // 拡大縮小の中心座標を移動
-        y1 -= axis.scaleoy;
-        x1 *= axis.scalex;   // 拡大縮小
-        y1 *= axis.scaley;
-        x1 += axis.scaleox;  // 拡大縮小の中心座標を元に戻す
-        y1 += axis.scaleoy;
-        x1 -= axis.rotateox; // 回転の中心座標を移動
-        y1 -= axis.rotateoy;
-        // ここでtを使わないと、計算結果がおかしくなるので注意
-        t  = x1 * Math.cos(axis.rotate) - y1 * Math.sin(axis.rotate); // 回転
-        y1 = x1 * Math.sin(axis.rotate) + y1 * Math.cos(axis.rotate);
-        x1 = t;
-        x1 += axis.rotateox; // 回転の中心座標を元に戻す
-        y1 += axis.rotateoy;
-        x1 += axis.originx;  // 原点座標を移動
-        y1 += axis.originy;
-        x1 |= 0; // 整数化
-        y1 |= 0; // 整数化
-        return [x1, y1];
-    }
-
-    // ***** ソフトキー表示 *****
-    function disp_softkeys() {
-        var text_st;
-
-        // ***** ソフトキー表示エリアのクリアと表示 *****
-        ctx2.clearRect(0, 0, can2.width, can2.height);
-        ctx2.fillStyle = can2_forecolor_init;
-        ctx2.textAlign = "left";
-        ctx2.textBaseline = "top";
-        text_st = softkeys[0].text;
-        if (text_st != "") {
-            ctx2.font = softkeys[0].font_size + "px " + font_family;
-            if (text_st.charAt(0) == "*") {
-                text_st = text_st.substring(1);
-            } else {
-                text_st = "[c]:" + text_st;
-            }
-            ctx2.fillText(text_st, 0, 2);
-        }
-        ctx2.textAlign = "right";
-        text_st = softkeys[1].text;
-        if (text_st != "") {
-            ctx2.font = softkeys[1].font_size + "px " + font_family;
-            if (text_st.charAt(0) == "*") {
-                text_st = text_st.substring(1);
-            } else {
-                text_st = "[v]:" + text_st;
-            }
-            ctx2.fillText(text_st, can2.width, 2);
-        }
-    }
-
     // ***** トークン追加 *****
     function token_push(tok, line_no) {
         // token.push(tok);
@@ -3883,17 +3580,26 @@ var Interpreter;
     }
 
     // ***** コード追加 *****
-    function code_push(tok, pos1, pos2, var_flag) {
+    function code_push(tok, pos1, pos2, code_kind) {
         var i;
         var var_kind;
         var var_name;
+        var func_name;
 
         // ***** コードの追加 *****
-        if (var_flag != null) {
-            // (変数名のときは、ダブルクォートを外す)
+        if (code_kind == 1) {
+            // (組み込み関数名のときは、関数の実体を格納)
+            func_name = tok.substring(1, tok.length - 1); // ダブルクォートを外す
+            code[code_len] = func_tbl[func_name].func;
+        } else if (code_kind == 2) {
+            // (追加の組み込み関数名のときは、関数の実体を格納)
+            func_name = tok.substring(1, tok.length - 1); // ダブルクォートを外す
+            code[code_len] = addfunc_tbl[func_name].func;
+        } else if (code_kind == 10) {
+            // (変数名のときは、変数オブジェクトを格納)
             i = 0;
             var_kind = 0;
-            var_name = tok.substring(1, tok.length - 1);
+            var_name = tok.substring(1, tok.length - 1);  // ダブルクォートを外す
             // ***** 接頭語のチェック *****
             if (var_name.substring(0, 2) == "p\\") {
                 i = 2;
@@ -3908,10 +3614,10 @@ var Interpreter;
             // ***** 変数オブジェクトを1個生成する *****
             code[code_len] = Vars.makeVarObj(var_kind, var_name.substring(i), 0);
         } else if (opcode.hasOwnProperty(tok)) {
-            // (命令コードのときは、数値に変換)
+            // (命令コードのときは、数値に変換して格納)
             code[code_len] = opcode[tok];
         } else if (tok.charAt && tok.charAt(0) == '"') {
-            // (文字列のときは、ダブルクォートを外す)
+            // (文字列のときは、ダブルクォートを外して格納)
             if (tok.length >= 2 && tok.charAt(tok.length - 1) == '"') {
                 code[code_len] = tok.substring(1, tok.length - 1);
             } else {
@@ -4265,6 +3971,320 @@ var Interpreter;
         };
         return Vars; // これがないとクラスが動かないので注意
     })();
+
+    // ***** GUI関連の処理 *****
+
+    // ***** キーボード処理 *****
+    function keydown(ev) {
+        var key_code;
+        var num;
+        // ***** IE8対策 *****
+        ev = ev || window.event;
+        key_code = ev.keyCode;
+        // ***** プログラムの実行中は ブラウザのスクロール等を抑制する *****
+        if (running_flag) {
+            // ***** スペース/矢印/PageUp/PageDown/Home/Endキーを無効化 *****
+            if (key_code >= 32 && key_code <= 40) {
+                // ***** IE8対策 *****
+                if (ev.preventDefault) {
+                    ev.preventDefault();
+                } else {
+                    ev.returnValue = false;
+                }
+            }
+        }
+        // ***** キーダウン *****
+        key_down_stat[key_code] = true;
+        key_down_code = key_code;
+        // ***** 携帯のキーコードに変換 *****
+        if (phone_key_code.hasOwnProperty(key_code)) {
+            num = phone_key_code[key_code];
+            // ***** キースキャン状態を更新 *****
+            key_scan_stat |= num; // ビットをON
+            // ***** キー入力バッファ1に追加 *****
+            if (input_buf.length >= 40) { input_buf.shift(); }
+            input_buf.push(num);
+            // ***** キー入力待ちならば解除 *****
+            if (input_flag && sleep_id != null) {
+                clearTimeout(sleep_id);
+                run_continuously();
+            }
+        }
+        // ***** スペースキーのとき *****
+        // スペースキーを上で無効化したためkeypressが発生しないので、ここで処理する
+        if (key_code == 32) {
+            key_press_code = 32;
+            // ***** キー入力バッファ2に追加 *****
+            if (keyinput_buf.length >= 40) { keyinput_buf.shift(); }
+            keyinput_buf.push(key_press_code);
+            // ***** キー入力待ちならば解除 *****
+            if (keyinput_flag && sleep_id != null) {
+                clearTimeout(sleep_id);
+                run_continuously();
+            }
+        }
+    }
+    function keyup(ev) {
+        var key_code;
+        var num;
+        // ***** IE8対策 *****
+        ev = ev || window.event;
+        key_code = ev.keyCode;
+        // ***** キーアップ *****
+        key_down_stat[key_code] = false;
+        key_down_code = 0;
+        key_press_code = 0;
+        // ***** 携帯のキーコードに変換 *****
+        if (phone_key_code.hasOwnProperty(key_code)) {
+            num = phone_key_code[key_code];
+            // ***** キースキャン状態を更新 *****
+            key_scan_stat &= ~num; // ビットをOFF
+        }
+    }
+    function keypress(ev) {
+        var key_code;
+        // ***** IE8対策 *****
+        ev = ev || window.event;
+        key_code = ev.keyCode;
+        // ***** キープレス *****
+        key_press_code = key_code;
+        // ***** キー入力バッファ2に追加 *****
+        if (keyinput_buf.length >= 40) { keyinput_buf.shift(); }
+        keyinput_buf.push(key_press_code);
+        // ***** キー入力待ちならば解除 *****
+        if (keyinput_flag && sleep_id != null) {
+            clearTimeout(sleep_id);
+            run_continuously();
+        }
+    }
+    // ダイアログを表示するとkeyupが発生しないことがあるので、
+    // この関数を呼んでクリア可能とする
+    function keyclear() {
+        var key_code;
+        // ***** すべてのキー状態をクリア *****
+        for (key_code in key_down_stat) {
+            if (key_down_stat.hasOwnProperty(key_code)) {
+                key_down_stat[key_code] = false;
+            }
+        }
+        key_scan_stat = 0;
+        key_down_code = 0;
+        key_press_code = 0;
+    }
+
+    // ***** マウス処理 *****
+    function mousedown(ev) {
+        var btn_code;
+        // ***** マウスボタン状態を取得 *****
+        btn_code = ev.button;
+        // ***** FlashCanvas用 *****
+        if (typeof (FlashCanvas) != "undefined") {
+            if (btn_code == 1) { btn_code =  0; } // 中ボタンは左ボタンに変換
+            if (btn_code == 2) { btn_code = -1; } // 右ボタンは無効化
+        }
+        if (btn_code >= 0) { mouse_btn_stat[btn_code] = true; }
+        // ***** マウス座標を取得 *****
+        getmousepos(ev);
+    }
+    function mousedown_canvas(ev) {
+        // ***** プログラムの実行中は Canvas内でのマウスの機能(領域選択等)を抑制する *****
+        if (running_flag) {
+            // ***** IE8対策 *****
+            if (ev.preventDefault) {
+                ev.preventDefault();
+            } else {
+                ev.returnValue = false;
+            }
+        }
+    }
+    function mouseup(ev) {
+        var btn_code;
+        // ***** マウスボタン状態を取得 *****
+        btn_code = ev.button;
+        // ***** FlashCanvas用 *****
+        if (typeof (FlashCanvas) != "undefined") {
+            if (btn_code == 1) { btn_code =  0; } // 中ボタンは左ボタンに変換
+            if (btn_code == 2) { btn_code = -1; } // 右ボタンは無効化
+        }
+        if (btn_code >= 0) { mouse_btn_stat[btn_code] = false; }
+        // ***** マウス座標を取得 *****
+        getmousepos(ev);
+    }
+    function mousemove(ev) {
+        // ***** マウス座標を取得 *****
+        getmousepos(ev);
+    }
+    function mouseout(ev) {
+        // ***** すべてのマウスボタン状態をクリア *****
+        mousebuttonclear();
+        // ***** マウス座標を範囲外とする *****
+        mousex = -10000;
+        mousey = -10000;
+    }
+    function contextmenu_canvas(ev) {
+        // ***** プログラムの実行中は Canvas内でのマウスの機能(メニュー表示等)を抑制する *****
+        if (running_flag) {
+            // ***** IE8対策 *****
+            if (ev.preventDefault) {
+                ev.preventDefault();
+            } else {
+                ev.returnValue = false;
+            }
+        }
+    }
+    function getmousepos(ev) {
+        var rect;
+        // ***** IE8対策 *****
+        // rect = ev.target.getBoundingClientRect();
+        rect = can1.getBoundingClientRect();
+        // ***** マウス座標を取得 *****
+        mousex = ev.clientX - rect.left;
+        mousey = ev.clientY - rect.top;
+    }
+    // マウスカーソルが画面外に出たり ダイアログを表示すると、
+    // mouseupが発生しないことがあるので、
+    // この関数を呼んでクリア可能とする
+    function mousebuttonclear() {
+        var btn_code;
+        // ***** すべてのマウスボタン状態をクリア *****
+        for (btn_code in mouse_btn_stat) {
+            if (mouse_btn_stat.hasOwnProperty(btn_code)) {
+                mouse_btn_stat[btn_code] = false;
+            }
+        }
+    }
+
+    // ***** Canvasの各種設定の初期化 *****
+    function init_canvas_setting(ctx) {
+        // ***** フォント設定 *****
+        // (フォントサイズだけはリセットしない(過去との互換性維持のため))
+        // if (sp_compati_flag) {
+        //     font_size = font_size_set[0];
+        // } else {
+        //     font_size = font_size_set[1];
+        // }
+        ctx.font = font_size + "px " + font_family;
+        ctx.textAlign = "left";
+        ctx.textBaseline = "top";
+        // ***** 色設定 *****
+        color_val = can1_forecolor_init;
+        ctx.strokeStyle = color_val;
+        ctx.fillStyle = color_val;
+        // ***** 線の幅設定 *****
+        line_width = 1;
+        ctx.lineWidth = line_width;
+        // ***** 座標系設定 *****
+        axis = {};
+        axis.originx  = 0; // 座標系の原点座標X(px)
+        axis.originy  = 0; // 座標系の原点座標Y(px)
+        axis.rotate   = 0; // 座標系の回転の角度(rad)
+        axis.rotateox = 0; // 座標系の回転の中心座標X(px)
+        axis.rotateoy = 0; // 座標系の回転の中心座標Y(px)
+        axis.scalex   = 1; // 座標系の拡大縮小のX方向倍率
+        axis.scaley   = 1; // 座標系の拡大縮小のY方向倍率
+        axis.scaleox  = 0; // 座標系の拡大縮小の中心座標X(px)
+        axis.scaleoy  = 0; // 座標系の拡大縮小の中心座標Y(px)
+        ctx.setTransform(1, 0, 0, 1, 0, 0); // 座標系を初期化
+        // ***** 現在状態を保存 *****
+        ctx.save();
+    }
+    // ***** Canvasの各種設定のリセット *****
+    function reset_canvas_setting(ctx) {
+        // ***** 前回状態に復帰 *****
+        ctx.restore();
+        // ***** Canvasの各種設定の初期化 *****
+        init_canvas_setting(ctx);
+    }
+    // ***** Canvasの各種設定のリセット2(設定内容は保持) *****
+    function reset_canvas_setting2(ctx) {
+        // ***** 前回状態に復帰 *****
+        ctx.restore();
+        // ***** フォント設定 *****
+        ctx.font = font_size + "px " + font_family;
+        ctx.textAlign = "left";
+        ctx.textBaseline = "top";
+        // ***** 色設定 *****
+        ctx.strokeStyle = color_val;
+        ctx.fillStyle = color_val;
+        // ***** 線の幅設定 *****
+        ctx.lineWidth = line_width;
+        // ***** 座標系設定 *****
+        ctx.setTransform(1, 0, 0, 1, 0, 0); // 座標系を元に戻す
+        set_canvas_axis(ctx);               // 座標系を再設定
+        // ***** 現在状態を再び保存 *****
+        ctx.save();
+    }
+    // ***** Canvasの座標系の設定 *****
+    // (基本的に座標系を元に戻してから呼ぶこと)
+    function set_canvas_axis(ctx) {
+        // (これらの変換は、記述と逆の順番で実行されるので注意)
+        ctx.translate( axis.originx,   axis.originy);  // 原点座標を移動
+        ctx.translate( axis.rotateox,  axis.rotateoy); // 回転の中心座標を元に戻す
+        ctx.rotate(axis.rotate);                       // 回転の角度を指定
+        ctx.translate(-axis.rotateox, -axis.rotateoy); // 回転の中心座標を移動
+        ctx.translate( axis.scaleox,   axis.scaleoy);  // 拡大縮小の中心座標を元に戻す
+        ctx.scale(axis.scalex, axis.scaley);           // 拡大縮小の倍率を指定
+        ctx.translate(-axis.scaleox,  -axis.scaleoy);  // 拡大縮小の中心座標を移動
+    }
+    // ***** Canvasの座標変換 *****
+    // (グラフィック上の座標(x,y)から、
+    //  実際の画面上の座標(x1,y1)を計算して、配列にして返す)
+    function conv_axis_point(x, y) {
+        var x1, y1, t;
+        // ***** 座標系の変換の分を補正 *****
+        x1 = x;
+        y1 = y;
+        x1 -= axis.scaleox;  // 拡大縮小の中心座標を移動
+        y1 -= axis.scaleoy;
+        x1 *= axis.scalex;   // 拡大縮小
+        y1 *= axis.scaley;
+        x1 += axis.scaleox;  // 拡大縮小の中心座標を元に戻す
+        y1 += axis.scaleoy;
+        x1 -= axis.rotateox; // 回転の中心座標を移動
+        y1 -= axis.rotateoy;
+        // ここでtを使わないと、計算結果がおかしくなるので注意
+        t  = x1 * Math.cos(axis.rotate) - y1 * Math.sin(axis.rotate); // 回転
+        y1 = x1 * Math.sin(axis.rotate) + y1 * Math.cos(axis.rotate);
+        x1 = t;
+        x1 += axis.rotateox; // 回転の中心座標を元に戻す
+        y1 += axis.rotateoy;
+        x1 += axis.originx;  // 原点座標を移動
+        y1 += axis.originy;
+        x1 |= 0; // 整数化
+        y1 |= 0; // 整数化
+        return [x1, y1];
+    }
+
+    // ***** ソフトキー表示 *****
+    function disp_softkeys() {
+        var text_st;
+        // ***** ソフトキー表示エリアのクリアと表示 *****
+        ctx2.clearRect(0, 0, can2.width, can2.height);
+        ctx2.fillStyle = can2_forecolor_init;
+        ctx2.textAlign = "left";
+        ctx2.textBaseline = "top";
+        text_st = softkeys[0].text;
+        if (text_st != "") {
+            ctx2.font = softkeys[0].font_size + "px " + font_family;
+            if (text_st.charAt(0) == "*") {
+                text_st = text_st.substring(1);
+            } else {
+                text_st = "[c]:" + text_st;
+            }
+            ctx2.fillText(text_st, 0, 2);
+        }
+        ctx2.textAlign = "right";
+        text_st = softkeys[1].text;
+        if (text_st != "") {
+            ctx2.font = softkeys[1].font_size + "px " + font_family;
+            if (text_st.charAt(0) == "*") {
+                text_st = text_st.substring(1);
+            } else {
+                text_st = "[v]:" + text_st;
+            }
+            ctx2.fillText(text_st, can2.width, 2);
+        }
+    }
 
     // ****************************************
     //              命令の定義処理
