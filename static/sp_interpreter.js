@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2017-4-23 v9.01
+// 2017-4-23 v9.02
 
 
 // SPALM Web Interpreter
@@ -1486,7 +1486,7 @@ var Interpreter;
                         if (num.kind == null) {
                             throw new Error("ポインタの指す先が不正です。(変数のアドレスではなく、'" + num + "' が入っていました)");
                         }
-                        if (num.scope < 0) {
+                        if (!(num.kind & 2) && (num.kind & 1)) {
                             // (関数の引数かつポインタ)
                             var_obj2 = Vars.duplicateVarObj(num); // 変数オブジェクトを変更する場合は複製が必要
                             var_obj2.kind |= 2;
@@ -3906,7 +3906,7 @@ var Interpreter;
                 var_kind |= 1;
             }
             // ***** 変数オブジェクトを1個生成する *****
-            code[code_len] = Vars.makeVarObj(var_kind, var_name.substring(i), -1);
+            code[code_len] = Vars.makeVarObj(var_kind, var_name.substring(i), 0);
         } else if (opcode.hasOwnProperty(tok)) {
             // (命令コードのときは、数値に変換)
             code[code_len] = opcode[tok];
@@ -3990,13 +3990,16 @@ var Interpreter;
             if (var_kind & 2) {
                 // (関数の引数かつポインタ)
                 scope_no = var_obj.scope;
-                if (!(scope_no >= 0 && scope_no <= local_scope_num)) {
-                    throw new Error("ポインタの指す先が不正です(スコープ指定エラー)。");
+                if (!(scope_no >= 1 && scope_no <= local_scope_num)) {
+                    throw new Error("ポインタの指す先が不正です(スコープエラー)。");
                 }
                 return scope_no;
             }
             if (var_kind & 1) {
                 // (ローカル変数)
+                // if (!(local_scope_num > 0)) {
+                //     throw new Error("変数のスコープエラー。");
+                // }
                 return local_scope_num;
             }
             // (グローバル変数)
