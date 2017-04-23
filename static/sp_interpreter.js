@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2017-4-23 v9.00
+// 2017-4-23 v9.01
 
 
 // SPALM Web Interpreter
@@ -4607,6 +4607,23 @@ var Interpreter;
             }
             return nothing;
         });
+        make_one_func_tbl("dbgpointer", 1, [0], function (param) {
+            var a1, a2;
+            var var_obj;
+            var text_st;
+
+            a1 = get_var_obj(param[0]);
+            if (param.length <= 1) {
+                a2 = 1;
+            } else {
+                a2 = Math.trunc(param[1]);
+            }
+            var_obj = Vars.getVarValue(a1);
+            text_st = a1.name + " = " + JSON.stringify(var_obj);
+            if (a2 != 0) { text_st += "\n"; }
+            DebugShow(text_st);
+            return nothing;
+        });
         make_one_func_tbl("dbgprint", 1, [], function (param) {
             var a1, a2;
 
@@ -4616,7 +4633,7 @@ var Interpreter;
             } else {
                 a2 = Math.trunc(param[1]);
             }
-            if (a2 != 0) { a1 = a1 + "\n"; }
+            if (a2 != 0) { a1 += "\n"; }
             DebugShow(a1);
             return nothing;
         });
