@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2017-4-23 v9.03
+// 2017-4-24 v9.04
 
 
 // SPALM Web Interpreter
@@ -548,6 +548,7 @@ var Interpreter;
     var key_down_code;          // キーダウンコード
     var key_down_stat = {};     // キーダウン状態(キーごと)(連想配列オブジェクト)
     var key_scan_stat;          // キースキャン状態(携帯互換用)
+    var input_buf_size = 40;    // キー入力バッファのサイズ(文字数)
     var input_buf = [];         // キー入力バッファ1(携帯互換用)(配列)
     var keyinput_buf = [];      // キー入力バッファ2(PC用)(配列)
     var softkeys = [];          // ソフトキー情報(配列)
@@ -1082,11 +1083,11 @@ var Interpreter;
         var num, num2;
         var var_obj;
         var var_obj2;
+        var param_num;
         var func_body;
         var func_name;
-        var param_num;
+        var func_start;
         var time_cnt;
-        var f;
 
         // ***** コード実行のループ *****
         loop_time_start = Date.now();
@@ -1135,7 +1136,7 @@ var Interpreter;
                 case 8: // array
                     num = stack.pop();
                     var_obj = stack.pop();
-                    var_obj2 = Vars.duplicateVarObj(var_obj); // 変数オブジェクトを変更する場合は複製が必要
+                    var_obj2 = duplicate_var_obj(var_obj); // 変数オブジェクトを変更する場合は複製が必要
                     var_obj2.name = var_obj.name + "$" + num;
                     stack.push(var_obj2);
                     break;
@@ -1383,8 +1384,8 @@ var Interpreter;
                     // ***** 引数の取得 *****
                     param_num = code[pc++];
                     param = [];
-                    for (i = 0; i < param_num; i++) {
-                        param[param_num - i - 1] = stack.pop();
+                    for (i = param_num - 1; i >= 0; i--) {
+                        param[i] = stack.pop();
                     }
                     // ***** 関数の本体を取得 *****
                     func_body = stack.pop();
@@ -1396,8 +1397,8 @@ var Interpreter;
                     // ***** 引数の取得 *****
                     param_num = code[pc++];
                     param = [];
-                    for (i = 0; i < param_num; i++) {
-                        param[param_num - i - 1] = stack.pop();
+                    for (i = param_num - 1; i >= 0; i--) {
+                        param[i] = stack.pop();
                     }
                     // ***** 関数の本体を取得 *****
                     func_body = stack.pop();
@@ -1419,8 +1420,8 @@ var Interpreter;
                     // ***** 引数の取得 *****
                     param_num = code[pc++];
                     param = [];
-                    for (i = 0; i < param_num; i++) {
-                        param[param_num - i - 1] = stack.pop();
+                    for (i = param_num - 1; i >= 0; i--) {
+                        param[i] = stack.pop();
                     }
                     // ***** 関数の本体を取得 *****
                     func_body = stack.pop();
@@ -1441,8 +1442,8 @@ var Interpreter;
                     // ***** 関数の存在チェック *****
                     // if (!func.hasOwnProperty(func_name)) {
                     // if (!hasOwn.call(func, func_name)) {
-                    f = func[func_name];
-                    if (f == null) {
+                    func_start = func[func_name];
+                    if (func_start == null) {
                         throw new Error("関数 '" + func_name + "' の呼び出しに失敗しました(関数が未定義もしくはユーザ定義関数ではない等)。");
                     }
                     // ***** ローカル変数のスコープを1個生成する *****
@@ -1451,7 +1452,7 @@ var Interpreter;
                     func_back.push(pc);
                     // ***** 関数の呼び出し *****
                     // pc = func[func_name];
-                    pc = f;
+                    pc = func_start;
                     break;
                 case 50: // callgoto
                     // ***** 引数の取得 *****
@@ -1468,8 +1469,8 @@ var Interpreter;
                         // ***** 関数の存在チェック *****
                         // if (!func.hasOwnProperty(func_name)) {
                         // if (!hasOwn.call(func, func_name)) {
-                        f = func[func_name];
-                        if (f == null) {
+                        func_start = func[func_name];
+                        if (func_start == null) {
                             throw new Error("関数 '" + func_name + "' の呼び出しに失敗しました(関数が未定義もしくはユーザ定義関数ではない等)。");
                         }
                         // ***** コールスタックを増加させないで関数を呼び出す *****
@@ -1477,7 +1478,7 @@ var Interpreter;
                         if (use_local_vars) { Vars.clearLocalVars(); }
                         // ***** 関数の呼び出し *****
                         // pc = func[func_name];
-                        pc = f;
+                        pc = func_start;
                         break;
                     }
                     // ***** 関数の外では使用不可 *****
@@ -1497,7 +1498,7 @@ var Interpreter;
                         }
                         if (!(num.kind & 2) && (num.kind & 1)) {
                             // (関数の引数かつポインタ)
-                            var_obj2 = Vars.duplicateVarObj(num); // 変数オブジェクトを変更する場合は複製が必要
+                            var_obj2 = duplicate_var_obj(num); // 変数オブジェクトを変更する場合は複製が必要
                             var_obj2.kind |= 2;
                             var_obj2.scope = Vars.getLocalScopeNum() - 1;
                             Vars.setVarValue(var_obj, var_obj2);
@@ -3130,11 +3131,7 @@ var Interpreter;
         }
         // (ダブルクォート付きも許可(ここでダブルクォートを外す))
         if (lbl_name.charAt(0) == '"') {
-            if (lbl_name.length >= 2 && lbl_name.charAt(lbl_name.length - 1) == '"') {
-                lbl_name = lbl_name.substring(1, lbl_name.length - 1);
-            } else {
-                lbl_name = lbl_name.substring(1);
-            }
+            lbl_name = lbl_name.substring(1, lbl_name.length - 1);
         }
         // ***** ラベル名のチェック *****
         // (符号ありの数値を許可(特別扱い))
@@ -3479,7 +3476,11 @@ var Interpreter;
                         if (ch == "\r" && ch2 == "\n") { i++; }
                     }
                 }
-                temp_st = src.substring(tok_start, i)
+                temp_st = src.substring(tok_start, i);
+                // ***** デリミタがなければ追加する *****
+                if (temp_st.length == 1 || ch != '"') { temp_st += '"'; }
+                // ***** エスケープ処理 *****
+                temp_st = temp_st
                     .replace(/\\"/g,  '"')   // 「"」のエスケープ
                     .replace(/\\\\/g, "\\"); // 「\」のエスケープ ← これは最後にしないといけない
                 token_push(temp_st, line_no_s);
@@ -3558,9 +3559,6 @@ var Interpreter;
 
     // ***** トークン追加 *****
     function token_push(tok, line_no) {
-        // token.push(tok);
-        // token_line.push(line_no);
-        // token_len++;
         token[token_len] = tok;
         token_line[token_len++] = line_no;
     }
@@ -3612,17 +3610,13 @@ var Interpreter;
                 var_kind |= 1;
             }
             // ***** 変数オブジェクトを1個生成する *****
-            code[code_len] = Vars.makeVarObj(var_kind, var_name.substring(i), 0);
+            code[code_len] = make_var_obj(var_kind, var_name.substring(i), 0);
         } else if (opcode.hasOwnProperty(tok)) {
             // (命令コードのときは、数値に変換して格納)
             code[code_len] = opcode[tok];
         } else if (tok.charAt && tok.charAt(0) == '"') {
             // (文字列のときは、ダブルクォートを外して格納)
-            if (tok.length >= 2 && tok.charAt(tok.length - 1) == '"') {
-                code[code_len] = tok.substring(1, tok.length - 1);
-            } else {
-                code[code_len] = tok.substring(1);
-            }
+            code[code_len] = tok.substring(1, tok.length - 1);
         } else {
             // (その他のときは、そのまま格納)
             code[code_len] = tok;
@@ -3641,31 +3635,45 @@ var Interpreter;
     function show_err_place(debugpos1, debugpos2) {
         var i;
         var msg;
-        var msg_count;
 
         msg = "エラー場所: " + token_line[debugpos1] + "行: ";
-        msg_count = 0;
         if (debugpos2 <= debugpos1) { debugpos2 = debugpos1 + 1; } // エラーが出ない件の対策
         for (i = debugpos1; i < debugpos2; i++) {
             if (i >= 0 && i < token_len) {
-                msg = msg + token[i] + " ";
-                msg_count++;
-                // if (msg_count >= 100) {
-                //     msg += "... ";
-                //     break;
-                // }
+                msg += token[i] + " ";
             }
         }
         if (debugpos2 >= token_len) { msg += "- プログラム最後まで検索したが文が完成せず。"; }
         DebugShow(msg + "\n");
     }
 
-    // ***** 変数オブジェクト取得 *****
+    // ***** 変数オブジェクトを1個生成する *****
+    // (変数オブジェクトは、グローバル/ローカル変数にアクセスするために使用する。
+    //  変数オブジェクトは、基本的に参照専用であり 生成後に変更してはいけない。
+    //  変更が必要な場合には、duplicate_var_obj(var_obj) を使用して 複製したものを変更する)
+    function make_var_obj(kind, name, scope) {
+        var var_obj = {};
+        var_obj.kind = kind;   // 変数の種別(=0:グローバル変数,=1:ローカル変数,
+                               //            =2:関数の引数かつポインタ,
+                               //            =8:関数の仮引数かつポインタ)
+        var_obj.name = name;   // 変数名
+        var_obj.scope = scope; // 変数が所属するスコープの番号
+                               // (これは、変数の種別が「関数の引数かつポインタ」のときのみ有効)
+        return var_obj;
+    }
+    // ***** 変数オブジェクトを1個複製する *****
+    function duplicate_var_obj(var_obj) {
+        var var_obj2 = {};
+        var_obj2.kind = var_obj.kind;
+        var_obj2.name = var_obj.name;
+        var_obj2.scope = var_obj.scope;
+        return var_obj2;
+    }
+    // ***** 変数オブジェクトの取得 *****
     function get_var_obj(var_obj) {
         // ***** NOP *****
         return var_obj;
     }
-
     // ***** グローバル変数化 *****
     // (画像変数名や関数名に変換するときに使用)
     function to_global(var_obj) {
@@ -3673,6 +3681,7 @@ var Interpreter;
     }
 
     // ***** 変数用クラス(staticクラス) *****
+    // (グローバル/ローカル変数の内容を保持するクラス)
     // (使用前に Vars.init() で初期化が必要)
     var Vars = (function () {
         // ***** コンストラクタ *****
@@ -3789,30 +3798,6 @@ var Interpreter;
                 vars_stack[local_scope_num] = hashInit();
             }
         };
-        // ***** 変数オブジェクトを1個生成する(staticメソッド) *****
-        // (変数オブジェクトは、変数の内容を保持するオブジェクトではなく、
-        //  変数にアクセスするためのオブジェクトである。
-        //  基本的に参照専用であり、変更してはならない。
-        //  変更する必要がある場合には、Vars.duplicateVarObj(var_obj) を使用して
-        //  複製したものを変更すること)
-        Vars.makeVarObj = function (kind, name, scope) {
-            var var_obj = {};
-            var_obj.kind = kind;   // 変数の種別(=0:グローバル変数,=1:ローカル変数,
-                                   //            =2:関数の引数かつポインタ,
-                                   //            =8:関数の仮引数かつポインタ)
-            var_obj.name = name;   // 変数名
-            var_obj.scope = scope; // 変数が所属するスコープの番号
-                                   // (これは、変数の種別が「関数の引数かつポインタ」のときのみ有効)
-            return var_obj;
-        };
-        // ***** 変数オブジェクトを1個複製する(staticメソッド) *****
-        Vars.duplicateVarObj = function (var_obj) {
-            var var_obj2 = {};
-            var_obj2.kind = var_obj.kind;
-            var_obj2.name = var_obj.name;
-            var_obj2.scope = var_obj.scope;
-            return var_obj2;
-        };
         // ***** 変数を削除する(staticメソッド) *****
         Vars.deleteVar = function (var_obj, array_indexes) {
             var i;
@@ -3870,7 +3855,7 @@ var Interpreter;
             var scope_no;
             var now_vars;
             var var_name;
-            var v;
+            var num;
 
             // ***** 変数のタイプチェック *****
             scope_no = use_local_vars ? checkType(var_obj) : 0;
@@ -3888,13 +3873,13 @@ var Interpreter;
             // if (hasOwn.call(now_vars, var_name)) {
             //     return now_vars[var_name];
             // }
-            v = now_vars[var_name];
-            if (v != null) { return v; }
+            num = now_vars[var_name];
+            if (num != null) { return num; }
             now_vars[var_name] = 0;
             return 0;
         };
         // ***** 変数の値を設定する(staticメソッド) *****
-        Vars.setVarValue = function (var_obj, var_value, array_indexes) {
+        Vars.setVarValue = function (var_obj, num, array_indexes) {
             var i;
             var scope_no;
             var now_vars;
@@ -3912,7 +3897,7 @@ var Interpreter;
             // ***** グローバル/ローカル変数のスコープを取得 *****
             now_vars = vars_stack[scope_no];
             // ***** 変数の値を設定する *****
-            now_vars[var_name] = var_value;
+            now_vars[var_name] = num;
         };
         // ***** 配列変数の一括コピー(staticメソッド) *****
         Vars.copyArray = function (var_obj, var_obj2) {
@@ -3972,7 +3957,7 @@ var Interpreter;
         return Vars; // これがないとクラスが動かないので注意
     })();
 
-    // ***** GUI関連の処理 *****
+    // ***** GUI関連処理等 *****
 
     // ***** キーボード処理 *****
     function keydown(ev) {
@@ -4002,7 +3987,7 @@ var Interpreter;
             // ***** キースキャン状態を更新 *****
             key_scan_stat |= num; // ビットをON
             // ***** キー入力バッファ1に追加 *****
-            if (input_buf.length >= 40) { input_buf.shift(); }
+            if (input_buf.length >= input_buf_size) { input_buf.shift(); }
             input_buf.push(num);
             // ***** キー入力待ちならば解除 *****
             if (input_flag && sleep_id != null) {
@@ -4015,7 +4000,7 @@ var Interpreter;
         if (key_code == 32) {
             key_press_code = 32;
             // ***** キー入力バッファ2に追加 *****
-            if (keyinput_buf.length >= 40) { keyinput_buf.shift(); }
+            if (keyinput_buf.length >= input_buf_size) { keyinput_buf.shift(); }
             keyinput_buf.push(key_press_code);
             // ***** キー入力待ちならば解除 *****
             if (keyinput_flag && sleep_id != null) {
@@ -4049,7 +4034,7 @@ var Interpreter;
         // ***** キープレス *****
         key_press_code = key_code;
         // ***** キー入力バッファ2に追加 *****
-        if (keyinput_buf.length >= 40) { keyinput_buf.shift(); }
+        if (keyinput_buf.length >= input_buf_size) { keyinput_buf.shift(); }
         keyinput_buf.push(key_press_code);
         // ***** キー入力待ちならば解除 *****
         if (keyinput_flag && sleep_id != null) {
@@ -5485,12 +5470,7 @@ var Interpreter;
             k = 0;
             while (i < g_data.length) {
                 col_no = Math.trunc(g_data[i++]);
-                if (col_no == trans_col_no) {
-                    img_data.data[k++] = 0;
-                    img_data.data[k++] = 0;
-                    img_data.data[k++] = 0;
-                    img_data.data[k++] = 0;
-                } else if (col_no >=0 && col_no < col_num) {
+                if ((col_no >=0 && col_no < col_num) && (col_no != trans_col_no)) {
                     img_data.data[k++] = col_data[col_no].r;
                     img_data.data[k++] = col_data[col_no].g;
                     img_data.data[k++] = col_data[col_no].b;
@@ -6280,11 +6260,11 @@ var Interpreter;
             a1 = String(param[0]);
             a2 = Math.trunc(param[1]);
             if (param.length <= 2) {
-                a3 = a1.length - a2;
+                a3 = a1.length;
             } else {
                 a3 = Math.trunc(param[2]);
             }
-            num = a1.substring(a2, a2 + a3);
+            num = a1.substr(a2, a3);
             return num;
         });
         make_one_func_tbl("tan", 1, [], function (param) {
