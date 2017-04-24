@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2017-4-24 v9.04
+// 2017-4-25 v10.00
 
 
 // SPALM Web Interpreter
@@ -638,10 +638,12 @@ var Interpreter;
 
     // ***** 連想配列オブジェクトの初期化 *****
     // (Object.create(null) により、プロトタイプチェーンを無効にして、
-    //  連想配列オブジェクトの検索を効率化する
+    //  連想配列オブジェクトの検索を効率化する。
+    //  使うときは obj = {} を obj = hashInit() に置き換える。
     //  (ただし、常にヒットするような検索では性能は変わらない)
     //  (また、hasOwnProperty 等のメソッドは使用できなくなる))
     var hashInit = (function () {
+        // Object.create() が存在しない場合はシミュレートする
         var f = Object.create ?
             function () { return Object.create(null); } :
             (function () {
@@ -949,7 +951,7 @@ var Interpreter;
         // if (debug_mode == 1) {
         //     DebugShow("code2:(" + code_len + "個): " + JSON.stringify(code, function (k, v) {
         //         var func_name;
-        //         if (typeof (v) == "function") { 
+        //         if (typeof (v) == "function") {
         //             func_name = code_str[(+k)];
         //             func_name = func_name.substring(1, func_name.length - 1);
         //             return "func\\" + func_name;
@@ -1081,8 +1083,8 @@ var Interpreter;
         var i;
         var cod;
         var num, num2;
-        var var_obj;
-        var var_obj2;
+        var var_info;
+        var var_info2;
         var param_num;
         var func_body;
         var func_name;
@@ -1121,57 +1123,57 @@ var Interpreter;
                     break;
                 case 6: // load
                     num = stack.pop();
-                    var_obj = stack.pop();
-                    Vars.setVarValue(var_obj, num);
+                    var_info = stack.pop();
+                    Vars.setVarValue(var_info, num);
                     stack.push(num);
                     break;
                 case 7: // pointer
-                    var_obj = stack.pop();
-                    var_obj2 = Vars.getVarValue(var_obj);
-                    if (var_obj2.kind == null) {
-                        throw new Error("ポインタの指す先が不正です。(変数のアドレスではなく、'" + var_obj2 + "' が入っていました)");
+                    var_info = stack.pop();
+                    var_info2 = Vars.getVarValue(var_info);
+                    if (var_info2.kind == null) {
+                        throw new Error("ポインタの指す先が不正です。(変数のアドレスではなく、'" + var_info2 + "' が入っていました)");
                     }
-                    stack.push(var_obj2);
+                    stack.push(var_info2);
                     break;
                 case 8: // array
                     num = stack.pop();
-                    var_obj = stack.pop();
-                    var_obj2 = duplicate_var_obj(var_obj); // 変数オブジェクトを変更する場合は複製が必要
-                    var_obj2.name = var_obj.name + "$" + num;
-                    stack.push(var_obj2);
+                    var_info = stack.pop();
+                    var_info2 = duplicate_var_info(var_info); // 変数情報を変更する場合は複製が必要
+                    var_info2.name = var_info.name + "$" + num;
+                    stack.push(var_info2);
                     break;
                 case 9: // store
-                    var_obj = stack.pop();
-                    num = Vars.getVarValue(var_obj);
+                    var_info = stack.pop();
+                    num = Vars.getVarValue(var_info);
                     stack.push(num);
                     break;
                 case 10: // preinc
-                    var_obj = stack.pop();
-                    num = Vars.getVarValue(var_obj);
+                    var_info = stack.pop();
+                    num = Vars.getVarValue(var_info);
                     num++;
-                    Vars.setVarValue(var_obj, num);
+                    Vars.setVarValue(var_info, num);
                     stack.push(num);
                     break;
                 case 11: // predec
-                    var_obj = stack.pop();
-                    num = Vars.getVarValue(var_obj);
+                    var_info = stack.pop();
+                    num = Vars.getVarValue(var_info);
                     num--;
-                    Vars.setVarValue(var_obj, num);
+                    Vars.setVarValue(var_info, num);
                     stack.push(num);
                     break;
                 case 12: // postinc
-                    var_obj = stack.pop();
-                    num = Vars.getVarValue(var_obj);
+                    var_info = stack.pop();
+                    num = Vars.getVarValue(var_info);
                     stack.push(num);
                     num++;
-                    Vars.setVarValue(var_obj, num);
+                    Vars.setVarValue(var_info, num);
                     break;
                 case 13: // postdec
-                    var_obj = stack.pop();
-                    num = Vars.getVarValue(var_obj);
+                    var_info = stack.pop();
+                    num = Vars.getVarValue(var_info);
                     stack.push(num);
                     num--;
-                    Vars.setVarValue(var_obj, num);
+                    Vars.setVarValue(var_info, num);
                     break;
                 case 14: // add
                     num2 = stack.pop();
@@ -1490,22 +1492,22 @@ var Interpreter;
                     } else {
                         num = 0;
                     }
-                    var_obj = stack.pop();
+                    var_info = stack.pop();
                     // ***** 関数の引数のポインタ対応 *****
-                    if (use_local_vars && (var_obj.kind & 8)) {
+                    if (use_local_vars && (var_info.kind & 8)) {
                         if (num.kind == null) {
                             throw new Error("ポインタの指す先が不正です。(変数のアドレスではなく、'" + num + "' が入っていました)");
                         }
                         if (!(num.kind & 2) && (num.kind & 1)) {
                             // (関数の引数かつポインタ)
-                            var_obj2 = duplicate_var_obj(num); // 変数オブジェクトを変更する場合は複製が必要
-                            var_obj2.kind |= 2;
-                            var_obj2.scope = Vars.getLocalScopeNum() - 1;
-                            Vars.setVarValue(var_obj, var_obj2);
+                            var_info2 = duplicate_var_info(num); // 変数情報を変更する場合は複製が必要
+                            var_info2.kind |= 2;
+                            var_info2.scope = Vars.getLocalScopeNum() - 1;
+                            Vars.setVarValue(var_info, var_info2);
                             break;
                         }
                     }
-                    Vars.setVarValue(var_obj, num);
+                    Vars.setVarValue(var_info, num);
                     break;
                 case 52: // end
                     end_flag = true;
@@ -3028,9 +3030,6 @@ var Interpreter;
         var var_name;
         var loc_flag;
 
-        // ***** 引数のチェック *****
-        if (pointer_flag == null) { pointer_flag = false; }
-
         // ***** 変数名取得 *****
         i = tok_start;
         // debugpos1 = i;
@@ -3594,7 +3593,7 @@ var Interpreter;
             func_name = tok.substring(1, tok.length - 1); // ダブルクォートを外す
             code[code_len] = addfunc_tbl[func_name].func;
         } else if (code_kind == 10) {
-            // (変数名のときは、変数オブジェクトを格納)
+            // (変数名のときは、変数情報を格納)
             i = 0;
             var_kind = 0;
             var_name = tok.substring(1, tok.length - 1);  // ダブルクォートを外す
@@ -3609,8 +3608,8 @@ var Interpreter;
                 // (ローカル変数)
                 var_kind |= 1;
             }
-            // ***** 変数オブジェクトを1個生成する *****
-            code[code_len] = make_var_obj(var_kind, var_name.substring(i), 0);
+            // ***** 変数情報を生成する *****
+            code[code_len] = make_var_info(var_kind, var_name.substring(i), 0);
         } else if (opcode.hasOwnProperty(tok)) {
             // (命令コードのときは、数値に変換して格納)
             code[code_len] = opcode[tok];
@@ -3647,37 +3646,38 @@ var Interpreter;
         DebugShow(msg + "\n");
     }
 
-    // ***** 変数オブジェクトを1個生成する *****
-    // (変数オブジェクトは、グローバル/ローカル変数にアクセスするために使用する。
-    //  変数オブジェクトは、基本的に参照専用であり 生成後に変更してはいけない。
-    //  変更が必要な場合には、duplicate_var_obj(var_obj) を使用して 複製したものを変更する)
-    function make_var_obj(kind, name, scope) {
-        var var_obj = {};
-        var_obj.kind = kind;   // 変数の種別(=0:グローバル変数,=1:ローカル変数,
-                               //            =2:関数の引数かつポインタ,
-                               //            =8:関数の仮引数かつポインタ)
-        var_obj.name = name;   // 変数名
-        var_obj.scope = scope; // 変数が所属するスコープの番号
-                               // (これは、変数の種別が「関数の引数かつポインタ」のときのみ有効)
-        return var_obj;
+    // ***** 変数情報を生成する *****
+    // (グローバル/ローカル変数にアクセスするための情報を生成する)
+    // (変数情報は、生成後に変更してはいけない(複数回参照されるので不具合のもとになる)
+    //  変更が必要な場合には、duplicate_var_info(var_info) を使用して、
+    //  複製したものを変更すること)
+    function make_var_info(kind, name, scope) {
+        var var_info = {};      // 変数情報
+        var_info.kind = kind;   //   変数の種別(=0:グローバル変数,=1:ローカル変数,
+                                //              =2:関数の引数かつポインタ,
+                                //              =8:関数の仮引数かつポインタ)
+        var_info.name = name;   //   変数名
+        var_info.scope = scope; //   変数が所属するスコープの番号
+                                //   (これは、変数の種別が「関数の引数かつポインタ」のときのみ有効)
+        return var_info;
     }
-    // ***** 変数オブジェクトを1個複製する *****
-    function duplicate_var_obj(var_obj) {
-        var var_obj2 = {};
-        var_obj2.kind = var_obj.kind;
-        var_obj2.name = var_obj.name;
-        var_obj2.scope = var_obj.scope;
-        return var_obj2;
+    // ***** 変数情報を複製する *****
+    function duplicate_var_info(var_info) {
+        var var_info2 = {};
+        var_info2.kind = var_info.kind;
+        var_info2.name = var_info.name;
+        var_info2.scope = var_info.scope;
+        return var_info2;
     }
-    // ***** 変数オブジェクトの取得 *****
-    function get_var_obj(var_obj) {
+    // ***** 変数情報を取得する *****
+    function get_var_info(var_info) {
         // ***** NOP *****
-        return var_obj;
+        return var_info;
     }
     // ***** グローバル変数化 *****
     // (画像変数名や関数名に変換するときに使用)
-    function to_global(var_obj) {
-        return var_obj.name;
+    function to_global(var_info) {
+        return var_info.name;
     }
 
     // ***** 変数用クラス(staticクラス) *****
@@ -3690,21 +3690,21 @@ var Interpreter;
 
         // ***** 内部変数 *****
         var vars_stack = []; // グローバル/ローカル変数のスコープ(配列)
-                             //   (変数の内容はここに格納される)
+                             //   (変数の内容はここに格納する)
                              //   (配列の0はグローバル変数用)
                              //   (配列の1以降はローカル変数用)
         var local_scope_num; // ローカル変数のスコープ数
 
         // ***** 変数のタイプチェック(内部処理用) *****
         // (戻り値は、グローバル/ローカル変数のスコープの番号を返す)
-        function checkType(var_obj) {
+        function checkType(var_info) {
             var var_kind;
             var scope_no;
 
-            var_kind = var_obj.kind;
+            var_kind = var_info.kind;
             if (var_kind & 2) {
                 // (関数の引数かつポインタ)
-                scope_no = var_obj.scope;
+                scope_no = var_info.scope;
                 if (!(scope_no >= 1 && scope_no <= local_scope_num)) {
                     throw new Error("ポインタの指す先が不正です(スコープエラー)。");
                 }
@@ -3799,16 +3799,16 @@ var Interpreter;
             }
         };
         // ***** 変数を削除する(staticメソッド) *****
-        Vars.deleteVar = function (var_obj, array_indexes) {
+        Vars.deleteVar = function (var_info, array_indexes) {
             var i;
             var scope_no;
             var now_vars;
             var var_name;
 
             // ***** 変数のタイプチェック *****
-            scope_no = use_local_vars ? checkType(var_obj) : 0;
+            scope_no = use_local_vars ? checkType(var_info) : 0;
             // ***** 変数名を取得 *****
-            var_name = var_obj.name;
+            var_name = var_info.name;
             if (array_indexes) { // 配列変数対応
                 for (i = 0; i < array_indexes.length; i++) {
                     var_name += "$" + array_indexes[i];
@@ -3824,16 +3824,16 @@ var Interpreter;
             }
         };
         // ***** 変数の存在チェック(staticメソッド) *****
-        Vars.checkVar = function (var_obj, array_indexes) {
+        Vars.checkVar = function (var_info, array_indexes) {
             var i;
             var scope_no;
             var now_vars;
             var var_name;
 
             // ***** 変数のタイプチェック *****
-            scope_no = use_local_vars ? checkType(var_obj) : 0;
+            scope_no = use_local_vars ? checkType(var_info) : 0;
             // ***** 変数名を取得 *****
-            var_name = var_obj.name;
+            var_name = var_info.name;
             if (array_indexes) { // 配列変数対応
                 for (i = 0; i < array_indexes.length; i++) {
                     var_name += "$" + array_indexes[i];
@@ -3850,7 +3850,7 @@ var Interpreter;
             return false;
         };
         // ***** 変数の値を取得する(staticメソッド) *****
-        Vars.getVarValue = function (var_obj, array_indexes) {
+        Vars.getVarValue = function (var_info, array_indexes) {
             var i;
             var scope_no;
             var now_vars;
@@ -3858,9 +3858,9 @@ var Interpreter;
             var num;
 
             // ***** 変数のタイプチェック *****
-            scope_no = use_local_vars ? checkType(var_obj) : 0;
+            scope_no = use_local_vars ? checkType(var_info) : 0;
             // ***** 変数名を取得 *****
-            var_name = var_obj.name;
+            var_name = var_info.name;
             if (array_indexes) { // 配列変数対応
                 for (i = 0; i < array_indexes.length; i++) {
                     var_name += "$" + array_indexes[i];
@@ -3879,16 +3879,16 @@ var Interpreter;
             return 0;
         };
         // ***** 変数の値を設定する(staticメソッド) *****
-        Vars.setVarValue = function (var_obj, num, array_indexes) {
+        Vars.setVarValue = function (var_info, num, array_indexes) {
             var i;
             var scope_no;
             var now_vars;
             var var_name;
 
             // ***** 変数のタイプチェック *****
-            scope_no = use_local_vars ? checkType(var_obj) : 0;
+            scope_no = use_local_vars ? checkType(var_info) : 0;
             // ***** 変数名を取得 *****
-            var_name = var_obj.name;
+            var_name = var_info.name;
             if (array_indexes) { // 配列変数対応
                 for (i = 0; i < array_indexes.length; i++) {
                     var_name += "$" + array_indexes[i];
@@ -3900,7 +3900,7 @@ var Interpreter;
             now_vars[var_name] = num;
         };
         // ***** 配列変数の一括コピー(staticメソッド) *****
-        Vars.copyArray = function (var_obj, var_obj2) {
+        Vars.copyArray = function (var_info, var_info2) {
             var i;
             var scope_no;
             var scope_no2;
@@ -3911,11 +3911,11 @@ var Interpreter;
             var var_name_len;
 
             // ***** 変数のタイプチェック *****
-            scope_no = use_local_vars ? checkType(var_obj) : 0;
-            scope_no2 = use_local_vars ? checkType(var_obj2) : 0;
+            scope_no = use_local_vars ? checkType(var_info) : 0;
+            scope_no2 = use_local_vars ? checkType(var_info2) : 0;
             // ***** 変数名を取得 *****
-            var_name = var_obj.name + "$";
-            var_name2 = var_obj2.name + "$";
+            var_name = var_info.name + "$";
+            var_name2 = var_info2.name + "$";
 
             // ***** コピー元とコピー先の配列変数名が一致するときはエラーにする *****
             // (例えば、a[]をa[1][]にコピーすると無限ループのおそれがある)
@@ -3936,16 +3936,16 @@ var Interpreter;
             });
         };
         // ***** 配列変数の一括削除(staticメソッド) *****
-        Vars.deleteArray = function (var_obj) {
+        Vars.deleteArray = function (var_info) {
             var scope_no;
             var now_vars;
             var var_name;
             var var_name_len;
 
             // ***** 変数のタイプチェック *****
-            scope_no = use_local_vars ? checkType(var_obj) : 0;
+            scope_no = use_local_vars ? checkType(var_info) : 0;
             // ***** 変数名を取得 *****
-            var_name = var_obj.name + "$";
+            var_name = var_info.name + "$";
             // ***** グローバル/ローカル変数のスコープを取得 *****
             now_vars = vars_stack[scope_no];
             // ***** 配列変数の一括削除 *****
@@ -4202,8 +4202,9 @@ var Interpreter;
     // ***** Canvasの座標系の設定 *****
     // (基本的に座標系を元に戻してから呼ぶこと)
     function set_canvas_axis(ctx) {
-        // (これらの変換は、記述と逆の順番で実行されるので注意)
-        ctx.translate( axis.originx,   axis.originy);  // 原点座標を移動
+        // (座標系の設定は、拡大縮小 → 回転 → 平行移動 の順に実行する
+        //  (ソースの記述とは逆順に実行されるので注意))
+        ctx.translate( axis.originx,   axis.originy);  // 原点座標を平行移動
         ctx.translate( axis.rotateox,  axis.rotateoy); // 回転の中心座標を元に戻す
         ctx.rotate(axis.rotate);                       // 回転の角度を指定
         ctx.translate(-axis.rotateox, -axis.rotateoy); // 回転の中心座標を移動
@@ -4212,7 +4213,7 @@ var Interpreter;
         ctx.translate(-axis.scaleox,  -axis.scaleoy);  // 拡大縮小の中心座標を移動
     }
     // ***** Canvasの座標変換 *****
-    // (グラフィック上の座標(x,y)から、
+    // (グラフィックス上の座標(x,y)から、
     //  実際の画面上の座標(x1,y1)を計算して、配列にして返す)
     function conv_axis_point(x, y) {
         var x1, y1, t;
@@ -4233,7 +4234,7 @@ var Interpreter;
         x1 = t;
         x1 += axis.rotateox; // 回転の中心座標を元に戻す
         y1 += axis.rotateoy;
-        x1 += axis.originx;  // 原点座標を移動
+        x1 += axis.originx;  // 原点座標を平行移動
         y1 += axis.originy;
         x1 |= 0; // 整数化
         y1 |= 0; // 整数化
@@ -4347,7 +4348,7 @@ var Interpreter;
             var a1, a2, a3;
             var i;
 
-            a1 = get_var_obj(param[0]);
+            a1 = get_var_info(param[0]);
             if (param.length <= 1) {
                 a2 = 0;
                 a3 = null;
@@ -4421,7 +4422,7 @@ var Interpreter;
             var num;
             var a1;
 
-            a1 = get_var_obj(param[0]);
+            a1 = get_var_info(param[0]);
             if (Vars.checkVar(a1)) { num = 1; } else { num = 0; }
             return num;
         });
@@ -4507,9 +4508,9 @@ var Interpreter;
             var i;
             var i_start, i_end, i_plus;
 
-            a1 = get_var_obj(param[0]);
+            a1 = get_var_info(param[0]);
             a2 = Math.trunc(param[1]);
-            a3 = get_var_obj(param[2]);
+            a3 = get_var_info(param[2]);
             a4 = Math.trunc(param[3]);
             a5 = Math.trunc(param[4]);
 
@@ -4558,8 +4559,8 @@ var Interpreter;
         make_one_func_tbl("copyall", 2, [0, 1], function (param) {
             var a1, a2;
 
-            a1 = get_var_obj(param[0]);
-            a2 = get_var_obj(param[1]);
+            a1 = get_var_info(param[0]);
+            a2 = get_var_info(param[1]);
             // ***** 配列変数の一括コピー *****
             Vars.copyArray(a1, a2);
             return nothing;
@@ -4617,17 +4618,17 @@ var Interpreter;
         });
         make_one_func_tbl("dbgpointer", 1, [0], function (param) {
             var a1, a2;
-            var var_obj;
+            var var_info;
             var text_st;
 
-            a1 = get_var_obj(param[0]);
+            a1 = get_var_info(param[0]);
             if (param.length <= 1) {
                 a2 = 1;
             } else {
                 a2 = Math.trunc(param[1]);
             }
-            var_obj = Vars.getVarValue(a1);
-            text_st = a1.name + " = " + JSON.stringify(var_obj);
+            var_info = Vars.getVarValue(a1);
+            text_st = a1.name + " = " + JSON.stringify(var_info);
             if (a2 != 0) { text_st += "\n"; }
             DebugShow(text_st);
             return nothing;
@@ -4679,7 +4680,7 @@ var Interpreter;
             var a1, a2, a3;
             var i;
 
-            a1 = get_var_obj(param[0]);
+            a1 = get_var_info(param[0]);
             if (param.length <= 1) {
                 a2 = null;
                 a3 = 0;
@@ -4713,7 +4714,7 @@ var Interpreter;
         make_one_func_tbl("disimg", 1, [0], function (param) {
             var a1;
 
-            a1 = to_global(get_var_obj(param[0])); // 画像変数名取得
+            a1 = to_global(get_var_info(param[0])); // 画像変数名取得
             // if (imgvars.hasOwnProperty(a1)) {
             if (hasOwn.call(imgvars, a1)) {
                 delete imgvars[a1];
@@ -4724,7 +4725,7 @@ var Interpreter;
         make_one_func_tbl("disvar", 1, [0], function (param) {
             var a1;
 
-            a1 = get_var_obj(param[0]);
+            a1 = get_var_info(param[0]);
             // delete vars[a1];
             Vars.deleteVar(a1);
             return nothing;
@@ -4792,7 +4793,7 @@ var Interpreter;
         make_one_func_tbl("drawarea", 7, [0], function (param) {
             var a1, a2, a3, a4, a5, a6, a7;
 
-            a1 = to_global(get_var_obj(param[0])); // 画像変数名取得
+            a1 = to_global(get_var_info(param[0])); // 画像変数名取得
             a2 = Math.trunc(param[1]); // 先X
             a3 = Math.trunc(param[2]); // 先Y
             a4 = Math.trunc(param[3]); // 元X
@@ -4816,7 +4817,7 @@ var Interpreter;
         make_one_func_tbl("drawimg", 4, [0], function (param) {
             var a1, a2, a3, a4;
 
-            a1 = to_global(get_var_obj(param[0])); // 画像変数名取得
+            a1 = to_global(get_var_info(param[0])); // 画像変数名取得
             a2 = Math.trunc(param[1]); // X
             a3 = Math.trunc(param[2]); // Y
             a4 = Math.trunc(param[3]); // アンカー
@@ -4855,7 +4856,7 @@ var Interpreter;
             var can0;
             var img_w, img_h;
 
-            a1 = to_global(get_var_obj(param[0])); // 画像変数名取得
+            a1 = to_global(get_var_info(param[0])); // 画像変数名取得
             a2 = Math.trunc(param[1]); // 元X
             a3 = Math.trunc(param[2]); // 元Y
             a4 = Math.trunc(param[3]); // 元W
@@ -4940,7 +4941,7 @@ var Interpreter;
         make_one_func_tbl("drawscaledimg", 9, [0], function (param) {
             var a1, a2, a3, a4, a5, a6, a7, a8, a9;
 
-            a1 = to_global(get_var_obj(param[0])); // 画像変数名取得
+            a1 = to_global(get_var_info(param[0])); // 画像変数名取得
             a2 = Math.trunc(param[1]); // 先X
             a3 = Math.trunc(param[2]); // 先Y
             a4 = Math.trunc(param[3]); // 先W
@@ -5129,7 +5130,7 @@ var Interpreter;
 
             a1 = param[0];
             if (param.length >= 2) {
-                a2 = get_var_obj(param[1]);
+                a2 = get_var_info(param[1]);
                 // vars[a2] = a1;
                 Vars.setVarValue(a2, a1);
             }
@@ -5191,7 +5192,7 @@ var Interpreter;
             var num;
             var a1;
 
-            a1 = to_global(get_var_obj(param[0])); // 画像変数名取得
+            a1 = to_global(get_var_info(param[0])); // 画像変数名取得
             // if (imgvars.hasOwnProperty(a1)) {
             if (hasOwn.call(imgvars, a1)) {
                 num = imgvars[a1].can.height;
@@ -5202,7 +5203,7 @@ var Interpreter;
             var num;
             var a1;
 
-            a1 = to_global(get_var_obj(param[0])); // 画像変数名取得
+            a1 = to_global(get_var_info(param[0])); // 画像変数名取得
             // if (imgvars.hasOwnProperty(a1)) {
             if (hasOwn.call(imgvars, a1)) {
                 num = imgvars[a1].can.width;
@@ -5293,7 +5294,7 @@ var Interpreter;
             var a1, a2, a3, a4;
             var i;
 
-            a1 = get_var_obj(param[0]);
+            a1 = get_var_info(param[0]);
             a2 = String(param[1]);
             if (param.length <= 2) {
                 a3 = 0;
@@ -5441,7 +5442,7 @@ var Interpreter;
             var img_w, img_h;
             var img_data = {};
 
-            a1 = to_global(get_var_obj(param[0])); // 画像変数名取得
+            a1 = to_global(get_var_info(param[0])); // 画像変数名取得
             a2 = String(param[1]); // 画像データ文字列
             // ***** FlashCanvas用 *****
             if (!ctx.createImageData) { throw new Error("画像生成機能が利用できません。"); }
@@ -5504,7 +5505,7 @@ var Interpreter;
             var a1, a2;
             var img_obj = {};
 
-            a1 = to_global(get_var_obj(param[0])); // 画像変数名取得
+            a1 = to_global(get_var_info(param[0])); // 画像変数名取得
             a2 = String(param[1]); // 画像データ文字列(data URI scheme)
             // ***** Canvasの生成 *****
             imgvars[a1] = {};
@@ -5546,7 +5547,7 @@ var Interpreter;
             var num;
             var a1;
 
-            a1 = to_global(get_var_obj(param[0])); // 画像変数名取得
+            a1 = to_global(get_var_info(param[0])); // 画像変数名取得
             // ***** 完了フラグをチェックして返す *****
             num = 0;
             // if (imgvars.hasOwnProperty(a1)) {
@@ -5584,7 +5585,7 @@ var Interpreter;
             var a1, a2, a3, a4;
             var i;
 
-            a1 = get_var_obj(param[0]);
+            a1 = get_var_info(param[0]);
             a2 = Math.trunc(param[1]);
             if (param.length <= 2) {
                 a3 = a2 - 1;
@@ -5614,7 +5615,7 @@ var Interpreter;
         make_one_func_tbl("makeimg", 3, [0], function (param) {
             var a1, a2, a3;
 
-            a1 = to_global(get_var_obj(param[0])); // 画像変数名取得
+            a1 = to_global(get_var_info(param[0])); // 画像変数名取得
             a2 = Math.trunc(param[1]); // W
             a3 = Math.trunc(param[2]); // H
 
@@ -6178,7 +6179,7 @@ var Interpreter;
             var a1, a2, a3, a4;
             var i, j, k;
 
-            a1 = get_var_obj(param[0]);
+            a1 = get_var_info(param[0]);
             a2 = String(param[1]);
             a3 = String(param[2]);
             if (param.length <= 3) {
@@ -6328,7 +6329,7 @@ var Interpreter;
         make_one_func_tbl("trgt", 1, [0], function (param) {
             var a1;
 
-            a1 = to_global(get_var_obj(param[0])); // 画像変数名取得
+            a1 = to_global(get_var_info(param[0])); // 画像変数名取得
             if (a1 == "off") {
                 can = can1;
                 ctx = ctx1;
@@ -6398,7 +6399,7 @@ var Interpreter;
             var a1, a2;
             var i;
 
-            a1 = get_var_obj(param[0]);
+            a1 = get_var_info(param[0]);
             for (i = 1; i < param.length; i++) {
                 a2 = param[i];
                 // vars[a1 + "[" + (i - 1) + "]"] = a2;
@@ -6459,7 +6460,7 @@ var Interpreter;
     Interpreter.add_clear_var_funcs = function (name, func) { clear_var_funcs[name] = func; };
     Interpreter.add_one_func_tbl = add_one_func_tbl;
     Interpreter.Vars = Vars;
-    Interpreter.get_var_obj = get_var_obj;
+    Interpreter.get_var_info = get_var_info;
     Interpreter.to_global = to_global;
     Interpreter.set_canvas_axis = set_canvas_axis;
     Interpreter.conv_axis_point = conv_axis_point;

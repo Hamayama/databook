@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_plugin0001.js
-// 2017-4-23 v9.00
+// 2017-4-25 v10.00
 
 
 // A Plugin to add functions to SPALM Web Interpreter
@@ -48,7 +48,7 @@ var Plugin0001;
     var add_clear_var_funcs = Interpreter.add_clear_var_funcs;
     var add_one_func_tbl = Interpreter.add_one_func_tbl;
     var Vars = Interpreter.Vars;
-    var get_var_obj = Interpreter.get_var_obj;
+    var get_var_info = Interpreter.get_var_info;
     var to_global = Interpreter.to_global;
     var set_canvas_axis = Interpreter.set_canvas_axis;
     var conv_axis_point = Interpreter.conv_axis_point;
@@ -638,8 +638,8 @@ var Plugin0001;
             var x0, y0, x1, y1;
             var ctx = get_ctx();
 
-            a1 = get_var_obj(param[0]);
-            b1 = get_var_obj(param[1]);
+            a1 = get_var_info(param[0]);
+            b1 = get_var_info(param[1]);
             a2 = Math.trunc(param[2]);
             a3 = Math.trunc(param[3]);
 
@@ -813,12 +813,12 @@ var Plugin0001;
             var min_x, max_x, min_y, max_y, div_x, div_y;
 
             no = Math.trunc(param[0]);
-            useflag_var_name =  get_var_obj(param[1]); // 制御用の変数オブジェクトを取得
-            x100_var_name =     get_var_obj(param[2]); // 制御用の変数オブジェクトを取得
-            y100_var_name =     get_var_obj(param[3]); // 制御用の変数オブジェクトを取得
-            degree_var_name =   get_var_obj(param[4]); // 制御用の変数オブジェクトを取得
-            speed100_var_name = get_var_obj(param[5]); // 制御用の変数オブジェクトを取得
-            ch_var_name =       get_var_obj(param[6]); // 制御用の変数オブジェクトを取得
+            useflag_var_name =  get_var_info(param[1]); // 制御用の変数情報を取得
+            x100_var_name =     get_var_info(param[2]); // 制御用の変数情報を取得
+            y100_var_name =     get_var_info(param[3]); // 制御用の変数情報を取得
+            degree_var_name =   get_var_info(param[4]); // 制御用の変数情報を取得
+            speed100_var_name = get_var_info(param[5]); // 制御用の変数情報を取得
+            ch_var_name =       get_var_info(param[6]); // 制御用の変数情報を取得
             min_x = Math.trunc(param[7]);
             max_x = Math.trunc(param[8]);
             min_y = Math.trunc(param[9]);
@@ -884,7 +884,7 @@ var Plugin0001;
             var mis, mis_no;
             var range_use, min_no, max_no;
 
-            a1 = get_var_obj(param[0]);
+            a1 = get_var_info(param[0]);
             a2 = Math.trunc(param[1]);
             a3 = Math.trunc(param[2]);
             if (param.length <= 4) {
@@ -985,8 +985,8 @@ var Plugin0001;
             var x0, y0, x1, y1;
             var ctx = get_ctx();
 
-            a1 = get_var_obj(param[0]);
-            b1 = get_var_obj(param[1]);
+            a1 = get_var_info(param[0]);
+            b1 = get_var_info(param[1]);
             a2 = Math.trunc(param[2]);
             a3 = Math.trunc(param[3]);
             if (param.length <= 4) {
@@ -1143,7 +1143,7 @@ var Plugin0001;
             var imgvars = get_imgvars();
 
             a1 = String(param[0]);
-            a2 = to_global(get_var_obj(param[1])); // 画像変数名取得
+            a2 = to_global(get_var_info(param[1])); // 画像変数名取得
             if (param.length <= 3) {
                 a3 = 0;
                 a4 = 0;
@@ -1292,7 +1292,7 @@ var Plugin0001;
             var img_data = {};
             var imgvars = get_imgvars();
 
-            a1 = to_global(get_var_obj(param[0])); // 画像変数名取得
+            a1 = to_global(get_var_info(param[0])); // 画像変数名取得
             a2 = Math.trunc(param[1]); // RGB
             // if (imgvars.hasOwnProperty(a1)) {
             if (hasOwn.call(imgvars, a1)) {
@@ -1324,7 +1324,7 @@ var Plugin0001;
             var i;
             var st1;
 
-            a1 = get_var_obj(param[0]);
+            a1 = get_var_info(param[0]);
             a2 = Math.trunc(param[1]);
             a3 = Math.trunc(param[2]);
             a4 = String(param[3]);
@@ -1361,7 +1361,7 @@ var Plugin0001;
             var ctx = get_ctx();
             var font_size = get_font_size();
 
-            a1 = get_var_obj(param[0]);
+            a1 = get_var_info(param[0]);
             a2 = Math.trunc(param[1]);
             a3 = Math.trunc(param[2]);
             if (param.length <= 4) {
@@ -1424,7 +1424,7 @@ var Plugin0001;
             var st1;
             var ctx = get_ctx();
 
-            a1 = get_var_obj(param[0]);
+            a1 = get_var_info(param[0]);
             a2 = Math.trunc(param[1]);
             a3 = Math.trunc(param[2]);
             x1 = Math.trunc(param[3]);
@@ -1484,12 +1484,12 @@ var Plugin0001;
             var i_start, i_end, i_plus;
             var st1, st2;
 
-            a1 = get_var_obj(param[0]);
+            a1 = get_var_info(param[0]);
             a2 = Math.trunc(param[1]);
             a3 = Math.trunc(param[2]);
             x1 = Math.trunc(param[3]);
             y1 = Math.trunc(param[4]);
-            b1 = get_var_obj(param[5]);
+            b1 = get_var_info(param[5]);
             b2 = Math.trunc(param[6]);
             b3 = Math.trunc(param[7]);
             if (param.length <= 8) {
@@ -1568,7 +1568,7 @@ var Plugin0001;
             var rep_str;
             var reg_exp;
 
-            a1 = get_var_obj(param[0]);
+            a1 = get_var_info(param[0]);
             a2 = Math.trunc(param[1]);
             a3 = Math.trunc(param[2]);
             a4 = String(param[3]);
@@ -1616,7 +1616,7 @@ var Plugin0001;
             var reg_exp;
             var ch_tbl;
 
-            a1 = get_var_obj(param[0]);
+            a1 = get_var_info(param[0]);
             a2 = Math.trunc(param[1]);
             a3 = Math.trunc(param[2]);
             a4 = String(param[3]);
@@ -1663,7 +1663,7 @@ var Plugin0001;
             var a1, a2, a3, a4;
             var x1, y1;
 
-            a1 = get_var_obj(param[0]);
+            a1 = get_var_info(param[0]);
             a2 = Math.trunc(param[1]);
             a3 = Math.trunc(param[2]);
             x1 = Math.trunc(param[3]);
@@ -1689,7 +1689,7 @@ var Plugin0001;
             var a1, a2, a3, a4;
             var x1, y1, x2, y2;
 
-            a1 = get_var_obj(param[0]);
+            a1 = get_var_info(param[0]);
             a2 = Math.trunc(param[1]);
             a3 = Math.trunc(param[2]);
             x1 = Math.trunc(param[3]);
@@ -1725,7 +1725,7 @@ var Plugin0001;
             var x1, y1, x2, y2, x3, y3, x4, y4;
             var i;
 
-            a1 = get_var_obj(param[0]);
+            a1 = get_var_info(param[0]);
             a2 = Math.trunc(param[1]);
             a3 = Math.trunc(param[2]);
             x1 = Math.trunc(param[3]);
@@ -1769,7 +1769,7 @@ var Plugin0001;
             var x1, y1, x2, y2, x3, y3, x4, y4;
             var i;
 
-            a1 = get_var_obj(param[0]);
+            a1 = get_var_info(param[0]);
             a2 = Math.trunc(param[1]);
             a3 = Math.trunc(param[2]);
             x1 = Math.trunc(param[3]);
@@ -1813,7 +1813,7 @@ var Plugin0001;
             var drawflag;
             var x_old, y_old;
 
-            a1 = get_var_obj(param[0]);
+            a1 = get_var_info(param[0]);
             a2 = Math.trunc(param[1]);
             a3 = Math.trunc(param[2]);
             x1 = Math.trunc(param[3]);
@@ -1880,7 +1880,7 @@ var Plugin0001;
             var r1, a, b;
             var rr, aaxx, bb;
 
-            a1 = get_var_obj(param[0]);
+            a1 = get_var_info(param[0]);
             a2 = Math.trunc(param[1]);
             a3 = Math.trunc(param[2]);
             x1 = Math.trunc(param[3]);
@@ -1930,11 +1930,11 @@ var Plugin0001;
             var y = [];
             var line_num;
 
-            a1 = get_var_obj(param[0]);
+            a1 = get_var_info(param[0]);
             a2 = Math.trunc(param[1]);
             a3 = Math.trunc(param[2]);
-            b1 = get_var_obj(param[3]);
-            b2 = get_var_obj(param[4]);
+            b1 = get_var_info(param[3]);
+            b2 = get_var_info(param[4]);
             b3 = Math.trunc(param[5]);
             b4 = Math.trunc(param[6]);
             a4 = String(param[7]);
@@ -2012,11 +2012,11 @@ var Plugin0001;
             var wn;         // 巻き数
             var line_start; // 線分開始フラグ
 
-            a1 = get_var_obj(param[0]);
+            a1 = get_var_info(param[0]);
             a2 = Math.trunc(param[1]);
             a3 = Math.trunc(param[2]);
-            b1 = get_var_obj(param[3]);
-            b2 = get_var_obj(param[4]);
+            b1 = get_var_info(param[3]);
+            b2 = get_var_info(param[4]);
             b3 = Math.trunc(param[5]);
             b4 = Math.trunc(param[6]);
             a4 = String(param[7]);
@@ -2163,7 +2163,7 @@ var Plugin0001;
             var x1, y1;
             var st1;
 
-            a1 = get_var_objy(param[0]);
+            a1 = get_var_infoy(param[0]);
             a2 = Math.trunc(param[1]);
             a3 = Math.trunc(param[2]);
             x1 = Math.trunc(param[3]);
@@ -2200,7 +2200,7 @@ var Plugin0001;
             var a1, a2, a3, a4;
             var x1, y1, x2, y2, x3, y3, x4, y4;
 
-            a1 = get_var_obj(param[0]);
+            a1 = get_var_info(param[0]);
             a2 = Math.trunc(param[1]);
             a3 = Math.trunc(param[2]);
             x1 = Math.trunc(param[3]);
@@ -2243,7 +2243,7 @@ var Plugin0001;
             var anc;
             var st1;
 
-            a1 = get_var_obj(param[0]);
+            a1 = get_var_info(param[0]);
             a2 = Math.trunc(param[1]);
             a3 = Math.trunc(param[2]);
             x1 = Math.trunc(param[3]);
@@ -2335,7 +2335,7 @@ var Plugin0001;
                 return (b[0] - a[0]);
             };
 
-            a1 = get_var_obj(param[0]);
+            a1 = get_var_info(param[0]);
             a2 = Math.trunc(param[1]);
             a3 = Math.trunc(param[2]);
             x1 = Math.trunc(param[3]);
@@ -2424,7 +2424,7 @@ var Plugin0001;
             var v1;
             var i;
 
-            v1name = get_var_obj(param[0]);
+            v1name = get_var_info(param[0]);
             for (i = 0; i < 3; i++) {
                 v1 = (+param[i + 1]);
                 Vars.setVarValue(v1name, v1, [i]);
@@ -2436,8 +2436,8 @@ var Plugin0001;
             var v1;
             var i;
 
-            v1name = get_var_obj(param[0]);
-            v2name = get_var_obj(param[1]);
+            v1name = get_var_info(param[0]);
+            v2name = get_var_info(param[1]);
             for (i = 0; i < 3; i++) {
                 v1 = Vars.getVarValue(v1name, [i]);
                 Vars.setVarValue(v2name, v1, [i]);
@@ -2449,9 +2449,9 @@ var Plugin0001;
             var v1, v2, v3;
             var i;
 
-            v1name = get_var_obj(param[0]);
-            v2name = get_var_obj(param[1]);
-            v3name = get_var_obj(param[2]);
+            v1name = get_var_info(param[0]);
+            v2name = get_var_info(param[1]);
+            v3name = get_var_info(param[2]);
             for (i = 0; i < 3; i++) {
                 v1 = Vars.getVarValue(v1name, [i]);
                 v2 = Vars.getVarValue(v2name, [i]);
@@ -2465,9 +2465,9 @@ var Plugin0001;
             var v1, v2, v3;
             var i;
 
-            v1name = get_var_obj(param[0]);
-            v2name = get_var_obj(param[1]);
-            v3name = get_var_obj(param[2]);
+            v1name = get_var_info(param[0]);
+            v2name = get_var_info(param[1]);
+            v3name = get_var_info(param[2]);
             for (i = 0; i < 3; i++) {
                 v1 = Vars.getVarValue(v1name, [i]);
                 v2 = Vars.getVarValue(v2name, [i]);
@@ -2481,9 +2481,9 @@ var Plugin0001;
             var v1, v2, k;
             var i;
 
-            v1name = get_var_obj(param[0]);
+            v1name = get_var_info(param[0]);
             k = (+param[1]);
-            v2name = get_var_obj(param[2]);
+            v2name = get_var_info(param[2]);
             for (i = 0; i < 3; i++) {
                 v1 = Vars.getVarValue(v1name, [i]);
                 v2 = v1 * k;
@@ -2497,8 +2497,8 @@ var Plugin0001;
             var v1, v2;
             var i;
 
-            v1name = get_var_obj(param[0]);
-            v2name = get_var_obj(param[1]);
+            v1name = get_var_info(param[0]);
+            v2name = get_var_info(param[1]);
             num = 0;
             for (i = 0; i < 3; i++) {
                 v1 = Vars.getVarValue(v1name, [i]);
@@ -2512,9 +2512,9 @@ var Plugin0001;
             var v1 = [], v2 = [], v3 = [];
             var i;
 
-            v1name = get_var_obj(param[0]);
-            v2name = get_var_obj(param[1]);
-            v3name = get_var_obj(param[2]);
+            v1name = get_var_info(param[0]);
+            v2name = get_var_info(param[1]);
+            v3name = get_var_info(param[2]);
             for (i = 0; i < 3; i++) {
                 v1[i] = Vars.getVarValue(v1name, [i]);
                 v2[i] = Vars.getVarValue(v2name, [i]);
@@ -2532,7 +2532,7 @@ var Plugin0001;
             var v1 = [];
             var i, n;
 
-            v1name = get_var_obj(param[0]);
+            v1name = get_var_info(param[0]);
             n = 0;
             for (i = 0; i < 3; i++) {
                 v1[i] = Vars.getVarValue(v1name, [i]);
@@ -3888,12 +3888,12 @@ var Missile = (function () {
         this.max_y = max_y;                         // yの最大値
         this.div_x = div_x;                         // x方向の速度の倍率の逆数
         this.div_y = div_y;                         // y方向の速度の倍率の逆数
-        this.useflag_var_name = useflag_var_name;   // 有効フラグ の変数オブジェクト
-        this.x100_var_name = x100_var_name;         // 座標x(文字で数える)の100倍の値 の変数オブジェクト
-        this.y100_var_name = y100_var_name;         // 座標y(文字で数える)の100倍の値 の変数オブジェクト
-        this.degree_var_name = degree_var_name;     // 角度(0-360) の変数オブジェクト
-        this.speed100_var_name = speed100_var_name; // 速度の100倍の値 の変数オブジェクト
-        this.ch_var_name = ch_var_name;             // 表示する文字列 の変数オブジェクト
+        this.useflag_var_name = useflag_var_name;   // 有効フラグ                     の変数情報
+        this.x100_var_name = x100_var_name;         // 座標x(文字で数える)の100倍の値 の変数情報
+        this.y100_var_name = y100_var_name;         // 座標y(文字で数える)の100倍の値 の変数情報
+        this.degree_var_name = degree_var_name;     // 角度(0-360)                    の変数情報
+        this.speed100_var_name = speed100_var_name; // 速度の100倍の値                の変数情報
+        this.ch_var_name = ch_var_name;             // 表示する文字列                 の変数情報
 
         this.x100_add = 0;                          // x方向の増分の100倍の値(一時保存用)
         this.y100_add = 0;                          // y方向の増分の100倍の値(一時保存用)
