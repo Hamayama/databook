@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_plugin0001.js
-// 2017-4-25 v10.00
+// 2017-4-25 v10.01
 
 
 // A Plugin to add functions to SPALM Web Interpreter
@@ -85,7 +85,7 @@ var Plugin0001;
             sand_obj = {};
             aud_mode = 1;
             // ***** 音楽再開 *****
-            // (CPU負荷軽減のために追加)
+            // (CPU負荷軽減のための処理)
             MMLPlayer.resume();
         });
         // ***** 実行後処理を登録 *****
@@ -93,7 +93,7 @@ var Plugin0001;
             // ***** 音楽全停止 *****
             audstopall();
             // ***** 音楽中断 *****
-            // (CPU負荷軽減のために追加)
+            // (CPU負荷軽減のための処理)
             MMLPlayer.suspend();
         });
         // ***** 全変数クリア時処理を登録 *****
@@ -462,7 +462,7 @@ var Plugin0001;
             a1 = String(param[0]);
             // ***** エラーチェック *****
             if (a1.length == 0) { return nothing; }
-            // ***** 画像文字割付を削除 *****
+            // ***** 画像文字割付を1個削除する *****
             ch = a1.charAt(0); // 1文字だけにする
             if (stimg.hasOwnProperty(ch)) {
                 delete stimg[ch];
@@ -808,17 +808,17 @@ var Plugin0001;
         add_one_func_tbl("mismake", 13, [1, 2, 3, 4, 5, 6], function (param) {
             var ch;
             var no, useflag, x100, y100, degree, speed100;
-            var useflag_var_name, x100_var_name, y100_var_name;
-            var degree_var_name, speed100_var_name, ch_var_name;
+            var useflag_var_info, x100_var_info, y100_var_info;
+            var degree_var_info, speed100_var_info, ch_var_info;
             var min_x, max_x, min_y, max_y, div_x, div_y;
 
             no = Math.trunc(param[0]);
-            useflag_var_name =  get_var_info(param[1]); // 制御用の変数情報を取得
-            x100_var_name =     get_var_info(param[2]); // 制御用の変数情報を取得
-            y100_var_name =     get_var_info(param[3]); // 制御用の変数情報を取得
-            degree_var_name =   get_var_info(param[4]); // 制御用の変数情報を取得
-            speed100_var_name = get_var_info(param[5]); // 制御用の変数情報を取得
-            ch_var_name =       get_var_info(param[6]); // 制御用の変数情報を取得
+            useflag_var_info =  get_var_info(param[1]); // 制御用の変数情報を取得
+            x100_var_info =     get_var_info(param[2]); // 制御用の変数情報を取得
+            y100_var_info =     get_var_info(param[3]); // 制御用の変数情報を取得
+            degree_var_info =   get_var_info(param[4]); // 制御用の変数情報を取得
+            speed100_var_info = get_var_info(param[5]); // 制御用の変数情報を取得
+            ch_var_info =       get_var_info(param[6]); // 制御用の変数情報を取得
             min_x = Math.trunc(param[7]);
             max_x = Math.trunc(param[8]);
             min_y = Math.trunc(param[9]);
@@ -826,16 +826,16 @@ var Plugin0001;
             div_x = (+param[11]);
             div_y = (+param[12]);
             // ***** ミサイル作成 *****
-            useflag =  Math.trunc(Vars.getVarValue(useflag_var_name));
-            x100 =     Math.trunc(Vars.getVarValue(x100_var_name));
-            y100 =     Math.trunc(Vars.getVarValue(y100_var_name));
-            degree =   (+Vars.getVarValue(degree_var_name));
-            speed100 = Math.trunc(Vars.getVarValue(speed100_var_name));
-            ch =       String(Vars.getVarValue(ch_var_name));
+            useflag =  Math.trunc(Vars.getVarValue(useflag_var_info));
+            x100 =     Math.trunc(Vars.getVarValue(x100_var_info));
+            y100 =     Math.trunc(Vars.getVarValue(y100_var_info));
+            degree =   (+Vars.getVarValue(degree_var_info));
+            speed100 = Math.trunc(Vars.getVarValue(speed100_var_info));
+            ch =       String(Vars.getVarValue(ch_var_info));
             missile[no] = new Missile(no, useflag, x100, y100, degree, speed100, ch,
                 min_x, max_x, min_y, max_y, div_x, div_y,
-                useflag_var_name, x100_var_name, y100_var_name,
-                degree_var_name, speed100_var_name, ch_var_name);
+                useflag_var_info, x100_var_info, y100_var_info,
+                degree_var_info, speed100_var_info, ch_var_info);
             return nothing;
         });
         add_one_func_tbl("mismove", 0, [], function (param) {
@@ -856,20 +856,20 @@ var Plugin0001;
                 if (missile.hasOwnProperty(mis_no)) {
                     mis = missile[mis_no];
                     if (!range_use || (mis.no >= min_no && mis.no <= max_no)) {
-                        mis.useflag = Math.trunc(Vars.getVarValue(mis.useflag_var_name));
+                        mis.useflag = Math.trunc(Vars.getVarValue(mis.useflag_var_info));
                         if (mis.useflag != 0) {
-                            mis.x100 =     Math.trunc(Vars.getVarValue(mis.x100_var_name));
-                            mis.y100 =     Math.trunc(Vars.getVarValue(mis.y100_var_name));
-                            mis.degree =   (+Vars.getVarValue(mis.degree_var_name));
-                            mis.speed100 = Math.trunc(Vars.getVarValue(mis.speed100_var_name));
-                            mis.ch =       String(Vars.getVarValue(mis.ch_var_name));
+                            mis.x100 =     Math.trunc(Vars.getVarValue(mis.x100_var_info));
+                            mis.y100 =     Math.trunc(Vars.getVarValue(mis.y100_var_info));
+                            mis.degree =   (+Vars.getVarValue(mis.degree_var_info));
+                            mis.speed100 = Math.trunc(Vars.getVarValue(mis.speed100_var_info));
+                            mis.ch =       String(Vars.getVarValue(mis.ch_var_info));
                             mis.move();
-                            Vars.setVarValue(mis.useflag_var_name,  mis.useflag);
-                            Vars.setVarValue(mis.x100_var_name,     mis.x100);
-                            Vars.setVarValue(mis.y100_var_name,     mis.y100);
-                            // Vars.setVarValue(mis.degree_var_name,   mis.degree);
-                            // Vars.setVarValue(mis.speed100_var_name, mis.speed100);
-                            // Vars.setVarValue(mis.ch_var_name,       mis.ch);
+                            Vars.setVarValue(mis.useflag_var_info,  mis.useflag);
+                            Vars.setVarValue(mis.x100_var_info,     mis.x100);
+                            Vars.setVarValue(mis.y100_var_info,     mis.y100);
+                            // Vars.setVarValue(mis.degree_var_info,   mis.degree);
+                            // Vars.setVarValue(mis.speed100_var_info, mis.speed100);
+                            // Vars.setVarValue(mis.ch_var_info,       mis.ch);
                         }
                     }
                 }
@@ -912,13 +912,13 @@ var Plugin0001;
                 if (missile.hasOwnProperty(mis_no)) {
                     mis = missile[mis_no];
                     if (!range_use || (mis.no >= min_no && mis.no <= max_no)) {
-                        mis.useflag = Math.trunc(Vars.getVarValue(mis.useflag_var_name));
+                        mis.useflag = Math.trunc(Vars.getVarValue(mis.useflag_var_info));
                         // (有効フラグが0以外で1000以下のときのみ表示)
                         // if (mis.useflag != 0) {
                         if (mis.useflag != 0 && mis.useflag <= 1000) {
-                            mis.x100 = Math.trunc(Vars.getVarValue(mis.x100_var_name));
-                            mis.y100 = Math.trunc(Vars.getVarValue(mis.y100_var_name));
-                            mis.ch =   String(Vars.getVarValue(mis.ch_var_name));
+                            mis.x100 = Math.trunc(Vars.getVarValue(mis.x100_var_info));
+                            mis.y100 = Math.trunc(Vars.getVarValue(mis.y100_var_info));
+                            mis.ch =   String(Vars.getVarValue(mis.ch_var_info));
                             x1 = (mis.x100 / 100) | 0; // 整数化
                             y1 = (mis.y100 / 100) | 0; // 整数化
                             ch = mis.ch;
@@ -968,7 +968,7 @@ var Plugin0001;
                 if (missile.hasOwnProperty(mis_no)) {
                     mis = missile[mis_no];
                     if (!range_use || (mis.no >= min_no && mis.no <= max_no)) {
-                        mis.useflag = Math.trunc(Vars.getVarValue(mis.useflag_var_name));
+                        mis.useflag = Math.trunc(Vars.getVarValue(mis.useflag_var_info));
                         if (mis.useflag == 0) {
                             num = mis.no;
                             break;
@@ -1153,7 +1153,7 @@ var Plugin0001;
             }
             // ***** エラーチェック *****
             if (a1.length == 0) { return nothing; }
-            // ***** 画像文字割付を格納 *****
+            // ***** 画像文字割付を1個生成する *****
             ch = a1.charAt(0); // 1文字だけにする
             // if (imgvars.hasOwnProperty(a2)) {
             if (hasOwn.call(imgvars, a2)) {
@@ -1299,7 +1299,7 @@ var Plugin0001;
                 col_r = (a2 & 0xff0000) >> 16; // R
                 col_g = (a2 & 0x00ff00) >> 8;  // G
                 col_b = (a2 & 0x0000ff);       // B
-                // ***** 画像データを取得 *****
+                // ***** 画像データの取得 *****
                 img_data = imgvars[a1].ctx.getImageData(0, 0, imgvars[a1].can.width, imgvars[a1].can.height);
                 // ***** 透明画像変換 *****
                 for (i = 0; i < img_data.data.length; i += 4) {
@@ -1312,7 +1312,7 @@ var Plugin0001;
                         img_data.data[i + 3] = 0;
                     }
                 }
-                // ***** 画像を格納 *****
+                // ***** 画像データを格納 *****
                 imgvars[a1].ctx.putImageData(img_data, 0, 0);
             } else {
                 throw new Error("Image「" + a1 + "」がロードされていません。");
@@ -2527,6 +2527,21 @@ var Plugin0001;
             }
             return nothing;
         });
+        add_one_func_tbl("vec3mag", 1, [0], function (param) {
+            var num;
+            var v1name;
+            var v1;
+            var i;
+
+            v1name = get_var_info(param[0]);
+            num = 0;
+            for (i = 0; i < 3; i++) {
+                v1 = Vars.getVarValue(v1name, [i]);
+                num += v1 * v1;
+            }
+            num = Math.sqrt(num);
+            return num;
+        });
         add_one_func_tbl("vec3normalize", 1, [0], function (param) {
             var v1name;
             var v1 = [];
@@ -2576,7 +2591,7 @@ var Plugin0001;
 
     // ***** 文字列配列の四角領域の文字チェックサブ *****
     // (ヒットした場合に 1 を返す。そうでなければ 0 を返す)
-    function txtbchksub(var_name, min_y, max_y, x1, y1, x2, y2, st1) {
+    function txtbchksub(var_info, min_y, max_y, x1, y1, x2, y2, st1) {
         var num;
         var i, j;
         var ch;
@@ -2590,10 +2605,10 @@ var Plugin0001;
             if (!(i >= min_y && i <= max_y)) { continue; }
 
             // ***** 配列の存在チェック *****
-            if (!Vars.checkVar(var_name, [i])) { continue; }
+            if (!Vars.checkVar(var_info, [i])) { continue; }
 
             // st2 = vars[a1 + "[" + i + "]"];
-            st2 = Vars.getVarValue(var_name, [i]);
+            st2 = Vars.getVarValue(var_info, [i]);
             st2 = String(st2);
             st2_len = st2.length;
             for (j = x1; j <= x2; j++) {
@@ -2611,7 +2626,7 @@ var Plugin0001;
     }
     // ***** 文字列配列の四角領域の文字チェックサブ2 *****
     // (ヒットした座標と文字を配列にして返す)
-    function txtbchksub2(var_name, min_y, max_y, x1, y1, x2, y2, st1) {
+    function txtbchksub2(var_info, min_y, max_y, x1, y1, x2, y2, st1) {
         var i, j;
         var ch;
         var st2;
@@ -2625,10 +2640,10 @@ var Plugin0001;
             if (!(i >= min_y && i <= max_y)) { continue; }
 
             // ***** 配列の存在チェック *****
-            if (!Vars.checkVar(var_name, [i])) { continue; }
+            if (!Vars.checkVar(var_info, [i])) { continue; }
 
             // st2 = vars[a1 + "[" + i + "]"];
-            st2 = Vars.getVarValue(var_name, [i]);
+            st2 = Vars.getVarValue(var_info, [i]);
             st2 = String(st2);
             st2_len = st2.length;
             for (j = x1; j <= x2; j++) {
@@ -2643,7 +2658,7 @@ var Plugin0001;
         return hit_points;
     }
     // ***** 文字列配列のライン表示処理サブ *****
-    function txtlinesub(var_name, min_y, max_y, x1, y1, x2, y2, st1) {
+    function txtlinesub(var_info, min_y, max_y, x1, y1, x2, y2, st1) {
         var x3, y3;
         var dx, dy, sx, sy, e1;
         var i;
@@ -2663,7 +2678,7 @@ var Plugin0001;
             e1 = -dx;
             for (i = 0; i <= dx; i++) {
                 ch = (st1_len > 1) ? st1.charAt(i % st1_len) : st1;
-                txtpsetsub(var_name, min_y, max_y, x3, y3, ch);
+                txtpsetsub(var_info, min_y, max_y, x3, y3, ch);
                 x3 += sx;
                 e1 += 2 * dy;
                 if (e1 >= 0) {
@@ -2675,7 +2690,7 @@ var Plugin0001;
             e1 = -dy;
             for (i = 0; i <= dy; i++) {
                 ch = (st1_len > 1) ? st1.charAt(i % st1_len) : st1;
-                txtpsetsub(var_name, min_y, max_y, x3, y3, ch);
+                txtpsetsub(var_info, min_y, max_y, x3, y3, ch);
                 y3 += sy;
                 e1 += 2 * dx;
                 if (e1 >= 0) {
@@ -2686,7 +2701,7 @@ var Plugin0001;
         }
     }
     // ***** 文字列配列の点設定処理サブ *****
-    function txtpsetsub(var_name, min_y, max_y, x, y, st2) {
+    function txtpsetsub(var_info, min_y, max_y, x, y, st2) {
         var ch;
         var st1;
 
@@ -2697,62 +2712,62 @@ var Plugin0001;
         if (y >= min_y && y <= max_y) {
 
             // // ***** 配列の存在チェック *****
-            // if (!Vars.checkVar(var_name, [y])) { return; }
+            // if (!Vars.checkVar(var_info, [y])) { return; }
 
-            // st1 = vars[var_name + "[" + y + "]"];
-            st1 = Vars.getVarValue(var_name, [y]);
+            // st1 = vars[var_info + "[" + y + "]"];
+            st1 = Vars.getVarValue(var_info, [y]);
             st1 = String(st1);
             if (x >= 0 && x < st1.length) {
                 st1 = st1.substring(0, x) + ch + st1.substring(x + 1);
-                // vars[var_name + "[" + y + "]"] = st1;
-                Vars.setVarValue(var_name, st1, [y]);
+                // vars[var_info + "[" + y + "]"] = st1;
+                Vars.setVarValue(var_info, st1, [y]);
             }
         }
     }
     // ***** 文字列配列の上書き処理サブ *****
-    function txtovrsub(var_name, min_y, max_y, x, y, st2) {
+    function txtovrsub(var_info, min_y, max_y, x, y, st2) {
         var st1;
 
         // ***** 上書き処理 *****
         if (y >= min_y && y <= max_y) {
-            // st1 = vars[var_name + "[" + y + "]"];
-            st1 = Vars.getVarValue(var_name, [y]);
+            // st1 = vars[var_info + "[" + y + "]"];
+            st1 = Vars.getVarValue(var_info, [y]);
             st1 = String(st1);
             st1 = strovrsub(st1, x, st2);
-            // vars[var_name + "[" + y + "]"] = st1;
-            Vars.setVarValue(var_name, st1, [y]);
+            // vars[var_info + "[" + y + "]"] = st1;
+            Vars.setVarValue(var_info, st1, [y]);
         }
     }
     // ***** 文字列配列の上書き処理サブ2 *****
     // (半角/全角スペース以外を上書きする。他は「文字列配列の上書き処理サブ」と同じ)
-    function txtovrsub2(var_name, min_y, max_y, x, y, st2) {
+    function txtovrsub2(var_info, min_y, max_y, x, y, st2) {
         var st1;
 
         // ***** 上書き処理 *****
         // (半角/全角スペース以外を上書きする)
         if (y >= min_y && y <= max_y) {
-            // st1 = vars[var_name + "[" + y + "]"];
-            st1 = Vars.getVarValue(var_name, [y]);
+            // st1 = vars[var_info + "[" + y + "]"];
+            st1 = Vars.getVarValue(var_info, [y]);
             st1 = String(st1);
             st1 = strovrsub2(st1, x, st2);
-            // vars[var_name + "[" + y + "]"] = st1;
-            Vars.setVarValue(var_name, st1, [y]);
+            // vars[var_info + "[" + y + "]"] = st1;
+            Vars.setVarValue(var_info, st1, [y]);
         }
     }
     // ***** 文字列配列の上書き処理サブ3 *****
     // (半角/全角スペースのみ上書きする。他は「文字列配列の上書き処理サブ」と同じ)
-    function txtovrsub3(var_name, min_y, max_y, x, y, st2) {
+    function txtovrsub3(var_info, min_y, max_y, x, y, st2) {
         var st1;
 
         // ***** 上書き処理 *****
         // (半角/全角スペースのみ上書きする)
         if (y >= min_y && y <= max_y) {
-            // st1 = vars[var_name + "[" + y + "]"];
-            st1 = Vars.getVarValue(var_name, [y]);
+            // st1 = vars[var_info + "[" + y + "]"];
+            st1 = Vars.getVarValue(var_info, [y]);
             st1 = String(st1);
             st1 = strovrsub3(st1, x, st2);
-            // vars[var_name + "[" + y + "]"] = st1;
-            Vars.setVarValue(var_name, st1, [y]);
+            // vars[var_info + "[" + y + "]"] = st1;
+            Vars.setVarValue(var_info, st1, [y]);
         }
     }
     // ***** 文字列の繰り返し処理サブ *****
@@ -3326,7 +3341,7 @@ var ConvZenHan = (function () {
     var DakutenSplit = {};         // 濁点分離テーブル(連想配列オブジェクト)
     var DakutenMarge = {};         // 濁点結合テーブル(連想配列オブジェクト)
 
-    // ***** 変換テーブルをここで1回だけ生成 *****
+    // ***** 変換テーブルをここで1回だけ生成する *****
     makeTable();
 
     // ***** 全角に変換する(staticメソッド) *****
@@ -3703,7 +3718,7 @@ var FloodFill = (function () {
         // ***** エラーチェック *****
         if (x0 < 0 || x0 >= width)  { return false; }
         if (y0 < 0 || y0 >= height) { return false; }
-        // ***** 画像データを取得 *****
+        // ***** 画像データの取得 *****
         img_data = ctx.getImageData(0, 0, width, height);
         // ***** 塗りつぶされる色を取得 *****
         paint_col = getPixel(x0, y0);
@@ -3872,8 +3887,8 @@ var Missile = (function () {
     // ***** コンストラクタ *****
     function Missile(no, useflag, x100, y100, degree, speed100, ch,
         min_x, max_x, min_y, max_y, div_x, div_y,
-        useflag_var_name, x100_var_name, y100_var_name,
-        degree_var_name, speed100_var_name, ch_var_name) {
+        useflag_var_info, x100_var_info, y100_var_info,
+        degree_var_info, speed100_var_info, ch_var_info) {
         // ***** 初期化 *****
         this.no = no;                               // ミサイル番号
         this.useflag = useflag;                     // 有効フラグ
@@ -3888,12 +3903,12 @@ var Missile = (function () {
         this.max_y = max_y;                         // yの最大値
         this.div_x = div_x;                         // x方向の速度の倍率の逆数
         this.div_y = div_y;                         // y方向の速度の倍率の逆数
-        this.useflag_var_name = useflag_var_name;   // 有効フラグ                     の変数情報
-        this.x100_var_name = x100_var_name;         // 座標x(文字で数える)の100倍の値 の変数情報
-        this.y100_var_name = y100_var_name;         // 座標y(文字で数える)の100倍の値 の変数情報
-        this.degree_var_name = degree_var_name;     // 角度(0-360)                    の変数情報
-        this.speed100_var_name = speed100_var_name; // 速度の100倍の値                の変数情報
-        this.ch_var_name = ch_var_name;             // 表示する文字列                 の変数情報
+        this.useflag_var_info = useflag_var_info;   // 有効フラグ                     の変数情報
+        this.x100_var_info = x100_var_info;         // 座標x(文字で数える)の100倍の値 の変数情報
+        this.y100_var_info = y100_var_info;         // 座標y(文字で数える)の100倍の値 の変数情報
+        this.degree_var_info = degree_var_info;     // 角度(0-360)                    の変数情報
+        this.speed100_var_info = speed100_var_info; // 速度の100倍の値                の変数情報
+        this.ch_var_info = ch_var_info;             // 表示する文字列                 の変数情報
 
         this.x100_add = 0;                          // x方向の増分の100倍の値(一時保存用)
         this.y100_add = 0;                          // y方向の増分の100倍の値(一時保存用)
@@ -4006,7 +4021,7 @@ var MMLPlayer = (function () {
         MMLPlayer.adctx = null;
     }
     // ***** 音楽中断(staticメソッド) *****
-    // (CPU負荷軽減のために追加)
+    // (CPU負荷軽減のための処理)
     MMLPlayer.suspend = function () {
         // ***** 音声コンテキストの存在チェック *****
         if (!MMLPlayer.adctx) { return false; }
@@ -4017,7 +4032,7 @@ var MMLPlayer = (function () {
         return true;
     };
     // ***** 音楽再開(staticメソッド) *****
-    // (CPU負荷軽減のために追加)
+    // (CPU負荷軽減のための処理)
     MMLPlayer.resume = function () {
         // ***** 音声コンテキストの存在チェック *****
         if (!MMLPlayer.adctx) { return false; }
@@ -4673,7 +4688,7 @@ var MMLPlayer = (function () {
                     }
                     break;
                 case "[": // ループ開始
-                    // ***** ループ情報を生成 *****
+                    // ***** ループ情報を1個生成する *****
                     loop[ch].begin.push(i);
                     loop[ch].end.push(0);
                     loop[ch].counter.push(-1);
@@ -4687,7 +4702,7 @@ var MMLPlayer = (function () {
                         if (loop_count == -2) {
                             // ***** ループ終了位置へジャンプ *****
                             i = loop[ch].end[loop_no];
-                            // ***** ループ情報を破棄 *****
+                            // ***** ループ情報を1個削除する *****
                             loop[ch].begin.pop();
                             loop[ch].end.pop();
                             loop[ch].counter.pop();
@@ -4721,7 +4736,7 @@ var MMLPlayer = (function () {
                         if (loop_count == -2) {
                             // ***** ループ終了位置へジャンプ *****
                             i = loop[ch].end[loop_no];
-                            // ***** ループ情報を破棄 *****
+                            // ***** ループ情報を1個削除する *****
                             loop[ch].begin.pop();
                             loop[ch].end.pop();
                             loop[ch].counter.pop();
@@ -4829,8 +4844,8 @@ var MMLPlayer = (function () {
 })();
 // ***** 起動直後は正常に動作しないことがあるためコメントアウト (Chrome v44) *****
 // // ***** 音楽中断 *****
-// // (CPU負荷軽減のために追加)
-// // (起動時は中断状態にして、CPU負荷を軽減する)
+// // (CPU負荷軽減のための処理)
+// // (起動時は中断状態にして、CPUの負荷を軽減する)
 // MMLPlayer.suspend();
 
 
@@ -4880,7 +4895,7 @@ var SandSim = (function () {
         var sand = {};
         var sand_buf_len;
 
-        // ***** 画像データを取得 *****
+        // ***** 画像データの取得 *****
         img_data = this.ctx.getImageData(this.left, this.top, this.width, this.height);
         // ***** テーブル生成 *****
         this.sand_buf = [];

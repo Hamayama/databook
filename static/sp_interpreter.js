@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2017-4-25 v10.00
+// 2017-4-25 v10.01
 
 
 // SPALM Web Interpreter
@@ -149,7 +149,7 @@ function get_prog_id(list_st) {
         // ***** 1文字取り出す *****
         ch = list_st.charAt(i++);
         ch2 = list_st.charAt(i);
-        // ***** 空白かTABのとき *****
+        // ***** 空白かタブのとき *****
         if (ch == " " || ch == "\t") { split_flag = true; }
         // ***** 改行のとき *****
         if (ch == "\r" || ch == "\n") {
@@ -639,9 +639,9 @@ var Interpreter;
     // ***** 連想配列オブジェクトの初期化 *****
     // (Object.create(null) により、プロトタイプチェーンを無効にして、
     //  連想配列オブジェクトの検索を効率化する。
-    //  使うときは obj = {} を obj = hashInit() に置き換える。
+    //  使うときは、obj = {} を obj = hashInit() に置き換える。
     //  (ただし、常にヒットするような検索では性能は変わらない)
-    //  (また、hasOwnProperty 等のメソッドは使用できなくなる))
+    //  (また、obj.hasOwnProperty() 等のメソッドは 使用できなくなる))
     var hashInit = (function () {
         // Object.create() が存在しない場合はシミュレートする
         var f = Object.create ?
@@ -2783,7 +2783,7 @@ var Interpreter;
             if ((func_type == 1 && param_num < func_tbl[func_name].param_num) ||
                 (func_type == 2 && param_num < addfunc_tbl[func_name].param_num)) {
                 debugpos2 = i;
-                throw new Error(func_name + " の引数の数が足りません。");
+                throw new Error(func_name + " 関数の引数の数が足りません。");
             }
             // ***** 関数の呼び出し *****
             if (func_type == 1) {
@@ -3251,7 +3251,7 @@ var Interpreter;
                 } else {
                     cst_value = token[i++];
                 }
-                // ***** 定数の定義情報1個の生成 *****
+                // ***** 定数の定義情報を1個生成する *****
                 const_tbl[cst_name] = cst_value;
                 token_match(")", i++);
                 continue;
@@ -3269,7 +3269,7 @@ var Interpreter;
                     debugpos2 = i;
                     throw new Error("定数名が不正です。('" + cst_name + "')");
                 }
-                // ***** 定数の定義情報1個の削除 *****
+                // ***** 定数の定義情報を1個削除する *****
                 delete const_tbl[cst_name];
                 token_match(")", i++);
                 continue;
@@ -3332,7 +3332,7 @@ var Interpreter;
             ch = src.charAt(i++);
             ch2 = src.charAt(i);
 
-            // ***** 空白かTABのとき *****
+            // ***** 空白かタブのとき *****
             if (ch == " " || ch == "\t") { continue; }
             // ***** 改行のとき *****
             if (ch == "\r" || ch == "\n") {
@@ -3581,6 +3581,7 @@ var Interpreter;
         var i;
         var var_kind;
         var var_name;
+        var var_scope;
         var func_name;
 
         // ***** コードの追加 *****
@@ -3597,6 +3598,7 @@ var Interpreter;
             i = 0;
             var_kind = 0;
             var_name = tok.substring(1, tok.length - 1);  // ダブルクォートを外す
+            var_scope = 0;
             // ***** 接頭語のチェック *****
             if (var_name.substring(0, 2) == "p\\") {
                 i = 2;
@@ -3608,8 +3610,10 @@ var Interpreter;
                 // (ローカル変数)
                 var_kind |= 1;
             }
-            // ***** 変数情報を生成する *****
-            code[code_len] = make_var_info(var_kind, var_name.substring(i), 0);
+            // ***** 接頭語を削除する *****
+            var_name = var_name.substring(i);
+            // ***** 変数情報の生成 *****
+            code[code_len] = make_var_info(var_kind, var_name, var_scope);
         } else if (opcode.hasOwnProperty(tok)) {
             // (命令コードのときは、数値に変換して格納)
             code[code_len] = opcode[tok];
@@ -3646,7 +3650,7 @@ var Interpreter;
         DebugShow(msg + "\n");
     }
 
-    // ***** 変数情報を生成する *****
+    // ***** 変数情報の生成 *****
     // (グローバル/ローカル変数にアクセスするための情報を生成する)
     // (変数情報は、生成後に変更してはいけない(複数回参照されるので不具合のもとになる)
     //  変更が必要な場合には、duplicate_var_info(var_info) を使用して、
@@ -3661,7 +3665,7 @@ var Interpreter;
                                 //   (これは、変数の種別が「関数の引数かつポインタ」のときのみ有効)
         return var_info;
     }
-    // ***** 変数情報を複製する *****
+    // ***** 変数情報の複製 *****
     function duplicate_var_info(var_info) {
         var var_info2 = {};
         var_info2.kind = var_info.kind;
@@ -3669,7 +3673,7 @@ var Interpreter;
         var_info2.scope = var_info.scope;
         return var_info2;
     }
-    // ***** 変数情報を取得する *****
+    // ***** 変数情報の取得 *****
     function get_var_info(var_info) {
         // ***** NOP *****
         return var_info;
@@ -5170,7 +5174,7 @@ var Interpreter;
             // if (x1 < 0 || x1 >= can.width || y1 < 0 || y1 >= can.height) { num = 0; return num; }
             if (!(x1 >= 0 && x1 < can.width && y1 >= 0 && y1 < can.height)) { num = 0; return num; }
 
-            // ***** 画像データを取得 *****
+            // ***** 画像データの取得 *****
             img_data = ctx.getImageData(x1, y1, 1, 1);
             // ***** 色情報を取得 *****
             num = (img_data.data[0] << 16) | (img_data.data[1] << 8) | img_data.data[2];
@@ -5497,7 +5501,7 @@ var Interpreter;
             imgvars[a1].ctx = imgvars[a1].can.getContext("2d");
             // ***** Canvasの各種設定の初期化 *****
             init_canvas_setting(imgvars[a1].ctx);
-            // ***** 画像を格納 *****
+            // ***** 画像データを格納 *****
             imgvars[a1].ctx.putImageData(img_data, 0, 0);
             return nothing;
         });
