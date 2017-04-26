@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2017-4-25 v10.01
+// 2017-4-26 v10.02
 
 
 // SPALM Web Interpreter
@@ -1834,6 +1834,7 @@ var Interpreter;
             if (tok == "func") {
                 i++;
                 code_push("func", debugpos1, i);
+                // ***** 関数名の取得 *****
                 func_name = token[i++];
                 // ***** 関数名のチェック *****
                 ch = func_name.charAt(0);
@@ -1899,6 +1900,7 @@ var Interpreter;
             if (tok == "funcgoto") {
                 i++;
                 token_match("(", i++);
+                // ***** 関数名の取得 *****
                 func_name = token[i];
                 // ***** 関数名または関数ポインタのチェック *****
                 ch = func_name.charAt(0);
@@ -2736,6 +2738,7 @@ var Interpreter;
         else { func_type = 0; }
         if (func_type > 0) {
             i++;
+            // ***** 関数名の取得 *****
             func_name = tok;
             code_push("push", debugpos1, i);
             // code_push('"' + func_name + '"', debugpos1, i);
@@ -2955,7 +2958,7 @@ var Interpreter;
         var var_name;
         var loc_flag;
 
-        // ***** 変数名取得 *****
+        // ***** 変数名の取得 *****
         i = tok_start;
         // debugpos1 = i;
         var_name = token[i++];
@@ -3030,7 +3033,7 @@ var Interpreter;
         var var_name;
         var loc_flag;
 
-        // ***** 変数名取得 *****
+        // ***** 変数名の取得 *****
         i = tok_start;
         // debugpos1 = i;
         var_name = token[i++];
@@ -3453,6 +3456,7 @@ var Interpreter;
             }
             // ***** 文字列のとき *****
             if (ch == '"') {
+                ch = ""; // 下で完了をチェックするためクリア
                 while (i < src_len) {
                     // ***** 1文字取り出す *****
                     ch = src.charAt(i++);
@@ -3477,7 +3481,7 @@ var Interpreter;
                 }
                 temp_st = src.substring(tok_start, i);
                 // ***** デリミタがなければ追加する *****
-                if (temp_st.length == 1 || ch != '"') { temp_st += '"'; }
+                if (ch != '"') { temp_st += '"'; }
                 // ***** エスケープ処理 *****
                 temp_st = temp_st
                     .replace(/\\"/g,  '"')   // 「"」のエスケープ
@@ -3586,11 +3590,11 @@ var Interpreter;
 
         // ***** コードの追加 *****
         if (code_kind == 1) {
-            // (組み込み関数名のときは、関数の実体を格納)
+            // (組み込み関数名のときは、関数の本体を格納)
             func_name = tok.substring(1, tok.length - 1); // ダブルクォートを外す
             code[code_len] = func_tbl[func_name].func;
         } else if (code_kind == 2) {
-            // (追加の組み込み関数名のときは、関数の実体を格納)
+            // (追加の組み込み関数名のときは、関数の本体を格納)
             func_name = tok.substring(1, tok.length - 1); // ダブルクォートを外す
             code[code_len] = addfunc_tbl[func_name].func;
         } else if (code_kind == 10) {
@@ -3811,7 +3815,7 @@ var Interpreter;
 
             // ***** 変数のタイプチェック *****
             scope_no = use_local_vars ? checkType(var_info) : 0;
-            // ***** 変数名を取得 *****
+            // ***** 変数名の取得 *****
             var_name = var_info.name;
             if (array_indexes) { // 配列変数対応
                 for (i = 0; i < array_indexes.length; i++) {
@@ -3836,7 +3840,7 @@ var Interpreter;
 
             // ***** 変数のタイプチェック *****
             scope_no = use_local_vars ? checkType(var_info) : 0;
-            // ***** 変数名を取得 *****
+            // ***** 変数名の取得 *****
             var_name = var_info.name;
             if (array_indexes) { // 配列変数対応
                 for (i = 0; i < array_indexes.length; i++) {
@@ -3863,7 +3867,7 @@ var Interpreter;
 
             // ***** 変数のタイプチェック *****
             scope_no = use_local_vars ? checkType(var_info) : 0;
-            // ***** 変数名を取得 *****
+            // ***** 変数名の取得 *****
             var_name = var_info.name;
             if (array_indexes) { // 配列変数対応
                 for (i = 0; i < array_indexes.length; i++) {
@@ -3891,7 +3895,7 @@ var Interpreter;
 
             // ***** 変数のタイプチェック *****
             scope_no = use_local_vars ? checkType(var_info) : 0;
-            // ***** 変数名を取得 *****
+            // ***** 変数名の取得 *****
             var_name = var_info.name;
             if (array_indexes) { // 配列変数対応
                 for (i = 0; i < array_indexes.length; i++) {
@@ -3917,7 +3921,7 @@ var Interpreter;
             // ***** 変数のタイプチェック *****
             scope_no = use_local_vars ? checkType(var_info) : 0;
             scope_no2 = use_local_vars ? checkType(var_info2) : 0;
-            // ***** 変数名を取得 *****
+            // ***** 変数名の取得 *****
             var_name = var_info.name + "$";
             var_name2 = var_info2.name + "$";
 
@@ -3948,7 +3952,7 @@ var Interpreter;
 
             // ***** 変数のタイプチェック *****
             scope_no = use_local_vars ? checkType(var_info) : 0;
-            // ***** 変数名を取得 *****
+            // ***** 変数名の取得 *****
             var_name = var_info.name + "$";
             // ***** グローバル/ローカル変数のスコープを取得 *****
             now_vars = vars_stack[scope_no];
@@ -4207,7 +4211,7 @@ var Interpreter;
     // (基本的に座標系を元に戻してから呼ぶこと)
     function set_canvas_axis(ctx) {
         // (座標系の設定は、拡大縮小 → 回転 → 平行移動 の順に実行する
-        //  (ソースの記述とは逆順に実行されるので注意))
+        //  (Canvasのマトリックスの操作は逆順に実行されるので注意))
         ctx.translate( axis.originx,   axis.originy);  // 原点座標を平行移動
         ctx.translate( axis.rotateox,  axis.rotateoy); // 回転の中心座標を元に戻す
         ctx.rotate(axis.rotate);                       // 回転の角度を指定
