@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2017-4-26 v10.02
+// 2017-4-27 v11.00
 
 
 // SPALM Web Interpreter
@@ -228,7 +228,7 @@ function load_srcfile(fname) {
     if (fname == null) { Alm("load_srcfile:0001"); return ret; }
     if (fname == "") { Alm("load_srcfile:0002"); return ret; }
     // ***** 要素の存在チェック *****
-    if (!document.getElementById("src_text1")) { Alm("load_srcfile:0004"); return ret; }
+    if (!document.getElementById("src_text1")) { Alm("load_srcfile:0003"); return ret; }
     // ***** ロード中にする *****
     Interpreter.setloadstat(1);
     // ***** テキストファイルの読み込み *****
@@ -513,10 +513,10 @@ var Interpreter;
     var code_info = [];         // コード情報        (配列)(エラー表示用)
     var code_str = [];          // コード文字列      (配列)(表示用とアドレス解決時用)
     var code_len;               // コード数          (code.lengthのキャッシュ用)
-    // var vars = {};           // 変数用            (Varsクラスに移行)
-    var imgvars = {};           // 画像変数用        (連想配列オブジェクト)
-    var label = {};             // ラベル用          (連想配列オブジェクト)
-    var func = {};              // 関数用            (連想配列オブジェクト)
+    // var vars = {};           // 変数              (Varsクラスに移行)
+    var imgvars = {};           // 画像変数          (連想配列オブジェクト)
+    var label = {};             // ラベル            (連想配列オブジェクト)
+    var func = {};              // 関数              (連想配列オブジェクト)
     var stack = [];             // スタック          (配列)
     var param = [];             // 関数の引数        (配列)(ユーザ定義関数のときは逆順に格納)
     var nothing = 0;            // 戻り値なしの組み込み関数の戻り値
@@ -1570,6 +1570,7 @@ var Interpreter;
             debugpos1 = code_info[i].pos1;
             // cod = code[i++];
             cod = code_str[i++];
+
             // ***** ラベルのとき *****
             if (cod == "label") {
                 lbl_name = code[i++];
@@ -1584,6 +1585,7 @@ var Interpreter;
                 labelinfo[lbl_name].func_name = func_name;
                 continue;
             }
+
             // ***** 関数の定義開始のとき *****
             if (cod == "func") {
                 if (func_name != "") {
@@ -1610,6 +1612,7 @@ var Interpreter;
                 jumpinfo_array.push(jumpinfo);
                 continue;
             }
+
             // ***** 関数の定義終了のとき *****
             if (cod == "funcend") {
                 if (func_name != "") {
@@ -1618,6 +1621,7 @@ var Interpreter;
                 }
                 continue;
             }
+
             // ***** ジャンプのとき *****
             if (cod == "goto"       || cod == "ifgoto" || cod == "ifnotgoto" ||
                 cod == "switchgoto" || cod == "gosub") {
@@ -1637,14 +1641,17 @@ var Interpreter;
                 continue;
             }
         }
-        // ***** ジャンプ情報のアドレス解決 *****
+
+        // ***** ジャンプ情報のアドレスを解決する *****
         for (i2 = 0; i2 < jumpinfo_array.length; i2++) {
             jumpinfo = jumpinfo_array[i2];
+            // ***** ジャンプ情報を取り出す *****
             i = jumpinfo.i;
             cod = jumpinfo.cod;
             debugpos1 = jumpinfo.debugpos1;
             lbl_name = jumpinfo.lbl_name;
             func_name = jumpinfo.func_name;
+
             // ***** ジャンプのとき *****
             if (cod == "goto"       || cod == "ifgoto" || cod == "ifnotgoto" ||
                 cod == "switchgoto" || cod == "gosub") {
@@ -1663,6 +1670,7 @@ var Interpreter;
                 code[i] = label[lbl_name];
                 continue;
             }
+
             // ***** 関数の定義開始のとき *****
             if (cod == "func") {
                 // ***** 関数の定義終了のアドレスを設定 *****
@@ -1722,7 +1730,7 @@ var Interpreter;
             debugpos1 = i;
             tok = token[i];
 
-            // ***** セミコロンのとき *****
+            // ***** セミコロン「;」のとき *****
             if (tok == ";") {
                 i++;
                 continue;
@@ -2425,7 +2433,8 @@ var Interpreter;
     function c_expression(tok_start, tok_end, priority) {
         var i, j;
         var tok;
-        var tri_flag;
+        var tri_flag1;
+        var tri_flag2;
 
         // ***** 引数のチェック *****
         if (priority == null) { priority = 0; }
@@ -2433,7 +2442,8 @@ var Interpreter;
         i = tok_start;
         i = c_factor(i, tok_end);
         // ***** 演算子処理のループ *****
-        tri_flag = false;
+        tri_flag1 = false;
+        tri_flag2 = false;
         while (i < tok_end) {
             // ***** トークンを取り出す *****
             // debugpos1 = i;
@@ -2443,7 +2453,6 @@ var Interpreter;
                 i++;
                 i = c_expression(i, tok_end, 10);
                 code_push("and", debugpos1, i);
-                tri_flag = false;
                 continue;
             }
             // ***** 「&&」のとき *****
@@ -2463,7 +2472,6 @@ var Interpreter;
                 code_push("push0", debugpos1, i);
                 code_push("label", debugpos1, i);
                 code_push('"and_end\\' + j + '"', debugpos1, i);
-                tri_flag = false;
                 continue;
             }
             // ***** 「|」のとき *****
@@ -2471,7 +2479,6 @@ var Interpreter;
                 i++;
                 i = c_expression(i, tok_end, 10);
                 code_push("or", debugpos1, i);
-                tri_flag = false;
                 continue;
             }
             // ***** 「||」のとき *****
@@ -2491,7 +2498,6 @@ var Interpreter;
                 code_push("push1", debugpos1, i);
                 code_push("label", debugpos1, i);
                 code_push('"or_end\\' + j + '"', debugpos1, i);
-                tri_flag = false;
                 continue;
             }
             // ***** 「^」のとき *****
@@ -2499,7 +2505,6 @@ var Interpreter;
                 i++;
                 i = c_expression(i, tok_end, 10);
                 code_push("xor", debugpos1, i);
-                tri_flag = false;
                 continue;
             }
             // ***** 3項演算子「?:」のとき *****
@@ -2515,18 +2520,20 @@ var Interpreter;
                 code_push("label", debugpos1, i);
                 code_push('"tri_zero\\' + j + '"', debugpos1, i);
                 i = c_expression(i, tok_end, 9); // 右結合
-                // (互換モードのときのみ末尾のセミコロン(;)が必要(過去との互換性維持のため))
+                // (互換モードのときのみ末尾のセミコロン「;」が必要(過去との互換性維持のため))
                 if (sp_compati_flag) {
                     token_match(";", i++);
                 }
                 code_push("label", debugpos1, i);
                 code_push('"tri_end\\' + j + '"', debugpos1, i);
-                tri_flag = true;
+                tri_flag1 = true;
                 continue;
             }
+            tri_flag2 = tri_flag1;
+            tri_flag1 = false;
 
             // (3項演算子の処理後は、優先順位10の演算子しか処理しない(過去との互換性維持のため))
-            if (sp_compati_flag && tri_flag) {
+            if (sp_compati_flag && tri_flag2) {
                 break;
             }
 
@@ -2963,7 +2970,7 @@ var Interpreter;
         // debugpos1 = i;
         var_name = token[i++];
 
-        // ***** ポインタ的なもののとき(文頭の*の前にはセミコロンが必要) *****
+        // ***** ポインタ的なもののとき *****
         // ***** (変数の内容を変数名にする) *****
         if (var_name == "*") {
             if (token[i] == "(") {
@@ -3038,7 +3045,7 @@ var Interpreter;
         // debugpos1 = i;
         var_name = token[i++];
 
-        // ***** ポインタ的なもののとき(文頭の*の前にはセミコロンが必要) *****
+        // ***** ポインタ的なもののとき *****
         // ***** (*を削り、ポインタフラグをONにする) *****
         if (var_name == "*") {
             if (token[i] == "(") {
@@ -3322,10 +3329,14 @@ var Interpreter;
         var temp_no;
         var line_no;
         var line_no_s;
+        var newline_flag1;
+        var newline_flag2;
 
         // ***** ソース解析のループ *****
         i = 0;
         line_no = 1;
+        newline_flag1 = false;
+        newline_flag2 = false;
         token = [];
         token_line = [];
         token_len = 0;
@@ -3341,8 +3352,11 @@ var Interpreter;
             if (ch == "\r" || ch == "\n") {
                 line_no++;
                 if (ch == "\r" && ch2 == "\n") { i++; }
+                newline_flag1 = true;
                 continue;
             }
+            newline_flag2 = newline_flag1;
+            newline_flag1 = false;
             // ***** コメント「//」のとき *****
             if (ch == "/" && ch2 == "/") {
                 i++;
@@ -3352,8 +3366,7 @@ var Interpreter;
                     ch2 = src.charAt(i);
                     // ***** 改行のとき *****
                     if (ch == "\r" || ch == "\n") {
-                        line_no++;
-                        if (ch == "\r" && ch2 == "\n") { i++; }
+                        i--;
                         break;
                     }
                 }
@@ -3519,6 +3532,13 @@ var Interpreter;
                     }
                 }
             }
+            temp_st = src.substring(tok_start, i);
+            // ***** セミコロン「;」の挿入 *****
+            // (行頭のポインタ「*」の前にセミコロン「;」を自動挿入する
+            //  (これによって、乗算の「*」と解釈されることを防ぐ))
+            if (temp_st == "*" && newline_flag2) {
+                token_push(";", line_no_s);
+            }
             token_push(src.substring(tok_start, i), line_no_s);
         }
         // ***** 終端のトークンを追加(安全のため) *****
@@ -3666,7 +3686,7 @@ var Interpreter;
                                 //              =8:関数の仮引数かつポインタ)
         var_info.name = name;   //   変数名
         var_info.scope = scope; //   変数が所属するスコープの番号
-                                //   (これは、変数の種別が「関数の引数かつポインタ」のときのみ有効)
+                                //     (これは、変数の種別が「関数の引数かつポインタ」のときのみ有効)
         return var_info;
     }
     // ***** 変数情報の複製 *****
@@ -3698,7 +3718,7 @@ var Interpreter;
 
         // ***** 内部変数 *****
         var vars_stack = []; // グローバル/ローカル変数のスコープ(配列)
-                             //   (変数の内容はここに格納する)
+                             //   (変数の内容はここに格納される)
                              //   (配列の0はグローバル変数用)
                              //   (配列の1以降はローカル変数用)
         var local_scope_num; // ローカル変数のスコープ数
