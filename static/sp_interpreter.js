@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2017-4-27 v11.00
+// 2017-4-28 v11.01
 
 
 // SPALM Web Interpreter
@@ -2433,8 +2433,7 @@ var Interpreter;
     function c_expression(tok_start, tok_end, priority) {
         var i, j;
         var tok;
-        var tri_flag1;
-        var tri_flag2;
+        var tri_flag;
 
         // ***** 引数のチェック *****
         if (priority == null) { priority = 0; }
@@ -2442,8 +2441,7 @@ var Interpreter;
         i = tok_start;
         i = c_factor(i, tok_end);
         // ***** 演算子処理のループ *****
-        tri_flag1 = false;
-        tri_flag2 = false;
+        tri_flag = false;
         while (i < tok_end) {
             // ***** トークンを取り出す *****
             // debugpos1 = i;
@@ -2453,6 +2451,7 @@ var Interpreter;
                 i++;
                 i = c_expression(i, tok_end, 10);
                 code_push("and", debugpos1, i);
+                tri_flag = false;
                 continue;
             }
             // ***** 「&&」のとき *****
@@ -2472,6 +2471,7 @@ var Interpreter;
                 code_push("push0", debugpos1, i);
                 code_push("label", debugpos1, i);
                 code_push('"and_end\\' + j + '"', debugpos1, i);
+                tri_flag = false;
                 continue;
             }
             // ***** 「|」のとき *****
@@ -2479,6 +2479,7 @@ var Interpreter;
                 i++;
                 i = c_expression(i, tok_end, 10);
                 code_push("or", debugpos1, i);
+                tri_flag = false;
                 continue;
             }
             // ***** 「||」のとき *****
@@ -2498,6 +2499,7 @@ var Interpreter;
                 code_push("push1", debugpos1, i);
                 code_push("label", debugpos1, i);
                 code_push('"or_end\\' + j + '"', debugpos1, i);
+                tri_flag = false;
                 continue;
             }
             // ***** 「^」のとき *****
@@ -2505,6 +2507,7 @@ var Interpreter;
                 i++;
                 i = c_expression(i, tok_end, 10);
                 code_push("xor", debugpos1, i);
+                tri_flag = false;
                 continue;
             }
             // ***** 3項演算子「?:」のとき *****
@@ -2520,20 +2523,20 @@ var Interpreter;
                 code_push("label", debugpos1, i);
                 code_push('"tri_zero\\' + j + '"', debugpos1, i);
                 i = c_expression(i, tok_end, 9); // 右結合
-                // (互換モードのときのみ末尾のセミコロン「;」が必要(過去との互換性維持のため))
+                // (互換モードのときは、末尾のセミコロン「;」が必要(過去との互換性維持のため))
                 if (sp_compati_flag) {
                     token_match(";", i++);
                 }
                 code_push("label", debugpos1, i);
                 code_push('"tri_end\\' + j + '"', debugpos1, i);
-                tri_flag1 = true;
+                tri_flag = true;
                 continue;
             }
-            tri_flag2 = tri_flag1;
-            tri_flag1 = false;
 
-            // (3項演算子の処理後は、優先順位10の演算子しか処理しない(過去との互換性維持のため))
-            if (sp_compati_flag && tri_flag2) {
+            // ***** 3項演算子を特別扱い *****
+            // (互換モードのときは、3項演算子の処理後に、
+            //  優先順位10の演算子しか処理しない(過去との互換性維持のため))
+            if (sp_compati_flag && tri_flag) {
                 break;
             }
 
@@ -3329,14 +3332,14 @@ var Interpreter;
         var temp_no;
         var line_no;
         var line_no_s;
-        var newline_flag1;
-        var newline_flag2;
+        var newline_flag;
+        var newline_flag_temp;
 
         // ***** ソース解析のループ *****
         i = 0;
         line_no = 1;
-        newline_flag1 = false;
-        newline_flag2 = false;
+        newline_flag = false;
+        newline_flag_temp = false;
         token = [];
         token_line = [];
         token_len = 0;
@@ -3352,11 +3355,9 @@ var Interpreter;
             if (ch == "\r" || ch == "\n") {
                 line_no++;
                 if (ch == "\r" && ch2 == "\n") { i++; }
-                newline_flag1 = true;
+                newline_flag_temp = true;
                 continue;
             }
-            newline_flag2 = newline_flag1;
-            newline_flag1 = false;
             // ***** コメント「//」のとき *****
             if (ch == "/" && ch2 == "/") {
                 i++;
@@ -3366,12 +3367,17 @@ var Interpreter;
                     ch2 = src.charAt(i);
                     // ***** 改行のとき *****
                     if (ch == "\r" || ch == "\n") {
-                        i--;
+                        line_no++;
+                        if (ch == "\r" && ch2 == "\n") { i++; }
                         break;
                     }
                 }
+                newline_flag_temp = true;
                 continue;
             }
+            // ***** 改行フラグの更新(1回分遅延させる) *****
+            newline_flag = newline_flag_temp;
+            newline_flag_temp = false;
             // ***** コメント「'」のとき *****
             if (ch == "'") {
                 while (i < src_len) {
@@ -3536,7 +3542,7 @@ var Interpreter;
             // ***** セミコロン「;」の挿入 *****
             // (行頭のポインタ「*」の前にセミコロン「;」を自動挿入する
             //  (これによって、乗算の「*」と解釈されることを防ぐ))
-            if (temp_st == "*" && newline_flag2) {
+            if (temp_st == "*" && newline_flag) {
                 token_push(";", line_no_s);
             }
             token_push(src.substring(tok_start, i), line_no_s);
