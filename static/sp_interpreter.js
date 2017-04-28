@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2017-4-28 v11.01
+// 2017-4-29 v11.02
 
 
 // SPALM Web Interpreter
@@ -959,7 +959,7 @@ var Interpreter;
         //         return v;
         //     }) + "\n");
         // }
-        // ***** 実行 *****
+        // ***** 継続実行 *****
         // vars = {};
         Vars.init();
         imgvars = {};
@@ -1005,7 +1005,7 @@ var Interpreter;
         return ret;
     }
 
-    // ***** 実行 *****
+    // ***** 継続実行 *****
     // (本関数は再帰的に呼び出される)
     function run_continuously() {
         var ret;
@@ -1020,7 +1020,7 @@ var Interpreter;
             // if (prof_obj) { prof_obj.start("execcode"); }
             execcode();
             // if (prof_obj) { prof_obj.stop("execcode"); }
-            // ***** スリープ後に実行を継続(再帰的に実行) *****
+            // ***** スリープおよび継続実行(再帰的に実行) *****
             if (sleep_flag) {
                 sleep_flag = false;
                 if (!end_flag) {
@@ -1644,8 +1644,8 @@ var Interpreter;
 
         // ***** ジャンプ情報のアドレスを解決する *****
         for (i2 = 0; i2 < jumpinfo_array.length; i2++) {
-            jumpinfo = jumpinfo_array[i2];
             // ***** ジャンプ情報を取り出す *****
+            jumpinfo = jumpinfo_array[i2];
             i = jumpinfo.i;
             cod = jumpinfo.cod;
             debugpos1 = jumpinfo.debugpos1;
@@ -1864,7 +1864,7 @@ var Interpreter;
                 if (use_local_vars) {
                     locvarnames_stack.push({});
                 }
-                // ***** 仮引数 *****
+                // ***** 仮引数の取得 *****
                 token_match("(", i++);
                 if (token[i] == ")") {
                     i++;
@@ -1881,7 +1881,7 @@ var Interpreter;
                     }
                     token_match(")", i++);
                 }
-                // ***** 本体 *****
+                // ***** 本体の取得 *****
                 token_match("{", i++);
                 func_stm = i;
                 k = 1;
@@ -3175,8 +3175,8 @@ var Interpreter;
         var i;
         var ch;
         var tok;
-        var sp_val_st;
-        var sp_value;
+        var sp_para_st;
+        var sp_para_no;
         var cst_name;
         var cst_value;
 
@@ -3199,24 +3199,24 @@ var Interpreter;
                 token_match("(", i++);
                 // ***** 定数の置換 *****
                 replace_const(token[i], i);
-                // ***** 値の取得 *****
+                // ***** 引数の取得 *****
                 // (符号のトークンを許可(特別扱い))
                 if (isSign1(token[i]) && isDigit1(token[i + 1])) {
-                    sp_val_st = token[i] + token[i + 1];
+                    sp_para_st = token[i] + token[i + 1];
                     i += 2;
                 } else {
-                    sp_val_st = token[i++];
+                    sp_para_st = token[i++];
                 }
-                // ***** 値のチェック *****
+                // ***** 引数のチェック *****
                 // (符号ありの数値を許可(定数展開の関係で特別扱い))
-                ch = sp_val_st.charAt(0);
-                if (!(isDigit1(ch) || (isSign1(ch) && isDigit1(sp_val_st.charAt(1))))) {
+                ch = sp_para_st.charAt(0);
+                if (!(isDigit1(ch) || (isSign1(ch) && isDigit1(sp_para_st.charAt(1))))) {
                     debugpos2 = i + 1;
                     throw new Error("spmode の引数には数値以外を指定できません。");
                 }
-                sp_value = +sp_val_st; // 数値にする
+                sp_para_no = +sp_para_st; // 数値にする
                 // ***** 互換モードの設定 *****
-                if (sp_value == 1) {
+                if (sp_para_no == 1) {
                     sp_compati_flag = true;
                     use_local_vars = false;
                     font_size = font_size_set[0];
@@ -3323,17 +3323,17 @@ var Interpreter;
     // ***** トークン分割 *****
     function tokenize() {
         var i, i2;
+        var i_start;
         var src_len;
         var ch, ch2, ch3, ch4;
-        var tok_start;
-        var hex_flag;
-        var digit_mode;
-        var temp_st;
-        var temp_no;
         var line_no;
-        var line_no_s;
+        var line_no_tk;
         var newline_flag;
         var newline_flag_temp;
+        var temp_st;
+        var temp_no;
+        var hex_flag;
+        var digit_mode;
 
         // ***** ソース解析のループ *****
         i = 0;
@@ -3396,8 +3396,8 @@ var Interpreter;
             }
 
             // ***** 有効文字のとき *****
-            tok_start = i - 1;
-            line_no_s = line_no;
+            i_start = i - 1;
+            line_no_tk = line_no;
             // ***** 16進数のとき *****
             if (ch == "0" && (ch2 == "x" || ch2 == "X")) {
                 i++;
@@ -3410,13 +3410,15 @@ var Interpreter;
                 }
                 if (!hex_flag) {
                     // (数値の0および後続の変数名と判断)
-                    token_push("0", line_no_s);
+                    token_push("0", line_no_tk);
                     i--;
                     continue;
                 }
-                temp_st = src.substring(tok_start, i);
-                temp_no = +temp_st; // 数値にする
-                token_push(String(temp_no), line_no_s);
+                temp_st = src.substring(i_start, i);
+                // ***** 数値に変換してから再度文字列にする *****
+                temp_no = +temp_st;
+                temp_st = String(temp_no);
+                token_push(temp_st, line_no_tk);
                 continue;
             }
             // ***** 10進数のとき *****
@@ -3456,7 +3458,8 @@ var Interpreter;
                     // ***** 数値チェック *****
                     if (isDigit1(ch)) { i++; } else { break; }
                 }
-                token_push(src.substring(tok_start, i), line_no_s);
+                temp_st = src.substring(i_start, i);
+                token_push(temp_st, line_no_tk);
                 continue;
             }
             // ***** アルファベットかアンダースコアのとき(名前) *****
@@ -3470,7 +3473,8 @@ var Interpreter;
                     // ***** アルファベットかアンダースコアか数字のチェック *****
                     if (isAlpha1(ch) || ch == "_" || isDigit1(ch)) { i++; } else { break; }
                 }
-                token_push(src.substring(tok_start, i), line_no_s);
+                temp_st = src.substring(i_start, i);
+                token_push(temp_st, line_no_tk);
                 continue;
             }
             // ***** 文字列のとき *****
@@ -3486,7 +3490,7 @@ var Interpreter;
                             i++;
                             continue;
                         } else {
-                            token_push('"', line_no_s);
+                            token_push('"', line_no_tk);
                             throw new Error("文字列のエスケープエラー");
                         }
                     }
@@ -3498,14 +3502,14 @@ var Interpreter;
                         if (ch == "\r" && ch2 == "\n") { i++; }
                     }
                 }
-                temp_st = src.substring(tok_start, i);
+                temp_st = src.substring(i_start, i);
                 // ***** デリミタがなければ追加する *****
                 if (ch != '"') { temp_st += '"'; }
                 // ***** エスケープ処理 *****
                 temp_st = temp_st
                     .replace(/\\"/g,  '"')   // 「"」のエスケープ
                     .replace(/\\\\/g, "\\"); // 「\」のエスケープ ← これは最後にしないといけない
-                token_push(temp_st, line_no_s);
+                token_push(temp_st, line_no_tk);
                 continue;
             }
             // ***** 演算子その他のとき *****
@@ -3538,14 +3542,14 @@ var Interpreter;
                     }
                 }
             }
-            temp_st = src.substring(tok_start, i);
+            temp_st = src.substring(i_start, i);
             // ***** セミコロン「;」の挿入 *****
             // (行頭のポインタ「*」の前にセミコロン「;」を自動挿入する
             //  (これによって、乗算の「*」と解釈されることを防ぐ))
             if (temp_st == "*" && newline_flag) {
-                token_push(";", line_no_s);
+                token_push(";", line_no_tk);
             }
-            token_push(src.substring(tok_start, i), line_no_s);
+            token_push(temp_st, line_no_tk);
         }
         // ***** 終端のトークンを追加(安全のため) *****
         for (i2 = 0; i2 < end_token_num; i2++) {
@@ -3645,7 +3649,7 @@ var Interpreter;
             // ***** 変数情報の生成 *****
             code[code_len] = make_var_info(var_kind, var_name, var_scope);
         } else if (opcode.hasOwnProperty(tok)) {
-            // (命令コードのときは、数値に変換して格納)
+            // (命令コードのときは、コードの値を格納)
             code[code_len] = opcode[tok];
         } else if (tok.charAt && tok.charAt(0) == '"') {
             // (文字列のときは、ダブルクォートを外して格納)
@@ -3784,10 +3788,10 @@ var Interpreter;
 
         // ***** 変数初期化(staticメソッド) *****
         Vars.init = function () {
-            vars_stack = [];     // グローバル/ローカル変数のスコープ(配列)の初期化
-            // vars_stack[0] = {};  // グローバル変数のスコープの初期化
+            vars_stack = [];            // グローバル/ローカル変数のスコープ(配列)の初期化
+            // vars_stack[0] = {};         // グローバル変数のスコープの初期化
             vars_stack[0] = hashInit(); // グローバル変数のスコープの初期化
-            local_scope_num = 0; // ローカル変数のスコープ数の初期化
+            local_scope_num = 0;        // ローカル変数のスコープ数の初期化
         };
         // ***** グローバル変数を取得する(staticメソッド)(デバッグ用) *****
         Vars.getGlobalVars = function () {
