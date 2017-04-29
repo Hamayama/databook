@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2017-4-29 v11.02
+// 2017-4-29 v11.03
 
 
 // SPALM Web Interpreter
@@ -86,8 +86,8 @@ function init_func(load_skip_flag) {
 // ***** URLパラメータ1個の取得 *****
 function get_one_url_para(key) {
     var ret;
-    var i, pos, key2, val;
-    var para_st, para;
+    var i, j;
+    var para_st, para, val;
 
     // ***** 戻り値の初期化 *****
     ret = "";
@@ -99,14 +99,16 @@ function get_one_url_para(key) {
     // ***** URLパラメータ1個の取得 *****
     para_st = window.location.search.substring(1);
     para = para_st.split("&");
+    val = "";
     for (i = 0; i < para.length; i++) {
-        pos = para[i].indexOf("=");
-        if (pos > 0) {
-            key2 = decodeURIComponent(para[i].substring(0, pos));
-            val = decodeURIComponent(para[i].substring(pos + 1));
-            if (key == key2) { ret = val; break; }
+        j = para[i].indexOf("=");
+        if (j > 0 && key == decodeURIComponent(para[i].substring(0, j))) {
+            val = decodeURIComponent(para[i].substring(j + 1));
+            break;
         }
     }
+    // ***** 戻り値を返す *****
+    ret = val;
     return ret;
 }
 
@@ -1439,8 +1441,7 @@ var Interpreter;
                         param[i] = stack.pop(); // 逆順に格納
                     }
                     // ***** 関数名の取得 *****
-                    func_name = stack.pop();
-                    func_name = to_global(func_name); // 関数ポインタ対応
+                    func_name = to_global(stack.pop());
                     // ***** 関数の存在チェック *****
                     // if (!func.hasOwnProperty(func_name)) {
                     // if (!hasOwn.call(func, func_name)) {
@@ -1464,8 +1465,7 @@ var Interpreter;
                         param[i] = stack.pop(); // 逆順に格納
                     }
                     // ***** 関数名の取得 *****
-                    func_name = stack.pop();
-                    func_name = to_global(func_name); // 関数ポインタ対応
+                    func_name = to_global(stack.pop());
                     // ***** 関数内のとき *****
                     if (func_back.length > 0) {
                         // ***** 関数の存在チェック *****
@@ -1493,13 +1493,14 @@ var Interpreter;
                         num = 0;
                     }
                     var_info = stack.pop();
-                    // ***** 関数の引数のポインタ対応 *****
+                    // ***** 関数の仮引数かつポインタのとき *****
                     if (use_local_vars && (var_info.kind & 8)) {
                         if (num.kind == null) {
                             throw new Error("ポインタの指す先が不正です。(変数のアドレスではなく、'" + num + "' が入っていました)");
                         }
                         if (!(num.kind & 2) && (num.kind & 1)) {
-                            // (関数の引数かつポインタ)
+                            // (ローカル変数のスコープをさかのぼれるように
+                            //  「関数の引数かつポインタ」を設定)
                             var_info2 = duplicate_var_info(num); // 変数情報を変更する場合は複製が必要
                             var_info2.kind |= 2;
                             var_info2.scope = Vars.getLocalScopeNum() - 1;
@@ -1870,8 +1871,8 @@ var Interpreter;
                     i++;
                 } else {
                     while (i < tok_end) {
-                        // ***** 変数名のコンパイル2(関数の仮引数用) *****
-                        i = c_varname2(i, tok_end);
+                        // ***** 変数名のコンパイル(関数の仮引数) *****
+                        i = c_varname(i, tok_end, 1);
                         code_push("loadparam", debugpos1, i);
                         if (token[i] == ",") {
                             i++;
@@ -2962,35 +2963,43 @@ var Interpreter;
         // return i;
     }
 
-    // ***** 変数名のコンパイル(通常用) *****
-    function c_varname(tok_start, tok_end) {
+    // ***** 変数名のコンパイル *****
+    // (var_ckind  変数のコンパイル時の種別
+    //               (=0:通常,
+    //                =1:関数の仮引数,
+    //                =2:関数の仮引数かつポインタ))
+    function c_varname(tok_start, tok_end, var_ckind) {
         var i;
         var var_name;
         var loc_flag;
 
+        // ***** 引数のチェック *****
+        if (var_ckind == null) { var_ckind = 0; }
         // ***** 変数名の取得 *****
         i = tok_start;
         // debugpos1 = i;
         var_name = token[i++];
-
-        // ***** ポインタ的なもののとき *****
-        // ***** (変数の内容を変数名にする) *****
+        // ***** ポインタのとき *****
+        // (括弧があれば外して、再帰的にコンパイルする)
         if (var_name == "*") {
             if (token[i] == "(") {
                 i++;
-                i = c_varname(i, tok_end);
+                i = c_varname(i, tok_end, (var_ckind > 0) ? 2 : 0);
                 token_match(")", i++);
             } else {
-                i = c_varname(i, tok_end);
+                i = c_varname(i, tok_end, (var_ckind > 0) ? 2 : 0);
             }
-            code_push("pointer", debugpos1, i);
-            // ***** 配列変数のとき *****
-            while (token[i] == "[") {
-                i++;
-                // i = Math.trunc(c_expression(i, tok_end));
-                i = c_expression(i, tok_end); // 配列の添字に文字列もあり
-                token_match("]", i++);
-                code_push("array", debugpos1, i);
+            if (var_ckind == 0) {
+                // ***** ポインタの設定 *****
+                code_push("pointer", debugpos1, i);
+                // ***** 配列変数のとき *****
+                while (token[i] == "[") {
+                    i++;
+                    // i = Math.trunc(c_expression(i, tok_end));
+                    i = c_expression(i, tok_end); // 配列の添字に文字列もあり
+                    token_match("]", i++);
+                    code_push("array", debugpos1, i);
+                }
             }
             return i;
         }
@@ -3004,75 +3013,21 @@ var Interpreter;
             }
         } else {
             checkvarname(var_name, i);
-            // ***** ローカル文フラグのチェック *****
-            // ***** ローカル変数名情報のチェック *****
-            if (use_local_vars &&
-                (locstatement_flag ||
-                 (locvarnames_stack.length > 0 &&
-                  hasOwn.call(locvarnames_stack[locvarnames_stack.length - 1], var_name)))) {
-                var_name = "l\\" + var_name;
-                // ***** ローカル文フラグOFF *****
-                if (locstatement_flag) { locstatement_flag = false; }
-            }
-        }
-        // ***** ローカル変数名情報の更新 *****
-        if (use_local_vars &&
-            locvarnames_stack.length > 0 && var_name.substring(0, 2) == "l\\" &&
-            !hasOwn.call(locvarnames_stack[locvarnames_stack.length - 1], var_name.substring(2))) {
-            locvarnames_stack[locvarnames_stack.length - 1][var_name.substring(2)] = true;
-        }
-        // ***** 変数名を設定 *****
-        code_push("push", debugpos1, i);
-        // code_push('"' + var_name + '"', debugpos1, i);
-        code_push('"' + var_name + '"', debugpos1, i, 10);
-        // ***** 配列変数のとき *****
-        while (token[i] == "[") {
-            i++;
-            // i = Math.trunc(c_expression(i, tok_end));
-            i = c_expression(i, tok_end); // 配列の添字に文字列もあり
-            token_match("]", i++);
-            code_push("array", debugpos1, i);
-        }
-        // ***** 戻り値を返す *****
-        return i;
-    }
-
-    // ***** 変数名のコンパイル2(関数の仮引数用) *****
-    function c_varname2(tok_start, tok_end, pointer_flag) {
-        var i;
-        var var_name;
-        var loc_flag;
-
-        // ***** 変数名の取得 *****
-        i = tok_start;
-        // debugpos1 = i;
-        var_name = token[i++];
-
-        // ***** ポインタ的なもののとき *****
-        // ***** (*を削り、ポインタフラグをONにする) *****
-        if (var_name == "*") {
-            if (token[i] == "(") {
-                i++;
-                i = c_varname2(i, tok_end, true);
-                token_match(")", i++);
-            } else {
-                i = c_varname2(i, tok_end, true);
-            }
-            return i;
-        }
-        // ***** グローバル/ローカル変数の指定のチェック *****
-        if (var_name == "global" || var_name == "glb" || var_name == "local" || var_name == "loc") {
-            loc_flag = (var_name.charAt(0) == "l");
-            var_name = token[i++];
-            checkvarname(var_name, i);
-            if (use_local_vars && loc_flag) {
-                var_name = "l\\" + var_name;
-            }
-        } else {
-            checkvarname(var_name, i);
-            // (関数の仮引数はデフォルトでローカル変数とする)
             if (use_local_vars) {
-                var_name = "l\\" + var_name;
+                if (var_ckind == 0) {
+                    // ***** ローカル文フラグのチェック *****
+                    // ***** ローカル変数名情報のチェック *****
+                    if (locstatement_flag ||
+                        (locvarnames_stack.length > 0 &&
+                         hasOwn.call(locvarnames_stack[locvarnames_stack.length - 1], var_name))) {
+                        var_name = "l\\" + var_name;
+                        // ***** ローカル文フラグOFF *****
+                        if (locstatement_flag) { locstatement_flag = false; }
+                    }
+                } else {
+                    // (関数の仮引数はデフォルトでローカル変数とする)
+                    var_name = "l\\" + var_name;
+                }
             }
         }
         // ***** ローカル変数名情報の更新 *****
@@ -3081,13 +3036,11 @@ var Interpreter;
             !hasOwn.call(locvarnames_stack[locvarnames_stack.length - 1], var_name.substring(2))) {
             locvarnames_stack[locvarnames_stack.length - 1][var_name.substring(2)] = true;
         }
-        // ***** ポインタ的なもののとき *****
-        // (関数の仮引数に「p\」を結合して、ローカル変数のスコープを
-        //  さかのぼれるようにする)
-        if (use_local_vars && pointer_flag && var_name.substring(0, 2) != "p\\") {
+        // ***** 関数の仮引数かつポインタのとき *****
+        if (use_local_vars && var_ckind == 2) {
             var_name = "p\\" + var_name;
         }
-        // ***** 変数名を設定 *****
+        // ***** 変数名の設定 *****
         code_push("push", debugpos1, i);
         // code_push('"' + var_name + '"', debugpos1, i);
         code_push('"' + var_name + '"', debugpos1, i, 10);
@@ -3159,7 +3112,7 @@ var Interpreter;
             debugpos2 = i;
             throw new Error("名前 '" + lbl_name + "' は予約されているため、ラベル名には使用できません。");
         }
-        // ***** ラベル名を設定 *****
+        // ***** ラベル名の設定 *****
         code_push('"' + lbl_name + '"', debugpos1, i);
         // ***** 戻り値を返す *****
         return i;
@@ -3610,7 +3563,27 @@ var Interpreter;
         // i++;
     }
 
+    // ***** エラー場所の表示 *****
+    function show_err_place(debugpos1, debugpos2) {
+        var i;
+        var msg;
+
+        msg = "エラー場所: " + token_line[debugpos1] + "行: ";
+        if (debugpos2 <= debugpos1) { debugpos2 = debugpos1 + 1; } // 最低でも1個は表示する
+        for (i = debugpos1; i < debugpos2; i++) {
+            if (i >= 0 && i < token_len) {
+                msg += token[i] + " ";
+            }
+        }
+        if (debugpos2 >= token_len) { msg += "- プログラム最後まで検索したが文が完成せず。"; }
+        DebugShow(msg + "\n");
+    }
+
     // ***** コード追加 *****
+    // (code_kind  コード種別(=0:通常,
+    //                        =1:組み込み関数,
+    //                        =2:追加の組み込み関数,
+    //                        =10:変数))
     function code_push(tok, pos1, pos2, code_kind) {
         var i;
         var var_kind;
@@ -3618,45 +3591,62 @@ var Interpreter;
         var var_scope;
         var func_name;
 
+        // ***** 引数のチェック *****
+        if (code_kind == null) { code_kind = 0; }
         // ***** コードの追加 *****
-        if (code_kind == 1) {
-            // (組み込み関数名のときは、関数の本体を格納)
-            func_name = tok.substring(1, tok.length - 1); // ダブルクォートを外す
-            code[code_len] = func_tbl[func_name].func;
-        } else if (code_kind == 2) {
-            // (追加の組み込み関数名のときは、関数の本体を格納)
-            func_name = tok.substring(1, tok.length - 1); // ダブルクォートを外す
-            code[code_len] = addfunc_tbl[func_name].func;
-        } else if (code_kind == 10) {
-            // (変数名のときは、変数情報を格納)
-            i = 0;
-            var_kind = 0;
-            var_name = tok.substring(1, tok.length - 1);  // ダブルクォートを外す
-            var_scope = 0;
-            // ***** 接頭語のチェック *****
-            if (var_name.substring(0, 2) == "p\\") {
-                i = 2;
-                // (関数の仮引数かつポインタ)
-                var_kind |= 8;
-            }
-            if (var_name.substring(i, i + 2) == "l\\") {
-                i += 2;
-                // (ローカル変数)
-                var_kind |= 1;
-            }
-            // ***** 接頭語を削除する *****
-            var_name = var_name.substring(i);
-            // ***** 変数情報の生成 *****
-            code[code_len] = make_var_info(var_kind, var_name, var_scope);
-        } else if (opcode.hasOwnProperty(tok)) {
-            // (命令コードのときは、コードの値を格納)
-            code[code_len] = opcode[tok];
-        } else if (tok.charAt && tok.charAt(0) == '"') {
-            // (文字列のときは、ダブルクォートを外して格納)
-            code[code_len] = tok.substring(1, tok.length - 1);
-        } else {
-            // (その他のときは、そのまま格納)
-            code[code_len] = tok;
+        switch (code_kind) {
+            case 0: // 通常
+                // ***** 命令コードのとき *****
+                if (opcode.hasOwnProperty(tok)) {
+                    // (コードの値を格納)
+                    code[code_len] = opcode[tok];
+                // ***** 文字列のとき *****
+                } else if (tok.charAt && tok.charAt(0) == '"') {
+                    // (ダブルクォートを外して格納)
+                    code[code_len] = tok.substring(1, tok.length - 1);
+                // ***** その他のとき *****
+                } else {
+                    // (そのまま格納)
+                    code[code_len] = tok;
+                }
+                break;
+            case 1: // 組み込み関数
+                // ***** 関数の本体を格納 *****
+                func_name = tok.substring(1, tok.length - 1); // ダブルクォートを外す
+                code[code_len] = func_tbl[func_name].func;
+                break;
+            case 2: // 追加の組み込み関数
+                // ***** 関数の本体を格納 *****
+                func_name = tok.substring(1, tok.length - 1); // ダブルクォートを外す
+                code[code_len] = addfunc_tbl[func_name].func;
+                break;
+            case 10: // 変数
+                // ***** 変数情報を生成して格納 *****
+                i = 0;
+                var_kind = 0;
+                var_name = tok.substring(1, tok.length - 1);  // ダブルクォートを外す
+                var_scope = 0;
+                // ***** 接頭語のチェック *****
+                if (var_name.substring(0, 2) == "p\\") {
+                    i = 2;
+                    // (関数の仮引数かつポインタ)
+                    var_kind |= 8;
+                }
+                if (var_name.substring(i, i + 2) == "l\\") {
+                    i += 2;
+                    // (ローカル変数)
+                    var_kind |= 1;
+                }
+                // ***** 接頭語を削除する *****
+                var_name = var_name.substring(i);
+                // ***** 変数情報の生成 *****
+                code[code_len] = make_var_info(var_kind, var_name, var_scope);
+                break;
+            default: // その他
+                debugpos1 = pos1;
+                debugpos2 = pos2;
+                throw new Error("コード生成エラー。");
+                // break;
         }
         // ***** コード情報の追加 *****
         // (デバッグ位置の情報を格納)
@@ -3666,22 +3656,6 @@ var Interpreter;
         // ***** コード文字列の追加 *****
         // (そのまま格納)
         code_str[code_len++] = tok;
-    }
-
-    // ***** エラー場所の表示 *****
-    function show_err_place(debugpos1, debugpos2) {
-        var i;
-        var msg;
-
-        msg = "エラー場所: " + token_line[debugpos1] + "行: ";
-        if (debugpos2 <= debugpos1) { debugpos2 = debugpos1 + 1; } // エラーが出ない件の対策
-        for (i = debugpos1; i < debugpos2; i++) {
-            if (i >= 0 && i < token_len) {
-                msg += token[i] + " ";
-            }
-        }
-        if (debugpos2 >= token_len) { msg += "- プログラム最後まで検索したが文が完成せず。"; }
-        DebugShow(msg + "\n");
     }
 
     // ***** 変数情報の生成 *****
