@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_plugin0001.js
-// 2017-4-27 v11.00
+// 2017-4-29 v11.04
 
 
 // A Plugin to add functions to SPALM Web Interpreter
@@ -2905,8 +2905,7 @@ var Plugin0001;
 
 // ***** 10進数計算用クラス(整数のみ対応)(staticクラス) *****
 var DigitCalc = (function () {
-    // ***** コンストラクタ *****
-    // ***** (staticクラスのため未使用) *****
+    // ***** コンストラクタ(staticクラスのため未使用) *****
     function DigitCalc() { }
 
     // ***** 定数 *****
@@ -3319,8 +3318,7 @@ var DigitCalc = (function () {
 
 // ***** 文字列の全角半角変換用クラス(staticクラス) *****
 var ConvZenHan = (function () {
-    // ***** コンストラクタ *****
-    // ***** (staticクラスのため未使用) *****
+    // ***** コンストラクタ(staticクラスのため未使用) *****
     function ConvZenHan() { }
 
     // ***** 内部変数 *****
@@ -3681,8 +3679,7 @@ var ConvZenHan = (function () {
 
 // ***** 領域塗りつぶし用クラス(staticクラス) *****
 var FloodFill = (function () {
-    // ***** コンストラクタ *****
-    // ***** (staticクラスのため未使用) *****
+    // ***** コンストラクタ(staticクラスのため未使用) *****
     function FloodFill() { }
 
     // ***** 内部変数 *****

@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2017-4-29 v11.03
+// 2017-4-29 v11.04
 
 
 // SPALM Web Interpreter
@@ -2964,17 +2964,17 @@ var Interpreter;
     }
 
     // ***** 変数名のコンパイル *****
-    // (var_ckind  変数のコンパイル時の種別
-    //               (=0:通常,
-    //                =1:関数の仮引数,
-    //                =2:関数の仮引数かつポインタ))
-    function c_varname(tok_start, tok_end, var_ckind) {
+    // (var_nm_kind  変数名の種別
+    //                 (=0:通常,
+    //                  =1:関数の仮引数,
+    //                  =2:関数の仮引数かつポインタ))
+    function c_varname(tok_start, tok_end, var_nm_kind) {
         var i;
         var var_name;
         var loc_flag;
 
         // ***** 引数のチェック *****
-        if (var_ckind == null) { var_ckind = 0; }
+        if (var_nm_kind == null) { var_nm_kind = 0; }
         // ***** 変数名の取得 *****
         i = tok_start;
         // debugpos1 = i;
@@ -2984,12 +2984,12 @@ var Interpreter;
         if (var_name == "*") {
             if (token[i] == "(") {
                 i++;
-                i = c_varname(i, tok_end, (var_ckind > 0) ? 2 : 0);
+                i = c_varname(i, tok_end, (var_nm_kind > 0) ? 2 : 0);
                 token_match(")", i++);
             } else {
-                i = c_varname(i, tok_end, (var_ckind > 0) ? 2 : 0);
+                i = c_varname(i, tok_end, (var_nm_kind > 0) ? 2 : 0);
             }
-            if (var_ckind == 0) {
+            if (var_nm_kind == 0) {
                 // ***** ポインタの設定 *****
                 code_push("pointer", debugpos1, i);
                 // ***** 配列変数のとき *****
@@ -3014,7 +3014,7 @@ var Interpreter;
         } else {
             checkvarname(var_name, i);
             if (use_local_vars) {
-                if (var_ckind == 0) {
+                if (var_nm_kind == 0) {
                     // ***** ローカル文フラグのチェック *****
                     // ***** ローカル変数名情報のチェック *****
                     if (locstatement_flag ||
@@ -3037,7 +3037,7 @@ var Interpreter;
             locvarnames_stack[locvarnames_stack.length - 1][var_name.substring(2)] = true;
         }
         // ***** 関数の仮引数かつポインタのとき *****
-        if (use_local_vars && var_ckind == 2) {
+        if (use_local_vars && var_nm_kind == 2) {
             var_name = "p\\" + var_name;
         }
         // ***** 変数名の設定 *****
@@ -3580,10 +3580,10 @@ var Interpreter;
     }
 
     // ***** コード追加 *****
-    // (code_kind  コード種別(=0:通常,
-    //                        =1:組み込み関数,
-    //                        =2:追加の組み込み関数,
-    //                        =10:変数))
+    // (code_kind  コードの種別(=0:通常,
+    //                          =1:組み込み関数,
+    //                          =2:追加の組み込み関数,
+    //                          =10:変数))
     function code_push(tok, pos1, pos2, code_kind) {
         var i;
         var var_kind;
@@ -3696,8 +3696,7 @@ var Interpreter;
     // (グローバル/ローカル変数の内容を保持するクラス)
     // (使用前に Vars.init() で初期化が必要)
     var Vars = (function () {
-        // ***** コンストラクタ *****
-        // ***** (staticクラスのため未使用) *****
+        // ***** コンストラクタ(staticクラスのため未使用) *****
         function Vars() { }
 
         // ***** 内部変数 *****
@@ -6494,8 +6493,7 @@ var Interpreter;
 
 // ***** ファイルダウンロード用クラス(staticクラス) *****
 var Download = (function () {
-    // ***** コンストラクタ *****
-    // ***** (staticクラスのため未使用) *****
+    // ***** コンストラクタ(staticクラスのため未使用) *****
     function Download() { }
 
     // ***** Blobオブジェクトの取得 *****
