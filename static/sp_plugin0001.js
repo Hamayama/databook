@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_plugin0001.js
-// 2017-4-29 v11.04
+// 2017-4-30 v11.05
 
 
 // A Plugin to add functions to SPALM Web Interpreter
@@ -442,7 +442,7 @@ var Plugin0001;
             if (missile.hasOwnProperty(a1)) {
                 delete missile[a1];
             }
-            // for (var prop_name in missile) { DebugShow(prop_name + " "); } DebugShow("\n");
+            // for (var prop in missile) { DebugShow(prop + " "); } DebugShow("\n");
             return nothing;
         });
         add_one_func_tbl("dissand", 1, [], function (param) {
@@ -452,7 +452,7 @@ var Plugin0001;
             if (sand_obj.hasOwnProperty(a1)) {
                 delete sand_obj[a1];
             }
-            // for (var prop_name in sand_obj) { DebugShow(prop_name + " "); } DebugShow("\n");
+            // for (var prop in sand_obj) { DebugShow(prop + " "); } DebugShow("\n");
             return nothing;
         });
         add_one_func_tbl("disstrimg", 1, [], function (param) {
@@ -467,7 +467,7 @@ var Plugin0001;
             if (stimg.hasOwnProperty(ch)) {
                 delete stimg[ch];
             }
-            // for (var prop_name in stimg) { DebugShow(prop_name + " "); } DebugShow("\n");
+            // for (var prop in stimg) { DebugShow(prop + " "); } DebugShow("\n");
             return nothing;
         });
         add_one_func_tbl("drawshape", 1, [], function (param) {
