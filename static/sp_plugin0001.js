@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_plugin0001.js
-// 2017-4-30 v11.05
+// 2017-5-1 v12.00
 
 
 // A Plugin to add functions to SPALM Web Interpreter
@@ -39,7 +39,6 @@ var Plugin0001;
     var audplayer = {};  // 音楽再生用      (連想配列オブジェクト)
     var sand_obj = {};   // 砂シミュレート用(連想配列オブジェクト)
     var aud_mode;        // 音楽モード      (=0:音楽なし,=1:音楽あり,=2:音楽演奏機能有無による)
-    var nothing = 0;     // 戻り値なしの組み込み関数の戻り値
 
     // ***** インタープリター参照用 *****
     // (必要に応じてインタープリターの内部情報を参照する)
@@ -54,6 +53,7 @@ var Plugin0001;
     var conv_axis_point = Interpreter.conv_axis_point;
     var max_array_size = Interpreter.max_array_size;
     var max_str_size = Interpreter.max_str_size;
+    var nothing = Interpreter.nothing;
     var get_can = Interpreter.get_can;
     var get_ctx = Interpreter.get_ctx;
     var get_imgvars = Interpreter.get_imgvars;
@@ -2163,7 +2163,7 @@ var Plugin0001;
             var x1, y1;
             var st1;
 
-            a1 = get_var_infoy(param[0]);
+            a1 = get_var_info(param[0]);
             a2 = Math.trunc(param[1]);
             a3 = Math.trunc(param[2]);
             x1 = Math.trunc(param[3]);

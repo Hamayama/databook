@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2017-4-30 v11.05
+// 2017-5-1 v12.00
 
 
 // SPALM Web Interpreter
@@ -1711,7 +1711,7 @@ var Interpreter;
 
     // ***** 文(ステートメント)のコンパイル *****
     function c_statement(tok_start, tok_end, break_lbl, continue_lbl) {
-        var i, j, k, k2;
+        var i, j, k;
         var ch;
         var tok;
         var loc_flag;
@@ -1896,13 +1896,7 @@ var Interpreter;
                 // ***** 本体の取得 *****
                 token_match("{", i++);
                 func_stm = i;
-                k = 1;
-                while (i < tok_end) {
-                    if (token[i] == "{") { k++; }
-                    if (token[i] == "}") { k--; }
-                    if (k == 0) { break; }
-                    i++;
-                }
+                i = block_search(i, tok_end, "{", "}");
                 token_match("}", i++);
                 func_end = i;
                 // ***** 文(ステートメント)のコンパイル(再帰的に実行) *****
@@ -1985,23 +1979,17 @@ var Interpreter;
                 i++;
                 // ***** 解析とアドレスの取得 *****
                 j = i;
-                token_match("(", i++);
                 // 式
+                token_match("(", i++);
                 switch_exp = i;
-                k = 1;
                 if (token[i] == ")") {
                     debugpos2 = i + 1;
                     throw new Error("switch文の条件式がありません。");
                 }
-                while (i < tok_end) {
-                    if (token[i] == "(") { k++; }
-                    if (token[i] == ")") { k--; }
-                    if (k == 0) { break; }
-                    i++;
-                }
+                i = block_search(i, tok_end, "(", ")");
                 token_match(")", i++);
-                token_match("{", i++);
                 // 文
+                token_match("{", i++);
                 switch_stm = i;
                 k = 1;
                 switch_case_exp = [];
@@ -2020,13 +2008,7 @@ var Interpreter;
                                 debugpos2 = i + 1;
                                 throw new Error("case文の値がありません。");
                             }
-                            k2 = 1; // caseで式を使用可能とする
-                            while (i < tok_end) {
-                                if (token[i] == "?") { k2++; }
-                                if (token[i] == ":") { k2--; }
-                                if (k2 == 0) { break; }
-                                i++;
-                            }
+                            i = block_search(i, tok_end, "?", ":");
                             token_match(":", i++);
                             // 文
                             switch_case_stm.push(i);
@@ -2052,8 +2034,7 @@ var Interpreter;
                 i = c_expression2(switch_exp, switch_stm - 3);
                 for (switch_case_no = 0; switch_case_no < switch_case_exp.length; switch_case_no++) {
                     if (switch_case_stm[switch_case_no] == switch_default_stm) { continue; }
-                    // (caseの式はカンマ区切りなしに変更)
-                    // i = c_expression2(switch_case_exp[switch_case_no], switch_case_stm[switch_case_no] - 2);
+                    // (caseの式はカンマ区切りなし)
                     i = c_expression(switch_case_exp[switch_case_no], switch_case_stm[switch_case_no] - 2);
                     code_push("switchgoto", debugpos1, i);
                     code_push('"switch_case_stm' + switch_case_no + '\\' + j + '"', debugpos1, i);
@@ -2094,31 +2075,19 @@ var Interpreter;
                 i++;
                 // ***** 解析とアドレスの取得 *****
                 j = i;
-                token_match("(", i++);
                 // 式
+                token_match("(", i++);
                 if_exp = i;
-                k = 1;
                 if (token[i] == ")") {
                     debugpos2 = i + 1;
                     throw new Error("if文の条件式がありません。");
                 }
-                while (i < tok_end) {
-                    if (token[i] == "(") { k++; }
-                    if (token[i] == ")") { k--; }
-                    if (k == 0) { break; }
-                    i++;
-                }
+                i = block_search(i, tok_end, "(", ")");
                 token_match(")", i++);
-                token_match("{", i++);
                 // 文
+                token_match("{", i++);
                 if_stm = i;
-                k = 1;
-                while (i < tok_end) {
-                    if (token[i] == "{") { k++; }
-                    if (token[i] == "}") { k--; }
-                    if (k == 0) { break; }
-                    i++;
-                }
+                i = block_search(i, tok_end, "{", "}");
                 token_match("}", i++);
                 if_stm_end = i;
                 // elsifまたはelse
@@ -2131,31 +2100,19 @@ var Interpreter;
                     if (token[i] == "elsif") {
                         debugpos1 = i; // エラー表示位置調整
                         i++;
-                        token_match("(", i++);
                         // 式
+                        token_match("(", i++);
                         elsif_exp.push(i);
-                        k = 1;
                         if (token[i] == ")") {
                             debugpos2 = i + 1;
                             throw new Error("elsif文の条件式がありません。");
                         }
-                        while (i < tok_end) {
-                            if (token[i] == "(") { k++; }
-                            if (token[i] == ")") { k--; }
-                            if (k == 0) { break; }
-                            i++;
-                        }
+                        i = block_search(i, tok_end, "(", ")");
                         token_match(")", i++);
-                        token_match("{", i++);
                         // 文
+                        token_match("{", i++);
                         elsif_stm.push(i);
-                        k = 1;
-                        while (i < tok_end) {
-                            if (token[i] == "{") { k++; }
-                            if (token[i] == "}") { k--; }
-                            if (k == 0) { break; }
-                            i++;
-                        }
+                        i = block_search(i, tok_end, "{", "}");
                         token_match("}", i++);
                         elsif_stm_end.push(i);
                         continue;
@@ -2164,16 +2121,10 @@ var Interpreter;
                     if (token[i] == "else") {
                         debugpos1 = i; // エラー表示位置調整
                         i++;
-                        token_match("{", i++);
                         // 文
+                        token_match("{", i++);
                         else_stm = i;
-                        k = 1;
-                        while (i < tok_end) {
-                            if (token[i] == "{") { k++; }
-                            if (token[i] == "}") { k--; }
-                            if (k == 0) { break; }
-                            i++;
-                        }
+                        i = block_search(i, tok_end, "{", "}");
                         token_match("}", i++);
                         break;
                     }
@@ -2244,47 +2195,23 @@ var Interpreter;
                 i++;
                 // ***** 解析とアドレスの取得 *****
                 j = i;
-                token_match("(", i++);
                 // 式1
+                token_match("(", i++);
                 for_exp1 = i;
-                k = 1;
-                while (i < tok_end) {
-                    if (sp_compati_flag && token[i] == "?") { k++; }
-                    if (token[i] == ";") { k--; }
-                    if (k == 0) { break; }
-                    i++;
-                }
+                i = block_search(i, tok_end, "?", ";", true);
                 token_match(";", i++);
                 // 式2
                 for_exp2 = i;
-                k = 1;
-                while (i < tok_end) {
-                    if (sp_compati_flag && token[i] == "?") { k++; }
-                    if (token[i] == ";") { k--; }
-                    if (k == 0) { break; }
-                    i++;
-                }
+                i = block_search(i, tok_end, "?", ";", true);
                 token_match(";", i++);
                 // 式3
                 for_exp3 = i;
-                k = 1;
-                while (i < tok_end) {
-                    if (token[i] == "(") { k++; }
-                    if (token[i] == ")") { k--; }
-                    if (k == 0) { break; }
-                    i++;
-                }
+                i = block_search(i, tok_end, "(", ")");
                 token_match(")", i++);
-                token_match("{", i++);
                 // 文
+                token_match("{", i++);
                 for_stm = i;
-                k = 1;
-                while (i < tok_end) {
-                    if (token[i] == "{") { k++; }
-                    if (token[i] == "}") { k--; }
-                    if (k == 0) { break; }
-                    i++;
-                }
+                i = block_search(i, tok_end, "{", "}");
                 token_match("}", i++);
                 // 終了
                 for_end = i;
@@ -2329,31 +2256,19 @@ var Interpreter;
                 i++;
                 // ***** 解析とアドレスの取得 *****
                 j = i;
-                token_match("(", i++);
                 // 式
+                token_match("(", i++);
                 while_exp = i;
-                k = 1;
                 if (token[i] == ")") {
                     debugpos2 = i + 1;
                     throw new Error("while文の条件式がありません。");
                 }
-                while (i < tok_end) {
-                    if (token[i] == "(") { k++; }
-                    if (token[i] == ")") { k--; }
-                    if (k == 0) { break; }
-                    i++;
-                }
+                i = block_search(i, tok_end, "(", ")");
                 token_match(")", i++);
-                token_match("{", i++);
                 // 文
+                token_match("{", i++);
                 while_stm = i;
-                k = 1;
-                while (i < tok_end) {
-                    if (token[i] == "{") { k++; }
-                    if (token[i] == "}") { k--; }
-                    if (k == 0) { break; }
-                    i++;
-                }
+                i = block_search(i, tok_end, "{", "}");
                 token_match("}", i++);
                 // 終了
                 while_end = i;
@@ -2382,36 +2297,25 @@ var Interpreter;
                 i++;
                 // ***** 解析とアドレスの取得 *****
                 j = i;
-                token_match("{", i++);
                 // 文
+                token_match("{", i++);
                 do_stm = i;
-                k = 1;
-                while (i < tok_end) {
-                    if (token[i] == "{") { k++; }
-                    if (token[i] == "}") { k--; }
-                    if (k == 0) { break; }
-                    i++;
-                }
+                i = block_search(i, tok_end, "{", "}");
                 token_match("}", i++);
+                // キーワード
                 if (token[i] != "while") {
                     debugpos2 = i + 1;
                     throw new Error("do文のwhileがありません。");
                 }
                 i++;
-                token_match("(", i++);
                 // 式
+                token_match("(", i++);
                 do_exp = i;
-                k = 1;
                 if (token[i] == ")") {
                     debugpos2 = i + 1;
                     throw new Error("do文の条件式がありません。");
                 }
-                while (i < tok_end) {
-                    if (token[i] == "(") { k++; }
-                    if (token[i] == ")") { k--; }
-                    if (k == 0) { break; }
-                    i++;
-                }
+                i = block_search(i, tok_end, "(", ")");
                 token_match(")", i++);
                 // 終了
                 do_end = i;
@@ -3391,6 +3295,23 @@ var Interpreter;
         }
         // ***** 加算されないので注意 *****
         // i++;
+    }
+
+    // ***** ブロックの検索 *****
+    // (ch1とch2に囲まれたブロックを検索して 終了位置を返す
+    //  (ブロックのネストにも対応))
+    function block_search(tok_start, tok_end, ch1, ch2, disable_ch1) {
+        var i, nest;
+
+        i = tok_start;
+        nest = 1; // 先頭のch1は処理済みを前提とする
+        while (i < tok_end) {
+            if (token[i] == ch1 && (!disable_ch1 || sp_compati_flag)) { nest++; }
+            if (token[i] == ch2) { nest--; }
+            if (nest == 0) { break; }
+            i++;
+        }
+        return i;
     }
 
     // ***** エラー場所の表示 *****
@@ -6311,6 +6232,7 @@ var Interpreter;
     Interpreter.conv_axis_point = conv_axis_point;
     Interpreter.max_array_size = max_array_size;
     Interpreter.max_str_size = max_str_size;
+    Interpreter.nothing = nothing;
     Interpreter.get_can = function () { return can; };
     Interpreter.get_ctx = function () { return ctx; };
     Interpreter.get_imgvars = function () { return imgvars; };
