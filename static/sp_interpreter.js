@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2017-5-1 v12.00
+// 2017-5-1 v12.01
 
 
 // SPALM Web Interpreter
@@ -2037,12 +2037,12 @@ var Interpreter;
                     // (caseの式はカンマ区切りなし)
                     i = c_expression(switch_case_exp[switch_case_no], switch_case_stm[switch_case_no] - 2);
                     code_push("switchgoto", debugpos1, i);
-                    code_push('"switch_case_stm' + switch_case_no + '\\' + j + '"', debugpos1, i);
+                    code_push('"case' + switch_case_no + '\\' + j + '"', debugpos1, i);
                 }
                 code_push("pop", debugpos1, i); // 式の値を捨てる
                 code_push("goto", debugpos1, i);
                 if (switch_default_stm >= 0) {
-                    code_push('"switch_default_stm\\' + j + '"', debugpos1, i);
+                    code_push('"default\\' + j + '"', debugpos1, i);
                 } else {
                     code_push('"switch_end\\' + j + '"', debugpos1, i);
                 }
@@ -2050,9 +2050,9 @@ var Interpreter;
                 for (switch_case_no = 0; switch_case_no < switch_case_exp.length; switch_case_no++) {
                     code_push("label", debugpos1, i);
                     if (switch_case_stm[switch_case_no] == switch_default_stm) {
-                        code_push('"switch_default_stm\\' + j + '"', debugpos1, i);
+                        code_push('"default\\' + j + '"', debugpos1, i);
                     } else {
-                        code_push('"switch_case_stm' + switch_case_no + '\\' + j + '"', debugpos1, i);
+                        code_push('"case' + switch_case_no + '\\' + j + '"', debugpos1, i);
                     }
                     if (switch_case_no < switch_case_exp.length - 1) {
                         switch_case_stm_end = switch_case_exp[switch_case_no + 1];
@@ -2139,9 +2139,9 @@ var Interpreter;
                 i = c_expression2(if_exp, if_stm - 3);
                 code_push("ifnotgoto", debugpos1, i);
                 if (elsif_exp.length > 0) {
-                    code_push('"elsif_exp0\\' + j + '"', debugpos1, i);
+                    code_push('"elsif0\\' + j + '"', debugpos1, i);
                 } else if (else_stm >= 0) {
-                    code_push('"else_stm\\' + j + '"', debugpos1, i);
+                    code_push('"else\\' + j + '"', debugpos1, i);
                 } else {
                     code_push('"if_end\\' + j + '"', debugpos1, i);
                 }
@@ -2156,13 +2156,13 @@ var Interpreter;
                 for (elsif_no = 0; elsif_no < elsif_exp.length; elsif_no++) {
                     // 式
                     code_push("label", debugpos1, i);
-                    code_push('"elsif_exp' + elsif_no + '\\' + j + '"', debugpos1, i);
+                    code_push('"elsif' + elsif_no + '\\' + j + '"', debugpos1, i);
                     i = c_expression2(elsif_exp[elsif_no], elsif_stm[elsif_no] - 3);
                     code_push("ifnotgoto", debugpos1, i);
                     if (elsif_exp.length > elsif_no + 1) {
-                        code_push('"elsif_exp' + (elsif_no + 1) + '\\' + j + '"', debugpos1, i);
+                        code_push('"elsif' + (elsif_no + 1) + '\\' + j + '"', debugpos1, i);
                     } else if (else_stm >= 0) {
-                        code_push('"else_stm\\' + j + '"', debugpos1, i);
+                        code_push('"else\\' + j + '"', debugpos1, i);
                     } else {
                         code_push('"if_end\\' + j + '"', debugpos1, i);
                     }
@@ -2178,7 +2178,7 @@ var Interpreter;
                 if (else_stm >= 0) {
                     // 文
                     code_push("label", debugpos1, i);
-                    code_push('"else_stm\\' + j + '"', debugpos1, i);
+                    code_push('"else\\' + j + '"', debugpos1, i);
                     // ***** 文(ステートメント)のコンパイル(再帰的に実行) *****
                     i = c_statement(else_stm, if_end - 1, break_lbl, continue_lbl);
                 }
@@ -4427,6 +4427,31 @@ var Interpreter;
             if (a1 != "") { a1 = "('" + a1 + "')"; }
             throw new Error("dbgstop 命令で停止しました。" + a1);
             // return nothing;
+        });
+        make_one_func_tbl("dbgtest", 3, [], function (param) {
+            var num;
+            var a1, a2, a3, a4;
+            var text_st;
+
+            a1 = String(param[0]);
+            a2 = param[1];
+            a3 = param[2];
+            if (param.length <= 3) {
+                a4 = 0;
+            } else {
+                a4 = Math.trunc(param[3]);
+            }
+            if (a2 == a3) {
+                num = 0;
+                text_st = "OK";
+            } else {
+                num = 1;
+                text_st = "NG (a = " + JSON.stringify(a2) + " , b = " + JSON.stringify(a3) + ")";
+            }
+            if (a2 != a3 || a4 == 0) {
+                DebugShow(a1 + " : " + text_st + "\n");
+            }
+            return num;
         });
         make_one_func_tbl("dcos", 1, [], function (param) {
             var num;
