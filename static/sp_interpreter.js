@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2017-5-1 v12.01
+// 2017-5-2 v12.02
 
 
 // SPALM Web Interpreter
@@ -1151,8 +1151,11 @@ var Interpreter;
                 case 8: // array
                     num = stack.pop();
                     var_info = stack.pop();
-                    var_info2 = duplicate_var_info(var_info); // 変数情報を変更する場合は複製が必要
+                    // var_info2 = duplicate_var_info(var_info); // 変数情報を変更する場合は複製が必要
+                    var_info2 = {};
+                    var_info2.kind = var_info.kind;
                     var_info2.name = var_info.name + "$" + num;
+                    var_info2.scope = var_info.scope;
                     stack.push(var_info2);
                     break;
                 case 9: // store
@@ -1512,8 +1515,10 @@ var Interpreter;
                         if (!(num.kind & 2) && (num.kind & 1)) {
                             // (ローカル変数のスコープをさかのぼれるように
                             //  「関数の引数かつポインタ」を設定)
-                            var_info2 = duplicate_var_info(num); // 変数情報を変更する場合は複製が必要
-                            var_info2.kind |= 2;
+                            // var_info2 = duplicate_var_info(num); // 変数情報を変更する場合は複製が必要
+                            var_info2 = {};
+                            var_info2.kind = num.kind | 2;
+                            var_info2.name = num.name;
                             var_info2.scope = Vars.getLocalScopeNum() - 1;
                             Vars.setVarValue(var_info, var_info2);
                             break;
@@ -2415,7 +2420,8 @@ var Interpreter;
                 code_push("label", debugpos1, i);
                 code_push('"tri_zero\\' + j + '"', debugpos1, i);
                 i = c_expression(i, tok_end, operator_pri(tok) - 1); // 右結合
-                // (互換モードのときは、末尾のセミコロン「;」が必要(過去との互換性維持のため))
+                // (互換モードのときは、3項演算子「?:」の末尾に
+                //  セミコロン「;」が必要(過去との互換性維持のため))
                 if (sp_compati_flag) {
                     token_match(";", i++);
                 }
@@ -2741,40 +2747,42 @@ var Interpreter;
             return i;
         }
         // ***** グローバル/ローカル変数の指定のチェック *****
+        loc_flag = false;
         if (var_name == "global" || var_name == "glb" || var_name == "local" || var_name == "loc") {
             loc_flag = (var_name.charAt(0) == "l");
             var_name = token[i++];
             checkvarname(var_name, i);
-            if (use_local_vars && loc_flag) {
-                var_name = "l\\" + var_name;
-            }
         } else {
             checkvarname(var_name, i);
-            if (use_local_vars) {
-                if (var_nm_kind == 0) {
-                    // ***** ローカル文フラグのチェック *****
-                    // ***** ローカル変数名情報のチェック *****
-                    if (locstatement_flag ||
-                        (locvarnames_stack.length > 0 &&
-                         hasOwn.call(locvarnames_stack[locvarnames_stack.length - 1], var_name))) {
-                        var_name = "l\\" + var_name;
-                        // ***** ローカル文フラグOFF *****
-                        if (locstatement_flag) { locstatement_flag = false; }
-                    }
-                } else {
-                    // ***** 関数の仮引数のとき *****
-                    // (デフォルトでローカル変数とする)
-                    var_name = "l\\" + var_name;
+            if (var_nm_kind == 0) {
+                // ***** ローカル文フラグのチェック *****
+                // ***** ローカル変数名情報のチェック *****
+                if (use_local_vars &&
+                    (locstatement_flag ||
+                     (locvarnames_stack.length > 0 &&
+                      hasOwn.call(locvarnames_stack[locvarnames_stack.length - 1], var_name)))) {
+                    loc_flag = true;
+                    // ***** ローカル文フラグOFF *****
+                    if (locstatement_flag) { locstatement_flag = false; }
                 }
+            } else {
+                // ***** 関数の仮引数のとき *****
+                // (デフォルトでローカル変数とする)
+                loc_flag = true;
             }
         }
         // ***** ローカル変数名情報の更新 *****
-        if (use_local_vars &&
-            locvarnames_stack.length > 0 && var_name.substring(0, 2) == "l\\" &&
-            !hasOwn.call(locvarnames_stack[locvarnames_stack.length - 1], var_name.substring(2))) {
-            locvarnames_stack[locvarnames_stack.length - 1][var_name.substring(2)] = true;
+        if (use_local_vars && loc_flag &&
+            (locvarnames_stack.length > 0 &&
+             !hasOwn.call(locvarnames_stack[locvarnames_stack.length - 1], var_name))) {
+            locvarnames_stack[locvarnames_stack.length - 1][var_name] = true;
         }
-        // ***** 関数の仮引数かつポインタのとき *****
+        // ***** 接頭語を付加する *****
+        // (ローカル変数)
+        if (use_local_vars && loc_flag) {
+            var_name = "l\\" + var_name;
+        }
+        // (関数の仮引数かつポインタ)
         if (use_local_vars && var_nm_kind == 2) {
             var_name = "p\\" + var_name;
         }
@@ -4387,21 +4395,14 @@ var Interpreter;
             return nothing;
         });
         make_one_func_tbl("dbgpointer", 1, [0], function (param) {
-            var a1, a2;
+            var num;
+            var a1;
             var var_info;
-            var text_st;
 
             a1 = get_var_info(param[0]);
-            if (param.length <= 1) {
-                a2 = 1;
-            } else {
-                a2 = Math.trunc(param[1]);
-            }
             var_info = Vars.getVarValue(a1);
-            text_st = a1.name + " = " + JSON.stringify(var_info);
-            if (a2 != 0) { text_st += "\n"; }
-            DebugShow(text_st);
-            return nothing;
+            num = a1.name + " = " + JSON.stringify(var_info);
+            return num;
         });
         make_one_func_tbl("dbgprint", 1, [], function (param) {
             var a1, a2;
@@ -5707,7 +5708,7 @@ var Interpreter;
             if (param.length <= 1) {
                 a2 = 0;
             } else {
-                a2 = Math.trunc(param[0]);
+                a2 = Math.trunc(param[1]);
             }
             save_data[a2] = a1;
             return nothing;
