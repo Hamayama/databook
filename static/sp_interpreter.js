@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2017-5-2 v12.02
+// 2017-5-3 v12.03
 
 
 // SPALM Web Interpreter
@@ -900,9 +900,8 @@ var Interpreter;
         try {
             tokenize();
         } catch (ex1) {
-            DebugShow("token:(" + token_len + "個): ");
             msg = token.join(" ");
-            DebugShow(msg + "\n");
+            DebugShow("token:(" + token_len + "個): " + msg + "\n");
             DebugShow("tokenize: " + ex1.message + "\n");
             debugpos1 = token_len - 1;
             if (debugpos1 < 0) { debugpos1 = 0; }
@@ -915,9 +914,8 @@ var Interpreter;
         try {
             preprocess();
         } catch (ex2) {
-            DebugShow("token:(" + token_len + "個): ");
             msg = token.join(" ");
-            DebugShow(msg + "\n");
+            DebugShow("token:(" + token_len + "個): " + msg + "\n");
             DebugShow("preprocess: " + ex2.message + ": debugpos=" + debugpos1 + "\n");
             show_err_place(debugpos1, debugpos2);
             DebugShow("実行終了\n");
@@ -929,24 +927,20 @@ var Interpreter;
         try {
             compile();
         } catch (ex3) {
-            DebugShow("token:(" + token_len + "個): ");
             msg = token.join(" ");
-            DebugShow(msg + "\n");
-            DebugShow("code :(" + code_len + "個): ");
+            DebugShow("token:(" + token_len + "個): " + msg + "\n");
             msg = code_str.join(" ");
-            DebugShow(msg + "\n");
+            DebugShow("code :(" + code_len + "個): " + msg + "\n");
             DebugShow("compile: " + ex3.message + ": debugpos=" + debugpos1 + "\n");
             show_err_place(debugpos1, debugpos2);
             DebugShow("実行終了\n");
             return ret;
         }
         if (debug_mode == 1) {
-            DebugShow("token:(" + token_len + "個): ");
             msg = token.join(" ");
-            DebugShow(msg + "\n");
-            DebugShow("code :(" + code_len + "個): ");
+            DebugShow("token:(" + token_len + "個): " + msg + "\n");
             msg = code_str.join(" ");
-            DebugShow(msg + "\n");
+            DebugShow("code :(" + code_len + "個): " + msg + "\n");
         }
         // ***** アドレス解決 *****
         debugpos1 = 0;
@@ -962,15 +956,11 @@ var Interpreter;
             return ret;
         }
         // if (debug_mode == 1) {
-        //     DebugShow("code2:(" + code_len + "個): " + JSON.stringify(code, function (k, v) {
-        //         var func_name;
-        //         if (typeof (v) == "function") {
-        //             func_name = code_str[(+k)];
-        //             func_name = func_name.substring(1, func_name.length - 1);
-        //             return "func\\" + func_name;
-        //         }
-        //         return v;
-        //     }) + "\n");
+        //     msg = "";
+        //     for (var i = 0; i < code_len; i++) {
+        //         msg += code_tostr(code[i], i) + " ";
+        //     }
+        //     DebugShow("codeX:(" + code_len + "個): " + msg + "\n");
         // }
         // ***** 継続実行 *****
         // vars = {};
@@ -1144,7 +1134,7 @@ var Interpreter;
                     var_info = stack.pop();
                     var_info2 = Vars.getVarValue(var_info);
                     if (var_info2.kind == null) {
-                        throw new Error("ポインタの指す先が不正です。(変数のアドレスではなく、'" + var_info2 + "' が入っていました)");
+                        throw new Error("ポインタの指す先が不正です。(変数のアドレスではなく、'" + code_tostr(var_info2) + "' が入っていました)");
                     }
                     stack.push(var_info2);
                     break;
@@ -1510,7 +1500,7 @@ var Interpreter;
                     // ***** 関数の仮引数かつポインタのとき *****
                     if (use_local_vars && (var_info.kind & 8)) {
                         if (num.kind == null) {
-                            throw new Error("ポインタの指す先が不正です。(変数のアドレスではなく、'" + num + "' が入っていました)");
+                            throw new Error("ポインタの指す先が不正です。(変数のアドレスではなく、'" + code_tostr(num) + "' が入っていました)");
                         }
                         if (!(num.kind & 2) && (num.kind & 1)) {
                             // (ローカル変数のスコープをさかのぼれるように
@@ -1531,7 +1521,7 @@ var Interpreter;
                     break;
                 default:
                     // ***** 命令コードエラー *****
-                    throw new Error("未定義の命令コード (" + cod + ") が見つかりました。");
+                    throw new Error("未定義の命令コード (" + code_tostr(cod) + ") が見つかりました。");
                     // break;
             }
             // ***** 各種フラグのチェックと処理時間の測定 *****
@@ -1720,7 +1710,7 @@ var Interpreter;
         var ch;
         var tok;
         var loc_flag;
-        var var_name;
+        var var_obj;
         var func_name, func_stm, func_end;
         var param_num;
 
@@ -1840,8 +1830,11 @@ var Interpreter;
                     code_push("pop", debugpos1, i);
                     // ***** 変数名のチェック *****
                     if (j < code_len) {
-                        var_name = to_global(code[j]);
-                        checkvarname(var_name, i);
+                        var_obj = code[j];
+                        if (var_obj.kind == null) {
+                            debugpos2 = i;
+                            throw new Error("変数名が不正です。('" + code_tostr(var_obj) + "')");
+                        }
                     }
                     // ***** ローカル文フラグOFF *****
                     if (use_local_vars && loc_flag) { locstatement_flag = false; }
@@ -3425,6 +3418,20 @@ var Interpreter;
         code_str[code_len++] = tok;
     }
 
+    // ***** コードの文字列化 *****
+    function code_tostr(cod, i) {
+        var func_name;
+
+        // ***** 関数の本体のとき *****
+        if (typeof (cod) == "function") {
+            func_name = (i != null) ? ":" + code_str[i] : "";
+            func_name = "<function" + func_name + ">";
+            return func_name;
+        }
+        // ***** その他のとき *****
+        return JSON.stringify(cod);
+    }
+
     // ***** 変数情報の生成 *****
     // (グローバル/ローカル変数にアクセスするための情報を生成する)
     // (変数情報は、生成後に変更してはいけない(複数回参照されるので不具合のもとになる)
@@ -4401,7 +4408,7 @@ var Interpreter;
 
             a1 = get_var_info(param[0]);
             var_info = Vars.getVarValue(a1);
-            num = a1.name + " = " + JSON.stringify(var_info);
+            num = a1.name + " = " + code_tostr(var_info);
             return num;
         });
         make_one_func_tbl("dbgprint", 1, [], function (param) {
@@ -4447,7 +4454,7 @@ var Interpreter;
                 text_st = "OK";
             } else {
                 num = 1;
-                text_st = "NG (a = " + JSON.stringify(a2) + " , b = " + JSON.stringify(a3) + ")";
+                text_st = "NG (a = " + code_tostr(a2) + " , b = " + code_tostr(a3) + ")";
             }
             if (a2 != a3 || a4 == 0) {
                 DebugShow(a1 + " : " + text_st + "\n");
@@ -4605,7 +4612,7 @@ var Interpreter;
                     // ***** 画像を描画(画像変数→ターゲット) *****
                     ctx.drawImage(imgvars[a1].can, a4, a5, a6, a7, a2, a3, a6, a7);
                 } else {
-                    throw new Error("Image「" + a1 + "」がロードされていません。");
+                    throw new Error("Image変数 '" + a1 + "' は作成されていません。");
                 }
             }
             return nothing;
@@ -4642,7 +4649,7 @@ var Interpreter;
                     // ***** 画像を描画(画像変数→ターゲット) *****
                     ctx.drawImage(imgvars[a1].can, a2, a3);
                 } else {
-                    throw new Error("Image「" + a1 + "」がロードされていません。");
+                    throw new Error("Image変数 '" + a1 + "' は作成されていません。");
                 }
             }
             return nothing;
@@ -4672,7 +4679,7 @@ var Interpreter;
                     // (画像変数をコピー元とする)
                     can0 = imgvars[a1].can;
                 } else {
-                    throw new Error("Image「" + a1 + "」がロードされていません。");
+                    throw new Error("Image変数 '" + a1 + "' は作成されていません。");
                 }
             }
 
@@ -4755,7 +4762,7 @@ var Interpreter;
                     // ***** 画像を描画(画像変数→ターゲット) *****
                     ctx.drawImage(imgvars[a1].can, a6, a7, a8, a9, a2, a3, a4, a5);
                 } else {
-                    throw new Error("Image「" + a1 + "」がロードされていません。");
+                    throw new Error("Image変数 '" + a1 + "' は作成されていません。");
                 }
             }
             return nothing;
@@ -6130,7 +6137,7 @@ var Interpreter;
                 can = imgvars[a1].can;
                 ctx = imgvars[a1].ctx;
             } else {
-                throw new Error("Image「" + a1 + "」がロードされていません。");
+                throw new Error("Image変数 '" + a1 + "' は作成されていません。");
             }
             // ***** Canvasの各種設定のリセット *****
             reset_canvas_setting(ctx);

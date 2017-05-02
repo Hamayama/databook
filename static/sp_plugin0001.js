@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_plugin0001.js
-// 2017-5-1 v12.00
+// 2017-5-3 v12.03
 
 
 // A Plugin to add functions to SPALM Web Interpreter
@@ -1162,7 +1162,7 @@ var Plugin0001;
                 stimg[ch].off_x = a3;
                 stimg[ch].off_y = a4;
             } else {
-                throw new Error("Image「" + a1 + "」がロードされていません。");
+                throw new Error("Image変数 '" + a1 + "' は作成されていません。");
             }
             return nothing;
         });
@@ -1315,7 +1315,7 @@ var Plugin0001;
                 // ***** 画像データを格納 *****
                 imgvars[a1].ctx.putImageData(img_data, 0, 0);
             } else {
-                throw new Error("Image「" + a1 + "」がロードされていません。");
+                throw new Error("Image変数 '" + a1 + "' は作成されていません。");
             }
             return nothing;
         });
