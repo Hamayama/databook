@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2017-5-3 v12.04
+// 2017-5-3 v12.05
 
 
 // SPALM Web Interpreter
@@ -1025,7 +1025,6 @@ var Interpreter;
                 }
             }
         } catch (ex) {
-            // ***** エラー終了 *****
             // ***** プラグイン用の実行後処理 *****
             for (name in after_run_funcs) {
                 if (after_run_funcs.hasOwnProperty(name)) {
@@ -1048,7 +1047,6 @@ var Interpreter;
             // ***** 戻り値を返す *****
             return ret;
         }
-        // ***** 正常終了 *****
         // ***** プラグイン用の実行後処理 *****
         for (name in after_run_funcs) {
             if (after_run_funcs.hasOwnProperty(name)) {
@@ -2742,8 +2740,6 @@ var Interpreter;
                      (locvarnames_stack.length > 0 &&
                       hasOwn.call(locvarnames_stack[locvarnames_stack.length - 1], var_name)))) {
                     loc_flag = true;
-                    // ***** ローカル文フラグOFF *****
-                    if (locstatement_flag) { locstatement_flag = false; }
                 }
             } else {
                 // ***** 関数の仮引数のとき *****
@@ -2751,6 +2747,8 @@ var Interpreter;
                 loc_flag = true;
             }
         }
+        // ***** ローカル文フラグOFF *****
+        if (use_local_vars && locstatement_flag) { locstatement_flag = false; }
         // ***** ローカル変数名情報の更新 *****
         if (use_local_vars && loc_flag &&
             (locvarnames_stack.length > 0 &&
