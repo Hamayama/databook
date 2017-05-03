@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2017-5-3 v12.03
+// 2017-5-3 v12.04
 
 
 // SPALM Web Interpreter
@@ -472,7 +472,6 @@ function stop_button() {
 //
 //   外部クラス一覧
 //     Download    ファイルダウンロード用クラス(staticクラス)
-//     Profiler    プロファイラ用クラス
 //
 var Interpreter;
 (function (Interpreter) {
@@ -564,7 +563,6 @@ var Interpreter;
     var locstatement_flag;      // ローカル文フラグ
     var locvarnames_stack = []; // ローカル変数名情報のスタック(配列)
     var save_data = {};         // セーブデータ(連想配列オブジェクト)(仮)
-    var prof_obj = {};          // プロファイラ実行用(Profilerクラスのインスタンス)
     var out_data = {};          // 外部データ(連想配列オブジェクト)
 
     var func_tbl = {};          // 組み込み関数の定義情報(連想配列オブジェクト)
@@ -990,15 +988,12 @@ var Interpreter;
         mousey = -10000;
         mouse_btn_stat = {};
         save_data = {};
-        prof_obj = null;
-        if (typeof (Profiler) == "function") { prof_obj = new Profiler(); }
         // ***** プラグイン用の実行前処理 *****
         for (name in before_run_funcs) {
             if (before_run_funcs.hasOwnProperty(name)) {
                 before_run_funcs[name]();
             }
         }
-        if (prof_obj) { prof_obj.start("result"); }
 
         // run_continuously();
         setTimeout(run_continuously, 10);
@@ -1020,9 +1015,7 @@ var Interpreter;
         sleep_id = null;
         try {
             // ***** コード実行 *****
-            // if (prof_obj) { prof_obj.start("execcode"); }
             execcode();
-            // if (prof_obj) { prof_obj.stop("execcode"); }
             // ***** スリープおよび継続実行(再帰的に実行) *****
             if (sleep_flag) {
                 sleep_flag = false;
@@ -1033,7 +1026,6 @@ var Interpreter;
             }
         } catch (ex) {
             // ***** エラー終了 *****
-            if (prof_obj) { prof_obj.stop("result"); }
             // ***** プラグイン用の実行後処理 *****
             for (name in after_run_funcs) {
                 if (after_run_funcs.hasOwnProperty(name)) {
@@ -1053,12 +1045,10 @@ var Interpreter;
             DebugShow("label=" + JSON.stringify(label) + "\n");
             DebugShow("func=" + JSON.stringify(func) + "\n");
             DebugShow("stack=" + JSON.stringify(stack) + "\n");
-            if (prof_obj && Profiler.MicroSecAvailable) { DebugShow(prof_obj.getAllResult()); }
             // ***** 戻り値を返す *****
             return ret;
         }
         // ***** 正常終了 *****
-        if (prof_obj) { prof_obj.stop("result"); }
         // ***** プラグイン用の実行後処理 *****
         for (name in after_run_funcs) {
             if (after_run_funcs.hasOwnProperty(name)) {
@@ -1075,7 +1065,6 @@ var Interpreter;
             DebugShow("func=" + JSON.stringify(func) + "\n");
             DebugShow("stack=" + JSON.stringify(stack) + "\n");
         }
-        if (prof_obj && Profiler.MicroSecAvailable) { DebugShow(prof_obj.getAllResult()); }
         // ***** 戻り値を返す *****
         ret = true;
         return ret;
@@ -1141,8 +1130,7 @@ var Interpreter;
                 case 8: // array
                     num = stack.pop();
                     var_info = stack.pop();
-                    // var_info2 = duplicate_var_info(var_info); // 変数情報を変更する場合は複製が必要
-                    var_info2 = {};
+                    var_info2 = {}; // 変数情報を変更する場合は複製が必要
                     var_info2.kind = var_info.kind;
                     var_info2.name = var_info.name + "$" + num;
                     var_info2.scope = var_info.scope;
@@ -1505,8 +1493,7 @@ var Interpreter;
                         if (!(num.kind & 2) && (num.kind & 1)) {
                             // (ローカル変数のスコープをさかのぼれるように
                             //  「関数の引数かつポインタ」を設定)
-                            // var_info2 = duplicate_var_info(num); // 変数情報を変更する場合は複製が必要
-                            var_info2 = {};
+                            var_info2 = {}; // 変数情報を変更する場合は複製が必要
                             var_info2.kind = num.kind | 2;
                             var_info2.name = num.name;
                             var_info2.scope = Vars.getLocalScopeNum() - 1;
@@ -2219,15 +2206,6 @@ var Interpreter;
                     i = c_expression2(for_exp1, for_exp2 - 2);
                     code_push("pop", debugpos1, i);
                 }
-                code_push("goto", debugpos1, i);
-                code_push('"for_exp2\\' + j + '"', debugpos1, i);
-                // 式3
-                code_push("label", debugpos1, i);
-                code_push('"for_exp3\\' + j + '"', debugpos1, i);
-                if (for_exp3 < for_stm - 2) {
-                    i = c_expression2(for_exp3, for_stm - 3);
-                    code_push("pop", debugpos1, i);
-                }
                 // 式2 (空なら無限ループ)
                 code_push("label", debugpos1, i);
                 code_push('"for_exp2\\' + j + '"', debugpos1, i);
@@ -2239,8 +2217,15 @@ var Interpreter;
                 // 文
                 // ***** 文(ステートメント)のコンパイル(再帰的に実行) *****
                 i = c_statement(for_stm, for_end - 1, '"for_end\\' + j + '"', '"for_exp3\\' + j + '"');
-                code_push("goto", debugpos1, i);
+                // 式3
+                code_push("label", debugpos1, i);
                 code_push('"for_exp3\\' + j + '"', debugpos1, i);
+                if (for_exp3 < for_stm - 2) {
+                    i = c_expression2(for_exp3, for_stm - 3);
+                    code_push("pop", debugpos1, i);
+                }
+                code_push("goto", debugpos1, i);
+                code_push('"for_exp2\\' + j + '"', debugpos1, i);
                 // 終了
                 code_push("label", debugpos1, i);
                 code_push('"for_end\\' + j + '"', debugpos1, i);
@@ -2360,7 +2345,7 @@ var Interpreter;
             // ***** トークンを取り出す *****
             // debugpos1 = i;
             tok = token[i];
-            // ***** 「&&」のとき *****
+            // ***** 論理積「&&」のとき(短絡評価) *****
             if (tok == "&&" && priority < operator_pri(tok)) {
                 j = i;
                 i++;
@@ -2380,7 +2365,7 @@ var Interpreter;
                 tri_flag = false;
                 continue;
             }
-            // ***** 「||」のとき *****
+            // ***** 論理和「||」のとき(短絡評価) *****
             if (tok == "||" && priority < operator_pri(tok)) {
                 j = i;
                 i++;
@@ -2431,9 +2416,9 @@ var Interpreter;
                  tok == "!=" || tok == "+"  || tok == "."  || tok == "-"   ||
                  tok == "*"  || tok == "/"  || tok == "\\" || tok == "%") && priority < operator_pri(tok)) {
 
-                // ***** 3項演算子を特別扱い *****
+                // ***** 3項演算子の処理後の特別扱い *****
                 // (互換モードのときは、3項演算子の処理後に、
-                //  特定の演算子しか処理しない(過去との互換性維持のため))
+                //  特定の2項演算子しか処理しない(過去との互換性維持のため))
                 if (sp_compati_flag && tri_flag &&
                     !(tok == "&"  || tok == "|"  || tok == "^")) {
                     break;
@@ -2442,6 +2427,7 @@ var Interpreter;
                 i++;
                 i = c_expression(i, tok_end, operator_pri(tok));
                 if (sp_compati_flag && tok == "/") {
+                    // (互換モードのときは、除算は整数除算にする)
                     code_push(operator_code("\\"), debugpos1, i);
                 } else {
                     code_push(operator_code(tok), debugpos1, i);
@@ -2673,6 +2659,7 @@ var Interpreter;
                 code_push("store", debugpos1, i);
                 i = c_expression(i, tok_end);
                 if (sp_compati_flag && tok == "/=") {
+                    // (互換モードのときは、除算は整数除算にする)
                     code_push(operator_code("\\"), debugpos1, i);
                 } else {
                     code_push(operator_code(tok.substring(0, tok.length - 1)), debugpos1, i);
@@ -3435,8 +3422,7 @@ var Interpreter;
     // ***** 変数情報の生成 *****
     // (グローバル/ローカル変数にアクセスするための情報を生成する)
     // (変数情報は、生成後に変更してはいけない(複数回参照されるので不具合のもとになる)
-    //  変更が必要な場合には、duplicate_var_info(var_info) を使用して、
-    //  複製したものを変更すること)
+    //  変更が必要な場合には、オブジェクトを複製して、複製したものを変更すること)
     function make_var_info(kind, name, scope) {
         var var_info = {};      // 変数情報
         var_info.kind = kind;   //   変数の種別(=0:グローバル変数,=1:ローカル変数,
@@ -3446,14 +3432,6 @@ var Interpreter;
         var_info.scope = scope; //   変数が所属するスコープの番号
                                 //     (これは、変数の種別が「関数の引数かつポインタ」のときのみ有効)
         return var_info;
-    }
-    // ***** 変数情報の複製 *****
-    function duplicate_var_info(var_info) {
-        var var_info2 = {};
-        var_info2.kind = var_info.kind;
-        var_info2.name = var_info.name;
-        var_info2.scope = var_info.scope;
-        return var_info2;
     }
     // ***** 変数情報の取得 *****
     function get_var_info(var_info) {
@@ -6408,114 +6386,6 @@ var Download = (function () {
         return true;
     };
     return Download; // これがないとクラスが動かないので注意
-})();
-
-
-// ***** プロファイラ用クラス *****
-var Profiler = (function () {
-    // ***** コンストラクタ *****
-    function Profiler() {
-        this.time_obj = {};        // 時間測定オブジェクト(キー名称ごと)
-        this.time_start = {};      // 測定開始時間        (キー名称ごと)
-        this.time_start_flag = {}; // 時間測定開始フラグ  (キー名称ごと)
-        this.records = {};         // 測定結果            (キー名称ごと)
-    }
-
-    // ***** 定数 *****
-    // (Chrome を --enable-benchmarking オプション付きで起動したときは、
-    //  マイクロ秒まで測定する)
-    if (typeof (chrome) != "undefined" && typeof (chrome.Interval) == "function") {
-        Profiler.MicroSecAvailable = true;
-    } else {
-        Profiler.MicroSecAvailable = false;
-    }
-
-    // ***** hasOwnPropertyをプロパティ名に使うかもしれない場合の対策 *****
-    // (obj.hasOwnProperty(prop) を hasOwn.call(obj, prop) に置換した)
-    var hasOwn = Object.prototype.hasOwnProperty;
-
-    // ***** 時間測定高速化用 *****
-    // (new Date().getTime() より Date.now() の方が高速だが、
-    //  Date.now() が存在しないブラウザもあるのでその対策)
-    if (!Date.now) { Date.now = function () { return new Date().getTime(); }; }
-
-    // ***** 時間測定開始 *****
-    // (キー名称ごとに測定結果を別にする)
-    Profiler.prototype.start = function (key_name) {
-        // if (!this.records.hasOwnProperty(key_name)) { this.records[key_name] = []; }
-        if (!hasOwn.call(this.records, key_name)) { this.records[key_name] = []; }
-        this.time_start_flag[key_name] = true;
-        if (Profiler.MicroSecAvailable) {
-            // if (!this.time_obj.hasOwnProperty(key_name)) { this.time_obj[key_name] = new chrome.Interval(); }
-            if (!hasOwn.call(this.time_obj, key_name)) { this.time_obj[key_name] = new chrome.Interval(); }
-            this.time_obj[key_name].start();
-        } else {
-            // this.time_start[key_name] = new Date().getTime();
-            this.time_start[key_name] = Date.now();
-        }
-    };
-    // ***** 時間測定終了 *****
-    // (キー名称ごとに測定結果を別にする)
-    Profiler.prototype.stop = function (key_name) {
-        // if (!this.records.hasOwnProperty(key_name)) { return false; }
-        if (!hasOwn.call(this.records, key_name)) { return false; }
-        if (!this.time_start_flag[key_name]) { return false; }
-        if (Profiler.MicroSecAvailable) {
-            this.time_obj[key_name].stop();
-            this.records[key_name].push(this.time_obj[key_name].microseconds() / 1000);
-        } else {
-            // this.records[key_name].push(new Date().getTime() - this.time_start[key_name]);
-            this.records[key_name].push(Date.now() - this.time_start[key_name]);
-        }
-        this.time_start_flag[key_name] = false;
-    };
-    // ***** 結果取得 *****
-    // (キー名称に対応する測定結果を、文字列にして返す)
-    // (測定結果の項目は、実行回数(回)、合計時間(msec)、平均時間(msec)、最大時間(msec)、最小時間(msec))
-    Profiler.prototype.getResult = function (key_name) {
-        var i;
-        var ret;
-        var rec, time_total, time_mean, time_max, time_min;
-        ret = "";
-        // if (this.records.hasOwnProperty(key_name)) {
-        if (hasOwn.call(this.records, key_name)) {
-            rec = this.records[key_name];
-            time_total = 0;
-            time_mean = 0;
-            time_max = 0;
-            time_min = 0;
-            for (i = 0; i < rec.length; i++) {
-                time_total += rec[i];
-                if (i == 0) { time_max = rec[i]; time_min = rec[i]; }
-                if (time_max < rec[i]) { time_max = rec[i]; }
-                if (time_min > rec[i]) { time_min = rec[i]; }
-            }
-            if (rec.length > 0) { time_mean = time_total / rec.length; }
-            time_total = Math.round(time_total * 1000) / 1000;
-            time_mean = Math.round(time_mean * 1000) / 1000;
-            time_max = Math.round(time_max * 1000) / 1000;
-            time_min = Math.round(time_min * 1000) / 1000;
-            ret = key_name + ": count=" + rec.length +
-                " total="     + time_total + "(msec) mean=" + time_mean +
-                "(msec) max=" + time_max   + "(msec) min="  + time_min  + "(msec)";
-        }
-        return ret;
-    };
-    // ***** 全結果取得 *****
-    // (全キー名称の測定結果を、複数行の文字列にして返す)
-    Profiler.prototype.getAllResult = function () {
-        var ret;
-        var key_name;
-        ret = "";
-        for (key_name in this.records) {
-            // if (this.records.hasOwnProperty(key_name)) {
-            if (hasOwn.call(this.records, key_name)) {
-                ret += this.getResult(key_name) + "\n";
-            }
-        }
-        return ret;
-    };
-    return Profiler; // これがないとクラスが動かないので注意
 })();
 
 
