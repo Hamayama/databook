@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_plugin0001.js
-// 2017-5-3 v12.03
+// 2017-7-16 v13.00
 
 
 // A Plugin to add functions to SPALM Web Interpreter
@@ -45,7 +45,7 @@ var Plugin0001;
     var add_before_run_funcs = Interpreter.add_before_run_funcs;
     var add_after_run_funcs = Interpreter.add_after_run_funcs;
     var add_clear_var_funcs = Interpreter.add_clear_var_funcs;
-    var add_one_func_tbl = Interpreter.add_one_func_tbl;
+    var make_one_func_tbl = Interpreter.make_one_func_tbl;
     var Vars = Interpreter.Vars;
     var get_var_info = Interpreter.get_var_info;
     var to_global = Interpreter.to_global;
@@ -127,23 +127,19 @@ var Plugin0001;
         // (第2引数を-1にすると組み込み変数になり、()なしで呼び出せる)
         // (第3引数は「変数名をとる引数」がある場合にその引数番号を配列で指定する)
         // (戻り値なしの組み込み関数の戻り値は nothing とする)
-        add_one_func_tbl("audcheck", 0, [], function (param) {
-            var num;
-
+        make_one_func_tbl("audcheck", 0, [], function (param) {
             // ***** 音楽モードチェック *****
-            if (!MMLPlayer.adctx) { num = 0; return num; }
-
-            num = 1;
-            return num;
+            if (!MMLPlayer.adctx) { return 0; }
+            return 1;
         });
-        add_one_func_tbl("audmode", 1, [], function (param) {
+        make_one_func_tbl("audmode", 1, [], function (param) {
             var a1;
 
             a1 = Math.trunc(param[0]);
             aud_mode = a1;
             return nothing;
         });
-        add_one_func_tbl("audmake", 2, [], function (param) {
+        make_one_func_tbl("audmake", 2, [], function (param) {
             var a1, a2;
 
             a1 = Math.trunc(param[0]);
@@ -163,7 +159,7 @@ var Plugin0001;
             set_loop_nocount();
             return nothing;
         });
-        add_one_func_tbl("audmakedata", 2, [], function (param) {
+        make_one_func_tbl("audmakedata", 2, [], function (param) {
             var a1, a2;
 
             a1 = Math.trunc(param[0]);
@@ -183,30 +179,28 @@ var Plugin0001;
             set_loop_nocount();
             return nothing;
         });
-        add_one_func_tbl("audmakestat", 1, [], function (param) {
-            var num;
+        make_one_func_tbl("audmakestat", 1, [], function (param) {
             var a1;
 
             a1 = Math.trunc(param[0]);
 
             // ***** 音楽モードチェック *****
             if (aud_mode == 1 || aud_mode == 2) {
-                if (!MMLPlayer.adctx) { num = 0; return num; }
+                if (!MMLPlayer.adctx) { return 0; }
             } else {
-                num = 0; return num;
+                return 0;
             }
 
-            num = 0;
             if (audplayer.hasOwnProperty(a1)) {
                 if (audplayer[a1].mmlplayer.compiled == 1) {
-                    num = 1;
+                    return 1;
                 }
             } else {
                 throw new Error("音楽プレイヤー" + a1 + " は作成されていません。");
             }
-            return num;
+            return 0;
         });
-        add_one_func_tbl("audplay", 1, [], function (param) {
+        make_one_func_tbl("audplay", 1, [], function (param) {
             var a1, a2;
 
             a1 = Math.trunc(param[0]);
@@ -226,7 +220,7 @@ var Plugin0001;
             }
             return nothing;
         });
-        add_one_func_tbl("audspeedrate", 2, [], function (param) {
+        make_one_func_tbl("audspeedrate", 2, [], function (param) {
             var a1, a2;
 
             a1 = Math.trunc(param[0]);
@@ -242,7 +236,7 @@ var Plugin0001;
             }
             return nothing;
         });
-        add_one_func_tbl("audstat", 1, [], function (param) {
+        make_one_func_tbl("audstat", 1, [], function (param) {
             var num;
             var a1;
 
@@ -250,9 +244,9 @@ var Plugin0001;
 
             // ***** 音楽モードチェック *****
             if (aud_mode == 1 || aud_mode == 2) {
-                if (!MMLPlayer.adctx) { num = -1; return num; }
+                if (!MMLPlayer.adctx) { return -1; }
             } else {
-                num = -1; return num;
+                return -1;
             }
 
             num = 0;
@@ -261,10 +255,10 @@ var Plugin0001;
             } else {
                 throw new Error("音楽プレイヤー" + a1 + " は作成されていません。");
             }
-            if (num == 1 || num == 2) { num = 1; } else { num = 0; }
-            return num;
+            if (num == 1 || num == 2) { return 1; }
+            return 0;
         });
-        add_one_func_tbl("audstop", 1, [], function (param) {
+        make_one_func_tbl("audstop", 1, [], function (param) {
             var a1;
 
             a1 = Math.trunc(param[0]);
@@ -279,7 +273,7 @@ var Plugin0001;
             }
             return nothing;
         });
-        add_one_func_tbl("audvolume", 2, [], function (param) {
+        make_one_func_tbl("audvolume", 2, [], function (param) {
             var a1, a2;
 
             a1 = Math.trunc(param[0]);
@@ -295,7 +289,7 @@ var Plugin0001;
             }
             return nothing;
         });
-        add_one_func_tbl("calcfractal", 8, [], function (param) {
+        make_one_func_tbl("calcfractal", 8, [], function (param) {
             var num;
             var x1, y1;
             var dr, di, mr, mi, cr, ci, tr, ti, zr, zi, rep, norm2;
@@ -334,8 +328,7 @@ var Plugin0001;
             }
             return num;
         });
-        add_one_func_tbl("charcode", 1, [], function (param) {
-            var num;
+        make_one_func_tbl("charcode", 1, [], function (param) {
             var a1, a2;
 
             a1 = String(param[0]);
@@ -344,11 +337,9 @@ var Plugin0001;
             } else {
                 a2 = Math.trunc(param[1]);
             }
-            num = a1.charCodeAt(a2);
-            return num;
+            return a1.charCodeAt(a2);
         });
-        add_one_func_tbl("charfrom", 1, [], function (param) {
-            var num;
+        make_one_func_tbl("charfrom", 1, [], function (param) {
             var a1, a2, a3, a4;
             var pair_flag;
 
@@ -360,24 +351,22 @@ var Plugin0001;
                 a2 = Math.trunc(param[1]);
                 pair_flag = true;
             }
+            // ***** サロゲートペア指定のとき *****
             if (pair_flag) {
-                // ***** サロゲートペア指定のとき *****
-                num = String.fromCharCode(a1, a2);
-            } else {
-                // ***** UTF-16の文字コードを実際のコード(サロゲートペア)に変換 *****
-                if (a1 > 0xffff) {
-                    a2 = a1 - 0x10000;
-                    a3 = 0xd800 + (a2 >> 10);      // 上位サロゲート
-                    a4 = 0xdc00 + (a2 & 0x3ff);    // 下位サロゲート
-                    num = String.fromCharCode(a3, a4);
-                } else {
-                    num = String.fromCharCode(a1); // サロゲートペアを使用しない文字のとき
-                }
+                return String.fromCharCode(a1, a2);
             }
-            return num;
+            // ***** サロゲートペアを使用する文字のとき *****
+            if (a1 > 0xffff) {
+                // ***** UTF-16の文字コードを実際のコード(サロゲートペア)に変換 *****
+                a2 = a1 - 0x10000;
+                a3 = 0xd800 + (a2 >> 10);      // 上位サロゲート
+                a4 = 0xdc00 + (a2 & 0x3ff);    // 下位サロゲート
+                return String.fromCharCode(a3, a4);
+            }
+            // ***** サロゲートペアを使用しない文字のとき *****
+            return String.fromCharCode(a1);
         });
-        add_one_func_tbl("clamp", 3, [], function (param) {
-            var num;
+        make_one_func_tbl("clamp", 3, [], function (param) {
             var a1, a2, a3;
             var t;
 
@@ -385,12 +374,11 @@ var Plugin0001;
             a2 = (+param[1]); // min
             a3 = (+param[2]); // max
             if (a2 > a3) { t = a2; a2 = a3; a3 = t; }
-            if (a1 < a2)      { num = a2; }
-            else if (a1 > a3) { num = a3; }
-            else              { num = a1; }
-            return num;
+            if (a1 < a2) { return a2; }
+            if (a1 > a3) { return a3; }
+            return a1;
         });
-        add_one_func_tbl("colalpha", 2, [], function (param) {
+        make_one_func_tbl("colalpha", 2, [], function (param) {
             var a1, a2;
             var col_r, col_g, col_b, alpha;
             var color_val;
@@ -408,7 +396,7 @@ var Plugin0001;
             set_color_val(color_val);
             return nothing;
         });
-        add_one_func_tbl("coloralpha", 4, [], function (param) {
+        make_one_func_tbl("coloralpha", 4, [], function (param) {
             var a1, a2, a3 ,a4;
             var alpha;
             var color_val;
@@ -425,7 +413,7 @@ var Plugin0001;
             set_color_val(color_val);
             return nothing;
         });
-        add_one_func_tbl("disaud", 1, [], function (param) {
+        make_one_func_tbl("disaud", 1, [], function (param) {
             var a1;
 
             a1 = Math.trunc(param[0]);
@@ -435,7 +423,7 @@ var Plugin0001;
             }
             return nothing;
         });
-        add_one_func_tbl("dismis", 1, [], function (param) {
+        make_one_func_tbl("dismis", 1, [], function (param) {
             var a1;
 
             a1 = Math.trunc(param[0]);
@@ -445,7 +433,7 @@ var Plugin0001;
             // for (var prop in missile) { DebugShow(prop + " "); } DebugShow("\n");
             return nothing;
         });
-        add_one_func_tbl("dissand", 1, [], function (param) {
+        make_one_func_tbl("dissand", 1, [], function (param) {
             var a1;
 
             a1 = Math.trunc(param[0]);
@@ -455,7 +443,7 @@ var Plugin0001;
             // for (var prop in sand_obj) { DebugShow(prop + " "); } DebugShow("\n");
             return nothing;
         });
-        add_one_func_tbl("disstrimg", 1, [], function (param) {
+        make_one_func_tbl("disstrimg", 1, [], function (param) {
             var a1;
             var ch;
 
@@ -470,7 +458,7 @@ var Plugin0001;
             // for (var prop in stimg) { DebugShow(prop + " "); } DebugShow("\n");
             return nothing;
         });
-        add_one_func_tbl("drawshape", 1, [], function (param) {
+        make_one_func_tbl("drawshape", 1, [], function (param) {
             var a1, a2, a3, a4, a5, a6, a7;
             var mode;
             var i;
@@ -597,7 +585,7 @@ var Plugin0001;
             }
             return nothing;
         });
-        add_one_func_tbl("fillarea", 2, [], function (param) {
+        make_one_func_tbl("fillarea", 2, [], function (param) {
             var a1, a2;
             var x1, y1;
             var ret_array = [];
@@ -631,7 +619,7 @@ var Plugin0001;
             set_canvas_axis(ctx);               // 座標系を再設定
             return nothing;
         });
-        add_one_func_tbl("fpoly", 4, [0, 1], function (param) {
+        make_one_func_tbl("fpoly", 4, [0, 1], function (param) {
             var a1, a2, a3;
             var b1;
             var i;
@@ -682,27 +670,22 @@ var Plugin0001;
             ctx.fill();
             return nothing;
         });
-        add_one_func_tbl("frombinstr", 1, [], function (param) {
-            var num;
+        make_one_func_tbl("frombinstr", 1, [], function (param) {
             var a1;
 
             a1 = String(param[0]);
-            num = parseInt(a1, 2);
-            return num;
+            return parseInt(a1, 2);
         });
-        add_one_func_tbl("fromhexstr", 1, [], function (param) {
-            var num;
+        make_one_func_tbl("fromhexstr", 1, [], function (param) {
             var a1;
 
             a1 = String(param[0]);
-            num = parseInt(a1, 16);
-            return num;
+            return parseInt(a1, 16);
         });
         // ***** 数値の文字列を加算して文字列で返す命令 *****
         // (例. y=intstradd("100","200")  を実行すると y="300"  となる)
         // (例. y=intstradd("100","-200") を実行すると y="-100" となる)
-        add_one_func_tbl("intstradd", 2, [], function (param) {
-            var num;
+        make_one_func_tbl("intstradd", 2, [], function (param) {
             var a1, a2;
             var x = {};
             var y = {};
@@ -718,14 +701,12 @@ var Plugin0001;
             // ***** 10進数オブジェクトの加算 *****
             DigitCalc.addDigitObj(x, y, z);
             // ***** 10進数オブジェクトから符号付文字列を取得する *****
-            num = DigitCalc.getDigitObjSignedStr(z);
-            return num;
+            return DigitCalc.getDigitObjSignedStr(z);
         });
         // ***** 数値の文字列を減算して文字列で返す命令 *****
         // (例. y=intstrsub("100","200")  を実行すると y="-100" となる)
         // (例. y=intstrsub("100","-200") を実行すると y="300"  となる)
-        add_one_func_tbl("intstrsub", 2, [], function (param) {
-            var num;
+        make_one_func_tbl("intstrsub", 2, [], function (param) {
             var a1, a2;
             var x = {};
             var y = {};
@@ -741,13 +722,12 @@ var Plugin0001;
             // ***** 10進数オブジェクトの減算 *****
             DigitCalc.subDigitObj(x, y, z);
             // ***** 10進数オブジェクトから符号付文字列を取得する *****
-            num = DigitCalc.getDigitObjSignedStr(z);
-            return num;
+            return DigitCalc.getDigitObjSignedStr(z);
         });
         // ***** 数値の文字列を乗算して文字列で返す命令 *****
         // (例. y=intstrmul("100","200")  を実行すると y="20000"  となる)
         // (例. y=intstrmul("100","-200") を実行すると y="-20000" となる)
-        add_one_func_tbl("intstrmul", 2, [], function (param) {
+        make_one_func_tbl("intstrmul", 2, [], function (param) {
             var num;
             var a1, a2;
             var x = {};
@@ -764,16 +744,14 @@ var Plugin0001;
             // ***** 10進数オブジェクトの乗算 *****
             DigitCalc.mulDigitObj(x, y, z);
             // ***** 10進数オブジェクトから符号付文字列を取得する *****
-            num = DigitCalc.getDigitObjSignedStr(z);
-            return num;
+            return DigitCalc.getDigitObjSignedStr(z);
         });
         // ***** 数値の文字列を除算して文字列で返す命令 *****
         // (例. y=intstrdiv("10","3")   を実行すると y="3"   となる)
         // (例. y=intstrdiv("10","-3")  を実行すると y="-3"  となる)
         // (例. y=intstrdiv("10","3",1) を実行すると y="1"   となる(第3引数を1にすると余りを返す))
         // (例. y=intstrdiv("10","3",2) を実行すると y="3,1" となる(第3引数を2にすると商と余りをカンマ区切りで返す))
-        add_one_func_tbl("intstrdiv", 2, [], function (param) {
-            var num;
+        make_one_func_tbl("intstrdiv", 2, [], function (param) {
             var a1, a2, a3;
             var x = {};  // 被除数
             var y = {};  // 除数
@@ -796,16 +774,14 @@ var Plugin0001;
             // ***** 10進数オブジェクトの除算 *****
             DigitCalc.divDigitObj(x, y, z, z2);
             // ***** 10進数オブジェクトから符号付文字列を取得する *****
-            if (a3 == 1) {        // 余りを返す
-                num = DigitCalc.getDigitObjSignedStr(z2);
-            } else if (a3 == 2) { // 商と余りをカンマで区切って返す
-                num = DigitCalc.getDigitObjSignedStr(z) + "," + DigitCalc.getDigitObjSignedStr(z2);
-            } else {              // 商を返す
-                num = DigitCalc.getDigitObjSignedStr(z);
-            }
-            return num;
+            // (余りを返す)
+            if (a3 == 1) { return DigitCalc.getDigitObjSignedStr(z2); }
+            // (商と余りをカンマで区切って返す)
+            if (a3 == 2) { return (DigitCalc.getDigitObjSignedStr(z) + "," + DigitCalc.getDigitObjSignedStr(z2)); }
+            // (商を返す)
+            return DigitCalc.getDigitObjSignedStr(z);
         });
-        add_one_func_tbl("mismake", 13, [1, 2, 3, 4, 5, 6], function (param) {
+        make_one_func_tbl("mismake", 13, [1, 2, 3, 4, 5, 6], function (param) {
             var ch;
             var no, useflag, x100, y100, degree, speed100;
             var useflag_var_info, x100_var_info, y100_var_info;
@@ -838,7 +814,7 @@ var Plugin0001;
                 degree_var_info, speed100_var_info, ch_var_info);
             return nothing;
         });
-        add_one_func_tbl("mismove", 0, [], function (param) {
+        make_one_func_tbl("mismove", 0, [], function (param) {
             var mis, mis_no;
             var range_use, min_no, max_no;
 
@@ -876,7 +852,7 @@ var Plugin0001;
             }
             return nothing;
         });
-        add_one_func_tbl("mistext", 3, [0], function (param) {
+        make_one_func_tbl("mistext", 3, [0], function (param) {
             var a1, a2, a3;
             var i;
             var x1, y1;
@@ -948,7 +924,7 @@ var Plugin0001;
             }
             return nothing;
         });
-        add_one_func_tbl("misfreeno", 0, [], function (param) {
+        make_one_func_tbl("misfreeno", 0, [], function (param) {
             var num;
             var mis, mis_no;
             var range_use, min_no, max_no;
@@ -978,7 +954,7 @@ var Plugin0001;
             }
             return num;
         });
-        add_one_func_tbl("poly", 4, [0, 1], function (param) {
+        make_one_func_tbl("poly", 4, [0, 1], function (param) {
             var a1, a2, a3, a4;
             var b1;
             var i;
@@ -1034,8 +1010,7 @@ var Plugin0001;
             ctx.stroke();
             return nothing;
         });
-        add_one_func_tbl("randint", 2, [], function (param) {
-            var num;
+        make_one_func_tbl("randint", 2, [], function (param) {
             var a1, a2;
             var t;
 
@@ -1044,12 +1019,10 @@ var Plugin0001;
             if (a1 > a2) { t = a1; a1 = a2; a2 = t; }
             // min から max までの整数の乱数を返す
             // (Math.round() を用いると、非一様分布になるのでNG)
-            // num = Math.floor(Math.random() * (max - min + 1)) + min;
-            num = Math.floor(Math.random() * (a2 - a1 + 1)) + a1;
-            return num;
+            // return (Math.floor(Math.random() * (max - min + 1)) + min);
+            return (Math.floor(Math.random() * (a2 - a1 + 1)) + a1);
         });
-        add_one_func_tbl("recthit", 8, [], function (param) {
-            var num;
+        make_one_func_tbl("recthit", 8, [], function (param) {
             var x1, y1, x2, y2;
             var w1, h1, w2, h2;
 
@@ -1061,15 +1034,9 @@ var Plugin0001;
             y2 = (+param[5]);
             w2 = (+param[6]);
             h2 = (+param[7]);
-            if (x1 < x2 + w2 && x2 < x1 + w1 && y1 < y2 + h2 && y2 < y1 + h1) {
-                num = 1;
-            } else {
-                num = 0;
-            }
-            return num;
+            return ((x1 < x2 + w2 && x2 < x1 + w1 && y1 < y2 + h2 && y2 < y1 + h1) ? 1 : 0);
         });
-        add_one_func_tbl("remap", 5, [], function (param) {
-            var num;
+        make_one_func_tbl("remap", 5, [], function (param) {
             var a1, a2, a3, a4, a5;
 
             a1 = (+param[0]); // x
@@ -1077,11 +1044,9 @@ var Plugin0001;
             a3 = (+param[2]); // maxx
             a4 = (+param[3]); // miny
             a5 = (+param[4]); // maxy
-            if (a2 == a3) { num = 0; }
-            else          { num = a4 + (a1 - a2) * (a5 - a4) / (a3 - a2); }
-            return num;
+            return ((a2 == a3) ? 0 : (a4 + (a1 - a2) * (a5 - a4) / (a3 - a2)));
         });
-        add_one_func_tbl("sandmake", 11, [], function (param) {
+        make_one_func_tbl("sandmake", 11, [], function (param) {
             var a1;
             var x1, y1;
             var w1, h1;
@@ -1112,7 +1077,7 @@ var Plugin0001;
             set_loop_nocount();
             return nothing;
         });
-        add_one_func_tbl("sandmove", 1, [], function (param) {
+        make_one_func_tbl("sandmove", 1, [], function (param) {
             var a1;
 
             a1 = Math.trunc(param[0]);
@@ -1123,7 +1088,7 @@ var Plugin0001;
             }
             return nothing;
         });
-        add_one_func_tbl("sanddraw", 1, [], function (param) {
+        make_one_func_tbl("sanddraw", 1, [], function (param) {
             var a1;
             var ctx = get_ctx();
 
@@ -1137,7 +1102,7 @@ var Plugin0001;
             }
             return nothing;
         });
-        add_one_func_tbl("setstrimg", 2, [1], function (param) {
+        make_one_func_tbl("setstrimg", 2, [1], function (param) {
             var a1, a2, a3, a4;
             var ch;
             var imgvars = get_imgvars();
@@ -1166,8 +1131,7 @@ var Plugin0001;
             }
             return nothing;
         });
-        add_one_func_tbl("strmake", 2, [], function (param) {
-            var num;
+        make_one_func_tbl("strmake", 2, [], function (param) {
             var a1, a2;
 
             a1 = String(param[0]);
@@ -1179,11 +1143,9 @@ var Plugin0001;
                 throw new Error("処理する文字数が不正です。" + max_str_size + "以下である必要があります。");
             }
 
-            num = strrepeatsub(a1, a2);
-            return num;
+            return strrepeatsub(a1, a2);
         });
-        add_one_func_tbl("strovr", 3, [], function (param) {
-            var num;
+        make_one_func_tbl("strovr", 3, [], function (param) {
             var a1, a2, a3, a4;
 
             a1 = String(param[0]);
@@ -1194,33 +1156,23 @@ var Plugin0001;
             } else {
                 a4 = Math.trunc(param[3]);
             }
-            if (a4 == 1) {
-                num = strovrsub2(a1, a2, a3);
-            } else if (a4 == 2) {
-                num = strovrsub3(a1, a2, a3);
-            } else {
-                num = strovrsub(a1, a2, a3);
-            }
-            return num;
+            if (a4 == 1) { return strovrsub2(a1, a2, a3); }
+            if (a4 == 2) { return strovrsub3(a1, a2, a3); }
+            return strovrsub(a1, a2, a3);
         });
-        add_one_func_tbl("tobinstr", 1, [], function (param) {
-            var num;
+        make_one_func_tbl("tobinstr", 1, [], function (param) {
             var a1;
 
             a1 = Math.trunc(param[0]);
-            num = a1.toString(2);
-            return num;
+            return a1.toString(2);
         });
-        add_one_func_tbl("tofloat", 1, [], function (param) {
-            var num;
+        make_one_func_tbl("tofloat", 1, [], function (param) {
             var a1;
 
             a1 = (+param[0]);
-            num = a1;
-            return num;
+            return a1;
         });
-        add_one_func_tbl("tohankaku", 1, [], function (param) {
-            var num;
+        make_one_func_tbl("tohankaku", 1, [], function (param) {
             var a1, a2;
 
             a1 = String(param[0]);
@@ -1229,51 +1181,39 @@ var Plugin0001;
             } else {
                 a2 = String(param[1]);
             }
-            num = ConvZenHan.toHankaku(a1, a2);
-            return num;
+            return ConvZenHan.toHankaku(a1, a2);
         });
-        add_one_func_tbl("tohexstr", 1, [], function (param) {
-            var num;
+        make_one_func_tbl("tohexstr", 1, [], function (param) {
             var a1;
 
             a1 = Math.trunc(param[0]);
-            num = a1.toString(16);
-            return num;
+            return a1.toString(16);
         });
-        add_one_func_tbl("toint", 1, [], function (param) {
-            var num;
+        make_one_func_tbl("toint", 1, [], function (param) {
             var a1;
 
             a1 = (+param[0]);
-            num = Math.trunc(a1);
-            return num;
+            return Math.trunc(a1);
         });
-        add_one_func_tbl("tolower", 1, [], function (param) {
-            var num;
+        make_one_func_tbl("tolower", 1, [], function (param) {
             var a1;
 
             a1 = String(param[0]);
-            num = a1.toLowerCase();
-            return num;
+            return a1.toLowerCase();
         });
-        add_one_func_tbl("tostr", 1, [], function (param) {
-            var num;
+        make_one_func_tbl("tostr", 1, [], function (param) {
             var a1;
 
             a1 = String(param[0]);
-            num = a1;
-            return num;
+            return a1;
         });
-        add_one_func_tbl("toupper", 1, [], function (param) {
-            var num;
+        make_one_func_tbl("toupper", 1, [], function (param) {
             var a1;
 
             a1 = String(param[0]);
-            num = a1.toUpperCase();
-            return num;
+            return a1.toUpperCase();
         });
-        add_one_func_tbl("tozenkaku", 1, [], function (param) {
-            var num;
+        make_one_func_tbl("tozenkaku", 1, [], function (param) {
             var a1, a2;
 
             a1 = String(param[0]);
@@ -1282,10 +1222,9 @@ var Plugin0001;
             } else {
                 a2 = String(param[1]);
             }
-            num = ConvZenHan.toZenkaku(a1, a2);
-            return num;
+            return ConvZenHan.toZenkaku(a1, a2);
         });
-        add_one_func_tbl("transimg", 2, [0], function (param) {
+        make_one_func_tbl("transimg", 2, [0], function (param) {
             var a1, a2;
             var i;
             var col_r, col_g, col_b;
@@ -1319,7 +1258,7 @@ var Plugin0001;
             }
             return nothing;
         });
-        add_one_func_tbl("txtmake", 5, [0], function (param) {
+        make_one_func_tbl("txtmake", 5, [0], function (param) {
             var a1, a2, a3, a4, a5;
             var i;
             var st1;
@@ -1352,7 +1291,7 @@ var Plugin0001;
             }
             return nothing;
         });
-        add_one_func_tbl("txtdraw", 3, [0], function (param) {
+        make_one_func_tbl("txtdraw", 3, [0], function (param) {
             var a1, a2, a3;
             var x1, y1;
             var anc;
@@ -1414,7 +1353,7 @@ var Plugin0001;
             }
             return nothing;
         });
-        add_one_func_tbl("txtdrawimg", 7, [0], function (param) {
+        make_one_func_tbl("txtdrawimg", 7, [0], function (param) {
             var a1, a2, a3;
             var x1, y1, x2;
             var w1, h1;
@@ -1476,7 +1415,7 @@ var Plugin0001;
             }
             return nothing;
         });
-        add_one_func_tbl("txtovr", 8, [0, 5], function (param) {
+        make_one_func_tbl("txtovr", 8, [0, 5], function (param) {
             var a1, a2, a3, a4;
             var b1, b2, b3;
             var x1, y1;
@@ -1560,7 +1499,7 @@ var Plugin0001;
             }
             return nothing;
         });
-        add_one_func_tbl("txtreplace", 5, [0], function (param) {
+        make_one_func_tbl("txtreplace", 5, [0], function (param) {
             var a1, a2, a3, a4, a5;
             var i;
             var st1, st2;
@@ -1607,7 +1546,7 @@ var Plugin0001;
             }
             return nothing;
         });
-        add_one_func_tbl("txtreplace2", 5, [0], function (param) {
+        make_one_func_tbl("txtreplace2", 5, [0], function (param) {
             var a1, a2, a3, a4, a5;
             var i;
             var st1, st2;
@@ -1659,7 +1598,7 @@ var Plugin0001;
             }
             return nothing;
         });
-        add_one_func_tbl("txtpset", 6, [0], function (param) {
+        make_one_func_tbl("txtpset", 6, [0], function (param) {
             var a1, a2, a3, a4;
             var x1, y1;
 
@@ -1685,7 +1624,7 @@ var Plugin0001;
             txtovrsub(a1, a2, a3, x1, y1, a4);
             return nothing;
         });
-        add_one_func_tbl("txtline", 8, [0], function (param) {
+        make_one_func_tbl("txtline", 8, [0], function (param) {
             var a1, a2, a3, a4;
             var x1, y1, x2, y2;
 
@@ -1720,7 +1659,7 @@ var Plugin0001;
             txtlinesub(a1, a2, a3, x1, y1, x2, y2, a4);
             return nothing;
         });
-        add_one_func_tbl("txtbox", 8, [0], function (param) {
+        make_one_func_tbl("txtbox", 8, [0], function (param) {
             var a1, a2, a3, a4, a5;
             var x1, y1, x2, y2, x3, y3, x4, y4;
             var i;
@@ -1764,7 +1703,7 @@ var Plugin0001;
             }
             return nothing;
         });
-        add_one_func_tbl("txtfbox", 8, [0], function (param) {
+        make_one_func_tbl("txtfbox", 8, [0], function (param) {
             var a1, a2, a3, a4, a5;
             var x1, y1, x2, y2, x3, y3, x4, y4;
             var i;
@@ -1805,7 +1744,7 @@ var Plugin0001;
             }
             return nothing;
         });
-        add_one_func_tbl("txtcircle", 9, [0], function (param) {
+        make_one_func_tbl("txtcircle", 9, [0], function (param) {
             var a1, a2, a3, a4;
             var x1, y1, x2, y2;
             var r1, a, b;
@@ -1874,7 +1813,7 @@ var Plugin0001;
             }
             return nothing;
         });
-        add_one_func_tbl("txtfcircle", 9, [0], function (param) {
+        make_one_func_tbl("txtfcircle", 9, [0], function (param) {
             var a1, a2, a3, a4;
             var x1, y1, x2, y2;
             var r1, a, b;
@@ -1921,7 +1860,7 @@ var Plugin0001;
             }
             return nothing;
         });
-        add_one_func_tbl("txtpoly", 8, [0, 3, 4], function (param) {
+        make_one_func_tbl("txtpoly", 8, [0, 3, 4], function (param) {
             var a1, a2, a3, a4;
             var b1, b2, b3, b4, b5;
             var i, j;
@@ -1996,7 +1935,7 @@ var Plugin0001;
             }
             return nothing;
         });
-        add_one_func_tbl("txtfpoly", 8, [0, 3, 4], function (param) {
+        make_one_func_tbl("txtfpoly", 8, [0, 3, 4], function (param) {
             var a1, a2, a3, a4;
             var b1, b2, b3, b4;
             var i, j;
@@ -2157,7 +2096,7 @@ var Plugin0001;
             }
             return nothing;
         });
-        add_one_func_tbl("txtpget", 5, [0], function (param) {
+        make_one_func_tbl("txtpget", 5, [0], function (param) {
             var num;
             var a1, a2, a3;
             var x1, y1;
@@ -2195,8 +2134,7 @@ var Plugin0001;
             }
             return num;
         });
-        add_one_func_tbl("txtbchk", 8, [0], function (param) {
-            var num;
+        make_one_func_tbl("txtbchk", 8, [0], function (param) {
             var a1, a2, a3, a4;
             var x1, y1, x2, y2, x3, y3, x4, y4;
 
@@ -2226,16 +2164,14 @@ var Plugin0001;
             if (!(x2 <= max_str_size && y2 <= max_str_size)) {
                 throw new Error("処理する文字数が不正です。" + max_str_size + "以下である必要があります。");
             }
-            if (a4.length == 0) { num = 0; return num; }
+            if (a4.length == 0) { return 0; }
 
             // ***** 取得処理 *****
             if (x1 > x2) { x3 = x2; x4 = x1; } else { x3 = x1; x4 = x2; }
             if (y1 > y2) { y3 = y2; y4 = y1; } else { y3 = y1; y4 = y2; }
-            num = txtbchksub(a1, a2, a3, x3, y3, x4, y4, a4);
-            return num;
+            return txtbchksub(a1, a2, a3, x3, y3, x4, y4, a4);
         });
-        add_one_func_tbl("txtbchk2", 10, [0], function (param) {
-            var num;
+        make_one_func_tbl("txtbchk2", 10, [0], function (param) {
             var a1, a2, a3, a4;
             var x1, y1, x2, y2, x3, y3, x4, y4;
             var chw, chh;
@@ -2275,7 +2211,7 @@ var Plugin0001;
             if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
                 throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
             }
-            if (a4.length == 0) { num = 0; return num; }
+            if (a4.length == 0) { return 0; }
 
             // ***** アンカー処理(水平方向のみ) *****
             // st1 = vars[a1 + "[" + a2 + "]"];
@@ -2304,10 +2240,9 @@ var Plugin0001;
             }
 
             // ***** 取得処理 *****
-            num = txtbchksub(a1, a2, a3, x3, y3, x4, y4, a4);
-            return num;
+            return txtbchksub(a1, a2, a3, x3, y3, x4, y4, a4);
         });
-        add_one_func_tbl("txtbchk2pt", 10, [0], function (param) {
+        make_one_func_tbl("txtbchk2pt", 10, [0], function (param) {
             var num;
             var a1, a2, a3, a4;
             var x1, y1, x2, y2, x3, y3, x4, y4;
@@ -2372,7 +2307,7 @@ var Plugin0001;
             if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
                 throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
             }
-            if (a4.length == 0) { num = ""; return num; }
+            if (a4.length == 0) { return ""; }
 
             // ***** アンカー処理(水平方向のみ) *****
             // st1 = vars[a1 + "[" + a2 + "]"];
@@ -2419,7 +2354,7 @@ var Plugin0001;
             }
             return num;
         });
-        add_one_func_tbl("vec3set", 4, [0], function (param) {
+        make_one_func_tbl("vec3set", 4, [0], function (param) {
             var v1name;
             var v1;
             var i;
@@ -2431,7 +2366,7 @@ var Plugin0001;
             }
             return nothing;
         });
-        add_one_func_tbl("vec3copy", 2, [0, 1], function (param) {
+        make_one_func_tbl("vec3copy", 2, [0, 1], function (param) {
             var v1name, v2name;
             var v1;
             var i;
@@ -2444,7 +2379,7 @@ var Plugin0001;
             }
             return nothing;
         });
-        add_one_func_tbl("vec3add", 3, [0, 1, 2], function (param) {
+        make_one_func_tbl("vec3add", 3, [0, 1, 2], function (param) {
             var v1name, v2name, v3name;
             var v1, v2, v3;
             var i;
@@ -2460,7 +2395,7 @@ var Plugin0001;
             }
             return nothing;
         });
-        add_one_func_tbl("vec3sub", 3, [0, 1, 2], function (param) {
+        make_one_func_tbl("vec3sub", 3, [0, 1, 2], function (param) {
             var v1name, v2name, v3name;
             var v1, v2, v3;
             var i;
@@ -2476,7 +2411,7 @@ var Plugin0001;
             }
             return nothing;
         });
-        add_one_func_tbl("vec3scale", 3, [0, 2], function (param) {
+        make_one_func_tbl("vec3scale", 3, [0, 2], function (param) {
             var v1name, v2name;
             var v1, v2, k;
             var i;
@@ -2491,7 +2426,7 @@ var Plugin0001;
             }
             return nothing;
         });
-        add_one_func_tbl("vec3dot", 2, [0, 1], function (param) {
+        make_one_func_tbl("vec3dot", 2, [0, 1], function (param) {
             var num;
             var v1name, v2name;
             var v1, v2;
@@ -2507,7 +2442,7 @@ var Plugin0001;
             }
             return num;
         });
-        add_one_func_tbl("vec3cross", 3, [0, 1, 2], function (param) {
+        make_one_func_tbl("vec3cross", 3, [0, 1, 2], function (param) {
             var v1name, v2name, v3name;
             var v1 = [], v2 = [], v3 = [];
             var i;
@@ -2527,7 +2462,7 @@ var Plugin0001;
             }
             return nothing;
         });
-        add_one_func_tbl("vec3mag", 1, [0], function (param) {
+        make_one_func_tbl("vec3mag", 1, [0], function (param) {
             var num;
             var v1name;
             var v1;
@@ -2542,7 +2477,7 @@ var Plugin0001;
             num = Math.sqrt(num);
             return num;
         });
-        add_one_func_tbl("vec3normalize", 1, [0], function (param) {
+        make_one_func_tbl("vec3normalize", 1, [0], function (param) {
             var v1name;
             var v1 = [];
             var i, n;
@@ -2562,8 +2497,7 @@ var Plugin0001;
             }
             return nothing;
         });
-        add_one_func_tbl("wrap", 3, [], function (param) {
-            var num;
+        make_one_func_tbl("wrap", 3, [], function (param) {
             var a1, a2, a3;
             var t;
 
@@ -2571,17 +2505,9 @@ var Plugin0001;
             a2 = (+param[1]); // min
             a3 = (+param[2]); // max
             if (a2 > a3) { t = a2; a2 = a3; a3 = t; }
-            if (a2 == a3) {
-                num = a2;
-            } else {
-                t = (a1 - a2) % (a3 - a2);
-                if (t < 0) {
-                    num = t + a3;
-                } else {
-                    num = t + a2;
-                }
-            }
-            return num;
+            if (a2 == a3) { return a2; }
+            t = (a1 - a2) % (a3 - a2);
+            return ((t < 0) ? (t + a3) : (t + a2));
         });
     }
 

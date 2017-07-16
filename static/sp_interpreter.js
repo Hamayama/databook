@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2017-5-3 v12.05
+// 2017-7-16 v13.00
 
 
 // SPALM Web Interpreter
@@ -506,20 +506,20 @@ var Interpreter;
     var font_family = "'MS Gothic', Osaka-Mono"; // フォント指定
     var font_size_set = [12, 16, 24, 30]; // フォントサイズの設定値(px)(最小,小,中,大の順)
 
-    var src;                    // ソース            (文字列)
-    var token = [];             // トークン          (配列)
-    var token_line = [];        // トークンが何行目か(配列)(エラー表示用)
-    var token_len;              // トークン数        (token.lengthのキャッシュ用)
-    var code = [];              // コード            (配列)
-    var code_info = [];         // コード情報        (配列)(エラー表示用)
-    var code_str = [];          // コード文字列      (配列)(表示用とアドレス解決時用)
-    var code_len;               // コード数          (code.lengthのキャッシュ用)
-    // var vars = {};           // 変数              (Varsクラスに移行)
-    var imgvars = {};           // 画像変数          (連想配列オブジェクト)
-    var label = {};             // ラベル            (連想配列オブジェクト)
-    var func = {};              // 関数              (連想配列オブジェクト)
-    var stack = [];             // スタック          (配列)
-    var param = [];             // 関数の引数        (配列)(ユーザ定義関数のときは逆順に格納)
+    var src;                    // ソース      (文字列)
+    var token = [];             // トークン    (配列)
+    var token_info = [];        // トークン情報(配列)(エラー表示用)
+    var token_len;              // トークン数  (token.lengthのキャッシュ用)
+    var code = [];              // コード      (配列)
+    var code_info = [];         // コード情報  (配列)(エラー表示用)
+    var code_str = [];          // コード文字列(配列)(表示用とアドレス解決時用)
+    var code_len;               // コード数    (code.lengthのキャッシュ用)
+    // var vars = {};           // 変数        (Varsクラスに移行)
+    var imgvars = {};           // 画像変数    (連想配列オブジェクト)
+    var label = {};             // ラベル      (連想配列オブジェクト)
+    var func = {};              // 関数        (連想配列オブジェクト)
+    var stack = [];             // スタック    (配列)
+    var param = [];             // 関数の引数  (配列)(ユーザ定義関数のときは逆順に格納)
     var nothing = 0;            // 戻り値なしの組み込み関数の戻り値
     var end_token_num = 4;      // 終端のトークン数
 
@@ -566,7 +566,6 @@ var Interpreter;
     var out_data = {};          // 外部データ(連想配列オブジェクト)
 
     var func_tbl = {};          // 組み込み関数の定義情報(連想配列オブジェクト)
-    var addfunc_tbl = {};       // 追加の組み込み関数の定義情報(連想配列オブジェクト)
     var const_tbl = {};         // 定数の定義情報(連想配列オブジェクト)
 
     var before_run_funcs = {};  // プラグイン用の実行前処理(連想配列オブジェクト)
@@ -610,8 +609,8 @@ var Interpreter;
         cmpeq:31,      cmpne:32,      cmplt:33,      cmple:34,      cmpgt:35,
         cmpge:36,      label:37,      "goto":38,     ifgoto:39,     ifnotgoto:40,
         switchgoto:41, gosub:42,      "return":43,   func:44,       funcend:45,
-        callfunc1:46,  callwait:47,   callfunc2:48,  calluser:49,   callgoto:50,
-        loadparam:51,  end:52 };
+        callfunc:46,   callwait:47,   calluser:48,   callgoto:49,   loadparam:50,
+        end:51 };
 
     var reserved = {            // 予約名
         "spmode":1,    "onlocal":2,   "offlocal":3,  "defconst":4,  "disconst":5,
@@ -648,14 +647,13 @@ var Interpreter;
         Math.trunc = function (x) { return (x < 0) ? Math.ceil(x) : Math.floor(x); };
     }
 
-    // ***** 連想配列オブジェクトの初期化 *****
-    // (Object.create(null) により、プロトタイプチェーンを無効にして、
+    // ***** 連想配列オブジェクトの検索効率化 *****
+    // (プロトタイプチェーンを無効にすることで、
     //  連想配列オブジェクトの検索を効率化する。
-    //  使うときは、obj = {} を obj = hashInit() に置き換える。
+    //  使い方は、obj = {} を obj = hashInit() に置き換えればよい。
     //  (ただし、常にヒットするような検索では性能は変わらない)
-    //  (また、obj.hasOwnProperty() 等のメソッドは 使用できなくなる))
+    //  (また、obj.hasOwnProperty() 等のメソッドは 使えなくなる))
     var hashInit = (function () {
-        // Object.create() が存在しない場合はシミュレートする
         var f = Object.create ?
             function () { return Object.create(null); } :
             (function () {
@@ -730,8 +728,6 @@ var Interpreter;
         }
         // ***** 組み込み関数の定義情報の初期化 *****
         func_tbl = {};
-        // ***** 追加の組み込み関数の定義情報の初期化 *****
-        addfunc_tbl = {};
         // ***** 組み込み関数の定義情報の生成 *****
         make_func_tbl();
         // ***** 戻り値を返す *****
@@ -903,7 +899,7 @@ var Interpreter;
             DebugShow("tokenize: " + ex1.message + "\n");
             debugpos1 = token_len - 1;
             if (debugpos1 < 0) { debugpos1 = 0; }
-            msg = "エラー場所: " + token_line[debugpos1] + "行";
+            msg = "エラー場所: " + token_info[debugpos1].line_no + "行";
             DebugShow(msg + "\n");
             DebugShow("実行終了\n");
             return ret;
@@ -1374,7 +1370,7 @@ var Interpreter;
                     // ***** 呼び出し元がない *****
                     throw new Error("予期しない '}' が見つかりました。");
                     // break;
-                case 46: // callfunc1
+                case 46: // callfunc
                     // ***** 引数の取得 *****
                     param_num = code[pc++];
                     param = [];
@@ -1410,20 +1406,7 @@ var Interpreter;
                     }
                     pc -= 2;
                     break;
-                case 48: // callfunc2
-                    // ***** 引数の取得 *****
-                    param_num = code[pc++];
-                    param = [];
-                    for (i = param_num - 1; i >= 0; i--) {
-                        param[i] = stack.pop();
-                    }
-                    // ***** 関数の本体を取得 *****
-                    func_body = stack.pop();
-                    // ***** 追加の組み込み関数の呼び出し *****
-                    num = func_body(param);
-                    stack.push(num);
-                    break;
-                case 49: // calluser
+                case 48: // calluser
                     // ***** 引数の取得 *****
                     param_num = code[pc++];
                     param = [];
@@ -1447,7 +1430,7 @@ var Interpreter;
                     // pc = func[func_name];
                     pc = func_start;
                     break;
-                case 50: // callgoto
+                case 49: // callgoto
                     // ***** 引数の取得 *****
                     param_num = code[pc++];
                     param = [];
@@ -1476,7 +1459,7 @@ var Interpreter;
                     // ***** 関数の外では使用不可 *****
                     throw new Error("funcgoto はユーザ定義の関数内でなければ使用できません。");
                     // break;
-                case 51: // loadparam
+                case 50: // loadparam
                     if (param.length > 0) {
                         num = param.pop(); // 逆順に取得
                     } else {
@@ -1501,7 +1484,7 @@ var Interpreter;
                     }
                     Vars.setVarValue(var_info, num);
                     break;
-                case 52: // end
+                case 51: // end
                     end_flag = true;
                     break;
                 default:
@@ -1846,8 +1829,7 @@ var Interpreter;
                     throw new Error("関数名が不正です。('" + func_name + "')");
                 }
                 if (reserved.hasOwnProperty(func_name) ||
-                    func_tbl.hasOwnProperty(func_name) ||
-                    addfunc_tbl.hasOwnProperty(func_name)) {
+                    func_tbl.hasOwnProperty(func_name)) {
                     // (一部の関数定義エラーを発生させない(過去との互換性維持のため))
                     if (!(sp_compati_flag && func_name == "int")) {
                         debugpos2 = i;
@@ -2467,7 +2449,6 @@ var Interpreter;
         var i;
         var ch;
         var tok;
-        var func_type;
         var func_name;
         var param_num;
 
@@ -2515,20 +2496,16 @@ var Interpreter;
         }
 
         // ***** 組み込み関数/組み込み変数のとき *****
-        if (func_tbl.hasOwnProperty(tok))         { func_type = 1; }
-        else if (addfunc_tbl.hasOwnProperty(tok)) { func_type = 2; }
-        else                                      { func_type = 0; }
-        if (func_type > 0) {
+        if (func_tbl.hasOwnProperty(tok)) {
             i++;
             // ***** 関数名の取得 *****
             func_name = tok;
             code_push("push", debugpos1, i);
             // code_push('"' + func_name + '"', debugpos1, i);
-            code_push('"' + func_name + '"', debugpos1, i, func_type);
+            code_push('"' + func_name + '"', debugpos1, i, 1);
             // ***** 組み込み変数のとき *****
-            if ((func_type == 1 && func_tbl[func_name].param_num == -1) ||
-                (func_type == 2 && addfunc_tbl[func_name].param_num == -1)) {
-                code_push("callfunc" + func_type, debugpos1, i);
+            if (func_tbl[func_name].param_num == -1) {
+                code_push("callfunc", debugpos1, i);
                 code_push(0, debugpos1, i);
                 return i;
             }
@@ -2546,8 +2523,7 @@ var Interpreter;
             } else {
                 while (i < tok_end) {
                     // ***** 「変数名をとる引数」のとき *****
-                    if ((func_type == 1 && func_tbl[func_name].param_varname_flag.hasOwnProperty(param_num)) ||
-                        (func_type == 2 && addfunc_tbl[func_name].param_varname_flag.hasOwnProperty(param_num))) {
+                    if (func_tbl[func_name].param_varname_flag.hasOwnProperty(param_num)) {
                         i = c_varname(i, tok_end);
                     } else {
                         i = c_expression(i, tok_end);
@@ -2561,8 +2537,7 @@ var Interpreter;
                 }
                 token_match(")", i++);
             }
-            if ((func_type == 1 && param_num < func_tbl[func_name].param_num) ||
-                (func_type == 2 && param_num < addfunc_tbl[func_name].param_num)) {
+            if (param_num < func_tbl[func_name].param_num) {
                 debugpos2 = i;
                 throw new Error(func_name + " 関数の引数の数が足りません。");
             }
@@ -2570,7 +2545,7 @@ var Interpreter;
             if (func_name == "input" || func_name == "keyinput") {
                 code_push("callwait", debugpos1, i);
             } else {
-                code_push("callfunc" + func_type, debugpos1, i);
+                code_push("callfunc", debugpos1, i);
             }
             // ***** 引数の数を設定 *****
             code_push(param_num, debugpos1, i);
@@ -2793,8 +2768,7 @@ var Interpreter;
             throw new Error("変数名が不正です。('" + var_name + "')");
         }
         if (reserved.hasOwnProperty(var_name) ||
-            func_tbl.hasOwnProperty(var_name) ||
-            addfunc_tbl.hasOwnProperty(var_name)) {
+            func_tbl.hasOwnProperty(var_name)) {
             debugpos2 = i;
             throw new Error("名前 '" + var_name + "' は予約されているため、変数名には使用できません。");
         }
@@ -2831,8 +2805,7 @@ var Interpreter;
             throw new Error("ラベル名が不正です。('" + lbl_name + "')");
         }
         if (reserved.hasOwnProperty(lbl_name) ||
-            func_tbl.hasOwnProperty(lbl_name) ||
-            addfunc_tbl.hasOwnProperty(lbl_name)) {
+            func_tbl.hasOwnProperty(lbl_name)) {
             debugpos2 = i;
             throw new Error("名前 '" + lbl_name + "' は予約されているため、ラベル名には使用できません。");
         }
@@ -3018,7 +2991,7 @@ var Interpreter;
         newline_flag = false;
         newline_flag_temp = false;
         token = [];
-        token_line = [];
+        token_info = [];
         token_len = 0;
         src_len = src.length;
         while (i < src_len) {
@@ -3266,7 +3239,9 @@ var Interpreter;
     // ***** トークン追加 *****
     function token_push(tok, line_no) {
         token[token_len] = tok;
-        token_line[token_len++] = line_no;
+        token_info[token_len] = {};
+        token_info[token_len].line_no = line_no;
+        token_len++;
     }
 
     // ***** トークンの一致チェック *****
@@ -3286,13 +3261,16 @@ var Interpreter;
     // ***** ブロックの検索 *****
     // (ch1とch2に囲まれたブロックを検索して 終了位置を返す
     //  (ブロックのネストにも対応))
-    function block_search(tok_start, tok_end, ch1, ch2, disable_ch1) {
+    function block_search(tok_start, tok_end, ch1, ch2, for_exp_flag) {
         var i, nest;
 
         i = tok_start;
         nest = 1; // 先頭のch1は処理済みを前提とする
         while (i < tok_end) {
-            if (token[i] == ch1 && (!disable_ch1 || sp_compati_flag)) { nest++; }
+            // (for文の式でかつ互換モードでないときには、ch1をチェックしない)
+            if (!for_exp_flag || sp_compati_flag) {
+                if (token[i] == ch1) { nest++; }
+            }
             if (token[i] == ch2) { nest--; }
             if (nest == 0) { break; }
             i++;
@@ -3305,7 +3283,7 @@ var Interpreter;
         var i;
         var msg;
 
-        msg = "エラー場所: " + token_line[debugpos1] + "行: ";
+        msg = "エラー場所: " + token_info[debugpos1].line_no + "行: ";
         if (debugpos2 <= debugpos1) { debugpos2 = debugpos1 + 1; } // 最低でも1個は表示する
         for (i = debugpos1; i < debugpos2; i++) {
             if (i >= 0 && i < token_len) {
@@ -3360,11 +3338,6 @@ var Interpreter;
                 func_name = tok.substring(1, tok.length - 1); // ダブルクォートを外す
                 code[code_len] = func_tbl[func_name].func;
                 break;
-            case 2: // 追加の組み込み関数
-                // ***** 関数の本体を格納 *****
-                func_name = tok.substring(1, tok.length - 1); // ダブルクォートを外す
-                code[code_len] = addfunc_tbl[func_name].func;
-                break;
             case 10: // 変数
                 // ***** 変数情報を生成して格納 *****
                 i = 0;
@@ -3400,7 +3373,8 @@ var Interpreter;
         code_info[code_len].pos2 = pos2;
         // ***** コード文字列の追加 *****
         // (そのまま格納)
-        code_str[code_len++] = tok;
+        code_str[code_len] = tok;
+        code_len++;
     }
 
     // ***** コードの文字列化 *****
@@ -4045,20 +4019,16 @@ var Interpreter;
         // (第3引数は「変数名をとる引数」がある場合にその引数番号を配列で指定する)
         // (戻り値なしの組み込み関数の戻り値は nothing とする)
         make_one_func_tbl("abs", 1, [], function (param) {
-            var num;
             var a1;
 
             a1 = (+param[0]);
-            num = Math.abs(a1);
-            return num;
+            return Math.abs(a1);
         });
         make_one_func_tbl("acos", 1, [], function (param) {
-            var num;
             var a1;
 
             a1 = (+param[0]);
-            num = Math.acos(a1) * 180 / Math.PI;
-            return num;
+            return (Math.acos(a1) * 180 / Math.PI);
         });
         make_one_func_tbl("arc", 3, [], function (param) {
             var a1, a2, a3, a4;
@@ -4133,59 +4103,48 @@ var Interpreter;
 
             // ***** カウント処理 *****
             num = 0;
-            i = a2;
-            do {
-                // ***** 配列の存在チェック *****
-                if (Vars.checkVar(a1, [i])) {
-                    num++;
-                } else if (a3 == null) {
-                    break;
+            if (a3 == null) {
+                for (i = a2; true; i++) {
+                    if (Vars.checkVar(a1, [i])) { num++; } else { break; }
                 }
-                i++;
-            } while (a3 == null || i <= a3);
+            } else {
+                for (i = a2; i <= a3; i++) {
+                    if (Vars.checkVar(a1, [i])) { num++; }
+                }
+            }
             return num;
         });
         make_one_func_tbl("asin", 1, [], function (param) {
-            var num;
             var a1;
 
             a1 = (+param[0]);
-            num = Math.asin(a1) * 180 / Math.PI;
-            return num;
+            return (Math.asin(a1) * 180 / Math.PI);
         });
         make_one_func_tbl("atan", 1, [], function (param) {
-            var num;
             var a1;
 
             a1 = (+param[0]);
-            num = Math.atan(a1) * 180 / Math.PI;
-            return num;
+            return (Math.atan(a1) * 180 / Math.PI);
         });
         make_one_func_tbl("atan2", 2, [], function (param) {
-            var num;
             var a1, a2;
 
             a1 = (+param[0]);
             a2 = (+param[1]);
-            // num = Math.atan2(a2, a1) * 180 / Math.PI;
-            num = Math.atan2(a1, a2) * 180 / Math.PI;
-            return num;
+            // return (Math.atan2(a2, a1) * 180 / Math.PI);
+            return (Math.atan2(a1, a2) * 180 / Math.PI);
         });
         make_one_func_tbl("ceil", 1, [], function (param) {
-            var num;
             var a1;
 
             a1 = (+param[0]);
-            num = Math.ceil(a1);
-            return num;
+            return Math.ceil(a1);
         });
         make_one_func_tbl("chkvar", 1, [0], function (param) {
-            var num;
             var a1;
 
             a1 = get_var_info(param[0]);
-            if (Vars.checkVar(a1)) { num = 1; } else { num = 0; }
-            return num;
+            return (Vars.checkVar(a1) ? 1 : 0);
         });
         make_one_func_tbl("clear", 4, [], function (param) {
             var a1, a2, a3, a4;
@@ -4327,28 +4286,17 @@ var Interpreter;
             return nothing;
         });
         make_one_func_tbl("cos", 1, [], function (param) {
-            var num;
             var a1;
 
             a1 = (+param[0]);
-            if (sp_compati_flag) {
-                num = Math.trunc(Math.cos(a1 * Math.PI / 180) * 100);
-            } else {
-                num = Math.cos(a1 * Math.PI / 180);
-            }
-            return num;
+            if (sp_compati_flag) { return Math.trunc(Math.cos(a1 * Math.PI / 180) * 100); }
+            return Math.cos(a1 * Math.PI / 180);
         });
         make_one_func_tbl("day", -1, [], function (param) {
-            var num;
-
-            num = new Date().getDate();
-            return num;
+            return (new Date().getDate());
         });
         make_one_func_tbl("dayofweek", -1, [], function (param) {
-            var num;
-
-            num = new Date().getDay() + 1; // =1:日曜日,=2:月曜日 ... =7:土曜日
-            return num;
+            return (new Date().getDay() + 1); // =1:日曜日,=2:月曜日 ... =7:土曜日
         });
         make_one_func_tbl("dbgdrawfix", 0, [], function (param) {
             var a1;
@@ -4378,14 +4326,12 @@ var Interpreter;
             return nothing;
         });
         make_one_func_tbl("dbgpointer", 1, [0], function (param) {
-            var num;
             var a1;
             var var_info;
 
             a1 = get_var_info(param[0]);
             var_info = Vars.getVarValue(a1);
-            num = a1.name + " = " + code_tostr(var_info);
-            return num;
+            return (a1.name + " = " + code_tostr(var_info));
         });
         make_one_func_tbl("dbgprint", 1, [], function (param) {
             var a1, a2;
@@ -4438,22 +4384,14 @@ var Interpreter;
             return num;
         });
         make_one_func_tbl("dcos", 1, [], function (param) {
-            var num;
             var a1;
 
             a1 = (+param[0]);
-            num = Math.cos(a1 * Math.PI / 180);
-            return num;
+            return Math.cos(a1 * Math.PI / 180);
         });
         make_one_func_tbl("devpixratio", -1, [], function (param) {
-            var num;
-
-            if (window.devicePixelRatio) {
-                num = window.devicePixelRatio;
-            } else {
-                num = 0;
-            }
-            return num;
+            if (window.devicePixelRatio) { return window.devicePixelRatio; }
+            return 0;
         });
         make_one_func_tbl("disarray", 1, [0], function (param) {
             var a1, a2, a3;
@@ -4510,7 +4448,6 @@ var Interpreter;
             return nothing;
         });
         make_one_func_tbl("download", 1, [], function (param) {
-            var num;
             var a1, a2, a3;
 
             a1 = String(param[0]);
@@ -4532,11 +4469,9 @@ var Interpreter;
                     window.location.href = "data:application/octet-stream," + encodeURIComponent(a1);
                 }
             }
-            num = "data:text/plain;charset=utf-8," + encodeURIComponent(a1);
-            return num;
+            return ("data:text/plain;charset=utf-8," + encodeURIComponent(a1));
         });
         make_one_func_tbl("downloadimg", 0, [], function (param) {
-            var num;
             var a1, a2;
 
             if (param.length <= 0) {
@@ -4557,17 +4492,14 @@ var Interpreter;
                     window.location.href = can.toDataURL("image/png").replace("image/png", "image/octet-stream");
                 }
             }
-            num = can.toDataURL("image/png");
-            return num;
+            return can.toDataURL("image/png");
         });
         make_one_func_tbl("dpow", 2, [], function (param) {
-            var num;
             var a1, a2;
 
             a1 = (+param[0]);
             a2 = (+param[1]);
-            num = Math.pow(a1, a2);
-            return num;
+            return Math.pow(a1, a2);
         });
         make_one_func_tbl("drawarea", 7, [0], function (param) {
             var a1, a2, a3, a4, a5, a6, a7;
@@ -4744,28 +4676,22 @@ var Interpreter;
             return nothing;
         });
         make_one_func_tbl("dsin", 1, [], function (param) {
-            var num;
             var a1;
 
             a1 = (+param[0]);
-            num = Math.sin(a1 * Math.PI / 180);
-            return num;
+            return Math.sin(a1 * Math.PI / 180);
         });
         make_one_func_tbl("dtan", 1, [], function (param) {
-            var num;
             var a1;
 
             a1 = (+param[0]);
-            num = Math.tan(a1 * Math.PI / 180);
-            return num;
+            return Math.tan(a1 * Math.PI / 180);
         });
         make_one_func_tbl("exp", 1, [], function (param) {
-            var num;
             var a1;
 
             a1 = (+param[0]);
-            num = Math.exp(a1);
-            return num;
+            return Math.exp(a1);
         });
         make_one_func_tbl("farc", 3, [], function (param) {
             var a1, a2, a3, a4;
@@ -4814,12 +4740,10 @@ var Interpreter;
             return nothing;
         });
         make_one_func_tbl("floor", 1, [], function (param) {
-            var num;
             var a1;
 
             a1 = (+param[0]);
-            num = Math.floor(a1);
-            return num;
+            return Math.floor(a1);
         });
         make_one_func_tbl("foval", 6, [], function (param) {
             var a1, a2, a3, a4, a5, a6;
@@ -4924,15 +4848,12 @@ var Interpreter;
             return nothing;
         });
         make_one_func_tbl("getoutdata", 1, [], function (param) {
-            var num;
             var a1;
 
             a1 = Math.trunc(param[0]);
-            num = out_data.hasOwnProperty(a1) ? out_data[a1] : "";
-            return num;
+            return (out_data.hasOwnProperty(a1) ? out_data[a1] : "");
         });
         make_one_func_tbl("getpixel", 2, [], function (param) {
-            var num;
             var a1, a2;
             var x1, y1;
             var ret_array = [];
@@ -4946,51 +4867,37 @@ var Interpreter;
             y1 = ret_array[1];
 
             // ***** エラーチェック *****
-            // if (x1 < 0 || x1 >= can.width || y1 < 0 || y1 >= can.height) { num = 0; return num; }
-            if (!(x1 >= 0 && x1 < can.width && y1 >= 0 && y1 < can.height)) { num = 0; return num; }
+            // if (x1 < 0 || x1 >= can.width || y1 < 0 || y1 >= can.height) { return 0; }
+            if (!(x1 >= 0 && x1 < can.width && y1 >= 0 && y1 < can.height)) { return 0; }
 
             // ***** 画像データの取得 *****
             img_data = ctx.getImageData(x1, y1, 1, 1);
             // ***** 色情報を取得 *****
-            num = (img_data.data[0] << 16) | (img_data.data[1] << 8) | img_data.data[2];
-            return num;
+            return ((img_data.data[0] << 16) | (img_data.data[1] << 8) | img_data.data[2]);
         });
         make_one_func_tbl("height", -1, [], function (param) {
-            var num;
-
-            num = can1.height;
-            return num;
+            return can1.height;
         });
         make_one_func_tbl("hour", -1, [], function (param) {
-            var num;
-
-            num = new Date().getHours();
-            return num;
+            return (new Date().getHours());
         });
         make_one_func_tbl("imgheight", 1, [0], function (param) {
-            var num;
             var a1;
 
             a1 = to_global(get_var_info(param[0])); // 画像変数名取得
             // if (imgvars.hasOwnProperty(a1)) {
-            if (hasOwn.call(imgvars, a1)) {
-                num = imgvars[a1].can.height;
-            } else { num = 0; }
-            return num;
+            if (hasOwn.call(imgvars, a1)) { return imgvars[a1].can.height; }
+            return 0;
         });
         make_one_func_tbl("imgwidth", 1, [0], function (param) {
-            var num;
             var a1;
 
             a1 = to_global(get_var_info(param[0])); // 画像変数名取得
             // if (imgvars.hasOwnProperty(a1)) {
-            if (hasOwn.call(imgvars, a1)) {
-                num = imgvars[a1].can.width;
-            } else { num = 0; }
-            return num;
+            if (hasOwn.call(imgvars, a1)) { return imgvars[a1].can.width; }
+            return 0;
         });
         make_one_func_tbl("index", 2, [], function (param) {
-            var num;
             var a1, a2, a3;
 
             a1 = String(param[0]);
@@ -5000,11 +4907,9 @@ var Interpreter;
             } else {
                 a3 = Math.trunc(param[2]);
             }
-            num = a1.indexOf(a2, a3);
-            return num;
+            return a1.indexOf(a2, a3);
         });
         make_one_func_tbl("input", 0, [], function (param) {
-            var num;
             var a1;
             var repeat_flag;
 
@@ -5018,25 +4923,23 @@ var Interpreter;
             // ***** キー入力ありのとき *****
             if (input_buf.length > 0) {
                 input_flag = false;
-                num = input_buf.shift();
-                return num;
+                return input_buf.shift();
             }
             // ***** キー入力なしのとき *****
-            num = 0;
             if (repeat_flag) {
                 input_flag = true;
                 sleep_flag = true;
                 sleep_time = 1000;
-                return num;
+                return 0;
             }
             if (a1 > 0 && !input_flag) {
                 input_flag = true;
                 sleep_flag = true;
                 sleep_time = a1;
-                return num;
+                return 0;
             }
             input_flag = false;
-            return num;
+            return 0;
         });
         make_one_func_tbl("inputdlg", 1, [], function (param) {
             var num;
@@ -5061,12 +4964,10 @@ var Interpreter;
             return num;
         });
         make_one_func_tbl("int", 1, [], function (param) {
-            var num;
             var a1;
 
             a1 = (+param[0]);
-            num = Math.trunc(a1);
-            return num;
+            return Math.trunc(a1);
         });
         make_one_func_tbl("join", 2, [0], function (param) {
             var num;
@@ -5115,13 +5016,9 @@ var Interpreter;
             return num;
         });
         make_one_func_tbl("keydowncode", -1, [], function (param) {
-            var num;
-
-            num = key_down_code;
-            return num;
+            return key_down_code;
         });
         make_one_func_tbl("keyinput", 0, [], function (param) {
-            var num;
             var a1;
             var repeat_flag;
 
@@ -5135,39 +5032,32 @@ var Interpreter;
             // ***** キー入力ありのとき *****
             if (keyinput_buf.length > 0) {
                 keyinput_flag = false;
-                num = keyinput_buf.shift();
-                return num;
+                return keyinput_buf.shift();
             }
             // ***** キー入力なしのとき *****
-            num = 0;
             if (repeat_flag) {
                 keyinput_flag = true;
                 sleep_flag = true;
                 sleep_time = 1000;
-                return num;
+                return 0;
             }
             if (a1 > 0 && !keyinput_flag) {
                 keyinput_flag = true;
                 sleep_flag = true;
                 sleep_time = a1;
-                return num;
+                return 0;
             }
             keyinput_flag = false;
-            return num;
+            return 0;
         });
         make_one_func_tbl("keypresscode", -1, [], function (param) {
-            var num;
-
-            num = key_press_code;
-            return num;
+            return key_press_code;
         });
         make_one_func_tbl("keyscan", 1, [], function (param) {
-            var num;
             var a1;
 
             a1 = Math.trunc(param[0]);
-            if (key_down_stat[a1]) { num = 1; } else { num = 0; }
-            return num;
+            return (key_down_stat[a1] ? 1 : 0);
         });
         make_one_func_tbl("line", 4, [], function (param) {
             var a1, a2, a3, a4;
@@ -5319,28 +5209,25 @@ var Interpreter;
             return nothing;
         });
         make_one_func_tbl("loadimgstat", 1, [0], function (param) {
-            var num;
             var a1;
 
             a1 = to_global(get_var_info(param[0])); // 画像変数名取得
             // ***** 完了フラグをチェックして返す *****
-            num = 0;
             // if (imgvars.hasOwnProperty(a1)) {
             if (hasOwn.call(imgvars, a1)) {
                 if (imgvars[a1].hasOwnProperty("loaded")) {
                     if (!imgvars[a1].loaded) {
-                        num = 1;
+                        return 1;
                     }
                 }
             }
-            return num;
+            return 0;
         });
         make_one_func_tbl("lock", 0, [], function (param) {
             // ***** NOP *****
             return nothing;
         });
         make_one_func_tbl("log", 1, [], function (param) {
-            var num;
             var a1, a2;
 
             a1 = (+param[0]);
@@ -5349,12 +5236,8 @@ var Interpreter;
             } else {
                 a2 = (+param[1]);
             }
-            if (a2 == 0) {
-                num = Math.log(a1);
-            } else {
-                num = Math.log(a1) / Math.log(a2);
-            }
-            return num;
+            if (a2 == 0) { return Math.log(a1); }
+            return (Math.log(a1) / Math.log(a2));
         });
         make_one_func_tbl("makearray", 2, [0], function (param) {
             var a1, a2, a3, a4;
@@ -5431,10 +5314,7 @@ var Interpreter;
             return num;
         });
         make_one_func_tbl("millisecond", -1, [], function (param) {
-            var num;
-
-            num = new Date().getMilliseconds();
-            return num;
+            return (new Date().getMilliseconds());
         });
         make_one_func_tbl("min", 2, [], function (param) {
             var num;
@@ -5451,28 +5331,16 @@ var Interpreter;
             return num;
         });
         make_one_func_tbl("minute", -1, [], function (param) {
-            var num;
-
-            num = new Date().getMinutes();
-            return num;
+            return (new Date().getMinutes());
         });
         make_one_func_tbl("month", -1, [], function (param) {
-            var num;
-
-            num = new Date().getMonth() + 1; // 1から12にするため1を加算
-            return num;
+            return (new Date().getMonth() + 1); // 1から12にするため1を加算
         });
         make_one_func_tbl("mousex", -1, [], function (param) {
-            var num;
-
-            num = mousex;
-            return num;
+            return mousex;
         });
         make_one_func_tbl("mousey", -1, [], function (param) {
-            var num;
-
-            num = mousey;
-            return num;
+            return mousey;
         });
         make_one_func_tbl("mousebtn", -1, [], function (param) {
             var num;
@@ -5545,10 +5413,7 @@ var Interpreter;
             return nothing;
         });
         make_one_func_tbl("PI", -1, [], function (param) {
-            var num;
-
-            num = Math.PI;
-            return num;
+            return Math.PI;
         });
         make_one_func_tbl("point", 2, [], function (param) {
             var a1, a2;
@@ -5559,28 +5424,20 @@ var Interpreter;
             return nothing;
         });
         make_one_func_tbl("pow", 2, [], function (param) {
-            var num;
             var a1, a2;
 
             a1 = (+param[0]);
             a2 = (+param[1]);
-            num = Math.pow(a1, a2);
-            return num;
+            return Math.pow(a1, a2);
         });
         make_one_func_tbl("rand", -1, [], function (param) {
-            var num;
-
             // min から max までの整数の乱数を返す
             // (Math.round() を用いると、非一様分布になるのでNG)
-            // num = Math.floor(Math.random() * (max - min + 1)) + min;
-            num = Math.floor(Math.random() * (2147483647 - (-2147483648) + 1)) + (-2147483648);
-            return num;
+            // return (Math.floor(Math.random() * (max - min + 1)) + min);
+            return (Math.floor(Math.random() * (2147483647 - (-2147483648) + 1)) + (-2147483648));
         });
         make_one_func_tbl("random", -1, [], function (param) {
-            var num;
-
-            num = Math.random();
-            return num;
+            return Math.random();
         });
         make_one_func_tbl("rect", 4, [], function (param) {
             var a1, a2, a3, a4;
@@ -5731,16 +5588,10 @@ var Interpreter;
             return nothing;
         });
         make_one_func_tbl("scan", -1, [], function (param) {
-            var num;
-
-            num = key_scan_stat;
-            return num;
+            return key_scan_stat;
         });
         make_one_func_tbl("second", -1, [], function (param) {
-            var num;
-
-            num = new Date().getSeconds();
-            return num;
+            return (new Date().getSeconds());
         });
         make_one_func_tbl("setfont", 1, [], function (param) {
             var a1;
@@ -5795,8 +5646,8 @@ var Interpreter;
             return nothing;
         });
         make_one_func_tbl("setscl", 1, [], function (param) {
-            var num;
-            var a1, a2, a3;
+            var a1, a2;
+            var scl;
 
             a1 = (+param[0]);
             if (param.length <= 1) {
@@ -5804,9 +5655,8 @@ var Interpreter;
             } else {
                 a2 = (+param[1]);
             }
-            a3 = Math.pow(10, a2);
-            num = Math.round(a1 * a3) / a3;
-            return num;
+            scl = Math.pow(10, a2);
+            return (Math.round(a1 * scl) / scl);
         });
         make_one_func_tbl("setscsize", 2, [], function (param) {
             var a1, a2, a3, a4;
@@ -5848,26 +5698,19 @@ var Interpreter;
             return nothing;
         });
         make_one_func_tbl("sign", 1, [], function (param) {
-            var num;
             var a1;
 
             a1 = (+param[0]);
-            if      (a1 > 0) { num =  1; }
-            else if (a1 < 0) { num = -1; }
-            else             { num =  0; }
-            return num;
+            if (a1 > 0) { return  1; }
+            if (a1 < 0) { return -1; }
+            return 0;
         });
         make_one_func_tbl("sin", 1, [], function (param) {
-            var num;
             var a1;
 
             a1 = (+param[0]);
-            if (sp_compati_flag) {
-                num = Math.trunc(Math.sin(a1 * Math.PI / 180) * 100);
-            } else {
-                num = Math.sin(a1 * Math.PI / 180);
-            }
-            return num;
+            if (sp_compati_flag) { return Math.trunc(Math.sin(a1 * Math.PI / 180) * 100); }
+            return Math.sin(a1 * Math.PI / 180);
         });
         make_one_func_tbl("sleep", 1, [], function (param) {
             var a1;
@@ -5985,52 +5828,37 @@ var Interpreter;
             return num;
         });
         make_one_func_tbl("sptype", -1, [], function (param) {
-            var num;
-
-            num = "spweb";
-            return num;
+            return "spweb";
         });
         make_one_func_tbl("sqrt", 1, [], function (param) {
-            var num;
             var a1;
 
             a1 = (+param[0]);
-            num = Math.sqrt(a1);
-            return num;
+            return Math.sqrt(a1);
         });
         make_one_func_tbl("sthigh", -1, [], function (param) {
-            var num;
-
-            num = font_size;
-            return num;
+            return font_size;
         });
         make_one_func_tbl("strat", 2, [], function (param) {
-            var num;
             var a1, a2;
 
             a1 = String(param[0]);
             a2 = Math.trunc(param[1]);
-            num = a1.charAt(a2);
-            return num;
+            return a1.charAt(a2);
         });
         make_one_func_tbl("strlen", 1, [], function (param) {
-            var num;
             var a1;
 
             a1 = String(param[0]);
-            num = a1.length;
-            return num;
+            return a1.length;
         });
         make_one_func_tbl("stwide", 1, [], function (param) {
-            var num;
             var a1;
 
             a1 = String(param[0]);
-            num = ctx.measureText(a1).width;
-            return num;
+            return ctx.measureText(a1).width;
         });
         make_one_func_tbl("substr", 2, [], function (param) {
-            var num;
             var a1, a2, a3;
 
             a1 = String(param[0]);
@@ -6040,20 +5868,14 @@ var Interpreter;
             } else {
                 a3 = Math.trunc(param[2]);
             }
-            num = a1.substr(a2, a3);
-            return num;
+            return a1.substr(a2, a3);
         });
         make_one_func_tbl("tan", 1, [], function (param) {
-            var num;
             var a1;
 
             a1 = (+param[0]);
-            if (sp_compati_flag) {
-                num = Math.trunc(Math.tan(a1 * Math.PI / 180) * 100);
-            } else {
-                num = Math.tan(a1 * Math.PI / 180);
-            }
-            return num;
+            if (sp_compati_flag) { return Math.trunc(Math.tan(a1 * Math.PI / 180) * 100); }
+            return Math.tan(a1 * Math.PI / 180);
         });
         make_one_func_tbl("text", 1, [], function (param) {
             var a1, a2, a3, a4;
@@ -6095,11 +5917,8 @@ var Interpreter;
             return nothing;
         });
         make_one_func_tbl("tick", -1, [], function (param) {
-            var num;
-
-            // num = new Date().getTime();
-            num = Date.now();
-            return num;
+            // return new Date().getTime();
+            return Date.now();
         });
         make_one_func_tbl("trgt", 1, [0], function (param) {
             var a1;
@@ -6120,12 +5939,10 @@ var Interpreter;
             return nothing;
         });
         make_one_func_tbl("trim", 1, [], function (param) {
-            var num;
             var a1;
 
             a1 = String(param[0]);
-            num = a1.replace(/^\s+|\s+$/g, "");
-            return num;
+            return a1.replace(/^\s+|\s+$/g, "");
         });
         make_one_func_tbl("unlock", 0, [], function (param) {
             var a1;
@@ -6139,22 +5956,13 @@ var Interpreter;
             return nothing;
         });
         make_one_func_tbl("week", -1, [], function (param) {
-            var num;
-
-            num = new Date().getDay() + 1; // =1:日曜日,=2:月曜日 ... =7:土曜日
-            return num;
+            return (new Date().getDay() + 1); // =1:日曜日,=2:月曜日 ... =7:土曜日
         });
         make_one_func_tbl("width", -1, [], function (param) {
-            var num;
-
-            num = can1.width;
-            return num;
+            return can1.width;
         });
         make_one_func_tbl("year", -1, [], function (param) {
-            var num;
-
-            num = new Date().getFullYear();
-            return num;
+            return (new Date().getFullYear());
         });
         make_one_func_tbl("yndlg", 1, [], function (param) {
             var num;
@@ -6164,7 +5972,7 @@ var Interpreter;
             if (param.length >= 2) {
                 a1 = String(param[1]);
             }
-            if (confirm(a1)) { num = "YES"; } else { num = "NO"; }
+            num = (confirm(a1) ? "YES" : "NO");
             keyclear();
             mousebuttonclear();
             loop_nocount_flag1 = true;
@@ -6188,7 +5996,10 @@ var Interpreter;
     function make_one_func_tbl(name, param_num, param_varname_indexes, func) {
         var i;
 
-        // (定義情報1個の生成)
+        // ***** すでに存在する場合はスキップする *****
+        if (func_tbl.hasOwnProperty(name)) { return; }
+
+        // ***** 定義情報1個の生成 *****
         func_tbl[name] = {};
         // (引数の数を設定(ただし省略可能な引数は数に入れない))
         // (これを-1にすると組み込み変数になり、()なしで呼び出せる)
@@ -6205,35 +6016,14 @@ var Interpreter;
     }
 
     // ****************************************
-    //            追加命令の定義処理
+    //               プラグイン用
     // ****************************************
 
-    // ***** 追加の組み込み関数の定義情報1個の生成 *****
-    function add_one_func_tbl(name, param_num, param_varname_indexes, func) {
-        var i;
-
-        // (定義情報1個の生成)
-        addfunc_tbl[name] = {};
-        // (引数の数を設定(ただし省略可能な引数は数に入れない))
-        // (これを-1にすると組み込み変数になり、()なしで呼び出せる)
-        addfunc_tbl[name].param_num = param_num;
-        // (「変数名をとる引数」の指定フラグを生成)
-        addfunc_tbl[name].param_varname_flag = {};
-        if (param_varname_indexes && param_varname_indexes.length) {
-            for (i = 0; i < param_varname_indexes.length; i++) {
-                addfunc_tbl[name].param_varname_flag[param_varname_indexes[i]] = true;
-            }
-        }
-        // (関数の本体を設定)
-        addfunc_tbl[name].func = func;
-    }
-
-    // ***** プラグイン用 *****
     // (必要に応じてインタープリターの内部情報を公開する)
     Interpreter.add_before_run_funcs = function (name, func) { before_run_funcs[name] = func; };
     Interpreter.add_after_run_funcs = function (name, func) { after_run_funcs[name] = func; };
     Interpreter.add_clear_var_funcs = function (name, func) { clear_var_funcs[name] = func; };
-    Interpreter.add_one_func_tbl = add_one_func_tbl;
+    Interpreter.make_one_func_tbl = make_one_func_tbl;
     Interpreter.Vars = Vars;
     Interpreter.get_var_info = get_var_info;
     Interpreter.to_global = to_global;
