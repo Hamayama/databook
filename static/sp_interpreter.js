@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2017-7-16 v13.00
+// 2017-7-17 v13.01
 
 
 // SPALM Web Interpreter
@@ -81,21 +81,19 @@ function init_func(load_skip_flag) {
     if (get_one_url_para("debug") == "1") {
         document.getElementById("debug_chk1").checked = true;
     }
+    return true;
 }
 
 // ***** URLパラメータ1個の取得 *****
 function get_one_url_para(key) {
-    var ret;
     var i, j;
     var para_st, para, val;
 
-    // ***** 戻り値の初期化 *****
-    ret = "";
     // ***** 引数のチェック *****
-    if (key == null) { Alm("get_one_url_para:0001"); return ret; }
-    if (key == "") { Alm("get_one_url_para:0002"); return ret; }
+    if (key == null) { Alm("get_one_url_para:0001"); return ""; }
+    if (key == "") { Alm("get_one_url_para:0002"); return ""; }
     // ***** 関数の存在チェック *****
-    if (typeof (decodeURIComponent) != "function") { Alm("get_one_url_para:0003"); return ret; }
+    if (typeof (decodeURIComponent) != "function") { Alm("get_one_url_para:0003"); return ""; }
     // ***** URLパラメータ1個の取得 *****
     para_st = window.location.search.substring(1);
     para = para_st.split("&");
@@ -107,26 +105,18 @@ function get_one_url_para(key) {
             break;
         }
     }
-    // ***** 戻り値を返す *****
-    ret = val;
-    return ret;
+    return val;
 }
 
 // ***** IDチェック *****
 function check_id(id, num) {
-    var ret;
-
-    // ***** 戻り値の初期化 *****
-    ret = false;
     // ***** 引数のチェック *****
-    if (id == null) { Alm("check_id:0001"); return ret; }
-    if (num == null) { Alm("check_id:0002"); return ret; }
+    if (id == null) { Alm("check_id:0001"); return false; }
+    if (num == null) { Alm("check_id:0002"); return false; }
     // ***** IDのチェック *****
-    if (id.length <= 0 || id.length > num) { return ret; }
-    if (!id.match(/^[0-9]+$/)) { return ret; }
-    // ***** 戻り値を返す *****
-    ret = true;
-    return ret;
+    if (id.length <= 0 || id.length > num) { return false; }
+    if (!id.match(/^[0-9]+$/)) { return false; }
+    return true;
 }
 
 // ***** プログラムID(複数)の取得 *****
@@ -189,16 +179,12 @@ function get_prog_id(list_st) {
 
 // ***** リストファイルの読み込み *****
 function load_listfile(fname, err_show_flag) {
-    var ret;
-
-    // ***** 戻り値の初期化 *****
-    ret = false;
     // ***** 引数のチェック *****
-    if (fname == null) { Alm("load_listfile:0001"); return ret; }
-    if (fname == "") { Alm("load_listfile:0002"); return ret; }
-    if (err_show_flag == null) { Alm("load_listfile:0003"); return ret; }
+    if (fname == null) { Alm("load_listfile:0001"); return false; }
+    if (fname == "") { Alm("load_listfile:0002"); return false; }
+    if (err_show_flag == null) { Alm("load_listfile:0003"); return false; }
     // ***** 要素の存在チェック *****
-    if (!document.getElementById("prog_sel1")) { Alm("load_listfile:0004"); return ret; }
+    if (!document.getElementById("prog_sel1")) { Alm("load_listfile:0004"); return false; }
     // ***** テキストファイルの読み込み *****
     load_textfile(fname, function (list_st) {
         var i, prog_id, elm;
@@ -215,22 +201,16 @@ function load_listfile(fname, err_show_flag) {
     }, function (err_st) {
         if (err_show_flag) { Alm2("load_listfile:" + err_st + ":リストファイル読み込みエラー"); }
     });
-    // ***** 戻り値を返す *****
-    ret = true;
-    return ret;
+    return true;
 }
 
 // ***** ソースファイルの読み込み *****
 function load_srcfile(fname) {
-    var ret;
-
-    // ***** 戻り値の初期化 *****
-    ret = false;
     // ***** 引数のチェック *****
-    if (fname == null) { Alm("load_srcfile:0001"); return ret; }
-    if (fname == "") { Alm("load_srcfile:0002"); return ret; }
+    if (fname == null) { Alm("load_srcfile:0001"); return false; }
+    if (fname == "") { Alm("load_srcfile:0002"); return false; }
     // ***** 要素の存在チェック *****
-    if (!document.getElementById("src_text1")) { Alm("load_srcfile:0003"); return ret; }
+    if (!document.getElementById("src_text1")) { Alm("load_srcfile:0003"); return false; }
     // ***** ロード中にする *****
     Interpreter.setloadstat(1);
     // ***** テキストファイルの読み込み *****
@@ -248,26 +228,21 @@ function load_srcfile(fname) {
         // ***** ロード中を解除 *****
         Interpreter.setloadstat(0);
     });
-    // ***** 戻り値を返す *****
-    ret = true;
-    return ret;
+    return true;
 }
 
 // ***** テキストファイルの読み込み *****
 function load_textfile(fname, ok_func, ng_func) {
-    var ret;
     var http_obj;
 
-    // ***** 戻り値の初期化 *****
-    ret = false;
     // ***** 引数のチェック *****
-    if (fname == null) { Alm("load_textfile:0001"); return ret; }
-    if (fname == "") { Alm("load_textfile:0002"); return ret; }
-    if (typeof (ok_func) != "function") { Alm("load_textfile:0003"); return ret; }
-    if (typeof (ng_func) != "function") { Alm("load_textfile:0004"); return ret; }
+    if (fname == null) { Alm("load_textfile:0001"); return false; }
+    if (fname == "") { Alm("load_textfile:0002"); return false; }
+    if (typeof (ok_func) != "function") { Alm("load_textfile:0003"); return false; }
+    if (typeof (ng_func) != "function") { Alm("load_textfile:0004"); return false; }
     // ***** テキストファイルの読み込み *****
     http_obj = createXMLHttpObject();
-    if (!http_obj) { ng_func("-"); return ret; }
+    if (!http_obj) { ng_func("-"); return false; }
     http_obj.onreadystatechange = function () {
         var data_st;
         // ***** IE8対策 *****
@@ -275,19 +250,13 @@ function load_textfile(fname, ok_func, ng_func) {
         if (http_obj.readyState == 4) {
             if (http_obj.status == 200 || http_obj.status == 0) {
                 data_st = http_obj.responseText;
-                if (data_st) { ok_func(data_st); }
-                else { ng_func("+"); }
+                if (data_st) { ok_func(data_st); } else { ng_func("+"); }
             } else { ng_func("*"); }
         }
     };
     // ***** IE11対策 *****
     // http_obj.open("GET", fname, true);
-    try {
-        http_obj.open("GET", fname, true);
-    } catch (ex1) {
-        ng_func("=");
-        return ret;
-    }
+    try { http_obj.open("GET", fname, true); } catch (ex1) { ng_func("="); return false; }
     // HTTP/1.0 における汎用のヘッダフィールド
     http_obj.setRequestHeader("Pragma", "no-cache");
     // HTTP/1.1 におけるキャッシュ制御のヘッダフィールド
@@ -298,42 +267,28 @@ function load_textfile(fname, ok_func, ng_func) {
     // ***** IE8対策 *****
     // http_obj.send(null);
     try { http_obj.send(null); } catch (ex2) { }
-    // ***** 戻り値を返す *****
-    ret = true;
-    return ret;
+    return true;
 }
 
 // ***** ファイル読み込み用オブジェクトの生成 *****
 function createXMLHttpObject() {
-    var xml_http_obj;
-
     // ***** IE8対策 *****
     if (window.ActiveXObject) {
-        try {
-            xml_http_obj = new ActiveXObject("Msxml2.XMLHTTP");
-            return xml_http_obj;
-        } catch (ex1) { }
+        try { return new ActiveXObject("Msxml2.XMLHTTP"); } catch (ex1) { }
     }
-    try {
-        xml_http_obj = new XMLHttpRequest();
-        return xml_http_obj;
-    } catch (ex2) { }
+    try { return new XMLHttpRequest(); } catch (ex2) { }
     return null;
 }
 
 // ***** プログラム実行状態の表示 *****
 function show_runstat() {
-    var ret;
-
-    // ***** 戻り値の初期化 *****
-    ret = false;
     // ***** 要素の存在チェック *****
-    if (!document.getElementById("runstat_show1")) { Alm("show_runstat:0001"); return ret; }
-    if (!document.getElementById("run_button1")) { Alm("show_runstat:0002"); return ret; }
-    if (!document.getElementById("load_button1")) { Alm("show_runstat:0003"); return ret; }
-    if (!document.getElementById("prog_sel1")) { Alm("show_runstat:0004"); return ret; }
-    if (!document.getElementById("src_text1")) { Alm("show_runstat:0005"); return ret; }
-    if (!document.getElementById("dummy_button1")) { Alm("show_runstat:0006"); return ret; }
+    if (!document.getElementById("runstat_show1")) { Alm("show_runstat:0001"); return false; }
+    if (!document.getElementById("run_button1")) { Alm("show_runstat:0002"); return false; }
+    if (!document.getElementById("load_button1")) { Alm("show_runstat:0003"); return false; }
+    if (!document.getElementById("prog_sel1")) { Alm("show_runstat:0004"); return false; }
+    if (!document.getElementById("src_text1")) { Alm("show_runstat:0005"); return false; }
+    if (!document.getElementById("dummy_button1")) { Alm("show_runstat:0006"); return false; }
     // ***** プログラム実行状態の表示 *****
     if (Interpreter.getloadstat() == 1) {
         document.getElementById("runstat_show1").innerHTML = "ロード中";
@@ -362,48 +317,38 @@ function show_runstat() {
         document.getElementById("prog_sel1").disabled = false;
         document.getElementById("src_text1").disabled = false;
     }
-    // ***** 戻り値を返す *****
-    ret = true;
-    return ret;
+    return true;
 }
 
 // ***** ロードボタン *****
 function load_button() {
-    var ret;
     var prog_id;
 
-    // ***** 戻り値の初期化 *****
-    ret = false;
     // ***** 要素の存在チェック *****
-    if (!document.getElementById("prog_sel1")) { Alm("load_button:0001"); return ret; }
+    if (!document.getElementById("prog_sel1")) { Alm("load_button:0001"); return false; }
     // ***** 実行中のチェック *****
-    if (Interpreter.getrunstat()) { Alm2("load_button:-:プログラム実行中です。停止してからロードしてください。"); return ret; }
+    if (Interpreter.getrunstat()) { Alm2("load_button:-:プログラム実行中です。停止してからロードしてください。"); return false; }
     // ***** ロード中のチェック *****
-    if (Interpreter.getloadstat() == 1) { Alm2("load_button:-:プログラムロード中です。"); return ret; }
+    if (Interpreter.getloadstat() == 1) { Alm2("load_button:-:プログラムロード中です。"); return false; }
     // ***** ソースファイルの読み込み *****
     prog_id = document.getElementById("prog_sel1").options[document.getElementById("prog_sel1").selectedIndex].value;
-    if (!check_id(prog_id, 8)) { Alm("load_button:0003"); return ret; }
+    if (!check_id(prog_id, 8)) { Alm("load_button:0003"); return false; }
     load_srcfile("prog" + prog_id + ".txt");
-    // ***** 戻り値を返す *****
-    ret = true;
-    return ret;
+    return true;
 }
 
 // ***** 実行ボタン *****
 function run_button() {
-    var ret;
     var src_st;
     var dbg_mode;
 
-    // ***** 戻り値の初期化 *****
-    ret = false;
     // ***** 要素の存在チェック *****
-    if (!document.getElementById("src_text1")) { Alm("run_button:0001"); return ret; }
-    if (!document.getElementById("debug_chk1")) { Alm("run_button:0002"); return ret; }
+    if (!document.getElementById("src_text1")) { Alm("run_button:0001"); return false; }
+    if (!document.getElementById("debug_chk1")) { Alm("run_button:0002"); return false; }
     // ***** 実行中のチェック *****
-    if (Interpreter.getrunstat()) { Alm2("run_button:-:すでにプログラム実行中です。"); return ret; }
+    if (Interpreter.getrunstat()) { Alm2("run_button:-:すでにプログラム実行中です。"); return false; }
     // ***** ロード中のチェック *****
-    if (Interpreter.getloadstat() == 1) { Alm2("run_button:-:プログラムロード中です。"); return ret; }
+    if (Interpreter.getloadstat() == 1) { Alm2("run_button:-:プログラムロード中です。"); return false; }
     // ***** ソースの取得 *****
     src_st = document.getElementById("src_text1").value;
     // ***** デバッグモードの設定 *****
@@ -411,15 +356,14 @@ function run_button() {
     Interpreter.setdebug(dbg_mode);
     // ***** 実行 *****
     Interpreter.run(src_st);
-    // ***** 戻り値を返す *****
-    ret = true;
-    return ret;
+    return true;
 }
 
 // ***** 停止ボタン *****
 function stop_button() {
     // ***** 停止 *****
     Interpreter.stop();
+    return true;
 }
 
 
@@ -674,16 +618,12 @@ var Interpreter;
 
     // ***** 初期化 *****
     function init() {
-        var ret;
-
-        // ***** 戻り値の初期化 *****
-        ret = false;
         // ***** Canvasの初期化 *****
         can1 = document.getElementById("canvas1");
-        if (!can1 || !can1.getContext) { Alm2("Interpreter.init:-:描画機能が利用できません。"); return ret; }
+        if (!can1 || !can1.getContext) { Alm2("Interpreter.init:-:描画機能が利用できません。"); return false; }
         // ctx1 = can1.getContext("2d");
         can2 = document.getElementById("canvas2");
-        if (!can2 || !can2.getContext) { Alm2("Interpreter.init:+:描画機能が利用できません。"); return ret; }
+        if (!can2 || !can2.getContext) { Alm2("Interpreter.init:+:描画機能が利用できません。"); return false; }
         // ctx2 = can2.getContext("2d");
         // ***** キーボードイベント登録 *****
         if (document.addEventListener) {
@@ -730,28 +670,20 @@ var Interpreter;
         func_tbl = {};
         // ***** 組み込み関数の定義情報の生成 *****
         make_func_tbl();
-        // ***** 戻り値を返す *****
-        ret = true;
-        return ret;
+        return true;
     }
     Interpreter.init = init;
 
     // ***** 実行 *****
     function run(src_st) {
-        var ret;
-
-        // ***** 戻り値の初期化 *****
-        ret = false;
         // ***** 引数のチェック *****
-        if (src_st == null) { Alm2("Interpreter.run:-:ソースがありません。"); return ret; }
-        // if (src_st == "") { Alm2("Interpreter.run:+:ソースがありません。"); return ret; }
+        if (src_st == null) { Alm2("Interpreter.run:-:ソースがありません。"); return false; }
+        // if (src_st == "") { Alm2("Interpreter.run:+:ソースがありません。"); return false; }
         // ***** ソース設定 *****
         src = src_st;
         // ***** 実行開始 *****
         run_start();
-        // ***** 戻り値を返す *****
-        ret = true;
-        return ret;
+        return true;
     }
     Interpreter.run = run;
 
@@ -762,6 +694,7 @@ var Interpreter;
             clearTimeout(sleep_id);
             run_continuously();
         }
+        return true;
     }
     Interpreter.stop = stop;
 
@@ -776,6 +709,7 @@ var Interpreter;
     function setrunstatcallback(cb_func) {
         if (cb_func == null) { Alm("Interpreter.setrunstatcallback:0001"); return false; }
         if (typeof (cb_func) == "function") { runstatchanged = cb_func; }
+        return true;
     }
     Interpreter.setrunstatcallback = setrunstatcallback;
 
@@ -785,6 +719,7 @@ var Interpreter;
         loading_mode = load_stat;
         runstatchanged();
         if (loading_mode == 2) { loading_mode = 0; }
+        return true;
     }
     Interpreter.setloadstat = setloadstat;
 
@@ -798,6 +733,7 @@ var Interpreter;
     function setdebug(dbg_mode) {
         if (dbg_mode == null) { Alm("Interpreter.setdebug:0001"); return false; }
         debug_mode = dbg_mode;
+        return true;
     }
     Interpreter.setdebug = setdebug;
 
@@ -811,6 +747,7 @@ var Interpreter;
         if (can1_backcolor != "") { can1_backcolor_init = can1_backcolor; }
         if (can2_forecolor != "") { can2_forecolor_init = can2_forecolor; }
         if (can2_backcolor != "") { can2_backcolor_init = can2_backcolor; }
+        return true;
     }
     Interpreter.setcolor = setcolor;
 
@@ -821,6 +758,7 @@ var Interpreter;
         no |= 0;
         data = String(data);
         out_data[no] = data;
+        return true;
     }
     Interpreter.setoutdata = setoutdata;
 
@@ -846,12 +784,9 @@ var Interpreter;
 
     // ***** 実行開始 *****
     function run_start() {
-        var ret;
         var msg;
         var name;
 
-        // ***** 戻り値の初期化 *****
-        ret = false;
         // ***** Canvasのコンテキストを取得 *****
         ctx1 = can1.getContext("2d");
         ctx2 = can2.getContext("2d");
@@ -902,7 +837,7 @@ var Interpreter;
             msg = "エラー場所: " + token_info[debugpos1].line_no + "行";
             DebugShow(msg + "\n");
             DebugShow("実行終了\n");
-            return ret;
+            return false;
         }
         // ***** プリプロセス *****
         try {
@@ -913,7 +848,7 @@ var Interpreter;
             DebugShow("preprocess: " + ex2.message + ": debugpos=" + debugpos1 + "\n");
             show_err_place(debugpos1, debugpos2);
             DebugShow("実行終了\n");
-            return ret;
+            return false;
         }
         // ***** コンパイル *****
         debugpos1 = 0;
@@ -928,7 +863,7 @@ var Interpreter;
             DebugShow("compile: " + ex3.message + ": debugpos=" + debugpos1 + "\n");
             show_err_place(debugpos1, debugpos2);
             DebugShow("実行終了\n");
-            return ret;
+            return false;
         }
         if (debug_mode == 1) {
             msg = token.join(" ");
@@ -947,7 +882,7 @@ var Interpreter;
             DebugShow("resolveaddress: " + ex4.message + ": debugpos=" + debugpos1 + "\n");
             show_err_place(debugpos1, debugpos2);
             DebugShow("実行終了\n");
-            return ret;
+            return false;
         }
         // if (debug_mode == 1) {
         //     msg = "";
@@ -990,23 +925,16 @@ var Interpreter;
                 before_run_funcs[name]();
             }
         }
-
         // run_continuously();
         setTimeout(run_continuously, 10);
-
-        // ***** 戻り値を返す *****
-        ret = true;
-        return ret;
+        return true;
     }
 
     // ***** 継続実行 *****
     // (本関数は再帰的に呼び出される)
     function run_continuously() {
-        var ret;
         var name;
 
-        // ***** 戻り値の初期化 *****
-        ret = false;
         // ***** コード実行開始 *****
         sleep_id = null;
         try {
@@ -1017,7 +945,7 @@ var Interpreter;
                 sleep_flag = false;
                 if (!end_flag) {
                     sleep_id = setTimeout(run_continuously, sleep_time);
-                    return ret;
+                    return false;
                 }
             }
         } catch (ex) {
@@ -1040,8 +968,7 @@ var Interpreter;
             DebugShow("label=" + JSON.stringify(label) + "\n");
             DebugShow("func=" + JSON.stringify(func) + "\n");
             DebugShow("stack=" + JSON.stringify(stack) + "\n");
-            // ***** 戻り値を返す *****
-            return ret;
+            return false;
         }
         // ***** プラグイン用の実行後処理 *****
         for (name in after_run_funcs) {
@@ -1059,9 +986,7 @@ var Interpreter;
             DebugShow("func=" + JSON.stringify(func) + "\n");
             DebugShow("stack=" + JSON.stringify(stack) + "\n");
         }
-        // ***** 戻り値を返す *****
-        ret = true;
-        return ret;
+        return true;
     }
 
     // ***** コード実行 *****
@@ -2549,7 +2474,6 @@ var Interpreter;
             }
             // ***** 引数の数を設定 *****
             code_push(param_num, debugpos1, i);
-            // ***** 戻り値を返す *****
             return i;
         }
 
@@ -2601,7 +2525,6 @@ var Interpreter;
                 code_push("calluser", debugpos1, i);
                 // ***** 引数の数を設定 *****
                 code_push(param_num, debugpos1, i);
-                // ***** 戻り値を返す *****
                 return i;
             }
 
@@ -4028,7 +3951,7 @@ var Interpreter;
             var a1;
 
             a1 = (+param[0]);
-            return (Math.acos(a1) * 180 / Math.PI);
+            return Math.acos(a1) * 180 / Math.PI;
         });
         make_one_func_tbl("arc", 3, [], function (param) {
             var a1, a2, a3, a4;
@@ -4118,21 +4041,21 @@ var Interpreter;
             var a1;
 
             a1 = (+param[0]);
-            return (Math.asin(a1) * 180 / Math.PI);
+            return Math.asin(a1) * 180 / Math.PI;
         });
         make_one_func_tbl("atan", 1, [], function (param) {
             var a1;
 
             a1 = (+param[0]);
-            return (Math.atan(a1) * 180 / Math.PI);
+            return Math.atan(a1) * 180 / Math.PI;
         });
         make_one_func_tbl("atan2", 2, [], function (param) {
             var a1, a2;
 
             a1 = (+param[0]);
             a2 = (+param[1]);
-            // return (Math.atan2(a2, a1) * 180 / Math.PI);
-            return (Math.atan2(a1, a2) * 180 / Math.PI);
+            // return Math.atan2(a2, a1) * 180 / Math.PI;
+            return Math.atan2(a1, a2) * 180 / Math.PI;
         });
         make_one_func_tbl("ceil", 1, [], function (param) {
             var a1;
@@ -4144,7 +4067,7 @@ var Interpreter;
             var a1;
 
             a1 = get_var_info(param[0]);
-            return (Vars.checkVar(a1) ? 1 : 0);
+            return Vars.checkVar(a1) ? 1 : 0;
         });
         make_one_func_tbl("clear", 4, [], function (param) {
             var a1, a2, a3, a4;
@@ -4293,10 +4216,10 @@ var Interpreter;
             return Math.cos(a1 * Math.PI / 180);
         });
         make_one_func_tbl("day", -1, [], function (param) {
-            return (new Date().getDate());
+            return new Date().getDate();
         });
         make_one_func_tbl("dayofweek", -1, [], function (param) {
-            return (new Date().getDay() + 1); // =1:日曜日,=2:月曜日 ... =7:土曜日
+            return new Date().getDay() + 1; // =1:日曜日,=2:月曜日 ... =7:土曜日
         });
         make_one_func_tbl("dbgdrawfix", 0, [], function (param) {
             var a1;
@@ -4331,7 +4254,7 @@ var Interpreter;
 
             a1 = get_var_info(param[0]);
             var_info = Vars.getVarValue(a1);
-            return (a1.name + " = " + code_tostr(var_info));
+            return a1.name + " = " + code_tostr(var_info);
         });
         make_one_func_tbl("dbgprint", 1, [], function (param) {
             var a1, a2;
@@ -4469,7 +4392,7 @@ var Interpreter;
                     window.location.href = "data:application/octet-stream," + encodeURIComponent(a1);
                 }
             }
-            return ("data:text/plain;charset=utf-8," + encodeURIComponent(a1));
+            return "data:text/plain;charset=utf-8," + encodeURIComponent(a1);
         });
         make_one_func_tbl("downloadimg", 0, [], function (param) {
             var a1, a2;
@@ -4851,7 +4774,7 @@ var Interpreter;
             var a1;
 
             a1 = Math.trunc(param[0]);
-            return (out_data.hasOwnProperty(a1) ? out_data[a1] : "");
+            return out_data.hasOwnProperty(a1) ? out_data[a1] : "";
         });
         make_one_func_tbl("getpixel", 2, [], function (param) {
             var a1, a2;
@@ -4873,13 +4796,13 @@ var Interpreter;
             // ***** 画像データの取得 *****
             img_data = ctx.getImageData(x1, y1, 1, 1);
             // ***** 色情報を取得 *****
-            return ((img_data.data[0] << 16) | (img_data.data[1] << 8) | img_data.data[2]);
+            return (img_data.data[0] << 16) | (img_data.data[1] << 8) | img_data.data[2];
         });
         make_one_func_tbl("height", -1, [], function (param) {
             return can1.height;
         });
         make_one_func_tbl("hour", -1, [], function (param) {
-            return (new Date().getHours());
+            return new Date().getHours();
         });
         make_one_func_tbl("imgheight", 1, [0], function (param) {
             var a1;
@@ -5057,7 +4980,7 @@ var Interpreter;
             var a1;
 
             a1 = Math.trunc(param[0]);
-            return (key_down_stat[a1] ? 1 : 0);
+            return key_down_stat[a1] ? 1 : 0;
         });
         make_one_func_tbl("line", 4, [], function (param) {
             var a1, a2, a3, a4;
@@ -5237,7 +5160,7 @@ var Interpreter;
                 a2 = (+param[1]);
             }
             if (a2 == 0) { return Math.log(a1); }
-            return (Math.log(a1) / Math.log(a2));
+            return Math.log(a1) / Math.log(a2);
         });
         make_one_func_tbl("makearray", 2, [0], function (param) {
             var a1, a2, a3, a4;
@@ -5314,7 +5237,7 @@ var Interpreter;
             return num;
         });
         make_one_func_tbl("millisecond", -1, [], function (param) {
-            return (new Date().getMilliseconds());
+            return new Date().getMilliseconds();
         });
         make_one_func_tbl("min", 2, [], function (param) {
             var num;
@@ -5331,10 +5254,10 @@ var Interpreter;
             return num;
         });
         make_one_func_tbl("minute", -1, [], function (param) {
-            return (new Date().getMinutes());
+            return new Date().getMinutes();
         });
         make_one_func_tbl("month", -1, [], function (param) {
-            return (new Date().getMonth() + 1); // 1から12にするため1を加算
+            return new Date().getMonth() + 1; // 1から12にするため1を加算
         });
         make_one_func_tbl("mousex", -1, [], function (param) {
             return mousex;
@@ -5433,8 +5356,8 @@ var Interpreter;
         make_one_func_tbl("rand", -1, [], function (param) {
             // min から max までの整数の乱数を返す
             // (Math.round() を用いると、非一様分布になるのでNG)
-            // return (Math.floor(Math.random() * (max - min + 1)) + min);
-            return (Math.floor(Math.random() * (2147483647 - (-2147483648) + 1)) + (-2147483648));
+            // return Math.floor(Math.random() * (max - min + 1)) + min;
+            return Math.floor(Math.random() * (2147483647 - (-2147483648) + 1)) + (-2147483648);
         });
         make_one_func_tbl("random", -1, [], function (param) {
             return Math.random();
@@ -5591,7 +5514,7 @@ var Interpreter;
             return key_scan_stat;
         });
         make_one_func_tbl("second", -1, [], function (param) {
-            return (new Date().getSeconds());
+            return new Date().getSeconds();
         });
         make_one_func_tbl("setfont", 1, [], function (param) {
             var a1;
@@ -5656,7 +5579,7 @@ var Interpreter;
                 a2 = (+param[1]);
             }
             scl = Math.pow(10, a2);
-            return (Math.round(a1 * scl) / scl);
+            return Math.round(a1 * scl) / scl;
         });
         make_one_func_tbl("setscsize", 2, [], function (param) {
             var a1, a2, a3, a4;
@@ -5956,13 +5879,13 @@ var Interpreter;
             return nothing;
         });
         make_one_func_tbl("week", -1, [], function (param) {
-            return (new Date().getDay() + 1); // =1:日曜日,=2:月曜日 ... =7:土曜日
+            return new Date().getDay() + 1; // =1:日曜日,=2:月曜日 ... =7:土曜日
         });
         make_one_func_tbl("width", -1, [], function (param) {
             return can1.width;
         });
         make_one_func_tbl("year", -1, [], function (param) {
-            return (new Date().getFullYear());
+            return new Date().getFullYear();
         });
         make_one_func_tbl("yndlg", 1, [], function (param) {
             var num;
@@ -5972,7 +5895,7 @@ var Interpreter;
             if (param.length >= 2) {
                 a1 = String(param[1]);
             }
-            num = (confirm(a1) ? "YES" : "NO");
+            num = confirm(a1) ? "YES" : "NO";
             keyclear();
             mousebuttonclear();
             loop_nocount_flag1 = true;
@@ -5997,7 +5920,7 @@ var Interpreter;
         var i;
 
         // ***** すでに存在する場合はスキップする *****
-        if (func_tbl.hasOwnProperty(name)) { return; }
+        if (func_tbl.hasOwnProperty(name)) { return false; }
 
         // ***** 定義情報1個の生成 *****
         func_tbl[name] = {};
@@ -6013,6 +5936,7 @@ var Interpreter;
         }
         // (関数の本体を設定)
         func_tbl[name].func = func;
+        return true;
     }
 
     // ****************************************

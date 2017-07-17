@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_plugin0001.js
-// 2017-7-16 v13.00
+// 2017-7-17 v13.01
 
 
 // A Plugin to add functions to SPALM Web Interpreter
@@ -106,6 +106,7 @@ var Plugin0001;
         });
         // ***** 追加の組み込み関数の定義情報の生成 *****
         add_func_tbl();
+        return true;
     }
     Plugin0001.init = init;
 
@@ -777,7 +778,7 @@ var Plugin0001;
             // (余りを返す)
             if (a3 == 1) { return DigitCalc.getDigitObjSignedStr(z2); }
             // (商と余りをカンマで区切って返す)
-            if (a3 == 2) { return (DigitCalc.getDigitObjSignedStr(z) + "," + DigitCalc.getDigitObjSignedStr(z2)); }
+            if (a3 == 2) { return DigitCalc.getDigitObjSignedStr(z) + "," + DigitCalc.getDigitObjSignedStr(z2); }
             // (商を返す)
             return DigitCalc.getDigitObjSignedStr(z);
         });
@@ -1019,8 +1020,8 @@ var Plugin0001;
             if (a1 > a2) { t = a1; a1 = a2; a2 = t; }
             // min から max までの整数の乱数を返す
             // (Math.round() を用いると、非一様分布になるのでNG)
-            // return (Math.floor(Math.random() * (max - min + 1)) + min);
-            return (Math.floor(Math.random() * (a2 - a1 + 1)) + a1);
+            // return Math.floor(Math.random() * (max - min + 1)) + min;
+            return Math.floor(Math.random() * (a2 - a1 + 1)) + a1;
         });
         make_one_func_tbl("recthit", 8, [], function (param) {
             var x1, y1, x2, y2;
@@ -1034,7 +1035,7 @@ var Plugin0001;
             y2 = (+param[5]);
             w2 = (+param[6]);
             h2 = (+param[7]);
-            return ((x1 < x2 + w2 && x2 < x1 + w1 && y1 < y2 + h2 && y2 < y1 + h1) ? 1 : 0);
+            return ((x1 < x2 + w2) && (x2 < x1 + w1) && (y1 < y2 + h2) && (y2 < y1 + h1)) ? 1 : 0;
         });
         make_one_func_tbl("remap", 5, [], function (param) {
             var a1, a2, a3, a4, a5;
@@ -1044,7 +1045,7 @@ var Plugin0001;
             a3 = (+param[2]); // maxx
             a4 = (+param[3]); // miny
             a5 = (+param[4]); // maxy
-            return ((a2 == a3) ? 0 : (a4 + (a1 - a2) * (a5 - a4) / (a3 - a2)));
+            return (a2 == a3) ? 0 : (a4 + (a1 - a2) * (a5 - a4) / (a3 - a2));
         });
         make_one_func_tbl("sandmake", 11, [], function (param) {
             var a1;
@@ -2097,7 +2098,6 @@ var Plugin0001;
             return nothing;
         });
         make_one_func_tbl("txtpget", 5, [0], function (param) {
-            var num;
             var a1, a2, a3;
             var x1, y1;
             var st1;
@@ -2119,20 +2119,19 @@ var Plugin0001;
             }
 
             // ***** 取得処理 *****
-            num = "";
             if (y1 >= a2 && y1 <= a3) {
 
                 // ***** 配列の存在チェック *****
-                if (!Vars.checkVar(a1, [y1])) { num = ""; return num; }
+                if (!Vars.checkVar(a1, [y1])) { return ""; }
 
                 // st1 = vars[a1 + "[" + y1 + "]"];
                 st1 = Vars.getVarValue(a1, [y1]);
                 st1 = String(st1);
                 if (x1 >= 0 && x1 < st1.length) {
-                    num = st1.substring(x1, x1 + 1);
+                    return st1.substring(x1, x1 + 1);
                 }
             }
-            return num;
+            return "";
         });
         make_one_func_tbl("txtbchk", 8, [0], function (param) {
             var a1, a2, a3, a4;
@@ -2507,7 +2506,7 @@ var Plugin0001;
             if (a2 > a3) { t = a2; a2 = a3; a3 = t; }
             if (a2 == a3) { return a2; }
             t = (a1 - a2) % (a3 - a2);
-            return ((t < 0) ? (t + a3) : (t + a2));
+            return (t < 0) ? (t + a3) : (t + a2);
         });
     }
 
@@ -2548,6 +2547,7 @@ var Plugin0001;
             }
             if (num == 1) { break; }
         }
+        // ***** 戻り値を返す *****
         return num;
     }
     // ***** 文字列配列の四角領域の文字チェックサブ2 *****
@@ -2581,6 +2581,7 @@ var Plugin0001;
                 }
             }
         }
+        // ***** 戻り値を返す *****
         return hit_points;
     }
     // ***** 文字列配列のライン表示処理サブ *****
@@ -2632,13 +2633,13 @@ var Plugin0001;
         var st1;
 
         // ***** エラーチェック *****
-        if (st2.length == 0) { return; }
+        if (st2.length == 0) { return false; }
         // ***** 点設定処理 *****
         ch = st2.charAt(0); // 1文字だけにする
         if (y >= min_y && y <= max_y) {
 
             // // ***** 配列の存在チェック *****
-            // if (!Vars.checkVar(var_info, [y])) { return; }
+            // if (!Vars.checkVar(var_info, [y])) { return false; }
 
             // st1 = vars[var_info + "[" + y + "]"];
             st1 = Vars.getVarValue(var_info, [y]);
@@ -2649,6 +2650,7 @@ var Plugin0001;
                 Vars.setVarValue(var_info, st1, [y]);
             }
         }
+        return true;
     }
     // ***** 文字列配列の上書き処理サブ *****
     function txtovrsub(var_info, min_y, max_y, x, y, st2) {
@@ -2862,16 +2864,16 @@ var DigitCalc = (function () {
         // ***** エラーチェック *****
         if (num_st == "NaN") {
             x.str = "NaN";
-            return;
+            return false;
         }
         if (num_st == "Infinity" || num_st == "+Infinity") {
             x.str = "Infinity";
-            return;
+            return false;
         }
         if (num_st == "-Infinity") {
             x.sign = "-";
             x.str = "Infinity";
-            return;
+            return false;
         }
         // ***** 符号と数値(整数部のみ)を取り出す *****
         reg_exp = /^\s*([+\-])?0*(\d+)(?:\.(\d+))?(?:[eE]([+\-]?\d+))?\s*$/;
@@ -2891,7 +2893,7 @@ var DigitCalc = (function () {
                     // ***** エラーチェック *****
                     if (exp_num + int_st.length > DigitCalc.MAX_DIGIT_LEN) {
                         x.str = "Infinity";
-                        return;
+                        return false;
                     }
                     arr_st = [];
                     for (i = 0; i < exp_num; i++) { arr_st[i] = "0"; }
@@ -2904,12 +2906,12 @@ var DigitCalc = (function () {
             if (int_st != "") { x.str = int_st; } else { x.str = "0"; }
         } else {
             x.str = "NaN";
-            return;
+            return false;
         }
         // ***** エラーチェック *****
         if (x.str.length > DigitCalc.MAX_DIGIT_LEN) {
             x.str = "Infinity";
-            return;
+            return false;
         }
         // ***** 数値を各桁に分解する *****
         arr_st = x.str.split("");
@@ -2918,6 +2920,7 @@ var DigitCalc = (function () {
         for (i = 0; i < x.digit_len; i++) {
             x.digit[i] = (+arr_st[x.digit_len - i - 1]);
         }
+        return true;
     };
     // ***** 10進数オブジェクトの文字列を更新する(staticメソッド) *****
     DigitCalc.updateDigitObjStr = function (x) {
@@ -2933,7 +2936,7 @@ var DigitCalc = (function () {
             // x.str = "";
             // x.digit = [];
             // x.digit_len = 0;
-            return;
+            return false;
         }
         // ***** 数値の各桁を文字列に変換 *****
         arr_st = [];
@@ -2951,7 +2954,7 @@ var DigitCalc = (function () {
             x.str = "Infinity";
             x.digit = [];
             x.digit_len = 0;
-            return;
+            return false;
         }
         // ***** 数値を各桁に再度分解する *****
         // (不要な桁を削除するため)
@@ -2961,13 +2964,14 @@ var DigitCalc = (function () {
         for (i = 0; i < x.digit_len; i++) {
             x.digit[i] = (+arr_st[x.digit_len - i - 1]);
         }
+        return true;
     };
     // ***** 10進数オブジェクトから符号付文字列を取得する(staticメソッド) *****
     DigitCalc.getDigitObjSignedStr = function (x) {
         // ( -0 もありとする)
         // if (x.sign == "-" && x.str != "0" && x.str != "NaN") {
         if (x.sign == "-" && x.str != "NaN") {
-            return ("-" + x.str);
+            return "-" + x.str;
         }
         return x.str;
     };
@@ -2982,27 +2986,27 @@ var DigitCalc = (function () {
         z.digit_len = 0;
         // ***** エラーチェック *****
         if (x.str == "NaN" || y.str == "NaN") {
-            return;
+            return false;
         }
         if (x.str == "Infinity" && y.str == "Infinity" && x.sign != y.sign) {
-            return;
+            return false;
         }
         if (x.str == "Infinity") {
             z.sign = x.sign;
             z.str = "Infinity";
-            return;
+            return false;
         }
         if (y.str == "Infinity") {
             z.sign = y.sign;
             z.str = "Infinity";
-            return;
+            return false;
         }
         if (x.str == "0" && y.str == "0") {
             z.sign = (x.sign == "-" && y.sign == "-") ? "-" : "+";
             z.str = "0";
             z.digit = [0];
             z.digit_len = 1;
-            return;
+            return true;
         }
         // ***** 計算の簡略化のため各桁に符号を付ける *****
         if (x.sign == "-") {
@@ -3086,6 +3090,7 @@ var DigitCalc = (function () {
         }
         // ***** 10進数オブジェクトの文字列を更新する *****
         DigitCalc.updateDigitObjStr(z);
+        return true;
     };
     // ***** 10進数オブジェクトの減算(staticメソッド) *****
     DigitCalc.subDigitObj = function (x, y, z) {
@@ -3095,6 +3100,7 @@ var DigitCalc = (function () {
         DigitCalc.addDigitObj(x, y, z);
         // ***** yの符号を元に戻す *****
         y.sign = (y.sign == "-") ? "+" : "-";
+        return true;
     };
     // ***** 10進数オブジェクトの乗算(staticメソッド) *****
     DigitCalc.mulDigitObj = function (x, y, z) {
@@ -3108,20 +3114,20 @@ var DigitCalc = (function () {
         z.digit_len = 0;
         // ***** エラーチェック *****
         if (x.str == "NaN" || y.str == "NaN") {
-            return;
+            return false;
         }
         if ((x.str == "Infinity" && y.str == "0") || (x.str == "0" && y.str == "Infinity")) {
-            return;
+            return false;
         }
         if (x.str == "Infinity" || y.str == "Infinity") {
             z.sign = (x.sign == y.sign) ? "+" : "-";
             z.str = "Infinity";
-            return;
+            return false;
         }
         if (x.digit_len + y.digit_len - 1 > DigitCalc.MAX_DIGIT_LEN) {
             z.sign = (x.sign == y.sign) ? "+" : "-";
             z.str = "Infinity";
-            return;
+            return false;
         }
         // ***** 各桁を乗算する *****
         z.digit_len = x.digit_len + y.digit_len;
@@ -3143,6 +3149,7 @@ var DigitCalc = (function () {
         z.sign = (x.sign == y.sign) ? "+" : "-";
         // ***** 10進数オブジェクトの文字列を更新する *****
         DigitCalc.updateDigitObjStr(z);
+        return true;
     };
     // ***** 10進数オブジェクトの除算(staticメソッド) *****
     DigitCalc.divDigitObj = function (x, y, z, z2) {
@@ -3161,15 +3168,15 @@ var DigitCalc = (function () {
         z2.digit_len = 0;
         // ***** エラーチェック *****
         if (x.str == "NaN" || y.str == "NaN") {
-            return;
+            return false;
         }
         if (x.str == "Infinity" && y.str == "Infinity") {
-            return;
+            return false;
         }
         if (x.str == "Infinity") {
             z.sign = (x.sign == y.sign) ? "+" : "-";
             z.str = "Infinity";
-            return;
+            return false;
         }
         if (y.str == "Infinity") {
             z.sign = (x.sign == y.sign) ? "+" : "-";
@@ -3180,7 +3187,7 @@ var DigitCalc = (function () {
             z2.str = x.str;
             z2.digit = x.digit.slice(0);
             z2.digit_len = x.digit_len;
-            return;
+            return true;
         }
         // ***** 0除算チェック *****
         if (y.str == "0") {
@@ -3188,7 +3195,7 @@ var DigitCalc = (function () {
                 z.sign = (x.sign == y.sign) ? "+" : "-";
                 z.str = "Infinity";
             }
-            return;
+            return false;
         }
         // ***** 除算処理 *****
         z.digit_len = x.digit_len;
@@ -3237,6 +3244,7 @@ var DigitCalc = (function () {
         // ***** 10進数オブジェクトの文字列を更新する *****
         DigitCalc.updateDigitObjStr(z);
         DigitCalc.updateDigitObjStr(z2);
+        return true;
     };
     return DigitCalc; // これがないとクラスが動かないので注意
 })();
