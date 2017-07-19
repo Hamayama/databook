@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2017-7-17 v13.01
+// 2017-7-20 v13.02
 
 
 // SPALM Web Interpreter
@@ -91,7 +91,7 @@ function get_one_url_para(key) {
 
     // ***** 引数のチェック *****
     if (key == null) { Alm("get_one_url_para:0001"); return ""; }
-    if (key == "") { Alm("get_one_url_para:0002"); return ""; }
+    if (key == "")   { Alm("get_one_url_para:0002"); return ""; }
     // ***** 関数の存在チェック *****
     if (typeof (decodeURIComponent) != "function") { Alm("get_one_url_para:0003"); return ""; }
     // ***** URLパラメータ1個の取得 *****
@@ -111,7 +111,7 @@ function get_one_url_para(key) {
 // ***** IDチェック *****
 function check_id(id, num) {
     // ***** 引数のチェック *****
-    if (id == null) { Alm("check_id:0001"); return false; }
+    if (id == null)  { Alm("check_id:0001"); return false; }
     if (num == null) { Alm("check_id:0002"); return false; }
     // ***** IDのチェック *****
     if (id.length <= 0 || id.length > num) { return false; }
@@ -132,7 +132,7 @@ function get_prog_id(list_st) {
     prog_id[prog_id_count] = "";
     // ***** 引数のチェック *****
     if (list_st == null) { Alm("get_prog_id:0001"); return prog_id; }
-    if (list_st == "") { Alm("get_prog_id:0002"); return prog_id; }
+    if (list_st == "")   { Alm("get_prog_id:0002"); return prog_id; }
     // ***** テキストの分解 *****
     split_flag = false;
     i = 0;
@@ -180,8 +180,8 @@ function get_prog_id(list_st) {
 // ***** リストファイルの読み込み *****
 function load_listfile(fname, err_show_flag) {
     // ***** 引数のチェック *****
-    if (fname == null) { Alm("load_listfile:0001"); return false; }
-    if (fname == "") { Alm("load_listfile:0002"); return false; }
+    if (fname == null)         { Alm("load_listfile:0001"); return false; }
+    if (fname == "")           { Alm("load_listfile:0002"); return false; }
     if (err_show_flag == null) { Alm("load_listfile:0003"); return false; }
     // ***** 要素の存在チェック *****
     if (!document.getElementById("prog_sel1")) { Alm("load_listfile:0004"); return false; }
@@ -208,7 +208,7 @@ function load_listfile(fname, err_show_flag) {
 function load_srcfile(fname) {
     // ***** 引数のチェック *****
     if (fname == null) { Alm("load_srcfile:0001"); return false; }
-    if (fname == "") { Alm("load_srcfile:0002"); return false; }
+    if (fname == "")   { Alm("load_srcfile:0002"); return false; }
     // ***** 要素の存在チェック *****
     if (!document.getElementById("src_text1")) { Alm("load_srcfile:0003"); return false; }
     // ***** ロード中にする *****
@@ -236,8 +236,8 @@ function load_textfile(fname, ok_func, ng_func) {
     var http_obj;
 
     // ***** 引数のチェック *****
-    if (fname == null) { Alm("load_textfile:0001"); return false; }
-    if (fname == "") { Alm("load_textfile:0002"); return false; }
+    if (fname == null)                  { Alm("load_textfile:0001"); return false; }
+    if (fname == "")                    { Alm("load_textfile:0002"); return false; }
     if (typeof (ok_func) != "function") { Alm("load_textfile:0003"); return false; }
     if (typeof (ng_func) != "function") { Alm("load_textfile:0004"); return false; }
     // ***** テキストファイルの読み込み *****
@@ -284,10 +284,10 @@ function createXMLHttpObject() {
 function show_runstat() {
     // ***** 要素の存在チェック *****
     if (!document.getElementById("runstat_show1")) { Alm("show_runstat:0001"); return false; }
-    if (!document.getElementById("run_button1")) { Alm("show_runstat:0002"); return false; }
-    if (!document.getElementById("load_button1")) { Alm("show_runstat:0003"); return false; }
-    if (!document.getElementById("prog_sel1")) { Alm("show_runstat:0004"); return false; }
-    if (!document.getElementById("src_text1")) { Alm("show_runstat:0005"); return false; }
+    if (!document.getElementById("run_button1"))   { Alm("show_runstat:0002"); return false; }
+    if (!document.getElementById("load_button1"))  { Alm("show_runstat:0003"); return false; }
+    if (!document.getElementById("prog_sel1"))     { Alm("show_runstat:0004"); return false; }
+    if (!document.getElementById("src_text1"))     { Alm("show_runstat:0005"); return false; }
     if (!document.getElementById("dummy_button1")) { Alm("show_runstat:0006"); return false; }
     // ***** プログラム実行状態の表示 *****
     if (Interpreter.getloadstat() == 1) {
@@ -343,7 +343,7 @@ function run_button() {
     var dbg_mode;
 
     // ***** 要素の存在チェック *****
-    if (!document.getElementById("src_text1")) { Alm("run_button:0001"); return false; }
+    if (!document.getElementById("src_text1"))  { Alm("run_button:0001"); return false; }
     if (!document.getElementById("debug_chk1")) { Alm("run_button:0002"); return false; }
     // ***** 実行中のチェック *****
     if (Interpreter.getrunstat()) { Alm2("run_button:-:すでにプログラム実行中です。"); return false; }
@@ -678,7 +678,7 @@ var Interpreter;
     function run(src_st) {
         // ***** 引数のチェック *****
         if (src_st == null) { Alm2("Interpreter.run:-:ソースがありません。"); return false; }
-        // if (src_st == "") { Alm2("Interpreter.run:+:ソースがありません。"); return false; }
+        // if (src_st == "")   { Alm2("Interpreter.run:+:ソースがありません。"); return false; }
         // ***** ソース設定 *****
         src = src_st;
         // ***** 実行開始 *****
@@ -753,7 +753,7 @@ var Interpreter;
 
     // ***** 外部データ設定 *****
     function setoutdata(no, data) {
-        if (no == null) { Alm("Interpreter.setoutdata:0001"); return false; }
+        if (no == null)   { Alm("Interpreter.setoutdata:0001"); return false; }
         if (data == null) { Alm("Interpreter.setoutdata:0002"); return false; }
         no |= 0;
         data = String(data);
@@ -3629,11 +3629,7 @@ var Interpreter;
             // ***** スペース/矢印/PageUp/PageDown/Home/Endキーを無効化 *****
             if (key_code >= 32 && key_code <= 40) {
                 // ***** IE8対策 *****
-                if (ev.preventDefault) {
-                    ev.preventDefault();
-                } else {
-                    ev.returnValue = false;
-                }
+                if (ev.preventDefault) { ev.preventDefault(); } else { ev.returnValue = false; }
             }
         }
         // ***** キーダウン *****
@@ -3733,11 +3729,7 @@ var Interpreter;
         // ***** プログラムの実行中は Canvas内でのマウスの機能(領域選択等)を抑制する *****
         if (running_flag) {
             // ***** IE8対策 *****
-            if (ev.preventDefault) {
-                ev.preventDefault();
-            } else {
-                ev.returnValue = false;
-            }
+            if (ev.preventDefault) { ev.preventDefault(); } else { ev.returnValue = false; }
         }
     }
     function mouseup(ev) {
@@ -3768,11 +3760,7 @@ var Interpreter;
         // ***** プログラムの実行中は Canvas内でのマウスの機能(メニュー表示等)を抑制する *****
         if (running_flag) {
             // ***** IE8対策 *****
-            if (ev.preventDefault) {
-                ev.preventDefault();
-            } else {
-                ev.returnValue = false;
-            }
+            if (ev.preventDefault) { ev.preventDefault(); } else { ev.returnValue = false; }
         }
     }
     function getmousepos(ev) {
@@ -5393,24 +5381,21 @@ var Interpreter;
                     a5 = Math.trunc(param[4]);
                 }
             }
-            if (a1.length == 0 || a2.length == 0) {
-                num = a1;
-            } else {
-                i = 0;
-                j = a4;
-                k = 0;
-                num = a1.substring(0, j);
-                while (k >= 0) {
-                    if (a5 >= 0 && i >= a5) { break; }
-                    k = a1.indexOf(a2, j);
-                    if (k >= 0) {
-                        num += a1.substring(j, k) + a3;
-                        i++;
-                        j = k + a2.length;
-                    }
+            if (a1.length == 0 || a2.length == 0) { return a1; }
+            i = 0;
+            j = a4;
+            k = 0;
+            num = a1.substring(0, j);
+            while (k >= 0) {
+                if (a5 >= 0 && i >= a5) { break; }
+                k = a1.indexOf(a2, j);
+                if (k >= 0) {
+                    num += a1.substring(j, k) + a3;
+                    i++;
+                    j = k + a2.length;
                 }
-                num += a1.substring(j);
             }
+            num += a1.substring(j);
             return num;
         });
         make_one_func_tbl("rotate", 1, [], function (param) {
@@ -5716,7 +5701,6 @@ var Interpreter;
             return nothing;
         });
         make_one_func_tbl("split", 3, [0], function (param) {
-            var num;
             var a1, a2, a3, a4;
             var i, j, k;
 
@@ -5728,27 +5712,23 @@ var Interpreter;
             } else {
                 a4 = Math.trunc(param[3]);
             }
-            if (a2.length == 0 || a3.length == 0) {
-                num = 0;
-            } else {
-                i = 0;
-                j = 0;
-                k = 0;
-                while (k >= 0) {
-                    if (a4 > 0 && i >= (a4 - 1)) { break; }
-                    k = a2.indexOf(a3, j);
-                    if (k >= 0) {
-                        // vars[a1 + "[" + i + "]"] = a2.substring(j, k);
-                        Vars.setVarValue(a1, a2.substring(j, k), [i]);
-                        i++;
-                        j = k + 1;
-                    }
+            if (a2.length == 0 || a3.length == 0) { return 0; }
+            i = 0;
+            j = 0;
+            k = 0;
+            while (k >= 0) {
+                if (a4 > 0 && i >= (a4 - 1)) { break; }
+                k = a2.indexOf(a3, j);
+                if (k >= 0) {
+                    // vars[a1 + "[" + i + "]"] = a2.substring(j, k);
+                    Vars.setVarValue(a1, a2.substring(j, k), [i]);
+                    i++;
+                    j = k + 1;
                 }
-                // vars[a1 + "[" + i + "]"] = a2.substring(j);
-                Vars.setVarValue(a1, a2.substring(j), [i]);
-                num = i + 1;
             }
-            return num;
+            // vars[a1 + "[" + i + "]"] = a2.substring(j);
+            Vars.setVarValue(a1, a2.substring(j), [i]);
+            return i + 1;
         });
         make_one_func_tbl("sptype", -1, [], function (param) {
             return "spweb";
