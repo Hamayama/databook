@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2017-7-20 v13.02
+// 2017-7-20 v13.03
 
 
 // SPALM Web Interpreter
@@ -4237,42 +4237,53 @@ var Interpreter;
             return nothing;
         });
         make_one_func_tbl("dbgpointer", 1, [0], function (param) {
-            var a1;
+            var a1, a2;
             var var_info;
+            var text_st;
 
             a1 = get_var_info(param[0]);
+            if (param.length <= 1) {
+                a2 = 0;
+            } else {
+                a2 = Math.trunc(param[1]);
+            }
             var_info = Vars.getVarValue(a1);
-            return a1.name + " = " + code_tostr(var_info);
+            text_st = a1.name + " = " + code_tostr(var_info);
+            if (a2 == 1)      { DebugShow(text_st); }
+            else if (a2 != 2) { DebugShow(text_st + "\n"); }
+            return text_st;
         });
         make_one_func_tbl("dbgprint", 1, [], function (param) {
             var a1, a2;
 
             a1 = String(param[0]);
             if (param.length <= 1) {
-                a2 = 1;
+                a2 = 0;
             } else {
                 a2 = Math.trunc(param[1]);
             }
-            if (a2 != 0) { a1 += "\n"; }
-            DebugShow(a1);
+            if (a2 == 1)      { DebugShow(a1); }
+            else if (a2 != 2) { DebugShow(a1 + "\n"); }
             return nothing;
         });
         make_one_func_tbl("dbgstop", 0, [], function (param) {
             var a1;
+            var text_st;
 
             if (param.length <= 0) {
                 a1 = "";
             } else {
                 a1 = String(param[0]);
             }
-            if (a1 != "") { a1 = "('" + a1 + "')"; }
-            throw new Error("dbgstop 命令で停止しました。" + a1);
+            text_st = "dbgstop 命令で停止しました。";
+            if (a1 != "") { text_st += "('" + a1 + "')"; }
+            throw new Error(text_st);
             // return nothing;
         });
         make_one_func_tbl("dbgtest", 3, [], function (param) {
-            var num;
             var a1, a2, a3, a4;
             var text_st;
+            var ok_flag;
 
             a1 = String(param[0]);
             a2 = param[1];
@@ -4282,17 +4293,16 @@ var Interpreter;
             } else {
                 a4 = Math.trunc(param[3]);
             }
-            if (a2 == a3) {
-                num = 0;
+            ok_flag = (a2 == a3);
+            if (ok_flag) {
                 text_st = "OK";
             } else {
-                num = 1;
                 text_st = "NG (a = " + code_tostr(a2) + " , b = " + code_tostr(a3) + ")";
             }
-            if (a2 != a3 || a4 == 0) {
+            if ((a4 == 1 && !ok_flag) || (a4 != 1 && a4 != 2)) {
                 DebugShow(a1 + " : " + text_st + "\n");
             }
-            return num;
+            return ok_flag ? 0 : 1;
         });
         make_one_func_tbl("dcos", 1, [], function (param) {
             var a1;
