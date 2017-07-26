@@ -6,6 +6,7 @@
 <title>SPALM Web Interpreter</title>
 <style type="text/css">
 <!--
+/* 色設定 */
 .main_container { /* ページ全体 */
     background-color: #fffca8; /* 背景色 */
     color: #000000;            /* 文字色 */
@@ -19,6 +20,29 @@
 #draw_fix1 {      /* Chrome v57 の Canvas の 不具合対策 */
     color: #fffca8;            /* 背景色 */
 }
+
+/* モバイル仮対応 */
+#mobile_frame1 {
+    text-align: left;
+    display: inline-block;
+    /display: inline;
+    /zoom: 1;
+}
+#mobile_text1 {
+    display: none;
+}
+/* Firefox v26 対策 */
+#dummy_button1 {
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    border: none;
+}
+/* テキストエリアのサイズ設定 */
+#src_text1 {
+    width: 100%;
+    font-size: medium;
+}
 -->
 </style>
 <!--[if lt IE 9]>
@@ -30,6 +54,8 @@
 <!--
 // ***** 動作開始 *****
 window.onload = function () {
+    var ua = window.navigator.userAgent;
+
     // ***** 初期化 *****
     init_func(true);
     // ***** 色設定 *****
@@ -37,6 +63,12 @@ window.onload = function () {
     Interpreter.setcolor("", "", "#000000", "#fffca8");
     // ***** プラグインの初期化 *****
     Plugin0001.init();
+    // ***** モバイル仮対応 *****
+    if (ua.indexOf("Android") >= 0 ||
+        ua.indexOf("iPhone") >= 0  ||
+        ua.indexOf("iPad") >= 0) {
+        document.getElementById("mobile_text1").style.display = "block";
+    }
     // ***** 自動実行 *****
     run_button();
 };
@@ -52,24 +84,27 @@ window.onload = function () {
 <th align="center" colspan="3" style="word-spacing: 6px;">SPALM Web Interpreter</th>
 </tr><tr>
 <th width="33%"></th>
-<th align="center" width="33%"><canvas id="canvas1" width="240" height="320">
+<th align="center" width="33%"><div id="mobile_frame1">
+<input type="text" id="mobile_text1" size="5" onkeyup="this.value='';" autocomplete="off">
+<canvas id="canvas1" width="240" height="320">
 Cannot use canvas tag.
-</canvas><br><canvas id="canvas2" width="240" height="18"></canvas></th>
+</canvas></div><canvas id="canvas2" width="240" height="18"></canvas></th>
 <th align="left" width="33%"><div style="display: none;">No.<select id="prog_sel1">
 <option value="----">----</option></select>
-<input type="button" id="load_button1" value="ロード" onclick="load_button();"><br><br></div>
+<input type="button" id="load_button1" value="ロード" onclick="load_button();"><br></div>
+<input type="submit" id="run_button1" value=" 実行 " style="margin-top: 15px; margin-bottom: 15px;">&nbsp;
+<input type="button" id="stop_button1" value=" 停止 " onclick="stop_button();">&nbsp;
+<input type="button" id="dummy_button1" value=""><br>
 状態：<span id="runstat_show1">停止</span></th>
 </tr></table>
 
 <table width="95%"><tr>
 <th align="left" valign="top" style="white-space: nowrap;">ソース</th>
-<th align="left" width="95%"><textarea id="src_text1" cols="40" rows="14" style="width: 100%;">{{ article.source }}</textarea></th>
-<th align="left" valign="top"><input type="submit" id="run_button1" value="実行"><br>
-<input type="button" id="stop_button1" value="停止" onclick="stop_button();"><br>
-<input type="button" id="dummy_button1" value="" style="width: 1px; height: 1px; padding: 0; border: none;"></th>
+<th align="left" width="95%"><textarea id="src_text1" cols="40" rows="14">{{ article.source }}</textarea></th>
 </tr></table>
 
-<input type="checkbox" name="debug_chk1" id="debug_chk1" value="1" style="margin-top: 1px;"><span style="font-size: 90%;">詳細表示</span>
+<input type="checkbox" name="debug_chk1" id="debug_chk1" value="1" style="margin-top: 1px;"><!--
+--><span style="font-size: 90%;">詳細表示</span>
 <span id="draw_fix1"></span>
 
 </form>

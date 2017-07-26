@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2017-7-20 v13.03
+// 2017-7-26 v13.04
 
 
 // SPALM Web Interpreter
@@ -445,9 +445,11 @@ var Interpreter;
     var font_size;              // フォントサイズ(px)
     var color_val;              // 色設定
     var line_width;             // 線の幅(px)
-    // ***** FlashCanvas Pro (将来用) で monospace が横長のフォントになるので削除 *****
-    // var font_family = "'MS Gothic', Osaka-Mono, monospace"; // フォント指定
-    var font_family = "'MS Gothic', Osaka-Mono"; // フォント指定
+    // ***** FlashCanvas Pro (将来用) で monospace が横長のフォントになるので対策 *****
+    var font_family = "'MS Gothic', Osaka-Mono, monospace"; // フォント指定
+    if (typeof (FlashCanvas) != "undefined") {
+        font_family = "'MS Gothic', Osaka-Mono";
+    }
     var font_size_set = [12, 16, 24, 30]; // フォントサイズの設定値(px)(最小,小,中,大の順)
 
     var src;                    // ソース      (文字列)
@@ -5109,8 +5111,8 @@ var Interpreter;
             init_canvas_setting(imgvars[a1].ctx);
             // ***** デバッグ用 *****
             imgvars[a1].ctx.fillRect(0,0,16,16);
-            // ***** 完了フラグをリセット *****
-            imgvars[a1].loaded = false;
+            // ***** 画像ロード中フラグをセット *****
+            imgvars[a1].loading = true;
             // ***** 画像データの取得 *****
             // (非同期のため完了までに時間がかかるので注意)
             img_obj = new Image();
@@ -5123,8 +5125,8 @@ var Interpreter;
                 // ***** 画像を描画 *****
                 imgvars[a1].ctx.drawImage(img_obj, 0, 0);
                 // alert(img_obj.complete);
-                // ***** 完了フラグをセット *****
-                imgvars[a1].loaded = true;
+                // ***** 画像ロード中フラグをリセット *****
+                imgvars[a1].loading = false;
             };
             img_obj.src = a2; // 常にonloadより後にsrcをセットすること
             return nothing;
@@ -5133,14 +5135,10 @@ var Interpreter;
             var a1;
 
             a1 = to_global(get_var_info(param[0])); // 画像変数名取得
-            // ***** 完了フラグをチェックして返す *****
+            // ***** 画像ロード中フラグをチェックして返す *****
             // if (imgvars.hasOwnProperty(a1)) {
             if (hasOwn.call(imgvars, a1)) {
-                if (imgvars[a1].hasOwnProperty("loaded")) {
-                    if (!imgvars[a1].loaded) {
-                        return 1;
-                    }
-                }
+                if (imgvars[a1].loading) { return 1; }
             }
             return 0;
         });
