@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2017-7-26 v13.04
+// 2017-7-26 v13.05
 
 
 // SPALM Web Interpreter
@@ -647,6 +647,10 @@ var Interpreter;
             document.addEventListener("mousemove",   mousemove,   false);
             document.addEventListener("mouseout",    mouseout,    false);
             // document.addEventListener("contextmenu", contextmenu, false);
+            // ***** モバイル仮対応 *****
+            document.addEventListener("touchstart",  touchstart, false);
+            document.addEventListener("touchmove",   touchmove,  false);
+            document.addEventListener("touchend",    touchend,   false);
         } else if (document.attachEvent) {
             // ***** IE8対策 *****
             document.attachEvent("onmousedown",   mousedown);
@@ -3784,6 +3788,37 @@ var Interpreter;
             if (mouse_btn_stat.hasOwnProperty(btn_code)) {
                 mouse_btn_stat[btn_code] = false;
             }
+        }
+    }
+
+    // ***** モバイル仮対応 *****
+    // ***** タッチ処理 *****
+    function touchstart(ev) {
+        // ***** マウスボタン状態を設定 *****
+        mouse_btn_stat[0] = true;
+        // ***** タッチ座標を取得 *****
+        gettouchpos(ev);
+    }
+    function touchend(ev) {
+        // ***** マウスボタン状態を設定 *****
+        mouse_btn_stat[0] = false;
+        // ***** タッチ座標を取得 *****
+        gettouchpos(ev);
+    }
+    function touchmove(ev) {
+        // ***** タッチ座標を取得 *****
+        gettouchpos(ev);
+    }
+    function gettouchpos(ev) {
+        var tt, rect;
+        if (ev.targetTouches.length >= 1) {
+            tt = ev.targetTouches[0];
+            // ***** IE8対策 *****
+            // rect = ev.target.getBoundingClientRect();
+            rect = can1.getBoundingClientRect();
+            // ***** タッチ座標を取得 *****
+            mousex = tt.clientX - rect.left;
+            mousey = tt.clientY - rect.top;
         }
     }
 

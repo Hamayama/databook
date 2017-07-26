@@ -20,28 +20,12 @@
 #draw_fix1 {      /* Chrome v57 の Canvas の 不具合対策 */
     color: #fffca8;            /* 背景色 */
 }
-
 /* モバイル仮対応 */
 #mobile_frame1 {
     text-align: left;
     display: inline-block;
     /display: inline;
     /zoom: 1;
-}
-#mobile_text1 {
-    display: none;
-}
-/* Firefox v26 対策 */
-#dummy_button1 {
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    border: none;
-}
-/* テキストエリアのサイズ設定 */
-#src_text1 {
-    width: 100%;
-    font-size: medium;
 }
 -->
 </style>
@@ -85,22 +69,24 @@ window.onload = function () {
 </tr><tr>
 <th width="33%"></th>
 <th align="center" width="33%"><div id="mobile_frame1">
-<input type="text" id="mobile_text1" size="5" onkeyup="this.value='';" autocomplete="off">
+<input type="text" id="mobile_text1" size="5" onkeyup="this.value='';" autocomplete="off" style="display: none;">
 <canvas id="canvas1" width="240" height="320">
 Cannot use canvas tag.
 </canvas></div><canvas id="canvas2" width="240" height="18"></canvas></th>
 <th align="left" width="33%"><div style="display: none;">No.<select id="prog_sel1">
 <option value="----">----</option></select>
-<input type="button" id="load_button1" value="ロード" onclick="load_button();"><br></div>
-<input type="submit" id="run_button1" value=" 実行 " style="margin-top: 15px; margin-bottom: 15px;">&nbsp;
-<input type="button" id="stop_button1" value=" 停止 " onclick="stop_button();">&nbsp;
-<input type="button" id="dummy_button1" value=""><br>
+<input type="button" id="load_button1" value="ロード" onclick="load_button();"></div>
+<div style="margin-top: 15px; margin-bottom: 15px;">
+<input type="submit" id="run_button1" value=" 実行 ">&nbsp;
+<input type="button" id="stop_button1" value=" 停止 " onclick="stop_button();">
+<input type="button" id="dummy_button1" value="" style="width: 1px; height: 1px; padding: 0; border: none;">
+</div>
 状態：<span id="runstat_show1">停止</span></th>
 </tr></table>
 
 <table width="95%"><tr>
 <th align="left" valign="top" style="white-space: nowrap;">ソース</th>
-<th align="left" width="95%"><textarea id="src_text1" cols="40" rows="14">{{ article.source }}</textarea></th>
+<th align="left" width="95%"><textarea id="src_text1" cols="40" rows="14" style="width: 100%; font-size: medium;">{{ article.source }}</textarea></th>
 </tr></table>
 
 <input type="checkbox" name="debug_chk1" id="debug_chk1" value="1" style="margin-top: 1px;"><!--
