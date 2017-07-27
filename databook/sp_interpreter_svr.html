@@ -20,13 +20,6 @@
 #draw_fix1 {      /* Chrome v57 の Canvas の 不具合対策 */
     color: #fffca8;            /* 背景色 */
 }
-/* モバイル仮対応 */
-#mobile_frame1 {
-    text-align: left;
-    display: inline-block;
-    /display: inline;
-    /zoom: 1;
-}
 -->
 </style>
 <!--[if lt IE 9]>
@@ -38,8 +31,6 @@
 <!--
 // ***** 動作開始 *****
 window.onload = function () {
-    var ua = window.navigator.userAgent;
-
     // ***** 初期化 *****
     init_func(true);
     // ***** 色設定 *****
@@ -47,12 +38,6 @@ window.onload = function () {
     Interpreter.setcolor("", "", "#000000", "#fffca8");
     // ***** プラグインの初期化 *****
     Plugin0001.init();
-    // ***** モバイル仮対応 *****
-    if (ua.indexOf("Android") >= 0 ||
-        ua.indexOf("iPhone") >= 0  ||
-        ua.indexOf("iPad") >= 0) {
-        document.getElementById("mobile_text1").style.display = "block";
-    }
     // ***** 自動実行 *****
     run_button();
 };
@@ -68,7 +53,7 @@ window.onload = function () {
 <th align="center" colspan="3" style="word-spacing: 6px;">SPALM Web Interpreter</th>
 </tr><tr>
 <th width="33%"></th>
-<th align="center" width="33%"><div id="mobile_frame1">
+<th align="center" width="33%"><div style="text-align: left; display: inline-block; /display: inline; /zoom: 1;">
 <input type="text" id="mobile_text1" size="5" onkeyup="this.value='';" autocomplete="off" style="display: none;">
 <canvas id="canvas1" width="240" height="320">
 Cannot use canvas tag.
@@ -76,7 +61,7 @@ Cannot use canvas tag.
 <th align="left" width="33%"><div style="display: none;">No.<select id="prog_sel1">
 <option value="----">----</option></select>
 <input type="button" id="load_button1" value="ロード" onclick="load_button();"></div>
-<div style="margin-top: 15px; margin-bottom: 15px;">
+<div style="margin-top: 30px; margin-bottom: 30px;">
 <input type="submit" id="run_button1" value=" 実行 ">&nbsp;
 <input type="button" id="stop_button1" value=" 停止 " onclick="stop_button();">
 <input type="button" id="dummy_button1" value="" style="width: 1px; height: 1px; padding: 0; border: none;">

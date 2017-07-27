@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2017-7-26 v13.05
+// 2017-7-27 v13.06
 
 
 // SPALM Web Interpreter
@@ -50,6 +50,13 @@ function BrowserType() {
     if (ua.indexOf("Firefox") >= 0) { return "Firefox"; }
     return "";
 }
+function MobileType() {
+    var ua = window.navigator.userAgent;
+    if (ua.indexOf("Android") >= 0) { return "Android"; }
+    if (ua.indexOf("iPhone") >= 0)  { return "iPhone"; }
+    if (ua.indexOf("iPad") >= 0)    { return "iPad"; }
+    return "";
+}
 
 // ***** 初期化 *****
 function init_func(load_skip_flag) {
@@ -80,6 +87,15 @@ function init_func(load_skip_flag) {
     // ***** デバッグモードの初期選択 *****
     if (get_one_url_para("debug") == "1") {
         document.getElementById("debug_chk1").checked = true;
+    }
+    // ***** モバイル仮対応 *****
+    // (キーボードやゲームパッドの入力画面が表示できるように、
+    //  左上に空のテキストボックスを置いておく)
+    // (しかし、現状は、使用できないキーボードアプリが多い
+    //  (keydownとkeyupがほぼ同時に発生する等))
+    // (2017-7-27)
+    if (MobileType() != "") {
+        document.getElementById("mobile_text1").style.display = "block";
     }
     return true;
 }
@@ -445,8 +461,12 @@ var Interpreter;
     var font_size;              // フォントサイズ(px)
     var color_val;              // 色設定
     var line_width;             // 線の幅(px)
-    // ***** FlashCanvas Pro (将来用) で monospace が横長のフォントになるので対策 *****
+    // ***** モバイル仮対応 *****
+    // (幅と高さがそろったフォント(半角が6x12で全角が12x12等)を指定したいが、
+    //  現状のモバイルの標準フォントには存在しないもよう)
+    // (2017-7-27)
     var font_family = "'MS Gothic', Osaka-Mono, monospace"; // フォント指定
+    // ***** FlashCanvas Pro (将来用) で monospace が横長のフォントになるので対策 *****
     if (typeof (FlashCanvas) != "undefined") {
         font_family = "'MS Gothic', Osaka-Mono";
     }
@@ -649,8 +669,8 @@ var Interpreter;
             // document.addEventListener("contextmenu", contextmenu, false);
             // ***** モバイル仮対応 *****
             document.addEventListener("touchstart",  touchstart, false);
-            document.addEventListener("touchmove",   touchmove,  false);
             document.addEventListener("touchend",    touchend,   false);
+            document.addEventListener("touchmove",   touchmove,  false);
         } else if (document.attachEvent) {
             // ***** IE8対策 *****
             document.attachEvent("onmousedown",   mousedown);
@@ -6002,7 +6022,7 @@ var Download = (function () {
     var Blob = window.Blob;
     // ***** Blobセーブ用オブジェクトの取得(IE10用) *****
     // (window.saveBlobではないので、呼び出し時にはcallを用いて、
-    //   saveBlob.call(navigator, blob, fname) とする必要がある)
+    //  saveBlob.call(navigator, blob, fname) とする必要がある)
     var saveBlob = null;
     if (window.navigator) {
         saveBlob = navigator.saveBlob || navigator.msSaveBlob;
