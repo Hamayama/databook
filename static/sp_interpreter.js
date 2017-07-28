@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2017-7-27 v13.06
+// 2017-7-28 v13.07
 
 
 // SPALM Web Interpreter
@@ -89,9 +89,9 @@ function init_func(load_skip_flag) {
         document.getElementById("debug_chk1").checked = true;
     }
     // ***** モバイル仮対応 *****
-    // (キーボードやゲームパッドの入力画面が表示できるように、
+    // (キーボードやゲームパッドの入力画面を呼び出せるように、
     //  左上に空のテキストボックスを置いておく)
-    // (しかし、現状は、使用できないキーボードアプリが多い
+    // (しかし、現状では、使用できないキーボードアプリが多い
     //  (keydownとkeyupがほぼ同時に発生する等))
     // (2017-7-27)
     if (MobileType() != "") {
@@ -3744,8 +3744,9 @@ var Interpreter;
         btn_code = ev.button;
         // ***** FlashCanvas用 *****
         if (typeof (FlashCanvas) != "undefined") {
-            if (btn_code == 1) { btn_code =  0; } // 中ボタンは左ボタンに変換
+            if (btn_code == 1) { btn_code =  0; } // 左ボタンを変換
             if (btn_code == 2) { btn_code = -1; } // 右ボタンは無効化
+            if (btn_code == 4) { btn_code =  1; } // 中ボタンを変換
         }
         if (btn_code >= 0) { mouse_btn_stat[btn_code] = true; }
         // ***** マウス座標を取得 *****
@@ -3764,8 +3765,9 @@ var Interpreter;
         btn_code = ev.button;
         // ***** FlashCanvas用 *****
         if (typeof (FlashCanvas) != "undefined") {
-            if (btn_code == 1) { btn_code =  0; } // 中ボタンは左ボタンに変換
+            if (btn_code == 1) { btn_code =  0; } // 左ボタンを変換
             if (btn_code == 2) { btn_code = -1; } // 右ボタンは無効化
+            if (btn_code == 4) { btn_code =  1; } // 中ボタンを変換
         }
         if (btn_code >= 0) { mouse_btn_stat[btn_code] = false; }
         // ***** マウス座標を取得 *****
@@ -5320,9 +5322,9 @@ var Interpreter;
             var num;
 
             num = 0;
-            if (mouse_btn_stat[0]) { num |= 1; }        // 左ボタン
-            if (mouse_btn_stat[1]) { num |= (1 << 2); } // 中ボタン(シフト値1ではないので注意)
-            if (mouse_btn_stat[2]) { num |= (1 << 1); } // 右ボタン(シフト値2ではないので注意)
+            if (mouse_btn_stat[0]) { num |= 1; } // 左ボタン
+            if (mouse_btn_stat[1]) { num |= 4; } // 中ボタン(2ではないので注意)
+            if (mouse_btn_stat[2]) { num |= 2; } // 右ボタン(4ではないので注意)
             return num;
         });
         make_one_func_tbl("msgdlg", 1, [], function (param) {
