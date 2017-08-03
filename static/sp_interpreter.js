@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2017-7-28 v13.07
+// 2017-8-4 v13.08
 
 
 // SPALM Web Interpreter
@@ -835,7 +835,7 @@ var Interpreter;
         font_size = font_size_set[1];
         // ctx2.font = can2_font_size_init + "px " + font_family;
         // ***** Canvasの各種設定の初期化 *****
-        init_canvas_setting(ctx1);
+        init_canvas_setting(ctx1, 0);
         // ***** 現在の描画先にセット *****
         can = can1;
         ctx = ctx1;
@@ -3332,7 +3332,7 @@ var Interpreter;
 
         // ***** 関数の本体のとき *****
         if (typeof (cod) == "function") {
-            func_name = (i != null) ? ":" + code_str[i] : "";
+            func_name = (i != null) ? (":" + code_str[i]) : "";
             func_name = "<function" + func_name + ">";
             return func_name;
         }
@@ -3845,64 +3845,64 @@ var Interpreter;
     }
 
     // ***** Canvasの各種設定の初期化 *****
-    function init_canvas_setting(ctx) {
+    // (mode  初期化モード(=0:内部変数も初期化する,
+    //                     =1:内部変数は初期化しない,
+    //                     =2:内部変数は初期化しない。ただし設定だけは初期化する))
+    function init_canvas_setting(ctx, mode) {
+        var color_val1, line_width1;
+        // ***** 内部変数の初期化 *****
+        if (mode == 0) {
+            // ***** フォントサイズの初期化 *****
+            // (フォントサイズだけは初期化しない(過去との互換性維持のため))
+            // font_size = sp_compati_flag ? font_size_set[0] : font_size_set[1];
+            // ***** 色設定の初期化 *****
+            color_val = can1_forecolor_init;
+            // ***** 線の幅設定の初期化 *****
+            line_width = 1;
+            // ***** 座標系設定の初期化 *****
+            axis = {};
+            axis.originx  = 0; // 座標系の原点座標X(px)
+            axis.originy  = 0; // 座標系の原点座標Y(px)
+            axis.rotate   = 0; // 座標系の回転の角度(rad)
+            axis.rotateox = 0; // 座標系の回転の中心座標X(px)
+            axis.rotateoy = 0; // 座標系の回転の中心座標Y(px)
+            axis.scalex   = 1; // 座標系の拡大縮小のX方向倍率
+            axis.scaley   = 1; // 座標系の拡大縮小のY方向倍率
+            axis.scaleox  = 0; // 座標系の拡大縮小の中心座標X(px)
+            axis.scaleoy  = 0; // 座標系の拡大縮小の中心座標Y(px)
+        }
+        // ***** 設定値の決定 *****
+        if (mode == 2) {
+            color_val1 = can1_forecolor_init;
+            line_width1 = 1;
+        } else {
+            color_val1 = color_val;
+            line_width1 = line_width;
+        }
+        // ***** 設定値の反映 *****
         // ***** フォント設定 *****
-        // (フォントサイズだけはリセットしない(過去との互換性維持のため))
-        // if (sp_compati_flag) {
-        //     font_size = font_size_set[0];
-        // } else {
-        //     font_size = font_size_set[1];
-        // }
         ctx.font = font_size + "px " + font_family;
         ctx.textAlign = "left";
         ctx.textBaseline = "top";
         // ***** 色設定 *****
-        color_val = can1_forecolor_init;
-        ctx.strokeStyle = color_val;
-        ctx.fillStyle = color_val;
+        ctx.strokeStyle = color_val1;
+        ctx.fillStyle = color_val1;
         // ***** 線の幅設定 *****
-        line_width = 1;
-        ctx.lineWidth = line_width;
+        ctx.lineWidth = line_width1;
         // ***** 座標系設定 *****
-        axis = {};
-        axis.originx  = 0; // 座標系の原点座標X(px)
-        axis.originy  = 0; // 座標系の原点座標Y(px)
-        axis.rotate   = 0; // 座標系の回転の角度(rad)
-        axis.rotateox = 0; // 座標系の回転の中心座標X(px)
-        axis.rotateoy = 0; // 座標系の回転の中心座標Y(px)
-        axis.scalex   = 1; // 座標系の拡大縮小のX方向倍率
-        axis.scaley   = 1; // 座標系の拡大縮小のY方向倍率
-        axis.scaleox  = 0; // 座標系の拡大縮小の中心座標X(px)
-        axis.scaleoy  = 0; // 座標系の拡大縮小の中心座標Y(px)
-        ctx.setTransform(1, 0, 0, 1, 0, 0); // 座標系を初期化
+        ctx.setTransform(1, 0, 0, 1, 0, 0);      // 座標系を初期化
+        if (mode == 1) { set_canvas_axis(ctx); } // 座標系を再設定
         // ***** 現在状態を保存 *****
         ctx.save();
     }
     // ***** Canvasの各種設定のリセット *****
-    function reset_canvas_setting(ctx) {
+    // (mode  初期化モード(=0:内部変数も初期化する,
+    //                     =1:内部変数は初期化しない))
+    function reset_canvas_setting(ctx, mode) {
         // ***** 前回状態に復帰 *****
         ctx.restore();
         // ***** Canvasの各種設定の初期化 *****
-        init_canvas_setting(ctx);
-    }
-    // ***** Canvasの各種設定のリセット2(設定内容は保持) *****
-    function reset_canvas_setting2(ctx) {
-        // ***** 前回状態に復帰 *****
-        ctx.restore();
-        // ***** フォント設定 *****
-        ctx.font = font_size + "px " + font_family;
-        ctx.textAlign = "left";
-        ctx.textBaseline = "top";
-        // ***** 色設定 *****
-        ctx.strokeStyle = color_val;
-        ctx.fillStyle = color_val;
-        // ***** 線の幅設定 *****
-        ctx.lineWidth = line_width;
-        // ***** 座標系設定 *****
-        ctx.setTransform(1, 0, 0, 1, 0, 0); // 座標系を元に戻す
-        set_canvas_axis(ctx);               // 座標系を再設定
-        // ***** 現在状態を再び保存 *****
-        ctx.save();
+        init_canvas_setting(ctx, mode);
     }
     // ***** Canvasの座標系の設定 *****
     // (基本的に座標系を元に戻してから呼ぶこと)
@@ -3957,22 +3957,14 @@ var Interpreter;
         text_st = softkeys[0].text;
         if (text_st != "") {
             ctx2.font = softkeys[0].font_size + "px " + font_family;
-            if (text_st.charAt(0) == "*") {
-                text_st = text_st.substring(1);
-            } else {
-                text_st = "[c]:" + text_st;
-            }
+            text_st = (text_st.charAt(0) == "*") ? text_st.substring(1) : ("[c]:" + text_st);
             ctx2.fillText(text_st, 0, 2);
         }
         ctx2.textAlign = "right";
         text_st = softkeys[1].text;
         if (text_st != "") {
             ctx2.font = softkeys[1].font_size + "px " + font_family;
-            if (text_st.charAt(0) == "*") {
-                text_st = text_st.substring(1);
-            } else {
-                text_st = "[v]:" + text_st;
-            }
+            text_st = (text_st.charAt(0) == "*") ? text_st.substring(1) : ("[v]:" + text_st);
             ctx2.fillText(text_st, can2.width, 2);
         }
     }
@@ -4153,8 +4145,8 @@ var Interpreter;
             a3 = Math.trunc(param[2]); // W
             a4 = Math.trunc(param[3]); // H
 
-            // ***** Canvasの各種設定のリセット2 *****
-            reset_canvas_setting2(ctx); // clipを解除する方法がrestoreしかない
+            // ***** Canvasの各種設定のリセット *****
+            reset_canvas_setting(ctx, 1); // clipを解除する方法がrestoreしかない
 
             ctx.beginPath();
             ctx.rect(a1, a2, a3, a4);
@@ -5141,7 +5133,7 @@ var Interpreter;
             imgvars[a1].can.height = img_h;
             imgvars[a1].ctx = imgvars[a1].can.getContext("2d");
             // ***** Canvasの各種設定の初期化 *****
-            init_canvas_setting(imgvars[a1].ctx);
+            init_canvas_setting(imgvars[a1].ctx, 2);
             // ***** 画像データを格納 *****
             imgvars[a1].ctx.putImageData(img_data, 0, 0);
             return nothing;
@@ -5165,7 +5157,7 @@ var Interpreter;
             imgvars[a1].can.height = 16;
             imgvars[a1].ctx = imgvars[a1].can.getContext("2d");
             // ***** Canvasの各種設定の初期化 *****
-            init_canvas_setting(imgvars[a1].ctx);
+            init_canvas_setting(imgvars[a1].ctx, 2);
             // ***** デバッグ用 *****
             imgvars[a1].ctx.fillRect(0,0,16,16);
             // ***** 画像ロード中フラグをセット *****
@@ -5178,7 +5170,7 @@ var Interpreter;
                 imgvars[a1].can.width = img_obj.width;
                 imgvars[a1].can.height = img_obj.height;
                 // ***** Canvasの各種設定の初期化 *****
-                init_canvas_setting(imgvars[a1].ctx);
+                init_canvas_setting(imgvars[a1].ctx, 2);
                 // ***** 画像を描画 *****
                 imgvars[a1].ctx.drawImage(img_obj, 0, 0);
                 // alert(img_obj.complete);
@@ -5272,7 +5264,7 @@ var Interpreter;
             imgvars[a1].can.height = a3;
             imgvars[a1].ctx = imgvars[a1].can.getContext("2d");
             // ***** Canvasの各種設定の初期化 *****
-            init_canvas_setting(imgvars[a1].ctx);
+            init_canvas_setting(imgvars[a1].ctx, 2);
             return nothing;
         });
         make_one_func_tbl("max", 2, [], function (param) {
@@ -5667,7 +5659,7 @@ var Interpreter;
             }
             disp_softkeys();
             // ***** Canvasの各種設定のリセット *****
-            reset_canvas_setting(ctx1);
+            reset_canvas_setting(ctx1, 0);
             return nothing;
         });
         make_one_func_tbl("sign", 1, [], function (param) {
@@ -5903,7 +5895,7 @@ var Interpreter;
                 throw new Error("Image変数 '" + a1 + "' は作成されていません。");
             }
             // ***** Canvasの各種設定のリセット *****
-            reset_canvas_setting(ctx);
+            reset_canvas_setting(ctx, 0);
             return nothing;
         });
         make_one_func_tbl("trim", 1, [], function (param) {
