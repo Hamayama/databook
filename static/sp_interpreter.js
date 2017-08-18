@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2017-8-4 v13.08
+// 2017-8-18 v13.09
 
 
 // SPALM Web Interpreter
@@ -5669,6 +5669,13 @@ var Interpreter;
             if (a1 > 0) { return  1; }
             if (a1 < 0) { return -1; }
             return 0;
+        });
+        make_one_func_tbl("sign2", 1, [], function (param) {
+            var a1;
+
+            a1 = (+param[0]);
+            if (a1 >= 0) { return 1; }
+            return -1;
         });
         make_one_func_tbl("sin", 1, [], function (param) {
             var a1;
