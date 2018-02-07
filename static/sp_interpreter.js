@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2017-8-18 v13.09
+// 2018-2-8 v14.00
 
 
 // SPALM Web Interpreter
@@ -69,8 +69,8 @@ function init_func(load_skip_flag) {
         DebugShow("Native canvas mode.\n");
     }
     // ***** インタープリターの初期化 *****
-    Interpreter.init();
-    Interpreter.setrunstatcallback(show_runstat);
+    SP_Interpreter.init();
+    SP_Interpreter.setrunstatcallback(show_runstat);
     // ***** プログラムリストの読み込み *****
     if (!load_skip_flag) {
         list_id = get_one_url_para("list");
@@ -92,7 +92,7 @@ function init_func(load_skip_flag) {
     // (キーボードやゲームパッドの入力画面を呼び出せるように、
     //  左上に空のテキストボックスを置いておく)
     // (しかし、現状では、使用できないキーボードアプリが多い
-    //  (keydownとkeyupがほぼ同時に発生する等))
+    //  (keydownとkeyupがほぼ同時に発生するタイプ等))
     // (2017-7-27)
     if (MobileType() != "") {
         document.getElementById("mobile_text1").style.display = "block";
@@ -228,11 +228,11 @@ function load_srcfile(fname) {
     // ***** 要素の存在チェック *****
     if (!document.getElementById("src_text1")) { Alm("load_srcfile:0003"); return false; }
     // ***** ロード中にする *****
-    Interpreter.setloadstat(1);
+    SP_Interpreter.setloadstat(1);
     // ***** テキストファイルの読み込み *****
     load_textfile(fname, function (src_st) {
         // ***** ロード中を解除(ロード完了) *****
-        Interpreter.setloadstat(2);
+        SP_Interpreter.setloadstat(2);
         // ***** テキストボックスにセット *****
         document.getElementById("src_text1").value = src_st;
         // ***** スクロールを先頭に移動 *****
@@ -242,7 +242,7 @@ function load_srcfile(fname) {
     }, function (err_st) {
         Alm2("load_srcfile:" + err_st + ":ソースファイル読み込みエラー");
         // ***** ロード中を解除 *****
-        Interpreter.setloadstat(0);
+        SP_Interpreter.setloadstat(0);
     });
     return true;
 }
@@ -306,19 +306,19 @@ function show_runstat() {
     if (!document.getElementById("src_text1"))     { Alm("show_runstat:0005"); return false; }
     if (!document.getElementById("dummy_button1")) { Alm("show_runstat:0006"); return false; }
     // ***** プログラム実行状態の表示 *****
-    if (Interpreter.getloadstat() == 1) {
+    if (SP_Interpreter.getloadstat() == 1) {
         document.getElementById("runstat_show1").innerHTML = "ロード中";
-    } else if (Interpreter.getloadstat() == 2) {
+    } else if (SP_Interpreter.getloadstat() == 2) {
         document.getElementById("runstat_show1").innerHTML = "ロード完了";
     } else {
-        if (Interpreter.getrunstat()) {
+        if (SP_Interpreter.getrunstat()) {
             document.getElementById("runstat_show1").innerHTML = "実行中";
         } else {
             document.getElementById("runstat_show1").innerHTML = "停止";
         }
     }
     // ***** ボタンの有効/無効設定 *****
-    if (Interpreter.getrunstat() || Interpreter.getloadstat() == 1) {
+    if (SP_Interpreter.getrunstat() || SP_Interpreter.getloadstat() == 1) {
         document.getElementById("run_button1").disabled = true;
         document.getElementById("load_button1").disabled = true;
         document.getElementById("prog_sel1").disabled = true;
@@ -343,9 +343,9 @@ function load_button() {
     // ***** 要素の存在チェック *****
     if (!document.getElementById("prog_sel1")) { Alm("load_button:0001"); return false; }
     // ***** 実行中のチェック *****
-    if (Interpreter.getrunstat()) { Alm2("load_button:-:プログラム実行中です。停止してからロードしてください。"); return false; }
+    if (SP_Interpreter.getrunstat()) { Alm2("load_button:-:プログラム実行中です。停止してからロードしてください。"); return false; }
     // ***** ロード中のチェック *****
-    if (Interpreter.getloadstat() == 1) { Alm2("load_button:-:プログラムロード中です。"); return false; }
+    if (SP_Interpreter.getloadstat() == 1) { Alm2("load_button:-:プログラムロード中です。"); return false; }
     // ***** ソースファイルの読み込み *****
     prog_id = document.getElementById("prog_sel1").options[document.getElementById("prog_sel1").selectedIndex].value;
     if (!check_id(prog_id, 8)) { Alm("load_button:0003"); return false; }
@@ -362,65 +362,65 @@ function run_button() {
     if (!document.getElementById("src_text1"))  { Alm("run_button:0001"); return false; }
     if (!document.getElementById("debug_chk1")) { Alm("run_button:0002"); return false; }
     // ***** 実行中のチェック *****
-    if (Interpreter.getrunstat()) { Alm2("run_button:-:すでにプログラム実行中です。"); return false; }
+    if (SP_Interpreter.getrunstat()) { Alm2("run_button:-:すでにプログラム実行中です。"); return false; }
     // ***** ロード中のチェック *****
-    if (Interpreter.getloadstat() == 1) { Alm2("run_button:-:プログラムロード中です。"); return false; }
+    if (SP_Interpreter.getloadstat() == 1) { Alm2("run_button:-:プログラムロード中です。"); return false; }
     // ***** ソースの取得 *****
     src_st = document.getElementById("src_text1").value;
     // ***** デバッグモードの設定 *****
     if (document.getElementById("debug_chk1").checked) { dbg_mode = 1; } else { dbg_mode = 0; }
-    Interpreter.setdebug(dbg_mode);
+    SP_Interpreter.setdebug(dbg_mode);
     // ***** 実行 *****
-    Interpreter.run(src_st);
+    SP_Interpreter.run(src_st);
     return true;
 }
 
 // ***** 停止ボタン *****
 function stop_button() {
     // ***** 停止 *****
-    Interpreter.stop();
+    SP_Interpreter.stop();
     return true;
 }
 
 
 // ****************************************
-//             インタープリター
+//            SPインタープリター
 // ****************************************
 
-// ***** Interpreter(名前空間) *****
+// ***** SP_Interpreter(名前空間) *****
 //
 // 公開I/F :
 //
-//   Interpreter.init()        初期化
+//   SP_Interpreter.init()        初期化
 //
-//   Interpreter.run(src_st)   実行
+//   SP_Interpreter.run(src_st)   実行
 //     src_st     プログラムのソース
 //
-//   Interpreter.stop()        停止
+//   SP_Interpreter.stop()        停止
 //
-//   Interpreter.getrunstat()  実行状態取得
+//   SP_Interpreter.getrunstat()  実行状態取得
 //     戻り値     =true:実行中,=false:停止
 //
-//   Interpreter.setrunstatcallback(cb_func)  実行状態通知
+//   SP_Interpreter.setrunstatcallback(cb_func)  実行状態通知
 //     cb_func    コールバック関数(状態変化時に呼ばれる関数を指定する)
 //
-//   Interpreter.setloadstat(load_stat)  ロード中状態設定
+//   SP_Interpreter.setloadstat(load_stat)  ロード中状態設定
 //     load_stat  =0:非ロード中,=1:ロード中,=2:ロード完了
 //
-//   Interpreter.getloadstat()  ロード中状態取得
+//   SP_Interpreter.getloadstat()  ロード中状態取得
 //     戻り値     =0:非ロード中,=1:ロード中,=2:ロード完了
 //
-//   Interpreter.setdebug(dbg_mode)  デバッグ用
+//   SP_Interpreter.setdebug(dbg_mode)  デバッグ用
 //     dbg_mode   =0:通常モード,=1:デバッグモード
 //
-//   Interpreter.setcolor(can1_forecolor, can1_backcolor, can2_forecolor, can2_backcolor)  色設定
+//   SP_Interpreter.setcolor(can1_forecolor, can1_backcolor, can2_forecolor, can2_backcolor)  色設定
 //     can1_forecolor  Canvasの文字色を文字列で指定する("#ffffff" 等。""なら設定しない)
 //     can1_backcolor  Canvasの背景色を文字列で指定する("#707070" 等。""なら設定しない)
 //     can2_forecolor  ソフトキー表示エリアの文字色を文字列で指定する("#ffffff" 等。""なら設定しない)
 //     can2_backcolor  ソフトキー表示エリアの背景色を文字列で指定する("#707070" 等。""なら設定しない)
 //
-//   Interpreter.setoutdata(no, data)  外部データ設定
-//   Interpreter.getoutdata(no)        外部データ取得
+//   SP_Interpreter.setoutdata(no, data)  外部データ設定
+//   SP_Interpreter.getoutdata(no)        外部データ取得
 //
 // その他 情報等 :
 //
@@ -433,8 +433,8 @@ function stop_button() {
 //   外部クラス一覧
 //     Download    ファイルダウンロード用クラス(staticクラス)
 //
-var Interpreter;
-(function (Interpreter) {
+var SP_Interpreter;
+(function (SP_Interpreter) {
     var max_array_size = 10000; // 処理する配列の個数最大値
     var max_str_size = 10000;   // 処理する文字数最大値
     var max_image_size = 4000;  // 画像の縦横のサイズ最大値(px)
@@ -528,6 +528,7 @@ var Interpreter;
     var use_local_vars;         // ローカル変数使用有無
     var locstatement_flag;      // ローカル文フラグ
     var locvarnames_stack = []; // ローカル変数名情報のスタック(配列)
+    var module_name;            // モジュール名
     var save_data = {};         // セーブデータ(連想配列オブジェクト)(仮)
     var out_data = {};          // 外部データ(連想配列オブジェクト)
 
@@ -642,10 +643,10 @@ var Interpreter;
     function init() {
         // ***** Canvasの初期化 *****
         can1 = document.getElementById("canvas1");
-        if (!can1 || !can1.getContext) { Alm2("Interpreter.init:-:描画機能が利用できません。"); return false; }
+        if (!can1 || !can1.getContext) { Alm2("SP_Interpreter.init:-:描画機能が利用できません。"); return false; }
         // ctx1 = can1.getContext("2d");
         can2 = document.getElementById("canvas2");
-        if (!can2 || !can2.getContext) { Alm2("Interpreter.init:+:描画機能が利用できません。"); return false; }
+        if (!can2 || !can2.getContext) { Alm2("SP_Interpreter.init:+:描画機能が利用できません。"); return false; }
         // ctx2 = can2.getContext("2d");
         // ***** キーボードイベント登録 *****
         if (document.addEventListener) {
@@ -658,7 +659,7 @@ var Interpreter;
             document.attachEvent("onkeyup",    keyup);
             document.attachEvent("onkeypress", keypress);
         } else {
-            Alm2("Interpreter.init:-:キーボードの状態が取得できません。");
+            Alm2("SP_Interpreter.init:-:キーボードの状態が取得できません。");
         }
         // ***** マウスイベント登録 *****
         if (document.addEventListener) {
@@ -679,7 +680,7 @@ var Interpreter;
             document.attachEvent("onmouseout",    mouseout);
             // document.attachEvent("oncontextmenu", contextmenu);
         } else {
-            Alm2("Interpreter.init:-:マウスの状態が取得できません。");
+            Alm2("SP_Interpreter.init:-:マウスの状態が取得できません。");
         }
         // ***** Canvas内のマウスイベント登録 *****
         if (can1.addEventListener) {
@@ -690,7 +691,7 @@ var Interpreter;
             can1.attachEvent("onmousedown",   mousedown_canvas);
             can1.attachEvent("oncontextmenu", contextmenu_canvas);
         } else {
-            Alm2("Interpreter.init:-:Canvas内のマウスの状態が取得できません。");
+            Alm2("SP_Interpreter.init:-:Canvas内のマウスの状態が取得できません。");
         }
         // ***** 組み込み関数の定義情報の初期化 *****
         func_tbl = {};
@@ -698,20 +699,20 @@ var Interpreter;
         make_func_tbl();
         return true;
     }
-    Interpreter.init = init;
+    SP_Interpreter.init = init;
 
     // ***** 実行 *****
     function run(src_st) {
         // ***** 引数のチェック *****
-        if (src_st == null) { Alm2("Interpreter.run:-:ソースがありません。"); return false; }
-        // if (src_st == "")   { Alm2("Interpreter.run:+:ソースがありません。"); return false; }
+        if (src_st == null) { Alm2("SP_Interpreter.run:-:ソースがありません。"); return false; }
+        // if (src_st == "")   { Alm2("SP_Interpreter.run:+:ソースがありません。"); return false; }
         // ***** ソース設定 *****
         src = src_st;
         // ***** 実行開始 *****
         run_start();
         return true;
     }
-    Interpreter.run = run;
+    SP_Interpreter.run = run;
 
     // ***** 停止 *****
     function stop() {
@@ -722,79 +723,79 @@ var Interpreter;
         }
         return true;
     }
-    Interpreter.stop = stop;
+    SP_Interpreter.stop = stop;
 
     // ***** 実行状態取得 *****
     function getrunstat() {
         return running_flag;
     }
-    Interpreter.getrunstat = getrunstat;
+    SP_Interpreter.getrunstat = getrunstat;
 
     // ***** 実行状態通知 *****
     var runstatchanged = function () { };
     function setrunstatcallback(cb_func) {
-        if (cb_func == null) { Alm("Interpreter.setrunstatcallback:0001"); return false; }
+        if (cb_func == null) { Alm("SP_Interpreter.setrunstatcallback:0001"); return false; }
         if (typeof (cb_func) == "function") { runstatchanged = cb_func; }
         return true;
     }
-    Interpreter.setrunstatcallback = setrunstatcallback;
+    SP_Interpreter.setrunstatcallback = setrunstatcallback;
 
     // ***** ロード中状態設定 *****
     function setloadstat(load_stat) {
-        if (load_stat == null) { Alm("Interpreter.setloadstat:0001"); return false; }
+        if (load_stat == null) { Alm("SP_Interpreter.setloadstat:0001"); return false; }
         loading_mode = load_stat;
         runstatchanged();
         if (loading_mode == 2) { loading_mode = 0; }
         return true;
     }
-    Interpreter.setloadstat = setloadstat;
+    SP_Interpreter.setloadstat = setloadstat;
 
     // ***** ロード中状態取得 *****
     function getloadstat() {
         return loading_mode;
     }
-    Interpreter.getloadstat = getloadstat;
+    SP_Interpreter.getloadstat = getloadstat;
 
     // ***** デバッグ用 *****
     function setdebug(dbg_mode) {
-        if (dbg_mode == null) { Alm("Interpreter.setdebug:0001"); return false; }
+        if (dbg_mode == null) { Alm("SP_Interpreter.setdebug:0001"); return false; }
         debug_mode = dbg_mode;
         return true;
     }
-    Interpreter.setdebug = setdebug;
+    SP_Interpreter.setdebug = setdebug;
 
     // ***** 色設定 *****
     function setcolor(can1_forecolor, can1_backcolor, can2_forecolor, can2_backcolor) {
-        if (can1_forecolor == null) { Alm("Interpreter.setcolor:0001"); return false; }
-        if (can1_backcolor == null) { Alm("Interpreter.setcolor:0002"); return false; }
-        if (can2_forecolor == null) { Alm("Interpreter.setcolor:0003"); return false; }
-        if (can2_backcolor == null) { Alm("Interpreter.setcolor:0004"); return false; }
+        if (can1_forecolor == null) { Alm("SP_Interpreter.setcolor:0001"); return false; }
+        if (can1_backcolor == null) { Alm("SP_Interpreter.setcolor:0002"); return false; }
+        if (can2_forecolor == null) { Alm("SP_Interpreter.setcolor:0003"); return false; }
+        if (can2_backcolor == null) { Alm("SP_Interpreter.setcolor:0004"); return false; }
         if (can1_forecolor != "") { can1_forecolor_init = can1_forecolor; }
         if (can1_backcolor != "") { can1_backcolor_init = can1_backcolor; }
         if (can2_forecolor != "") { can2_forecolor_init = can2_forecolor; }
         if (can2_backcolor != "") { can2_backcolor_init = can2_backcolor; }
         return true;
     }
-    Interpreter.setcolor = setcolor;
+    SP_Interpreter.setcolor = setcolor;
 
     // ***** 外部データ設定 *****
     function setoutdata(no, data) {
-        if (no == null)   { Alm("Interpreter.setoutdata:0001"); return false; }
-        if (data == null) { Alm("Interpreter.setoutdata:0002"); return false; }
+        if (no == null)   { Alm("SP_Interpreter.setoutdata:0001"); return false; }
+        if (data == null) { Alm("SP_Interpreter.setoutdata:0002"); return false; }
         no |= 0;
         data = String(data);
         out_data[no] = data;
         return true;
     }
-    Interpreter.setoutdata = setoutdata;
+    SP_Interpreter.setoutdata = setoutdata;
 
     // ***** 外部データ取得 *****
     function getoutdata(no) {
-        if (no == null) { Alm("Interpreter.getoutdata:0001"); return false; }
+        if (no == null) { Alm("SP_Interpreter.getoutdata:0001"); return false; }
         no |= 0;
         return out_data.hasOwnProperty(no) ? out_data[no] : "";
     }
-    Interpreter.getoutdata = getoutdata;
+    SP_Interpreter.getoutdata = getoutdata;
 
 
     // ***** 公開I/Fはここまで *****
@@ -903,8 +904,8 @@ var Interpreter;
         try {
             resolveaddress();
         } catch (ex4) {
-            DebugShow("label=" + JSON.stringify(label) + "\n");
-            DebugShow("func=" + JSON.stringify(func) + "\n");
+            DebugShow("label=" + sort_obj_tostr(label) + "\n");
+            DebugShow("func=" + sort_obj_tostr(func) + "\n");
             DebugShow("resolveaddress: " + ex4.message + ": debugpos=" + debugpos1 + "\n");
             show_err_place(debugpos1, debugpos2);
             DebugShow("実行終了\n");
@@ -989,10 +990,10 @@ var Interpreter;
             // ***** 終了処理 *****
             running_flag = false; runstatchanged();
             DebugShow("実行終了\n");
-            DebugShow("globalvars=" + JSON.stringify(Vars.getGlobalVars()) + "\n");
-            DebugShow("localvars=" + JSON.stringify(Vars.getLocalVars()) + "\n");
-            DebugShow("label=" + JSON.stringify(label) + "\n");
-            DebugShow("func=" + JSON.stringify(func) + "\n");
+            DebugShow("globalvars=" + sort_obj_tostr(Vars.getGlobalVars()) + "\n");
+            DebugShow("localvars=" + sort_obj_tostr(Vars.getLocalVars()) + "\n");
+            DebugShow("label=" + sort_obj_tostr(label) + "\n");
+            DebugShow("func=" + sort_obj_tostr(func) + "\n");
             DebugShow("stack=" + JSON.stringify(stack) + "\n");
             return false;
         }
@@ -1006,10 +1007,10 @@ var Interpreter;
         running_flag = false; runstatchanged();
         DebugShow("実行終了\n");
         if (debug_mode == 1) {
-            DebugShow("globalvars=" + JSON.stringify(Vars.getGlobalVars()) + "\n");
-            DebugShow("localvars=" + JSON.stringify(Vars.getLocalVars()) + "\n");
-            DebugShow("label=" + JSON.stringify(label) + "\n");
-            DebugShow("func=" + JSON.stringify(func) + "\n");
+            DebugShow("globalvars=" + sort_obj_tostr(Vars.getGlobalVars()) + "\n");
+            DebugShow("localvars=" + sort_obj_tostr(Vars.getLocalVars()) + "\n");
+            DebugShow("label=" + sort_obj_tostr(label) + "\n");
+            DebugShow("func=" + sort_obj_tostr(func) + "\n");
             DebugShow("stack=" + JSON.stringify(stack) + "\n");
         }
         return true;
@@ -1440,7 +1441,7 @@ var Interpreter;
                     break;
                 default:
                     // ***** 命令コードエラー *****
-                    throw new Error("未定義の命令コード (" + code_tostr(cod) + ") が見つかりました。");
+                    throw new Error("未定義の命令コード (" + code_tostr(cod, pc - 1) + ") が見つかりました。");
                     // break;
             }
             // ***** 各種フラグのチェックと処理時間の測定 *****
@@ -1620,6 +1621,7 @@ var Interpreter;
         code_len = 0;
         locstatement_flag = false;
         locvarnames_stack = [];
+        module_name = "";
         c_statement(0, token_len, "", "");
     }
 
@@ -1703,6 +1705,31 @@ var Interpreter;
                 continue;
             }
 
+            // ***** module文のとき *****
+            if (tok == "module") {
+                i++;
+                token_match("(", i++);
+                // ***** モジュール名の取得 *****
+                module_name = token[i++];
+                // ***** モジュール名のチェック *****
+                if (module_name == "off") {
+                    module_name = "";
+                } else {
+                    ch = module_name.charAt(0);
+                    if (!isName1(ch)) {
+                        debugpos2 = i;
+                        throw new Error("モジュール名が不正です。('" + module_name + "')");
+                    }
+                    if (reserved.hasOwnProperty(module_name) ||
+                        func_tbl.hasOwnProperty(module_name)) {
+                        debugpos2 = i;
+                        throw new Error("名前 '" + module_name + "' は予約されています。モジュールの定義に失敗しました。");
+                    }
+                }
+                token_match(")", i++);
+                continue;
+            }
+
             // ***** label/goto/gosub文のとき *****
             if (tok == "label" || tok == "goto" || tok == "gosub") {
                 i++;
@@ -1752,7 +1779,7 @@ var Interpreter;
                         var_obj = code[j];
                         if (var_obj.kind == null) {
                             debugpos2 = i;
-                            throw new Error("変数名が不正です。('" + code_tostr(var_obj) + "')");
+                            throw new Error("変数名が不正です。('" + code_tostr(var_obj, j) + "')");
                         }
                     }
                     // ***** ローカル文フラグOFF *****
@@ -1775,7 +1802,7 @@ var Interpreter;
                 func_name = token[i++];
                 // ***** 関数名のチェック *****
                 ch = func_name.charAt(0);
-                if (!(isAlpha1(ch) || ch == "_")) {
+                if (!isName1(ch)) {
                     debugpos2 = i;
                     throw new Error("関数名が不正です。('" + func_name + "')");
                 }
@@ -1787,6 +1814,9 @@ var Interpreter;
                         throw new Error("名前 '" + func_name + "' は予約されています。関数の定義に失敗しました。");
                     }
                 }
+                // ***** モジュール名の追加 *****
+                func_name = add_module_name(func_name);
+                // ***** 関数名の設定 *****
                 code_push('"' + func_name + '"', debugpos1, i);
                 // ***** ローカル変数名情報を1個生成する *****
                 if (use_local_vars) {
@@ -1834,7 +1864,7 @@ var Interpreter;
                 func_name = token[i];
                 // ***** 関数名または関数ポインタのチェック *****
                 ch = func_name.charAt(0);
-                if (!(isAlpha1(ch) || ch == "_" || ch == "*")) {
+                if (!(isName1(ch) || ch == "*")) {
                     debugpos2 = i + 1;
                     throw new Error("関数名が不正です。('" + func_name + "')");
                 }
@@ -2522,8 +2552,8 @@ var Interpreter;
             code_push(num, debugpos1, i);
             return i;
         }
-        // ***** アルファベットかアンダースコアかポインタのとき *****
-        if (isAlpha1(ch) || ch == "_" || ch == "*") {
+        // ***** 名前かポインタのとき *****
+        if (isName1(ch) || ch == "*") {
 
             // ***** 変数名のコンパイル *****
             i = c_varname(i, tok_end);
@@ -2688,6 +2718,10 @@ var Interpreter;
         if (use_local_vars && var_nm_kind == 2) {
             var_name = "p\\" + var_name;
         }
+        // ***** モジュール名の追加 *****
+        if (!(use_local_vars && loc_flag)) {
+            var_name = add_module_name(var_name);
+        }
         // ***** 変数名の設定 *****
         code_push("push", debugpos1, i);
         // code_push('"' + var_name + '"', debugpos1, i);
@@ -2712,7 +2746,7 @@ var Interpreter;
         // ***** 変数名のチェック *****
         i = tok_start;
         ch = var_name.charAt(0);
-        if (!(isAlpha1(ch) || ch == "_")) {
+        if (!isName1(ch)) {
             debugpos2 = i;
             throw new Error("変数名が不正です。('" + var_name + "')");
         }
@@ -2748,7 +2782,7 @@ var Interpreter;
         // ***** ラベル名のチェック *****
         // (符号ありの数値を許可(特別扱い))
         ch = lbl_name.charAt(0);
-        if (!(isAlpha1(ch) || ch == "_" ||
+        if (!(isName1(ch) ||
               isDigit1(ch) || (isSign1(ch) && isDigit1(lbl_name.charAt(1))))) {
             debugpos2 = i;
             throw new Error("ラベル名が不正です。('" + lbl_name + "')");
@@ -2758,10 +2792,30 @@ var Interpreter;
             debugpos2 = i;
             throw new Error("名前 '" + lbl_name + "' は予約されているため、ラベル名には使用できません。");
         }
+        // ***** モジュール名の追加 *****
+        lbl_name = add_module_name(lbl_name);
         // ***** ラベル名の設定 *****
         code_push('"' + lbl_name + '"', debugpos1, i);
         // ***** 戻り値を返す *****
         return i;
+    }
+
+    // ***** モジュール名の追加 *****
+    function add_module_name(name) {
+        /* 「#」で始まり2文字以上なら「#」を削ってグローバル名とする */
+        if (name.charAt(0) == "#" && name.length > 1) {
+            return name.substring(1);
+        }
+        /* モジュール名が空のときはそのまま返す */
+        if (module_name == "") {
+            return name;
+        }
+        /* 「#」が含まれるときはそのまま返す */
+        if (name.indexOf("#") >= 0) {
+            return name;
+        }
+        /* その他のときはモジュール名と「#」を前に付ける */
+        return module_name + "#" + name;
     }
 
     // ****************************************
@@ -2847,7 +2901,7 @@ var Interpreter;
                 cst_name = token[i++];
                 // ***** 定数名のチェック *****
                 ch = cst_name.charAt(0);
-                if (!(isAlpha1(ch) || ch == "_")) {
+                if (!isName1(ch)) {
                     debugpos2 = i;
                     throw new Error("定数名が不正です。('" + cst_name + "')");
                 }
@@ -2877,7 +2931,7 @@ var Interpreter;
                 cst_name = token[i++];
                 // ***** 定数名のチェック *****
                 ch = cst_name.charAt(0);
-                if (!(isAlpha1(ch) || ch == "_")) {
+                if (!isName1(ch)) {
                     debugpos2 = i;
                     throw new Error("定数名が不正です。('" + cst_name + "')");
                 }
@@ -3061,16 +3115,13 @@ var Interpreter;
                 token_push(temp_st, line_no_tk);
                 continue;
             }
-            // ***** アルファベットかアンダースコアのとき(名前) *****
-            if (isAlpha1(ch) || ch == "_") {
+            // ***** 名前のとき *****
+            if (isName1(ch)) {
                 while (i < src_len) {
                     // ***** 1文字取り出す(iの加算なし) *****
                     ch = src.charAt(i);
-                    ch2 = src.charAt(i + 1);
-                    // ***** 「::」のチェック *****
-                    if (ch == ":" && ch2 == ":") { i += 2; continue; }
-                    // ***** アルファベットかアンダースコアか数字のチェック *****
-                    if (isAlpha1(ch) || ch == "_" || isDigit1(ch)) { i++; } else { break; }
+                    // ***** 名前か数字のチェック *****
+                    if (isName1(ch) || isDigit1(ch)) { i++; } else { break; }
                 }
                 temp_st = src.substring(i_start, i);
                 token_push(temp_st, line_no_tk);
@@ -3184,6 +3235,11 @@ var Interpreter;
     function isSign1(ch) {
         return (ch == "+" || ch == "-");
     }
+    // ***** 名前チェック(1文字のみ) *****
+    function isName1(ch) {
+        var c = ch.charCodeAt(0);
+        return ((c >= 0x41 && c <= 0x5A) || (c >= 0x61 && c <= 0x7A) || ch == "_" || ch == "#");
+    }
 
     // ***** トークン追加 *****
     function token_push(tok, line_no) {
@@ -3241,6 +3297,31 @@ var Interpreter;
         }
         if (debugpos2 >= token_len) { msg += "- プログラム最後まで検索したが文が完成せず。"; }
         DebugShow(msg + "\n");
+    }
+
+    // ***** オブジェクトのソートと文字列化 *****
+    function sort_obj_tostr(obj) {
+        var i, n, key, obj1;
+        var temp_array = [];
+        var result_array = [];
+        var sort_func = function (a, b) { return ((a.k == b.k) ? 0 : (a.k < b.k) ? -1 : 1); };
+
+        for (key in obj) {
+            if (hasOwn.call(obj, key)) {
+                obj1 = {};
+                obj1.k = key;
+                obj1.v = obj[key];
+                temp_array.push(obj1);
+            }
+        }
+        temp_array.sort(sort_func);
+        n = temp_array.length;
+        for (i = 0; i < n; i++) {
+            obj1 = {};
+            obj1[temp_array[i].k] = temp_array[i].v;
+            result_array[i] = obj1;
+        }
+        return JSON.stringify(result_array);
     }
 
     // ***** 演算子検索 *****
@@ -3332,9 +3413,12 @@ var Interpreter;
 
         // ***** 関数の本体のとき *****
         if (typeof (cod) == "function") {
-            func_name = (i != null) ? (":" + code_str[i]) : "";
-            func_name = "<function" + func_name + ">";
-            return func_name;
+            if (i != null) {
+                func_name = code_str[i];
+                func_name = func_name.substring(1, func_name.length - 1);
+                return "<function:" + func_name + ">";
+            }
+            return "<function>";
         }
         // ***** その他のとき *****
         return JSON.stringify(cod);
@@ -5988,27 +6072,27 @@ var Interpreter;
     // ****************************************
 
     // (必要に応じてインタープリターの内部情報を公開する)
-    Interpreter.add_before_run_funcs = function (name, func) { before_run_funcs[name] = func; };
-    Interpreter.add_after_run_funcs = function (name, func) { after_run_funcs[name] = func; };
-    Interpreter.add_clear_var_funcs = function (name, func) { clear_var_funcs[name] = func; };
-    Interpreter.make_one_func_tbl = make_one_func_tbl;
-    Interpreter.Vars = Vars;
-    Interpreter.get_var_info = get_var_info;
-    Interpreter.to_global = to_global;
-    Interpreter.set_canvas_axis = set_canvas_axis;
-    Interpreter.conv_axis_point = conv_axis_point;
-    Interpreter.max_array_size = max_array_size;
-    Interpreter.max_str_size = max_str_size;
-    Interpreter.nothing = nothing;
-    Interpreter.get_can = function () { return can; };
-    Interpreter.get_ctx = function () { return ctx; };
-    Interpreter.get_imgvars = function () { return imgvars; };
-    Interpreter.get_font_size = function () { return font_size; };
-    Interpreter.set_color_val = function (v) { color_val = v; };
-    Interpreter.set_loop_nocount = function () { loop_nocount_flag1 = true; };
+    SP_Interpreter.add_before_run_funcs = function (name, func) { before_run_funcs[name] = func; };
+    SP_Interpreter.add_after_run_funcs = function (name, func) { after_run_funcs[name] = func; };
+    SP_Interpreter.add_clear_var_funcs = function (name, func) { clear_var_funcs[name] = func; };
+    SP_Interpreter.make_one_func_tbl = make_one_func_tbl;
+    SP_Interpreter.Vars = Vars;
+    SP_Interpreter.get_var_info = get_var_info;
+    SP_Interpreter.to_global = to_global;
+    SP_Interpreter.set_canvas_axis = set_canvas_axis;
+    SP_Interpreter.conv_axis_point = conv_axis_point;
+    SP_Interpreter.max_array_size = max_array_size;
+    SP_Interpreter.max_str_size = max_str_size;
+    SP_Interpreter.nothing = nothing;
+    SP_Interpreter.get_can = function () { return can; };
+    SP_Interpreter.get_ctx = function () { return ctx; };
+    SP_Interpreter.get_imgvars = function () { return imgvars; };
+    SP_Interpreter.get_font_size = function () { return font_size; };
+    SP_Interpreter.set_color_val = function (v) { color_val = v; };
+    SP_Interpreter.set_loop_nocount = function () { loop_nocount_flag1 = true; };
 
 
-})(Interpreter || (Interpreter = {}));
+})(SP_Interpreter || (SP_Interpreter = {}));
 
 
 // ***** 以下は外部クラス *****

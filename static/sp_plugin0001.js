@@ -1,26 +1,26 @@
 // -*- coding: utf-8 -*-
 
 // sp_plugin0001.js
-// 2017-7-17 v13.01
+// 2018-2-8 v14.00
 
 
-// A Plugin to add functions to SPALM Web Interpreter
+// A Plugin for SPALM Web Interpreter
 
 
 // ****************************************
-//                プラグイン
+//               SPプラグイン
 // ****************************************
 
-// ***** Plugin0001(名前空間) *****
+// ***** SP_Plugin0001(名前空間) *****
 //
 // 公開I/F :
 //
-//   Plugin0001.init()  初期化
+//   SP_Plugin0001.init()  初期化
 //
 // その他 情報等 :
 //
 //   インタープリターに命令を追加するプラグインです。
-//   Interpreter(名前空間)が先に初期化されている必要があります。
+//   SP_Interpreter(名前空間)が先に初期化されている必要があります。
 //
 //   各命令の定義は add_func_tbl の中で行っています。
 //
@@ -32,8 +32,8 @@
 //     MMLPlayer   MML音楽演奏用クラス
 //     SandSim     砂シミュレート用クラス
 //
-var Plugin0001;
-(function (Plugin0001) {
+var SP_Plugin0001;
+(function (SP_Plugin0001) {
     var stimg = {};      // 画像文字割付用  (連想配列オブジェクト)
     var missile = {};    // ミサイル用      (連想配列オブジェクト)
     var audplayer = {};  // 音楽再生用      (連想配列オブジェクト)
@@ -42,24 +42,24 @@ var Plugin0001;
 
     // ***** インタープリター参照用 *****
     // (必要に応じてインタープリターの内部情報を参照する)
-    var add_before_run_funcs = Interpreter.add_before_run_funcs;
-    var add_after_run_funcs = Interpreter.add_after_run_funcs;
-    var add_clear_var_funcs = Interpreter.add_clear_var_funcs;
-    var make_one_func_tbl = Interpreter.make_one_func_tbl;
-    var Vars = Interpreter.Vars;
-    var get_var_info = Interpreter.get_var_info;
-    var to_global = Interpreter.to_global;
-    var set_canvas_axis = Interpreter.set_canvas_axis;
-    var conv_axis_point = Interpreter.conv_axis_point;
-    var max_array_size = Interpreter.max_array_size;
-    var max_str_size = Interpreter.max_str_size;
-    var nothing = Interpreter.nothing;
-    var get_can = Interpreter.get_can;
-    var get_ctx = Interpreter.get_ctx;
-    var get_imgvars = Interpreter.get_imgvars;
-    var get_font_size = Interpreter.get_font_size;
-    var set_color_val = Interpreter.set_color_val;
-    var set_loop_nocount = Interpreter.set_loop_nocount;
+    var add_before_run_funcs = SP_Interpreter.add_before_run_funcs;
+    var add_after_run_funcs = SP_Interpreter.add_after_run_funcs;
+    var add_clear_var_funcs = SP_Interpreter.add_clear_var_funcs;
+    var make_one_func_tbl = SP_Interpreter.make_one_func_tbl;
+    var Vars = SP_Interpreter.Vars;
+    var get_var_info = SP_Interpreter.get_var_info;
+    var to_global = SP_Interpreter.to_global;
+    var set_canvas_axis = SP_Interpreter.set_canvas_axis;
+    var conv_axis_point = SP_Interpreter.conv_axis_point;
+    var max_array_size = SP_Interpreter.max_array_size;
+    var max_str_size = SP_Interpreter.max_str_size;
+    var nothing = SP_Interpreter.nothing;
+    var get_can = SP_Interpreter.get_can;
+    var get_ctx = SP_Interpreter.get_ctx;
+    var get_imgvars = SP_Interpreter.get_imgvars;
+    var get_font_size = SP_Interpreter.get_font_size;
+    var set_color_val = SP_Interpreter.set_color_val;
+    var set_loop_nocount = SP_Interpreter.set_loop_nocount;
 
     // ***** hasOwnPropertyをプロパティ名に使うかもしれない場合の対策 *****
     // (変数名、関数名、ラベル名、画像変数名について、
@@ -78,7 +78,7 @@ var Plugin0001;
     // ***** 初期化 *****
     function init() {
         // ***** 実行前処理を登録 *****
-        add_before_run_funcs("plugin0001", function () {
+        add_before_run_funcs("SP_Plugin0001", function () {
             stimg = {};
             missile = {};
             audplayer = {};
@@ -89,7 +89,7 @@ var Plugin0001;
             MMLPlayer.resume();
         });
         // ***** 実行後処理を登録 *****
-        add_after_run_funcs("plugin0001", function () {
+        add_after_run_funcs("SP_Plugin0001", function () {
             // ***** 音楽全停止 *****
             audstopall();
             // ***** 音楽中断 *****
@@ -97,7 +97,7 @@ var Plugin0001;
             MMLPlayer.suspend();
         });
         // ***** 全変数クリア時処理を登録 *****
-        add_clear_var_funcs("plugin0001", function () {
+        add_clear_var_funcs("SP_Plugin0001", function () {
             stimg = {};
             missile = {};
             sand_obj = {};
@@ -108,7 +108,7 @@ var Plugin0001;
         add_func_tbl();
         return true;
     }
-    Plugin0001.init = init;
+    SP_Plugin0001.init = init;
 
 
     // ***** 公開I/Fはここまで *****
@@ -2825,7 +2825,7 @@ var Plugin0001;
     }
 
 
-})(Plugin0001 || (Plugin0001 = {}));
+})(SP_Plugin0001 || (SP_Plugin0001 = {}));
 
 
 // ***** 以下は外部クラス *****
