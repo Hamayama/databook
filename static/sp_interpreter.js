@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2018-2-8 v14.00
+// 2018-2-8 v14.01
 
 
 // SPALM Web Interpreter
@@ -3301,8 +3301,9 @@ var SP_Interpreter;
 
     // ***** オブジェクトのソートと文字列化 *****
     function sort_obj_tostr(obj) {
-        var i, n, key, obj1;
+        var i, key, obj1;
         var temp_array = [];
+        var temp_array_len;
         var result_array = [];
         var sort_func = function (a, b) { return ((a.k == b.k) ? 0 : (a.k < b.k) ? -1 : 1); };
 
@@ -3315,8 +3316,8 @@ var SP_Interpreter;
             }
         }
         temp_array.sort(sort_func);
-        n = temp_array.length;
-        for (i = 0; i < n; i++) {
+        temp_array_len = temp_array.length;
+        for (i = 0; i < temp_array_len; i++) {
             obj1 = {};
             obj1[temp_array[i].k] = temp_array[i].v;
             result_array[i] = obj1;
