@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2018-2-8 v14.01
+// 2018-2-9 v14.02
 
 
 // SPALM Web Interpreter
@@ -568,16 +568,16 @@ var SP_Interpreter;
 
     var opcode = {              // スタックマシンの命令コード
         push:1,        pop:2,         dup:3,         push0:4,       push1:5,
-        load:6,        pointer:7,     array:8,       store:9,       preinc:10,
-        predec:11,     postinc:12,    postdec:13,    add:14,        addstr:15,
-        sub:16,        mul:17,        div:18,        divint:19,     mod:20,
-        shl:21,        shr:22,        ushr:23,       positive:24,   negative:25,
-        and:26,        or:27,         xor:28,        not:29,        lognot:30,
-        cmpeq:31,      cmpne:32,      cmplt:33,      cmple:34,      cmpgt:35,
-        cmpge:36,      label:37,      "goto":38,     ifgoto:39,     ifnotgoto:40,
-        switchgoto:41, gosub:42,      "return":43,   func:44,       funcend:45,
-        callfunc:46,   callwait:47,   calluser:48,   callgoto:49,   loadparam:50,
-        end:51 };
+        load:6,        address:7,     pointer:8,     array:9,       store:10,
+        preinc:11,     predec:12,     postinc:13,    postdec:14,    add:15,
+        addstr:16,     sub:17,        mul:18,        div:19,        divint:20,
+        mod:21,        shl:22,        shr:23,        ushr:24,       positive:25,
+        negative:26,   and:27,        or:28,         xor:29,        not:30,
+        lognot:31,     cmpeq:32,      cmpne:33,      cmplt:34,      cmple:35,
+        cmpgt:36,      cmpge:37,      label:38,      "goto":39,     ifgoto:40,
+        ifnotgoto:41,  switchgoto:42, gosub:43,      "return":44,   func:45,
+        funcend:46,    callfunc:47,   callwait:48,   calluser:49,   callgoto:50,
+        loadparam:51,  end:52 };
 
     var reserved = {            // 予約名
         "spmode":1,    "onlocal":2,   "offlocal":3,  "defconst":4,  "disconst":5,
@@ -904,8 +904,8 @@ var SP_Interpreter;
         try {
             resolveaddress();
         } catch (ex4) {
-            DebugShow("label=" + sort_obj_tostr(label) + "\n");
-            DebugShow("func=" + sort_obj_tostr(func) + "\n");
+            DebugShow("label=" + sort_obj_tostr(label, 2) + "\n");
+            DebugShow("func=" + sort_obj_tostr(func, 2) + "\n");
             DebugShow("resolveaddress: " + ex4.message + ": debugpos=" + debugpos1 + "\n");
             show_err_place(debugpos1, debugpos2);
             DebugShow("実行終了\n");
@@ -990,10 +990,10 @@ var SP_Interpreter;
             // ***** 終了処理 *****
             running_flag = false; runstatchanged();
             DebugShow("実行終了\n");
-            DebugShow("globalvars=" + sort_obj_tostr(Vars.getGlobalVars()) + "\n");
-            DebugShow("localvars=" + sort_obj_tostr(Vars.getLocalVars()) + "\n");
-            DebugShow("label=" + sort_obj_tostr(label) + "\n");
-            DebugShow("func=" + sort_obj_tostr(func) + "\n");
+            DebugShow("globalvars=" + sort_obj_tostr(Vars.getGlobalVars(), 1) + "\n");
+            DebugShow("localvars=" + sort_obj_tostr(Vars.getLocalVars(), 1) + "\n");
+            DebugShow("label=" + sort_obj_tostr(label, 2) + "\n");
+            DebugShow("func=" + sort_obj_tostr(func, 2) + "\n");
             DebugShow("stack=" + JSON.stringify(stack) + "\n");
             return false;
         }
@@ -1007,10 +1007,10 @@ var SP_Interpreter;
         running_flag = false; runstatchanged();
         DebugShow("実行終了\n");
         if (debug_mode == 1) {
-            DebugShow("globalvars=" + sort_obj_tostr(Vars.getGlobalVars()) + "\n");
-            DebugShow("localvars=" + sort_obj_tostr(Vars.getLocalVars()) + "\n");
-            DebugShow("label=" + sort_obj_tostr(label) + "\n");
-            DebugShow("func=" + sort_obj_tostr(func) + "\n");
+            DebugShow("globalvars=" + sort_obj_tostr(Vars.getGlobalVars(), 1) + "\n");
+            DebugShow("localvars=" + sort_obj_tostr(Vars.getLocalVars(), 1) + "\n");
+            DebugShow("label=" + sort_obj_tostr(label, 2) + "\n");
+            DebugShow("func=" + sort_obj_tostr(func, 2) + "\n");
             DebugShow("stack=" + JSON.stringify(stack) + "\n");
         }
         return true;
@@ -1065,7 +1065,23 @@ var SP_Interpreter;
                     Vars.setVarValue(var_info, num);
                     stack.push(num);
                     break;
-                case 7: // pointer
+                case 7: // address
+                    var_info = stack.pop();
+                    if (var_info.kind == null) {
+                        throw new Error("変数以外のアドレスを取得しようとしました。(" + code_tostr(num) + ")");
+                    }
+                    if (use_local_vars && !(var_info.kind & 2)) {
+                        // ***** 変数情報のスコープを有効化 *****
+                        var_info2 = {}; // 変数情報を変更する場合は複製が必要
+                        var_info2.kind = var_info.kind | 2;
+                        var_info2.name = var_info.name;
+                        var_info2.scope = (var_info.kind & 1) ? Vars.getLocalScopeNum() : 0;
+                        stack.push(var_info2);
+                        break;
+                    }
+                    stack.push(var_info);
+                    break;
+                case 8: // pointer
                     var_info = stack.pop();
                     var_info2 = Vars.getVarValue(var_info);
                     if (var_info2.kind == null) {
@@ -1073,189 +1089,190 @@ var SP_Interpreter;
                     }
                     stack.push(var_info2);
                     break;
-                case 8: // array
+                case 9: // array
                     num = stack.pop();
                     var_info = stack.pop();
+                    // ***** 変数情報を配列に変更 *****
                     var_info2 = {}; // 変数情報を変更する場合は複製が必要
                     var_info2.kind = var_info.kind;
                     var_info2.name = var_info.name + "$" + num;
                     var_info2.scope = var_info.scope;
                     stack.push(var_info2);
                     break;
-                case 9: // store
+                case 10: // store
                     var_info = stack.pop();
                     num = Vars.getVarValue(var_info);
                     stack.push(num);
                     break;
-                case 10: // preinc
+                case 11: // preinc
                     var_info = stack.pop();
                     num = Vars.getVarValue(var_info);
                     num++;
                     Vars.setVarValue(var_info, num);
                     stack.push(num);
                     break;
-                case 11: // predec
+                case 12: // predec
                     var_info = stack.pop();
                     num = Vars.getVarValue(var_info);
                     num--;
                     Vars.setVarValue(var_info, num);
                     stack.push(num);
                     break;
-                case 12: // postinc
+                case 13: // postinc
                     var_info = stack.pop();
                     num = Vars.getVarValue(var_info);
                     stack.push(num);
                     num++;
                     Vars.setVarValue(var_info, num);
                     break;
-                case 13: // postdec
+                case 14: // postdec
                     var_info = stack.pop();
                     num = Vars.getVarValue(var_info);
                     stack.push(num);
                     num--;
                     Vars.setVarValue(var_info, num);
                     break;
-                case 14: // add
+                case 15: // add
                     num2 = stack.pop();
                     num = stack.pop();
                     num = (+num) + (+num2); // 文字の連結にならないように数値にする
                     stack.push(num);
                     break;
-                case 15: // addstr
+                case 16: // addstr
                     num2 = stack.pop();
                     num = stack.pop();
                     num = String(num) + String(num2);
                     stack.push(num);
                     break;
-                case 16: // sub
+                case 17: // sub
                     num2 = stack.pop();
                     num = stack.pop();
                     num = num - num2;
                     stack.push(num);
                     break;
-                case 17: // mul
+                case 18: // mul
                     num2 = stack.pop();
                     num = stack.pop();
                     num = num * num2;
                     stack.push(num);
                     break;
-                case 18: // div
+                case 19: // div
                     num2 = stack.pop();
                     num = stack.pop();
                     num = num / num2;
                     stack.push(num);
                     break;
-                case 19: // divint
+                case 20: // divint
                     num2 = stack.pop();
                     num = stack.pop();
                     num = Math.trunc(num / num2);
                     stack.push(num);
                     break;
-                case 20: // mod
+                case 21: // mod
                     num2 = stack.pop();
                     num = stack.pop();
                     num = num % num2;
                     stack.push(num);
                     break;
-                case 21: // shl
+                case 22: // shl
                     num2 = stack.pop();
                     num = stack.pop();
                     num = num << num2;
                     stack.push(num);
                     break;
-                case 22: // shr
+                case 23: // shr
                     num2 = stack.pop();
                     num = stack.pop();
                     num = num >> num2;
                     stack.push(num);
                     break;
-                case 23: // ushr
+                case 24: // ushr
                     num2 = stack.pop();
                     num = stack.pop();
                     num = num >>> num2;
                     stack.push(num);
                     break;
-                case 24: // positive
+                case 25: // positive
                     num = stack.pop();
                     num = +num;
                     stack.push(num);
                     break;
-                case 25: // negative
+                case 26: // negative
                     num = stack.pop();
                     num = -num;
                     stack.push(num);
                     break;
-                case 26: // and
+                case 27: // and
                     num2 = stack.pop();
                     num = stack.pop();
                     num = num & num2;
                     stack.push(num);
                     break;
-                case 27: // or
+                case 28: // or
                     num2 = stack.pop();
                     num = stack.pop();
                     num = num | num2;
                     stack.push(num);
                     break;
-                case 28: // xor
+                case 29: // xor
                     num2 = stack.pop();
                     num = stack.pop();
                     num = num ^ num2;
                     stack.push(num);
                     break;
-                case 29: // not
+                case 30: // not
                     num = stack.pop();
                     num = ~num;
                     stack.push(num);
                     break;
-                case 30: // lognot
+                case 31: // lognot
                     num = stack.pop();
                     num = (num == 0) ? 1 : 0;
                     stack.push(num);
                     break;
-                case 31: // cmpeq
+                case 32: // cmpeq
                     num2 = stack.pop();
                     num = stack.pop();
                     num = (num == num2) ? 1 : 0;
                     stack.push(num);
                     break;
-                case 32: // cmpne
+                case 33: // cmpne
                     num2 = stack.pop();
                     num = stack.pop();
                     num = (num != num2) ? 1 : 0;
                     stack.push(num);
                     break;
-                case 33: // cmplt
+                case 34: // cmplt
                     num2 = stack.pop();
                     num = stack.pop();
                     num = (num < num2) ? 1 : 0;
                     stack.push(num);
                     break;
-                case 34: // cmple
+                case 35: // cmple
                     num2 = stack.pop();
                     num = stack.pop();
                     num = (num <= num2) ? 1 : 0;
                     stack.push(num);
                     break;
-                case 35: // cmpgt
+                case 36: // cmpgt
                     num2 = stack.pop();
                     num = stack.pop();
                     num = (num > num2) ? 1 : 0;
                     stack.push(num);
                     break;
-                case 36: // cmpge
+                case 37: // cmpge
                     num2 = stack.pop();
                     num = stack.pop();
                     num = (num >= num2) ? 1 : 0;
                     stack.push(num);
                     break;
-                case 37: // label
+                case 38: // label
                     pc++;
                     break;
-                case 38: // goto
+                case 39: // goto
                     pc = code[pc];
                     break;
-                case 39: // ifgoto
+                case 40: // ifgoto
                     num = stack.pop();
                     if (num != 0) {
                         pc = code[pc];
@@ -1263,7 +1280,7 @@ var SP_Interpreter;
                     }
                     pc++;
                     break;
-                case 40: // ifnotgoto
+                case 41: // ifnotgoto
                     num = stack.pop();
                     if (num == 0) {
                         pc = code[pc];
@@ -1271,7 +1288,7 @@ var SP_Interpreter;
                     }
                     pc++;
                     break;
-                case 41: // switchgoto
+                case 42: // switchgoto
                     num2 = stack.pop();
                     num = stack[stack.length - 1]; // 条件不成立時は式の値を残す
                     if (num == num2) {
@@ -1281,11 +1298,11 @@ var SP_Interpreter;
                     }
                     pc++;
                     break;
-                case 42: // gosub
+                case 43: // gosub
                     gosub_back.push(pc + 1);
                     pc = code[pc];
                     break;
-                case 43: // return
+                case 44: // return
                     // ***** 関数内のとき *****
                     if (func_back.length > 0) {
                         // ***** ローカル変数のスコープを1個削除する *****
@@ -1305,10 +1322,10 @@ var SP_Interpreter;
                     // ***** 呼び出し元がない *****
                     throw new Error("予期しない return が見つかりました。");
                     // break;
-                case 44: // func
+                case 45: // func
                     pc = code[pc];
                     break;
-                case 45: // funcend
+                case 46: // funcend
                     // ***** 関数内のとき *****
                     if (func_back.length > 0) {
                         // ***** 戻り値は0とする *****
@@ -1322,7 +1339,7 @@ var SP_Interpreter;
                     // ***** 呼び出し元がない *****
                     throw new Error("予期しない '}' が見つかりました。");
                     // break;
-                case 46: // callfunc
+                case 47: // callfunc
                     // ***** 引数の取得 *****
                     param_num = code[pc++];
                     param = [];
@@ -1335,7 +1352,7 @@ var SP_Interpreter;
                     num = func_body(param);
                     stack.push(num);
                     break;
-                case 47: // callwait
+                case 48: // callwait
                     // ***** 引数の取得 *****
                     param_num = code[pc++];
                     param = [];
@@ -1358,7 +1375,7 @@ var SP_Interpreter;
                     }
                     pc -= 2;
                     break;
-                case 48: // calluser
+                case 49: // calluser
                     // ***** 引数の取得 *****
                     param_num = code[pc++];
                     param = [];
@@ -1382,7 +1399,7 @@ var SP_Interpreter;
                     // pc = func[func_name];
                     pc = func_start;
                     break;
-                case 49: // callgoto
+                case 50: // callgoto
                     // ***** 引数の取得 *****
                     param_num = code[pc++];
                     param = [];
@@ -1411,32 +1428,16 @@ var SP_Interpreter;
                     // ***** 関数の外では使用不可 *****
                     throw new Error("funcgoto はユーザ定義の関数内でなければ使用できません。");
                     // break;
-                case 50: // loadparam
+                case 51: // loadparam
                     if (param.length > 0) {
                         num = param.pop(); // 逆順に取得
                     } else {
                         num = 0;
                     }
                     var_info = stack.pop();
-                    // ***** 関数の仮引数かつポインタのとき *****
-                    if (use_local_vars && (var_info.kind & 8)) {
-                        if (num.kind == null) {
-                            throw new Error("ポインタの指す先が不正です。(変数のアドレスではなく、'" + code_tostr(num) + "' が入っていました)");
-                        }
-                        if (!(num.kind & 2) && (num.kind & 1)) {
-                            // (ローカル変数のスコープをさかのぼれるように
-                            //  「関数の引数かつポインタ」を設定)
-                            var_info2 = {}; // 変数情報を変更する場合は複製が必要
-                            var_info2.kind = num.kind | 2;
-                            var_info2.name = num.name;
-                            var_info2.scope = Vars.getLocalScopeNum() - 1;
-                            Vars.setVarValue(var_info, var_info2);
-                            break;
-                        }
-                    }
                     Vars.setVarValue(var_info, num);
                     break;
-                case 51: // end
+                case 52: // end
                     end_flag = true;
                     break;
                 default:
@@ -1785,11 +1786,7 @@ var SP_Interpreter;
                     // ***** ローカル文フラグOFF *****
                     if (use_local_vars && loc_flag) { locstatement_flag = false; }
                     // ***** カンマ区切りのチェック *****
-                    if (token[i] == ",") {
-                        i++;
-                        continue;
-                    }
-                    break;
+                    if (token[i] == ",") { i++; } else { break; }
                 }
                 continue;
             }
@@ -1831,11 +1828,8 @@ var SP_Interpreter;
                         // ***** 変数名のコンパイル(関数の仮引数) *****
                         i = c_varname(i, tok_end, 1);
                         code_push("loadparam", debugpos1, i);
-                        if (token[i] == ",") {
-                            i++;
-                            continue;
-                        }
-                        break;
+                        // ***** カンマ区切りのチェック *****
+                        if (token[i] == ",") { i++; } else { break; }
                     }
                     token_match(")", i++);
                 }
@@ -1877,13 +1871,11 @@ var SP_Interpreter;
                     i++;
                 } else {
                     while (i < tok_end) {
+                        // ***** 引数のコンパイル *****
                         i = c_expression(i, tok_end);
                         param_num++;
-                        if (token[i] == ",") {
-                            i++;
-                            continue;
-                        }
-                        break;
+                        // ***** カンマ区切りのチェック *****
+                        if (token[i] == ",") { i++; } else { break; }
                     }
                     token_match(")", i++);
                 }
@@ -2466,6 +2458,8 @@ var SP_Interpreter;
             } else {
                 i = c_varname(i, tok_end);
             }
+            // ***** アドレスの設定 *****
+            code_push("address", debugpos1, i);
             return i;
         }
         // ***** プレインクリメント/デクリメントのとき *****
@@ -2505,16 +2499,15 @@ var SP_Interpreter;
                 while (i < tok_end) {
                     // ***** 「変数名をとる引数」のとき *****
                     if (func_tbl[func_name].param_varname_flag.hasOwnProperty(param_num)) {
+                        // ***** 変数名のコンパイル *****
                         i = c_varname(i, tok_end);
                     } else {
+                        // ***** 引数のコンパイル *****
                         i = c_expression(i, tok_end);
                     }
                     param_num++;
-                    if (token[i] == ",") {
-                        i++;
-                        continue;
-                    }
-                    break;
+                    // ***** カンマ区切りのチェック *****
+                    if (token[i] == ",") { i++; } else { break; }
                 }
                 token_match(")", i++);
             }
@@ -2567,13 +2560,11 @@ var SP_Interpreter;
                     i++;
                 } else {
                     while (i < tok_end) {
+                        // ***** 引数のコンパイル *****
                         i = c_expression(i, tok_end);
                         param_num++;
-                        if (token[i] == ",") {
-                            i++;
-                            continue;
-                        }
-                        break;
+                        // ***** カンマ区切りのチェック *****
+                        if (token[i] == ",") { i++; } else { break; }
                     }
                     token_match(")", i++);
                 }
@@ -2639,10 +2630,7 @@ var SP_Interpreter;
     }
 
     // ***** 変数名のコンパイル *****
-    // (var_nm_kind  変数名の種別
-    //                 (=0:通常,
-    //                  =1:関数の仮引数,
-    //                  =2:関数の仮引数かつポインタ))
+    // (var_nm_kind  変数名の種別(=0:通常,=1:関数の仮引数))
     function c_varname(tok_start, tok_end, var_nm_kind) {
         var i;
         var var_name;
@@ -2659,10 +2647,10 @@ var SP_Interpreter;
         if (var_name == "*") {
             if (token[i] == "(") {
                 i++;
-                i = c_varname(i, tok_end, (var_nm_kind > 0) ? 2 : 0);
+                i = c_varname(i, tok_end, var_nm_kind);
                 token_match(")", i++);
             } else {
-                i = c_varname(i, tok_end, (var_nm_kind > 0) ? 2 : 0);
+                i = c_varname(i, tok_end, var_nm_kind);
             }
             if (var_nm_kind == 0) {
                 // ***** ポインタの設定 *****
@@ -2709,23 +2697,15 @@ var SP_Interpreter;
              !hasOwn.call(locvarnames_stack[locvarnames_stack.length - 1], var_name))) {
             locvarnames_stack[locvarnames_stack.length - 1][var_name] = true;
         }
-        // ***** 接頭語を付加する *****
-        // (ローカル変数)
-        if (use_local_vars && loc_flag) {
-            var_name = "l\\" + var_name;
-        }
-        // (関数の仮引数かつポインタ)
-        if (use_local_vars && var_nm_kind == 2) {
-            var_name = "p\\" + var_name;
-        }
         // ***** モジュール名の追加 *****
+        // if (!use_local_vars || (use_local_vars && !loc_flag)) {
         if (!(use_local_vars && loc_flag)) {
             var_name = add_module_name(var_name);
         }
         // ***** 変数名の設定 *****
         code_push("push", debugpos1, i);
         // code_push('"' + var_name + '"', debugpos1, i);
-        code_push('"' + var_name + '"', debugpos1, i, 10);
+        code_push('"' + var_name + '"', debugpos1, i, (loc_flag ? 11 : 10));
         // ***** 配列変数のとき *****
         while (token[i] == "[") {
             i++;
@@ -3300,12 +3280,14 @@ var SP_Interpreter;
     }
 
     // ***** オブジェクトのソートと文字列化 *****
-    function sort_obj_tostr(obj) {
+    // (sort_type  ソート方法(=1:キーでソート,=2:値でソート))
+    function sort_obj_tostr(obj, sort_type) {
         var i, key, obj1;
         var temp_array = [];
         var temp_array_len;
         var result_array = [];
-        var sort_func = function (a, b) { return ((a.k == b.k) ? 0 : (a.k < b.k) ? -1 : 1); };
+        var sort_func1 = function (a, b) { return ((a.k == b.k) ? 0 : (a.k < b.k) ? -1 : 1); };
+        var sort_func2 = function (a, b) { return ((a.v == b.v) ? 0 : (a.v < b.v) ? -1 : 1); };
 
         for (key in obj) {
             if (hasOwn.call(obj, key)) {
@@ -3315,7 +3297,7 @@ var SP_Interpreter;
                 temp_array.push(obj1);
             }
         }
-        temp_array.sort(sort_func);
+        temp_array.sort((sort_type == 1) ? sort_func1 : sort_func2);
         temp_array_len = temp_array.length;
         for (i = 0; i < temp_array_len; i++) {
             obj1 = {};
@@ -3336,14 +3318,11 @@ var SP_Interpreter;
     // ***** コード追加 *****
     // (code_kind  コードの種別(=0:通常,
     //                          =1:組み込み関数,
-    //                          =2:追加の組み込み関数,
-    //                          =10:変数))
+    //                          =10:グローバル変数,
+    //                          =11:ローカル変数))
     function code_push(tok, pos1, pos2, code_kind) {
-        var i;
-        var var_kind;
-        var var_name;
-        var var_scope;
         var func_name;
+        var var_name;
 
         // ***** 引数のチェック *****
         if (code_kind == null) { code_kind = 0; }
@@ -3369,27 +3348,15 @@ var SP_Interpreter;
                 func_name = tok.substring(1, tok.length - 1); // ダブルクォートを外す
                 code[code_len] = func_tbl[func_name].func;
                 break;
-            case 10: // 変数
+            case 10: // グローバル変数
                 // ***** 変数情報を生成して格納 *****
-                i = 0;
-                var_kind = 0;
                 var_name = tok.substring(1, tok.length - 1);  // ダブルクォートを外す
-                var_scope = 0;
-                // ***** 接頭語のチェック *****
-                if (var_name.substring(0, 2) == "p\\") {
-                    i = 2;
-                    // (関数の仮引数かつポインタ)
-                    var_kind |= 8;
-                }
-                if (var_name.substring(i, i + 2) == "l\\") {
-                    i += 2;
-                    // (ローカル変数)
-                    var_kind |= 1;
-                }
-                // ***** 接頭語を削除する *****
-                var_name = var_name.substring(i);
-                // ***** 変数情報の生成 *****
-                code[code_len] = make_var_info(var_kind, var_name, var_scope);
+                code[code_len] = make_var_info(0, var_name, 0);
+                break;
+            case 11: // ローカル変数
+                // ***** 変数情報を生成して格納 *****
+                var_name = tok.substring(1, tok.length - 1);  // ダブルクォートを外す
+                code[code_len] = make_var_info(1, var_name, 0);
                 break;
             default: // その他
                 debugpos1 = pos1;
@@ -3431,12 +3398,13 @@ var SP_Interpreter;
     //  変更が必要な場合には、オブジェクトを複製して、複製したものを変更すること)
     function make_var_info(kind, name, scope) {
         var var_info = {};      // 変数情報
-        var_info.kind = kind;   //   変数の種別(=0:グローバル変数,=1:ローカル変数,
-                                //              =2:関数の引数かつポインタ,
-                                //              =8:関数の仮引数かつポインタ)
+        var_info.kind = kind;   //   変数の種別(複数のORになる場合があるので注意)
+                                //     (=0:グローバル変数,
+                                //      =1:ローカル変数,
+                                //      =2:スコープ有効)
         var_info.name = name;   //   変数名
         var_info.scope = scope; //   変数が所属するスコープの番号
-                                //     (これは、変数の種別が「関数の引数かつポインタ」のときのみ有効)
+                                //     (変数の種別がスコープ有効のときのみ使用可能)
         return var_info;
     }
     // ***** 変数情報の取得 *****
@@ -3471,22 +3439,19 @@ var SP_Interpreter;
             var scope_no;
 
             var_kind = var_info.kind;
+            // ***** スコープ有効のとき *****
             if (var_kind & 2) {
-                // (関数の引数かつポインタ)
                 scope_no = var_info.scope;
-                if (!(scope_no >= 1 && scope_no <= local_scope_num)) {
+                if (scope_no > local_scope_num) {
                     throw new Error("ポインタの指す先が不正です(スコープエラー)。");
                 }
                 return scope_no;
             }
+            // ***** ローカル変数のとき *****
             if (var_kind & 1) {
-                // (ローカル変数)
-                // if (!(local_scope_num > 0)) {
-                //     throw new Error("変数のスコープエラー。");
-                // }
                 return local_scope_num;
             }
-            // (グローバル変数)
+            // ***** グローバル変数 *****
             return 0;
         }
         // ***** 配列変数の一括操作(内部処理用) *****
