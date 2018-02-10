@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2018-2-9 v14.02
+// 2018-2-10 v14.03
 
 
 // SPALM Web Interpreter
@@ -581,11 +581,11 @@ var SP_Interpreter;
 
     var reserved = {            // 予約名
         "spmode":1,    "onlocal":2,   "offlocal":3,  "defconst":4,  "disconst":5,
-        "label":6,     "goto":7,      "gosub":8,     "return":9,    "end":10,
-        "global":11,   "glb":12,      "local":13,    "loc":14,      "func":15,
-        "break":16,    "continue":17, "switch":18,   "case":19,     "default":20,
-        "if":21,       "elsif":22,    "else":23,     "for":24,      "while":25,
-        "do":26 };
+        "module":6,    "label":7,     "goto":8,      "gosub":9,     "return":10,
+        "end":11,      "global":12,   "glb":13,      "local":14,    "loc":15,
+        "func":16,     "break":17,    "continue":18, "switch":19,   "case":20,
+        "default":21,  "if":22,       "elsif":23,    "else":24,     "for":25,
+        "while":26,    "do":27 };
 
     var operator = {            // 演算子(値は命令コードと優先順位)
         "!":   ["lognot",   0],  "~":   ["not",      0],  "+u":  ["positive", 0],
@@ -1072,7 +1072,8 @@ var SP_Interpreter;
                     }
                     if (use_local_vars && !(var_info.kind & 2)) {
                         // ***** 変数情報のスコープを有効化 *****
-                        var_info2 = {}; // 変数情報を変更する場合は複製が必要
+                        // (変数情報を変更する場合は複製が必要)
+                        var_info2 = {};
                         var_info2.kind = var_info.kind | 2;
                         var_info2.name = var_info.name;
                         var_info2.scope = (var_info.kind & 1) ? Vars.getLocalScopeNum() : 0;
@@ -1093,7 +1094,8 @@ var SP_Interpreter;
                     num = stack.pop();
                     var_info = stack.pop();
                     // ***** 変数情報を配列に変更 *****
-                    var_info2 = {}; // 変数情報を変更する場合は複製が必要
+                    // (変数情報を変更する場合は複製が必要)
+                    var_info2 = {};
                     var_info2.kind = var_info.kind;
                     var_info2.name = var_info.name + "$" + num;
                     var_info2.scope = var_info.scope;
@@ -1194,7 +1196,7 @@ var SP_Interpreter;
                     break;
                 case 25: // positive
                     num = stack.pop();
-                    num = +num;
+                    num = +num; // 文字列等を数値化する意味がある
                     stack.push(num);
                     break;
                 case 26: // negative
@@ -1429,6 +1431,7 @@ var SP_Interpreter;
                     throw new Error("funcgoto はユーザ定義の関数内でなければ使用できません。");
                     // break;
                 case 51: // loadparam
+                    // ***** 引数の値を仮引数にセットする *****
                     if (param.length > 0) {
                         num = param.pop(); // 逆順に取得
                     } else {
@@ -3263,6 +3266,14 @@ var SP_Interpreter;
         return i;
     }
 
+    // ***** 演算子検索 *****
+    function operator_code(op) {
+        return operator.hasOwnProperty(op) ? operator[op][0] : "";
+    }
+    function operator_pri(op) {
+        return operator.hasOwnProperty(op) ? operator[op][1] : 0;
+    }
+
     // ***** エラー場所の表示 *****
     function show_err_place(debugpos1, debugpos2) {
         var i;
@@ -3307,14 +3318,6 @@ var SP_Interpreter;
         return JSON.stringify(result_array);
     }
 
-    // ***** 演算子検索 *****
-    function operator_code(op) {
-        return operator.hasOwnProperty(op) ? operator[op][0] : "";
-    }
-    function operator_pri(op) {
-        return operator.hasOwnProperty(op) ? operator[op][1] : 0;
-    }
-
     // ***** コード追加 *****
     // (code_kind  コードの種別(=0:通常,
     //                          =1:組み込み関数,
@@ -3344,17 +3347,17 @@ var SP_Interpreter;
                 }
                 break;
             case 1: // 組み込み関数
-                // ***** 関数の本体を格納 *****
+                // (関数の本体を格納)
                 func_name = tok.substring(1, tok.length - 1); // ダブルクォートを外す
                 code[code_len] = func_tbl[func_name].func;
                 break;
             case 10: // グローバル変数
-                // ***** 変数情報を生成して格納 *****
+                // (変数情報を生成して格納)
                 var_name = tok.substring(1, tok.length - 1);  // ダブルクォートを外す
                 code[code_len] = make_var_info(0, var_name, 0);
                 break;
             case 11: // ローカル変数
-                // ***** 変数情報を生成して格納 *****
+                // (変数情報を生成して格納)
                 var_name = tok.substring(1, tok.length - 1);  // ダブルクォートを外す
                 code[code_len] = make_var_info(1, var_name, 0);
                 break;
