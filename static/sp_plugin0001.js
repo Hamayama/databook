@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_plugin0001.js
-// 2018-2-12 v14.04
+// 2018-2-12 v14.05
 
 
 // A Plugin for SPALM Web Interpreter
@@ -446,15 +446,10 @@ var SP_Plugin0001;
         });
         make_one_func_tbl("disstrimg", 1, [], function (param) {
             var a1;
-            var ch;
 
-            a1 = String(param[0]);
-            // ***** エラーチェック *****
-            if (a1.length == 0) { return nothing; }
-            // ***** 画像文字割付を1個削除する *****
-            ch = a1.charAt(0); // 1文字だけにする
-            if (stimg.hasOwnProperty(ch)) {
-                delete stimg[ch];
+            a1 = Math.trunc(param[0]);
+            if (stimg.hasOwnProperty(a1)) {
+                delete stimg[a1];
             }
             // for (var prop in stimg) { DebugShow(prop + " "); } DebugShow("\n");
             return nothing;
@@ -729,7 +724,6 @@ var SP_Plugin0001;
         // (例. y=intstrmul("100","200")  を実行すると y="20000"  となる)
         // (例. y=intstrmul("100","-200") を実行すると y="-20000" となる)
         make_one_func_tbl("intstrmul", 2, [], function (param) {
-            var num;
             var a1, a2;
             var x = {};
             var y = {};
@@ -1103,32 +1097,37 @@ var SP_Plugin0001;
             }
             return nothing;
         });
-        make_one_func_tbl("setstrimg", 2, [1], function (param) {
-            var a1, a2, a3, a4;
+        make_one_func_tbl("setstrimg", 3, [2], function (param) {
+            var a1, a2, a3;
+            var off_x, off_y;
             var ch;
             var imgvars = get_imgvars();
 
-            a1 = String(param[0]);
-            a2 = to_global(get_var_info(param[1])); // 画像変数名取得
+            a1 = Math.trunc(param[0]);
+            a2 = String(param[1]);
+            a3 = to_global(get_var_info(param[2])); // 画像変数名取得
             if (param.length <= 3) {
-                a3 = 0;
-                a4 = 0;
+                off_x = 0;
+                off_y = 0;
             } else {
-                a3 = Math.trunc(param[2]);
-                a4 = Math.trunc(param[3]);
+                off_x = Math.trunc(param[3]);
+                off_y = Math.trunc(param[4]);
             }
             // ***** エラーチェック *****
-            if (a1.length == 0) { return nothing; }
+            if (a2.length == 0) { return nothing; }
             // ***** 画像文字割付を1個生成する *****
-            ch = a1.charAt(0); // 1文字だけにする
-            // if (imgvars.hasOwnProperty(a2)) {
-            if (hasOwn.call(imgvars, a2)) {
-                stimg[ch] = {};
-                stimg[ch].img = imgvars[a2];
-                stimg[ch].off_x = a3;
-                stimg[ch].off_y = a4;
+            if (!stimg.hasOwnProperty(a1)) {
+                stimg[a1] = {};
+            }
+            ch = a2.charAt(0); // 1文字だけにする
+            // if (imgvars.hasOwnProperty(a3)) {
+            if (hasOwn.call(imgvars, a3)) {
+                stimg[a1][ch] = {};
+                stimg[a1][ch].img = imgvars[a3];
+                stimg[a1][ch].off_x = off_x;
+                stimg[a1][ch].off_y = off_y;
             } else {
-                throw new Error("Image変数 '" + a2 + "' は作成されていません。");
+                throw new Error("Image変数 '" + a3 + "' は作成されていません。");
             }
             return nothing;
         });
@@ -1359,6 +1358,7 @@ var SP_Plugin0001;
             var x1, y1, x2;
             var w1, h1;
             var anc;
+            var n1, stimg1;
             var i, j;
             var ch;
             var st1;
@@ -1373,8 +1373,14 @@ var SP_Plugin0001;
             h1 = Math.trunc(param[6]);
             if (param.length <= 7) {
                 anc = 0;
+                n1 = 0;
             } else {
                 anc = Math.trunc(param[7]);
+                if (param.length <= 8) {
+                    n1 = 0;
+                } else {
+                    n1 = Math.trunc(param[8]);
+                }
             }
 
             // ***** NaN対策 *****
@@ -1387,7 +1393,13 @@ var SP_Plugin0001;
                 throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
             }
 
+            // ***** 画像文字割付の存在チェック *****
+            if (!stimg.hasOwnProperty(n1)) {
+                return nothing;
+            }
+
             // ***** 描画処理 *****
+            stimg1 = stimg[n1];
             for (i = a2; i <= a3; i++) {
 
                 // // ***** 配列の存在チェック *****
@@ -1407,8 +1419,8 @@ var SP_Plugin0001;
                 x2 = x1;
                 for (j = 0; j < st1.length; j++) {
                     ch = st1.charAt(j);
-                    if (stimg.hasOwnProperty(ch)) {
-                        ctx.drawImage(stimg[ch].img.can, x2 + stimg[ch].off_x, y1 + stimg[ch].off_y);
+                    if (stimg1.hasOwnProperty(ch)) {
+                        ctx.drawImage(stimg1[ch].img.can, x2 + stimg1[ch].off_x, y1 + stimg1[ch].off_y);
                     }
                     x2 += w1;
                 }
