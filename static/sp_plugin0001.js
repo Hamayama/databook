@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_plugin0001.js
-// 2018-2-8 v14.00
+// 2018-2-12 v14.04
 
 
 // A Plugin for SPALM Web Interpreter
@@ -1128,7 +1128,7 @@ var SP_Plugin0001;
                 stimg[ch].off_x = a3;
                 stimg[ch].off_y = a4;
             } else {
-                throw new Error("Image変数 '" + a1 + "' は作成されていません。");
+                throw new Error("Image変数 '" + a2 + "' は作成されていません。");
             }
             return nothing;
         });

@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2018-2-10 v14.03
+// 2018-2-12 v14.04
 
 
 // SPALM Web Interpreter
@@ -1067,16 +1067,14 @@ var SP_Interpreter;
                     break;
                 case 7: // address
                     var_info = stack.pop();
-                    if (var_info.kind == null) {
+                    if (!var_info.type_var) {
                         throw new Error("変数以外のアドレスを取得しようとしました。(" + code_tostr(num) + ")");
                     }
                     if (use_local_vars && !(var_info.kind & 2)) {
                         // ***** 変数情報のスコープを有効化 *****
                         // (変数情報を変更する場合は複製が必要)
-                        var_info2 = {};
-                        var_info2.kind = var_info.kind | 2;
-                        var_info2.name = var_info.name;
-                        var_info2.scope = (var_info.kind & 1) ? Vars.getLocalScopeNum() : 0;
+                        var_info2 = make_var_info((var_info.kind | 2), var_info.name,
+                                                  (var_info.kind & 1) ? Vars.getLocalScopeNum() : 0);
                         stack.push(var_info2);
                         break;
                     }
@@ -1085,7 +1083,7 @@ var SP_Interpreter;
                 case 8: // pointer
                     var_info = stack.pop();
                     var_info2 = Vars.getVarValue(var_info);
-                    if (var_info2.kind == null) {
+                    if (!var_info2.type_var) {
                         throw new Error("ポインタの指す先が不正です。(変数のアドレスではなく、'" + code_tostr(var_info2) + "' が入っていました)");
                     }
                     stack.push(var_info2);
@@ -1095,10 +1093,7 @@ var SP_Interpreter;
                     var_info = stack.pop();
                     // ***** 変数情報を配列に変更 *****
                     // (変数情報を変更する場合は複製が必要)
-                    var_info2 = {};
-                    var_info2.kind = var_info.kind;
-                    var_info2.name = var_info.name + "$" + num;
-                    var_info2.scope = var_info.scope;
+                    var_info2 = make_var_info(var_info.kind, var_info.name + "$" + num, var_info.scope);
                     stack.push(var_info2);
                     break;
                 case 10: // store
@@ -1781,7 +1776,7 @@ var SP_Interpreter;
                     // ***** 変数名のチェック *****
                     if (j < code_len) {
                         var_obj = code[j];
-                        if (var_obj.kind == null) {
+                        if (!var_obj.type_var) {
                             debugpos2 = i;
                             throw new Error("変数名が不正です。('" + code_tostr(var_obj, j) + "')");
                         }
@@ -2783,24 +2778,6 @@ var SP_Interpreter;
         return i;
     }
 
-    // ***** モジュール名の追加 *****
-    function add_module_name(name) {
-        /* 「#」で始まり2文字以上なら「#」を削ってグローバル名とする */
-        if (name.charAt(0) == "#" && name.length > 1) {
-            return name.substring(1);
-        }
-        /* モジュール名が空のときはそのまま返す */
-        if (module_name == "") {
-            return name;
-        }
-        /* 「#」が含まれるときはそのまま返す */
-        if (name.indexOf("#") >= 0) {
-            return name;
-        }
-        /* その他のときはモジュール名と「#」を前に付ける */
-        return module_name + "#" + name;
-    }
-
     // ****************************************
     //             プリプロセス処理
     // ****************************************
@@ -3274,6 +3251,30 @@ var SP_Interpreter;
         return operator.hasOwnProperty(op) ? operator[op][1] : 0;
     }
 
+    // ***** モジュール名の追加 *****
+    function add_module_name(name) {
+        /* 「#」で始まり2文字以上なら「#」を削ってグローバル名とする */
+        if (name.charAt(0) == "#" && name.length > 1) {
+            return name.substring(1);
+        }
+        /* モジュール名が空のときはそのまま返す */
+        if (module_name == "") {
+            return name;
+        }
+        /* 「#」が含まれるときはそのまま返す */
+        if (name.indexOf("#") >= 0) {
+            return name;
+        }
+        /* その他のときはモジュール名と「#」を前に付ける */
+        return module_name + "#" + name;
+    }
+
+    // ***** モジュール名の削除 *****
+    function del_module_name(name) {
+        var i = name.lastIndexOf("#") + 1;
+        return (i < name.length) ? name.substring(i) : name;
+    }
+
     // ***** エラー場所の表示 *****
     function show_err_place(debugpos1, debugpos2) {
         var i;
@@ -3400,14 +3401,15 @@ var SP_Interpreter;
     // (変数情報は、生成後に変更してはいけない(複数回参照されるので不具合のもとになる)
     //  変更が必要な場合には、オブジェクトを複製して、複製したものを変更すること)
     function make_var_info(kind, name, scope) {
-        var var_info = {};      // 変数情報
-        var_info.kind = kind;   //   変数の種別(複数のORになる場合があるので注意)
-                                //     (=0:グローバル変数,
-                                //      =1:ローカル変数,
-                                //      =2:スコープ有効)
-        var_info.name = name;   //   変数名
-        var_info.scope = scope; //   変数が所属するスコープの番号
-                                //     (変数の種別がスコープ有効のときのみ使用可能)
+        var var_info = {};        // 変数情報
+        var_info.type_var = true; //   識別用プロパティ
+        var_info.kind = kind;     //   変数の種別(複数のORになる場合があるので注意)
+                                  //     (=0:グローバル変数,
+                                  //      =1:ローカル変数,
+                                  //      =2:スコープ有効)
+        var_info.name = name;     //   変数名
+        var_info.scope = scope;   //   変数が所属するスコープの番号
+                                  //     (変数の種別がスコープ有効のときのみ使用可能)
         return var_info;
     }
     // ***** 変数情報の取得 *****
@@ -4536,7 +4538,7 @@ var SP_Interpreter;
             a5 = Math.trunc(param[4]); // 元Y
             a6 = Math.trunc(param[5]); // W
             a7 = Math.trunc(param[6]); // H
-            if (a1 == "screen") {
+            if (del_module_name(a1) == "screen") {
                 // ***** 画像を描画(表示画面→ターゲット) *****
                 ctx.drawImage(can1, a4, a5, a6, a7, a2, a3, a6, a7);
             } else {
@@ -4557,7 +4559,7 @@ var SP_Interpreter;
             a2 = Math.trunc(param[1]); // X
             a3 = Math.trunc(param[2]); // Y
             a4 = Math.trunc(param[3]); // アンカー
-            if (a1 == "screen") {
+            if (del_module_name(a1) == "screen") {
                 // ***** 水平方向 *****
                 // if (a4 & 4)   { }                        // 左
                 if (a4 & 8)      { a2 -= can1.width; }      // 右
@@ -4603,7 +4605,7 @@ var SP_Interpreter;
             a9 = Math.trunc(param[8]); // アンカー
 
             // ***** コピー元の画像を取得 *****
-            if (a1 == "screen") {
+            if (del_module_name(a1) == "screen") {
                 // (表示画面をコピー元とする)
                 can0 = can1;
             } else {
@@ -4686,7 +4688,7 @@ var SP_Interpreter;
             a7 = Math.trunc(param[6]); // 元Y
             a8 = Math.trunc(param[7]); // 元W
             a9 = Math.trunc(param[8]); // 元H
-            if (a1 == "screen") {
+            if (del_module_name(a1) == "screen") {
                 // ***** 画像を描画(表示画面→ターゲット) *****
                 ctx.drawImage(can1, a6, a7, a8, a9, a2, a3, a4, a5);
             } else {
@@ -5157,6 +5159,7 @@ var SP_Interpreter;
                 throw new Error("画像の縦横のサイズが不正です。1-" + max_image_size + "の間である必要があります。");
             }
 
+            // ***** 画像データの設定 *****
             img_data = ctx.createImageData(img_w, img_h);
             k = 0;
             while (i < g_data.length) {
@@ -5944,7 +5947,7 @@ var SP_Interpreter;
             var a1;
 
             a1 = to_global(get_var_info(param[0])); // 画像変数名取得
-            if (a1 == "off") {
+            if (del_module_name(a1) == "off") {
                 can = can1;
                 ctx = ctx1;
             // } else if (imgvars.hasOwnProperty(a1)) {
