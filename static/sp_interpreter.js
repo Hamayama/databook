@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2018-2-12 v14.05
+// 2018-2-13 v14.06
 
 
 // SPALM Web Interpreter
@@ -2696,6 +2696,7 @@ var SP_Interpreter;
             locvarnames_stack[locvarnames_stack.length - 1][var_name] = true;
         }
         // ***** モジュール名の追加 *****
+        // (ローカル変数のときは追加しない)
         // if (!use_local_vars || (use_local_vars && !loc_flag)) {
         if (!(use_local_vars && loc_flag)) {
             var_name = add_module_name(var_name);
@@ -3452,12 +3453,8 @@ var SP_Interpreter;
                 }
                 return scope_no;
             }
-            // ***** ローカル変数のとき *****
-            if (var_kind & 1) {
-                return local_scope_num;
-            }
-            // ***** グローバル変数 *****
-            return 0;
+            // ***** スコープ番号を返す *****
+            return (var_kind & 1) ? local_scope_num : 0;
         }
         // ***** 配列変数の一括操作(内部処理用) *****
         var controlArray = (function () {
@@ -6087,27 +6084,24 @@ var Download = (function () {
     // ***** URLオブジェクトの取得 *****
     var URL = window.URL || window.webkitURL;
 
-    // ***** ファイルをダウンロードする(staticメソッド) *****
-    Download.download = function (data, fname) {
+    // ***** ダウンロード処理(内部処理用) *****
+    function download_sub(fname, make_blob_func, make_url_func) {
         var url;
         var blob;
         var elm, ev;
         var link_download_flag;
 
-        // ***** 引数のチェック *****
-        if (data == null) { return false; }
-        if (!fname) { fname = "download"; }
         // ***** リンク要素の生成 *****
         elm = document.createElement("a");
         // ***** リンク要素でダウンロード可能か(Chrome用) *****
-        if ((elm.download || elm.download == "") && document.createEvent && elm.dispatchEvent) {
+        if (elm.download != null && document.createEvent && elm.dispatchEvent) {
             link_download_flag = true;
         } else {
             link_download_flag = false;
         }
         // ***** Blobの生成 *****
         if (Blob && (saveBlob || link_download_flag)) {
-            blob = new Blob([data], {type : "application/octet-stream"});
+            blob = make_blob_func();
         } else {
             blob = null;
         }
@@ -6117,11 +6111,11 @@ var Download = (function () {
             saveBlob.call(navigator, blob, fname);
             return true;
         }
-        // ***** urlの生成 *****
+        // ***** URLの生成 *****
         if (blob && URL && URL.createObjectURL) {
             url = URL.createObjectURL(blob);
         } else {
-            url = "data:application/octet-stream," + encodeURIComponent(data);
+            url = make_url_func();
         }
         // ***** リンク要素でダウンロード(Chrome用) *****
         if (link_download_flag) {
@@ -6135,32 +6129,36 @@ var Download = (function () {
         // ***** それ以外のときはURLにジャンプ(ファイル名は指定不可) *****
         window.location.href = url;
         return true;
+    }
+
+    // ***** ファイルをダウンロードする(staticメソッド) *****
+    Download.download = function (data, fname) {
+        // ***** 引数のチェック *****
+        if (data == null) { return false; }
+        if (!fname) { fname = "download"; }
+        // ***** ダウンロード処理 *****
+        return download_sub(fname, function () {
+            // ***** Blobの生成 *****
+            return new Blob([data], {type : "application/octet-stream"});
+        }, function () {
+            // ***** URLの生成 *****
+            return "data:application/octet-stream," + encodeURIComponent(data);
+        });
     };
     // ***** Canvasの画像をダウンロードする(staticメソッド) *****
     Download.downloadCanvas = function (can, fname) {
-        var url;
-        var blob;
-        var elm, ev;
-        var link_download_flag;
-        var i;
-        var data_url;
-        var bin_st;     // バイナリデータ文字列
-        var bin_st_len; // バイナリデータ文字列の長さ
-        var uint8_arr;  // バイナリデータ(型付配列)
-
         // ***** 引数のチェック *****
         if (!can) { return false; }
         if (!fname) { fname = "download.png"; }
-        // ***** リンク要素の生成 *****
-        elm = document.createElement("a");
-        // ***** リンク要素でダウンロード可能か(Chrome用) *****
-        if ((elm.download || elm.download == "") && document.createEvent && elm.dispatchEvent) {
-            link_download_flag = true;
-        } else {
-            link_download_flag = false;
-        }
-        // ***** Blobの生成 *****
-        if (Blob && Uint8Array && (saveBlob || link_download_flag)) {
+        // ***** ダウンロード処理 *****
+        return download_sub(fname, function () {
+            var i;
+            var data_url;
+            var bin_st;     // バイナリデータ文字列
+            var bin_st_len; // バイナリデータ文字列の長さ
+            var uint8_arr;  // バイナリデータ(型付配列)
+
+            // ***** Blobの生成 *****
             data_url = can.toDataURL("image/png");
             bin_st = atob(data_url.split(",")[1]);
             bin_st_len = bin_st.length;
@@ -6168,34 +6166,11 @@ var Download = (function () {
             for (i = 0; i < bin_st_len; i++) {
                 uint8_arr[i] = bin_st.charCodeAt(i);
             }
-            blob = new Blob([uint8_arr.buffer], {type : "image/octet-stream"});
-        } else {
-            blob = null;
-        }
-        // ***** Blobをセーブ(IE10用) *****
-        if (blob && saveBlob) {
-            // saveBlob(blob, fname);
-            saveBlob.call(navigator, blob, fname);
-            return true;
-        }
-        // ***** urlの生成 *****
-        if (blob && URL && URL.createObjectURL) {
-            url = URL.createObjectURL(blob);
-        } else {
-            url = can.toDataURL("image/png").replace("image/png", "image/octet-stream");
-        }
-        // ***** リンク要素でダウンロード(Chrome用) *****
-        if (link_download_flag) {
-            elm.href = url;
-            elm.download = fname;
-            ev = document.createEvent("MouseEvents");
-            ev.initMouseEvent("click", true, true, window, 0, 0, 0, 0, 0, false, false, false, false, 0, null);
-            elm.dispatchEvent(ev);
-            return true;
-        }
-        // ***** それ以外のときはURLにジャンプ(ファイル名は指定不可) *****
-        window.location.href = url;
-        return true;
+            return new Blob([uint8_arr.buffer], {type : "image/octet-stream"});
+        }, function () {
+            // ***** URLの生成 *****
+            return can.toDataURL("image/png").replace("image/png", "image/octet-stream");
+        });
     };
     return Download; // これがないとクラスが動かないので注意
 })();
