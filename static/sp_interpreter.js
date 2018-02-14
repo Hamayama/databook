@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2018-2-13 v14.06
+// 2018-2-14 v14.07
 
 
 // SPALM Web Interpreter
@@ -734,8 +734,8 @@ var SP_Interpreter;
     // ***** 実行状態通知 *****
     var runstatchanged = function () { };
     function setrunstatcallback(cb_func) {
-        if (cb_func == null) { Alm("SP_Interpreter.setrunstatcallback:0001"); return false; }
-        if (typeof (cb_func) == "function") { runstatchanged = cb_func; }
+        if (typeof (cb_func) != "function") { Alm("SP_Interpreter.setrunstatcallback:0001"); return false; }
+        runstatchanged = cb_func;
         return true;
     }
     SP_Interpreter.setrunstatcallback = setrunstatcallback;
@@ -6085,6 +6085,9 @@ var Download = (function () {
     var URL = window.URL || window.webkitURL;
 
     // ***** ダウンロード処理(内部処理用) *****
+    // (fname           ファイル名
+    //  make_blob_func  Blobの生成を行う関数
+    //  make_url_func   URLの生成を行う関数)
     function download_sub(fname, make_blob_func, make_url_func) {
         var url;
         var blob;
@@ -6131,7 +6134,8 @@ var Download = (function () {
         return true;
     }
 
-    // ***** ファイルをダウンロードする(staticメソッド) *****
+    // ***** データをダウンロードする(staticメソッド) *****
+    // (基本的に data には文字列を渡すこと)
     Download.download = function (data, fname) {
         // ***** 引数のチェック *****
         if (data == null) { return false; }

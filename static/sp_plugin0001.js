@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_plugin0001.js
-// 2018-2-12 v14.05
+// 2018-2-14 v14.07
 
 
 // A Plugin for SPALM Web Interpreter
@@ -1041,12 +1041,14 @@ var SP_Plugin0001;
             a5 = (+param[4]); // maxy
             return (a2 == a3) ? 0 : (a4 + (a1 - a2) * (a5 - a4) / (a3 - a2));
         });
-        make_one_func_tbl("sandmake", 11, [], function (param) {
+        make_one_func_tbl("sandmake", 8, [5], function (param) {
             var a1;
             var x1, y1;
             var w1, h1;
-            var r1, r2, r3, r4;
+            var r1;
             var col, threshold, border_mode;
+            var i;
+            var r = []; // 移動確率(配列)(上,下,左,右,移動なしの5要素)
             var can = get_can();
             var ctx = get_ctx();
 
@@ -1055,18 +1057,19 @@ var SP_Plugin0001;
             y1 = Math.trunc(param[2]);
             w1 = Math.trunc(param[3]);
             h1 = Math.trunc(param[4]);
-            r1 = (+param[5]);
-            r2 = (+param[6]);
-            r3 = (+param[7]);
-            r4 = (+param[8]);
-            col = Math.trunc(param[9]);
-            threshold = Math.trunc(param[10]);
-            if (param.length <= 11) {
+            r1 = get_var_info(param[5]);
+            col = Math.trunc(param[6]);
+            threshold = Math.trunc(param[7]);
+            if (param.length <= 8) {
                 border_mode = 1;
             } else {
-                border_mode = Math.trunc(param[11]);
+                border_mode = Math.trunc(param[8]);
             }
-            sand_obj[a1] = new SandSim(can, ctx, x1, y1, w1, h1, r1, r2, r3, r4, col, threshold, border_mode);
+            r = [];
+            for (i = 0; i < 5; i++) {
+                r[i] = Vars.getVarValue(r1, [i]);
+            }
+            sand_obj[a1] = new SandSim(can, ctx, x1, y1, w1, h1, r, col, threshold, border_mode);
             sand_obj[a1].makeTable();
             // loop_nocount_flag1 = true;
             set_loop_nocount();
@@ -4795,18 +4798,20 @@ var MMLPlayer = (function () {
 // ***** 砂シミュレート用クラス *****
 var SandSim = (function () {
     // ***** コンストラクタ *****
-    function SandSim(can, ctx, left, top, width, height,
-        r_up, r_down, r_left, r_right, sand_col, threshold, border_mode) {
+    function SandSim(can, ctx, left, top, width, height, r,
+        sand_col, threshold, border_mode) {
+        var i;
         this.can = can;             // Canvas要素
         this.ctx = ctx;             // Canvasのコンテキスト
         this.left = left;           // シミュレート領域の左上X座標(px)
         this.top = top;             // シミュレート領域の左上Y座標(px)
         this.width = width;         // シミュレート領域の幅(px)
         this.height = height;       // シミュレート領域の高さ(px)
-        this.r_up = r_up;           // 上方向の移動確率
-        this.r_down = r_down;       // 下方向の移動確率
-        this.r_left = r_left;       // 左方向の移動確率
-        this.r_right = r_right;     // 右方向の移動確率
+        this.r = r.slice(0, 5);     // 移動確率(配列)(上,下,左,右,移動なしの5要素)
+        for (i = 0; i < 5; i++) {
+            if (typeof (this.r[i]) == "undefined") { this.r[i] = 0; }
+            if (this.r[i] < 0) { this.r[i] = 0; }
+        }
         this.sand_col = {};                            // 砂の色(オブジェクト)
         this.sand_col.r = (sand_col & 0xff0000) >> 16; // 砂の色 R
         this.sand_col.g = (sand_col & 0x00ff00) >> 8;  // 砂の色 G
@@ -4902,17 +4907,17 @@ var SandSim = (function () {
             y = this.sand_buf[i].y - 1;
             if (y < 0) { y = this.over_top; }
             if (this.img_buf[x + y * this.width] == 0) {
-                radd += this.r_up;
+                radd += this.r[0];
                 rp[rnum] = radd;
                 rk[rnum] = 0;
                 rnum++;
             }
             // ***** 下方向のチェック *****
-            // x = this.sand_buf[i].x;
+            x = this.sand_buf[i].x;
             y = this.sand_buf[i].y + 1;
             if (y >= this.height) { y = this.over_bottom; }
             if (this.img_buf[x + y * this.width] == 0) {
-                radd += this.r_down;
+                radd += this.r[1];
                 rp[rnum] = radd;
                 rk[rnum] = 1;
                 rnum++;
@@ -4922,42 +4927,57 @@ var SandSim = (function () {
             y = this.sand_buf[i].y;
             if (x < 0) { x = this.over_left; }
             if (this.img_buf[x + y * this.width] == 0) {
-                radd += this.r_left;
+                radd += this.r[2];
                 rp[rnum] = radd;
                 rk[rnum] = 2;
                 rnum++;
             }
             // ***** 右方向のチェック *****
             x = this.sand_buf[i].x + 1;
-            // y = this.sand_buf[i].y;
+            y = this.sand_buf[i].y;
             if (x >= this.width) { x = this.over_right; }
             if (this.img_buf[x + y * this.width] == 0) {
-                radd += this.r_right;
+                radd += this.r[3];
                 rp[rnum] = radd;
                 rk[rnum] = 3;
                 rnum++;
             }
+            // ***** 移動なしの分 *****
+            radd += this.r[4];
+            rp[rnum] = radd;
+            rk[rnum] = 4;
+            rnum++;
             // ***** 確率によって移動 *****
             rnd = Math.random() * radd;
-            for (j = 0; j < rnum; j++) {
+            // (移動なしの分はチェックしない)
+            // for (j = 0; j < rnum; j++) {
+            for (j = 0; j < rnum - 1; j++) {
                 if (rnd < rp[j]) {
                     this.img_buf[this.sand_buf[i].x + this.sand_buf[i].y * this.width] = 0;
                     switch (rk[j]) {
                         case 0:
                             this.sand_buf[i].y--;
-                            if (this.sand_buf[i].y < 0)            { this.sand_buf[i].y = this.over_top; }
+                            if (this.sand_buf[i].y < 0) {
+                                this.sand_buf[i].y = this.over_top;
+                            }
                             break;
                         case 1:
                             this.sand_buf[i].y++;
-                            if (this.sand_buf[i].y >= this.height) { this.sand_buf[i].y = this.over_bottom; }
+                            if (this.sand_buf[i].y >= this.height) {
+                                this.sand_buf[i].y = this.over_bottom;
+                            }
                             break;
                         case 2:
                             this.sand_buf[i].x--;
-                            if (this.sand_buf[i].x < 0)            { this.sand_buf[i].x = this.over_left; }
+                            if (this.sand_buf[i].x < 0) {
+                                this.sand_buf[i].x = this.over_left;
+                            }
                             break;
                         case 3:
                             this.sand_buf[i].x++;
-                            if (this.sand_buf[i].x >= this.width)  { this.sand_buf[i].x = this.over_right; }
+                            if (this.sand_buf[i].x >= this.width) {
+                                this.sand_buf[i].x = this.over_right;
+                            }
                             break;
                     }
                     this.img_buf[this.sand_buf[i].x + this.sand_buf[i].y * this.width] = 1;
