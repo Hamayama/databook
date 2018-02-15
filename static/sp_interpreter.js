@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2018-2-14 v14.07
+// 2018-2-15 v14.08
 
 
 // SPALM Web Interpreter
@@ -1067,9 +1067,6 @@ var SP_Interpreter;
                     break;
                 case 7: // address
                     var_info = stack.pop();
-                    if (!var_info.type_var) {
-                        throw new Error("変数以外のアドレスを取得しようとしました。(" + code_tostr(num) + ")");
-                    }
                     if (use_local_vars && !(var_info.kind & 2)) {
                         // ***** 変数情報のスコープを有効化 *****
                         // (変数情報を変更する場合は複製が必要)
