@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2018-2-15 v14.08
+// 2018-2-16 v14.09
 
 
 // SPALM Web Interpreter
@@ -1080,7 +1080,7 @@ var SP_Interpreter;
                 case 8: // pointer
                     var_info = stack.pop();
                     var_info2 = Vars.getVarValue(var_info);
-                    if (!var_info2.type_var) {
+                    if (!var_info2.tag_var) {
                         throw new Error("ポインタの指す先が不正です。(変数のアドレスではなく、'" + code_tostr(var_info2) + "' が入っていました)");
                     }
                     stack.push(var_info2);
@@ -1773,7 +1773,7 @@ var SP_Interpreter;
                     // ***** 変数名のチェック *****
                     if (j < code_len) {
                         var_obj = code[j];
-                        if (!var_obj.type_var) {
+                        if (!var_obj.tag_var) {
                             debugpos2 = i;
                             throw new Error("変数名が不正です。('" + code_tostr(var_obj, j) + "')");
                         }
@@ -3275,8 +3275,7 @@ var SP_Interpreter;
 
     // ***** エラー場所の表示 *****
     function show_err_place(debugpos1, debugpos2) {
-        var i;
-        var msg;
+        var i, msg;
 
         msg = "エラー場所: " + token_info[debugpos1].line_no + "行: ";
         if (debugpos2 <= debugpos1) { debugpos2 = debugpos1 + 1; } // 最低でも1個は表示する
@@ -3399,15 +3398,15 @@ var SP_Interpreter;
     // (変数情報は、生成後に変更してはいけない(複数回参照されるので不具合のもとになる)
     //  変更が必要な場合には、オブジェクトを複製して、複製したものを変更すること)
     function make_var_info(kind, name, scope) {
-        var var_info = {};        // 変数情報
-        var_info.type_var = true; //   識別用プロパティ
-        var_info.kind = kind;     //   変数の種別(複数のORになる場合があるので注意)
-                                  //     (=0:グローバル変数,
-                                  //      =1:ローカル変数,
-                                  //      =2:スコープ有効)
-        var_info.name = name;     //   変数名
-        var_info.scope = scope;   //   変数が所属するスコープの番号
-                                  //     (変数の種別がスコープ有効のときのみ使用可能)
+        var var_info = {};       // 変数情報
+        var_info.tag_var = true; //   識別用プロパティ
+        var_info.kind = kind;    //   変数の種別(複数のORになる場合があるので注意)
+                                 //     (=0:グローバル変数,
+                                 //      =1:ローカル変数,
+                                 //      =2:スコープ有効)
+        var_info.name = name;    //   変数名
+        var_info.scope = scope;  //   変数が所属するスコープの番号
+                                 //     (変数の種別がスコープ有効のときのみ使用可能)
         return var_info;
     }
     // ***** 変数情報の取得 *****
@@ -3694,8 +3693,7 @@ var SP_Interpreter;
 
     // ***** キーボード処理 *****
     function keydown(ev) {
-        var key_code;
-        var num;
+        var key_code, num;
         // ***** IE8対策 *****
         ev = ev || window.event;
         key_code = ev.keyCode;
@@ -3739,8 +3737,7 @@ var SP_Interpreter;
         }
     }
     function keyup(ev) {
-        var key_code;
-        var num;
+        var key_code, num;
         // ***** IE8対策 *****
         ev = ev || window.event;
         key_code = ev.keyCode;
@@ -3882,7 +3879,8 @@ var SP_Interpreter;
     }
     function gettouchpos(ev) {
         var tt, rect;
-        if (ev.targetTouches.length >= 1) {
+        // ***** タッチ数をチェック *****
+        if (ev.targetTouches.length > 0) {
             tt = ev.targetTouches[0];
             // ***** IE8対策 *****
             // rect = ev.target.getBoundingClientRect();
@@ -3956,8 +3954,9 @@ var SP_Interpreter;
     // ***** Canvasの座標系の設定 *****
     // (基本的に座標系を元に戻してから呼ぶこと)
     function set_canvas_axis(ctx) {
-        // (座標系の設定は、拡大縮小 → 回転 → 平行移動 の順に実行する
-        //  (Canvasのマトリックスの操作は逆順に実行されるので注意))
+        // ***** 座標系の設定 *****
+        // (拡大縮小 → 回転 → 平行移動 の順に実行する
+        //  (Canvasのマトリックス計算は逆順に実行されるので注意))
         ctx.translate( axis.originx,   axis.originy);  // 原点座標を平行移動
         ctx.translate( axis.rotateox,  axis.rotateoy); // 回転の中心座標を元に戻す
         ctx.rotate(axis.rotate);                       // 回転の角度を指定
