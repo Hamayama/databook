@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2018-2-16 v14.09
+// 2018-2-17 v14.10
 
 
 // SPALM Web Interpreter
@@ -1032,7 +1032,7 @@ var SP_Interpreter;
         // ***** コード実行のループ *****
         loop_time_start = Date.now();
         time_cnt = 0;
-        while (pc < code_len) {
+        while (pc < code_len && !end_flag && !sleep_flag) {
             // ***** コードを取り出す *****
             debugpc = pc;
             cod = code[pc++];
@@ -1460,7 +1460,6 @@ var SP_Interpreter;
                     }
                 }
             }
-            if (end_flag || sleep_flag) { break; }
         }
     }
 
@@ -1477,8 +1476,20 @@ var SP_Interpreter;
         var func_name;
         var labelinfo = {};
         var funcinfo = {};
-        var jumpinfo = {};
-        var jumpinfo_array = [];
+        var addrinfo = {};
+        var addrinfo_array = [];
+        var addrinfo_array_len;
+
+        // ***** アドレス情報の生成 *****
+        function make_addrinfo(i, debugpos1, cod, lbl_name, func_name) {
+            var addrinfo = {};
+            addrinfo.i = i;
+            addrinfo.debugpos1 = debugpos1;
+            addrinfo.cod = cod;
+            addrinfo.lbl_name = lbl_name;
+            addrinfo.func_name = func_name;
+            addrinfo_array.push(addrinfo);
+        }
 
         // ***** コード解析のループ *****
         i = 0;
@@ -1487,7 +1498,7 @@ var SP_Interpreter;
         // func = {};
         func = hashInit();
         func_name = "";
-        jumpinfo_array = [];
+        addrinfo_array = [];
         while (i < code_len) {
             // ***** コードを取り出す *****
             debugpos1 = code_info[i].pos1;
@@ -1506,6 +1517,8 @@ var SP_Interpreter;
                 label[lbl_name] = i;
                 labelinfo[lbl_name] = {};
                 labelinfo[lbl_name].func_name = func_name;
+                // ***** アドレス情報の生成 *****
+                make_addrinfo(i - 1, debugpos1, cod, "", "");
                 continue;
             }
 
@@ -1525,14 +1538,8 @@ var SP_Interpreter;
                 func[func_name] = i;
                 funcinfo[func_name] = {};
                 funcinfo[func_name].func_end = code_len - end_token_num; // 終了位置(仮)
-                // ***** ジャンプ情報を生成 *****
-                jumpinfo = {};
-                jumpinfo.i = i - 1;
-                jumpinfo.cod = cod;
-                jumpinfo.debugpos1 = debugpos1;
-                jumpinfo.lbl_name = "";
-                jumpinfo.func_name = func_name;
-                jumpinfo_array.push(jumpinfo);
+                // ***** アドレス情報の生成 *****
+                make_addrinfo(i - 1, debugpos1, cod, "", func_name);
                 continue;
             }
 
@@ -1553,27 +1560,38 @@ var SP_Interpreter;
                     throw new Error("func内では gosub を使用できません。");
                 }
                 lbl_name = code[i++];
-                // ***** ジャンプ情報を生成 *****
-                jumpinfo = {};
-                jumpinfo.i = i - 1;
-                jumpinfo.cod = cod;
-                jumpinfo.debugpos1 = debugpos1;
-                jumpinfo.lbl_name = lbl_name;
-                jumpinfo.func_name = func_name;
-                jumpinfo_array.push(jumpinfo);
+                // ***** アドレス情報の生成 *****
+                make_addrinfo(i - 1, debugpos1, cod, lbl_name, func_name);
                 continue;
             }
         }
 
-        // ***** ジャンプ情報のアドレスを解決する *****
-        for (i2 = 0; i2 < jumpinfo_array.length; i2++) {
-            // ***** ジャンプ情報を取り出す *****
-            jumpinfo = jumpinfo_array[i2];
-            i = jumpinfo.i;
-            cod = jumpinfo.cod;
-            debugpos1 = jumpinfo.debugpos1;
-            lbl_name = jumpinfo.lbl_name;
-            func_name = jumpinfo.func_name;
+        // ***** 生成したアドレス情報を処理する *****
+        addrinfo_array_len = addrinfo_array.length;
+        for (i2 = 0; i2 < addrinfo_array_len; i2++) {
+            // ***** アドレス情報の内容を取り出す *****
+            addrinfo = addrinfo_array[i2];
+            i = addrinfo.i;
+            debugpos1 = addrinfo.debugpos1;
+            cod = addrinfo.cod;
+            lbl_name = addrinfo.lbl_name;
+            func_name = addrinfo.func_name;
+
+            // ***** ラベルのとき *****
+            if (cod == "label") {
+                // ***** アドレスを設定 *****
+                // (未使用なので0とする)
+                code[i] = 0;
+                continue;
+            }
+
+            // ***** 関数の定義開始のとき *****
+            if (cod == "func") {
+                // ***** アドレスを設定 *****
+                // (関数の定義終了のアドレスを設定)
+                code[i] = funcinfo[func_name].func_end;
+                continue;
+            }
 
             // ***** ジャンプのとき *****
             if (cod == "goto"       || cod == "ifgoto" || cod == "ifnotgoto" ||
@@ -1589,15 +1607,9 @@ var SP_Interpreter;
                     debugpos2 = debugpos1 + 2;
                     throw new Error("funcの境界を越えてジャンプすることはできません。");
                 }
-                // ***** ジャンプ先のアドレスを設定 *****
+                // ***** アドレスを設定 *****
+                // (ジャンプ先のアドレスを設定)
                 code[i] = label[lbl_name];
-                continue;
-            }
-
-            // ***** 関数の定義開始のとき *****
-            if (cod == "func") {
-                // ***** 関数の定義終了のアドレスを設定 *****
-                code[i] = funcinfo[func_name].func_end;
                 continue;
             }
         }
