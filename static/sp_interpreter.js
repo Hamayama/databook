@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2018-2-22 v14.11
+// 2018-2-22 v14.12
 
 
 // SPALM Web Interpreter
@@ -856,8 +856,7 @@ var SP_Interpreter;
         try {
             tokenize();
         } catch (ex1) {
-            msg = token.join(" ");
-            DebugShow("token:(" + token_len + "個): " + msg + "\n");
+            DebugShow("token:(" + token_len + "個): " + token.join(" ") + "\n");
             DebugShow("tokenize: " + ex1.message + "\n");
             debugpos1 = token_len - 1;
             if (debugpos1 < 0) { debugpos1 = 0; }
@@ -870,8 +869,7 @@ var SP_Interpreter;
         try {
             preprocess();
         } catch (ex2) {
-            msg = token.join(" ");
-            DebugShow("token:(" + token_len + "個): " + msg + "\n");
+            DebugShow("token:(" + token_len + "個): " + token.join(" ") + "\n");
             DebugShow("preprocess: " + ex2.message + ": debugpos=" + debugpos1 + "\n");
             show_err_place(debugpos1, debugpos2);
             DebugShow("実行終了\n");
@@ -883,20 +881,16 @@ var SP_Interpreter;
         try {
             compile();
         } catch (ex3) {
-            msg = token.join(" ");
-            DebugShow("token:(" + token_len + "個): " + msg + "\n");
-            msg = code_str.join(" ");
-            DebugShow("code :(" + code_len + "個): " + msg + "\n");
+            DebugShow("token:(" + token_len + "個): " + token.join(" ") + "\n");
+            DebugShow("code :(" + code_len + "個): " + code_str.join(" ") + "\n");
             DebugShow("compile: " + ex3.message + ": debugpos=" + debugpos1 + "\n");
             show_err_place(debugpos1, debugpos2);
             DebugShow("実行終了\n");
             return false;
         }
         if (debug_mode == 1) {
-            msg = token.join(" ");
-            DebugShow("token:(" + token_len + "個): " + msg + "\n");
-            msg = code_str.join(" ");
-            DebugShow("code :(" + code_len + "個): " + msg + "\n");
+            DebugShow("token:(" + token_len + "個): " + token.join(" ") + "\n");
+            DebugShow("code :(" + code_len + "個): " + code_str.join(" ") + "\n");
         }
         // ***** アドレス解決 *****
         debugpos1 = 0;
