@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2018-2-17 v14.10
+// 2018-2-22 v14.11
 
 
 // SPALM Web Interpreter
@@ -1833,7 +1833,7 @@ var SP_Interpreter;
                 } else {
                     while (i < tok_end) {
                         // ***** 変数名のコンパイル(関数の仮引数) *****
-                        i = c_varname(i, tok_end, 1);
+                        i = c_varname(i, tok_end, true);
                         code_push("loadparam", debugpos1, i);
                         // ***** カンマ区切りのチェック *****
                         if (token[i] == ",") { i++; } else { break; }
@@ -2637,14 +2637,14 @@ var SP_Interpreter;
     }
 
     // ***** 変数名のコンパイル *****
-    // (var_nm_kind  変数名の種別(=0:通常,=1:関数の仮引数))
-    function c_varname(tok_start, tok_end, var_nm_kind) {
+    // (var_arg_flag  変数が関数の仮引数かどうか)
+    function c_varname(tok_start, tok_end, var_arg_flag) {
         var i;
         var var_name;
         var loc_flag;
 
         // ***** 引数のチェック *****
-        if (var_nm_kind == null) { var_nm_kind = 0; }
+        if (var_arg_flag == null) { var_arg_flag = false; }
         // ***** 変数名の取得 *****
         i = tok_start;
         // debugpos1 = i;
@@ -2654,12 +2654,12 @@ var SP_Interpreter;
         if (var_name == "*") {
             if (token[i] == "(") {
                 i++;
-                i = c_varname(i, tok_end, var_nm_kind);
+                i = c_varname(i, tok_end, var_arg_flag);
                 token_match(")", i++);
             } else {
-                i = c_varname(i, tok_end, var_nm_kind);
+                i = c_varname(i, tok_end, var_arg_flag);
             }
-            if (var_nm_kind == 0) {
+            if (!var_arg_flag) {
                 // ***** ポインタの設定 *****
                 code_push("pointer", debugpos1, i);
                 // ***** 配列変数のとき *****
@@ -2681,7 +2681,7 @@ var SP_Interpreter;
             checkvarname(var_name, i);
         } else {
             checkvarname(var_name, i);
-            if (var_nm_kind == 0) {
+            if (!var_arg_flag) {
                 // ***** ローカル文フラグのチェック *****
                 // ***** ローカル変数名情報のチェック *****
                 if (use_local_vars &&
@@ -3383,8 +3383,13 @@ var SP_Interpreter;
         code_info[code_len].pos1 = pos1;
         code_info[code_len].pos2 = pos2;
         // ***** コード文字列の追加 *****
-        // (そのまま格納)
-        code_str[code_len] = tok;
+        if (code_kind == 11) {
+            // ローカル変数
+            code_str[code_len] = '"' + "l\\" + tok.substring(1);
+        } else {
+            // その他
+            code_str[code_len] = tok;
+        }
         code_len++;
     }
 
