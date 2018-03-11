@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_plugin0001.js
-// 2018-2-14 v14.07
+// 2018-3-12 v15.00
 
 
 // A Plugin for SPALM Web Interpreter
@@ -47,6 +47,7 @@ var SP_Plugin0001;
     var add_clear_var_funcs = SP_Interpreter.add_clear_var_funcs;
     var make_one_func_tbl = SP_Interpreter.make_one_func_tbl;
     var Vars = SP_Interpreter.Vars;
+    var make_var_array = SP_Interpreter.make_var_array;
     var get_var_info = SP_Interpreter.get_var_info;
     var to_global = SP_Interpreter.to_global;
     var set_canvas_axis = SP_Interpreter.set_canvas_axis;
@@ -641,25 +642,25 @@ var SP_Plugin0001;
             i = a2;
 
             // // ***** 配列の存在チェック *****
-            // if (!Vars.checkVar(a1, [i])) { return nothing; }
-            // if (!Vars.checkVar(b1, [i])) { return nothing; }
+            // if (!Vars.checkVar(make_var_array(a1, i))) { return nothing; }
+            // if (!Vars.checkVar(make_var_array(b1, i))) { return nothing; }
 
             ctx.beginPath();
             // x0 = (+vars[a1 + "[" + i + "]"]);
-            x0 = (+Vars.getVarValue(a1, [i]));
+            x0 = (+Vars.getVarValue(make_var_array(a1, i)));
             // y0 = (+vars[b1 + "[" + i + "]"]);
-            y0 = (+Vars.getVarValue(b1, [i]));
+            y0 = (+Vars.getVarValue(make_var_array(b1, i)));
             ctx.moveTo(x0, y0);
             for (i = a2 + 1; i <= a3; i++) {
 
                 // // ***** 配列の存在チェック *****
-                // if (!Vars.checkVar(a1, [i])) { break; }
-                // if (!Vars.checkVar(b1, [i])) { break; }
+                // if (!Vars.checkVar(make_var_array(a1, i))) { break; }
+                // if (!Vars.checkVar(make_var_array(b1, i))) { break; }
 
                 // x1 = (+vars[a1 + "[" + i + "]"]);
-                x1 = (+Vars.getVarValue(a1, [i]));
+                x1 = (+Vars.getVarValue(make_var_array(a1, i)));
                 // y1 = (+vars[b1 + "[" + i + "]"]);
-                y1 = (+Vars.getVarValue(b1, [i]));
+                y1 = (+Vars.getVarValue(make_var_array(b1, i)));
                 ctx.lineTo(x1, y1);
             }
             ctx.closePath();
@@ -980,25 +981,25 @@ var SP_Plugin0001;
             i = a2;
 
             // // ***** 配列の存在チェック *****
-            // if (!Vars.checkVar(a1, [i])) { return nothing; }
-            // if (!Vars.checkVar(b1, [i])) { return nothing; }
+            // if (!Vars.checkVar(make_var_array(a1, i))) { return nothing; }
+            // if (!Vars.checkVar(make_var_array(b1, i))) { return nothing; }
 
             ctx.beginPath();
             // x0 = (+vars[a1 + "[" + i + "]"]);
-            x0 = (+Vars.getVarValue(a1, [i]));
+            x0 = (+Vars.getVarValue(make_var_array(a1, i)));
             // y0 = (+vars[b1 + "[" + i + "]"]);
-            y0 = (+Vars.getVarValue(b1, [i]));
+            y0 = (+Vars.getVarValue(make_var_array(b1, i)));
             ctx.moveTo(x0, y0);
             for (i = a2 + 1; i <= a3; i++) {
 
                 // // ***** 配列の存在チェック *****
-                // if (!Vars.checkVar(a1, [i])) { break; }
-                // if (!Vars.checkVar(b1, [i])) { break; }
+                // if (!Vars.checkVar(make_var_array(a1, i))) { break; }
+                // if (!Vars.checkVar(make_var_array(b1, i))) { break; }
 
                 // x1 = (+vars[a1 + "[" + i + "]"]);
-                x1 = (+Vars.getVarValue(a1, [i]));
+                x1 = (+Vars.getVarValue(make_var_array(a1, i)));
                 // y1 = (+vars[b1 + "[" + i + "]"]);
-                y1 = (+Vars.getVarValue(b1, [i]));
+                y1 = (+Vars.getVarValue(make_var_array(b1, i)));
                 ctx.lineTo(x1, y1);
             }
             if (a4 == 0) { ctx.closePath(); }
@@ -1067,7 +1068,7 @@ var SP_Plugin0001;
             }
             r = [];
             for (i = 0; i < 5; i++) {
-                r[i] = Vars.getVarValue(r1, [i]);
+                r[i] = Vars.getVarValue(make_var_array(r1, i));
             }
             sand_obj[a1] = new SandSim(can, ctx, x1, y1, w1, h1, r, col, threshold, border_mode);
             sand_obj[a1].makeTable();
@@ -1290,7 +1291,7 @@ var SP_Plugin0001;
             st1 = strrepeatsub(a4, a5);
             for (i = a2; i <= a3; i++) {
                 // vars[a1 + "[" + i + "]"] = st1;
-                Vars.setVarValue(a1, st1, [i]);
+                Vars.setVarValue(make_var_array(a1, i), st1);
             }
             return nothing;
         });
@@ -1339,10 +1340,10 @@ var SP_Plugin0001;
             for (i = a2; i <= a3; i++) {
 
                 // // ***** 配列の存在チェック *****
-                // if (!Vars.checkVar(a1, [i])) { break; }
+                // if (!Vars.checkVar(make_var_array(a1, i))) { break; }
 
                 // st1 = vars[a1 + "[" + i + "]"];
-                st1 = Vars.getVarValue(a1, [i]);
+                st1 = Vars.getVarValue(make_var_array(a1, i));
                 st1 = String(st1);
 
                 // ***** Chrome v24 で全角スペースが半角のサイズで表示される件の対策 *****
@@ -1406,10 +1407,10 @@ var SP_Plugin0001;
             for (i = a2; i <= a3; i++) {
 
                 // // ***** 配列の存在チェック *****
-                // if (!Vars.checkVar(a1, [i])) { break; }
+                // if (!Vars.checkVar(make_var_array(a1, i))) { break; }
 
                 // st1 = vars[a1 + "[" + i + "]"];
-                st1 = Vars.getVarValue(a1, [i]);
+                st1 = Vars.getVarValue(make_var_array(a1, i));
                 st1 = String(st1);
 
                 if (i == a2) {
@@ -1488,14 +1489,14 @@ var SP_Plugin0001;
                 if (y1 >= a2 && y1 <= a3) {
 
                     // // ***** 配列の存在チェック *****
-                    // if (!Vars.checkVar(a1, [y1])) { break; }
-                    // if (!Vars.checkVar(b1, [i])) { break; }
+                    // if (!Vars.checkVar(make_var_array(a1, y1))) { break; }
+                    // if (!Vars.checkVar(make_var_array(b1, i))) { break; }
 
                     // st1 = vars[a1 + "[" + y1 + "]"];
-                    st1 = Vars.getVarValue(a1, [y1]);
+                    st1 = Vars.getVarValue(make_var_array(a1, y1));
                     st1 = String(st1);
                     // st2 = vars[b1 + "[" + i + "]"];
-                    st2 = Vars.getVarValue(b1, [i]);
+                    st2 = Vars.getVarValue(make_var_array(b1, i));
                     st2 = String(st2);
                     if (a4 == 1) {
                         st1 = strovrsub2(st1, x1, st2);
@@ -1505,7 +1506,7 @@ var SP_Plugin0001;
                         st1 = strovrsub(st1, x1, st2);
                     }
                     // vars[a1 + "[" + y1 + "]"] = st1;
-                    Vars.setVarValue(a1, st1, [y1]);
+                    Vars.setVarValue(make_var_array(a1, y1), st1);
                 }
                 i  += i_plus;
                 y1 += i_plus;
@@ -1554,11 +1555,11 @@ var SP_Plugin0001;
             reg_exp = new RegExp(src_str, "g");
             for (i = a2; i <= a3; i++) {
                 // st1 = vars[a1 + "[" + i + "]"];
-                st1 = Vars.getVarValue(a1, [i]);
+                st1 = Vars.getVarValue(make_var_array(a1, i));
                 st1 = String(st1);
                 st2 = st1.replace(reg_exp, rep_str);
                 // vars[a1 + "[" + i + "]"] = st2;
-                Vars.setVarValue(a1, st2, [i]);
+                Vars.setVarValue(make_var_array(a1, i), st2);
             }
             return nothing;
         });
@@ -1606,11 +1607,11 @@ var SP_Plugin0001;
             }
             for (i = a2; i <= a3; i++) {
                 // st1 = vars[a1 + "[" + i + "]"];
-                st1 = Vars.getVarValue(a1, [i]);
+                st1 = Vars.getVarValue(make_var_array(a1, i));
                 st1 = String(st1);
                 st2 = st1.replace(reg_exp, rep_func);
                 // vars[a1 + "[" + i + "]"] = st2;
-                Vars.setVarValue(a1, st2, [i]);
+                Vars.setVarValue(make_var_array(a1, i), st2);
             }
             return nothing;
         });
@@ -1922,13 +1923,13 @@ var SP_Plugin0001;
             pnum = b4 - b3 + 1;
             for (i = 0; i < pnum; i++) {
                 // // ***** 配列の存在チェック *****
-                // if (!Vars.checkVar(b1, [j])) { return nothing; }
-                // if (!Vars.checkVar(b2, [j])) { return nothing; }
+                // if (!Vars.checkVar(make_var_array(b1, j))) { return nothing; }
+                // if (!Vars.checkVar(make_var_array(b2, j))) { return nothing; }
 
                 // x[i] = Math.trunc(vars[b1 + "[" + j + "]"]);
-                x[i] = Math.trunc(Vars.getVarValue(b1, [j]));
+                x[i] = Math.trunc(Vars.getVarValue(make_var_array(b1, j)));
                 // y[i] = Math.trunc(vars[b2 + "[" + j + "]"]);
-                y[i] = Math.trunc(Vars.getVarValue(b2, [j]));
+                y[i] = Math.trunc(Vars.getVarValue(make_var_array(b2, j)));
                 j++;
 
                 // ***** エラーチェック *****
@@ -1999,13 +2000,13 @@ var SP_Plugin0001;
             pnum = b4 - b3 + 1;
             for (i = 0; i < pnum; i++) {
                 // // ***** 配列の存在チェック *****
-                // if (!Vars.checkVar(b1, [j])) { return nothing; }
-                // if (!Vars.checkVar(b2, [j])) { return nothing; }
+                // if (!Vars.checkVar(make_var_array(b1, j))) { return nothing; }
+                // if (!Vars.checkVar(make_var_array(b2, j))) { return nothing; }
 
                 // x[i] = Math.trunc(vars[b1 + "[" + j + "]"]);
-                x[i] = Math.trunc(Vars.getVarValue(b1, [j]));
+                x[i] = Math.trunc(Vars.getVarValue(make_var_array(b1, j)));
                 // y[i] = Math.trunc(vars[b2 + "[" + j + "]"]);
-                y[i] = Math.trunc(Vars.getVarValue(b2, [j]));
+                y[i] = Math.trunc(Vars.getVarValue(make_var_array(b2, j)));
                 j++;
 
                 // ***** エラーチェック *****
@@ -2137,10 +2138,10 @@ var SP_Plugin0001;
             if (y1 >= a2 && y1 <= a3) {
 
                 // ***** 配列の存在チェック *****
-                if (!Vars.checkVar(a1, [y1])) { return ""; }
+                if (!Vars.checkVar(make_var_array(a1, y1))) { return ""; }
 
                 // st1 = vars[a1 + "[" + y1 + "]"];
-                st1 = Vars.getVarValue(a1, [y1]);
+                st1 = Vars.getVarValue(make_var_array(a1, y1));
                 st1 = String(st1);
                 if (x1 >= 0 && x1 < st1.length) {
                     return st1.substring(x1, x1 + 1);
@@ -2229,7 +2230,7 @@ var SP_Plugin0001;
 
             // ***** アンカー処理(水平方向のみ) *****
             // st1 = vars[a1 + "[" + a2 + "]"];
-            st1 = Vars.getVarValue(a1, [a2]);
+            st1 = Vars.getVarValue(make_var_array(a1, a2));
             st1 = String(st1);
             // if (anc & 4)   { }                               // 左
             if (anc & 8)      { offx -= chw * st1.length; }     // 右
@@ -2325,7 +2326,7 @@ var SP_Plugin0001;
 
             // ***** アンカー処理(水平方向のみ) *****
             // st1 = vars[a1 + "[" + a2 + "]"];
-            st1 = Vars.getVarValue(a1, [a2]);
+            st1 = Vars.getVarValue(make_var_array(a1, a2));
             st1 = String(st1);
             // if (anc & 4)   { }                               // 左
             if (anc & 8)      { offx -= chw * st1.length; }     // 右
@@ -2369,144 +2370,144 @@ var SP_Plugin0001;
             return num;
         });
         make_one_func_tbl("vec3set", 4, [0], function (param) {
-            var v1name;
+            var v1_info;
             var v1;
             var i;
 
-            v1name = get_var_info(param[0]);
+            v1_info = get_var_info(param[0]);
             for (i = 0; i < 3; i++) {
                 v1 = (+param[i + 1]);
-                Vars.setVarValue(v1name, v1, [i]);
+                Vars.setVarValue(make_var_array(v1_info, i), v1);
             }
             return nothing;
         });
         make_one_func_tbl("vec3copy", 2, [0, 1], function (param) {
-            var v1name, v2name;
+            var v1_info, v2_info;
             var v1;
             var i;
 
-            v1name = get_var_info(param[0]);
-            v2name = get_var_info(param[1]);
+            v1_info = get_var_info(param[0]);
+            v2_info = get_var_info(param[1]);
             for (i = 0; i < 3; i++) {
-                v1 = Vars.getVarValue(v1name, [i]);
-                Vars.setVarValue(v2name, v1, [i]);
+                v1 = Vars.getVarValue(make_var_array(v1_info, i));
+                Vars.setVarValue(make_var_array(v2_info, i), v1);
             }
             return nothing;
         });
         make_one_func_tbl("vec3add", 3, [0, 1, 2], function (param) {
-            var v1name, v2name, v3name;
+            var v1_info, v2_info, v3_info;
             var v1, v2, v3;
             var i;
 
-            v1name = get_var_info(param[0]);
-            v2name = get_var_info(param[1]);
-            v3name = get_var_info(param[2]);
+            v1_info = get_var_info(param[0]);
+            v2_info = get_var_info(param[1]);
+            v3_info = get_var_info(param[2]);
             for (i = 0; i < 3; i++) {
-                v1 = Vars.getVarValue(v1name, [i]);
-                v2 = Vars.getVarValue(v2name, [i]);
+                v1 = Vars.getVarValue(make_var_array(v1_info, i));
+                v2 = Vars.getVarValue(make_var_array(v2_info, i));
                 v3 = v1 + v2;
-                Vars.setVarValue(v3name, v3, [i]);
+                Vars.setVarValue(make_var_array(v3_info, i), v3);
             }
             return nothing;
         });
         make_one_func_tbl("vec3sub", 3, [0, 1, 2], function (param) {
-            var v1name, v2name, v3name;
+            var v1_info, v2_info, v3_info;
             var v1, v2, v3;
             var i;
 
-            v1name = get_var_info(param[0]);
-            v2name = get_var_info(param[1]);
-            v3name = get_var_info(param[2]);
+            v1_info = get_var_info(param[0]);
+            v2_info = get_var_info(param[1]);
+            v3_info = get_var_info(param[2]);
             for (i = 0; i < 3; i++) {
-                v1 = Vars.getVarValue(v1name, [i]);
-                v2 = Vars.getVarValue(v2name, [i]);
+                v1 = Vars.getVarValue(make_var_array(v1_info, i));
+                v2 = Vars.getVarValue(make_var_array(v2_info, i));
                 v3 = v1 - v2;
-                Vars.setVarValue(v3name, v3, [i]);
+                Vars.setVarValue(make_var_array(v3_info, i), v3);
             }
             return nothing;
         });
         make_one_func_tbl("vec3scale", 3, [0, 2], function (param) {
-            var v1name, v2name;
+            var v1_info, v2_info;
             var v1, v2, k;
             var i;
 
-            v1name = get_var_info(param[0]);
+            v1_info = get_var_info(param[0]);
             k = (+param[1]);
-            v2name = get_var_info(param[2]);
+            v2_info = get_var_info(param[2]);
             for (i = 0; i < 3; i++) {
-                v1 = Vars.getVarValue(v1name, [i]);
+                v1 = Vars.getVarValue(make_var_array(v1_info, i));
                 v2 = v1 * k;
-                Vars.setVarValue(v2name, v2, [i]);
+                Vars.setVarValue(make_var_array(v2_info, i), v2);
             }
             return nothing;
         });
         make_one_func_tbl("vec3dot", 2, [0, 1], function (param) {
             var num;
-            var v1name, v2name;
+            var v1_info, v2_info;
             var v1, v2;
             var i;
 
-            v1name = get_var_info(param[0]);
-            v2name = get_var_info(param[1]);
+            v1_info = get_var_info(param[0]);
+            v2_info = get_var_info(param[1]);
             num = 0;
             for (i = 0; i < 3; i++) {
-                v1 = Vars.getVarValue(v1name, [i]);
-                v2 = Vars.getVarValue(v2name, [i]);
+                v1 = Vars.getVarValue(make_var_array(v1_info, i));
+                v2 = Vars.getVarValue(make_var_array(v2_info, i));
                 num += v1 * v2;
             }
             return num;
         });
         make_one_func_tbl("vec3cross", 3, [0, 1, 2], function (param) {
-            var v1name, v2name, v3name;
+            var v1_info, v2_info, v3_info;
             var v1 = [], v2 = [], v3 = [];
             var i;
 
-            v1name = get_var_info(param[0]);
-            v2name = get_var_info(param[1]);
-            v3name = get_var_info(param[2]);
+            v1_info = get_var_info(param[0]);
+            v2_info = get_var_info(param[1]);
+            v3_info = get_var_info(param[2]);
             for (i = 0; i < 3; i++) {
-                v1[i] = Vars.getVarValue(v1name, [i]);
-                v2[i] = Vars.getVarValue(v2name, [i]);
+                v1[i] = Vars.getVarValue(make_var_array(v1_info, i));
+                v2[i] = Vars.getVarValue(make_var_array(v2_info, i));
             }
             v3[0] = v1[1] * v2[2] - v1[2] * v2[1];
             v3[1] = v1[2] * v2[0] - v1[0] * v2[2];
             v3[2] = v1[0] * v2[1] - v1[1] * v2[0];
             for (i = 0; i < 3; i++) {
-                Vars.setVarValue(v3name, v3[i], [i]);
+                Vars.setVarValue(make_var_array(v3_info, i), v3[i]);
             }
             return nothing;
         });
         make_one_func_tbl("vec3mag", 1, [0], function (param) {
             var num;
-            var v1name;
+            var v1_info;
             var v1;
             var i;
 
-            v1name = get_var_info(param[0]);
+            v1_info = get_var_info(param[0]);
             num = 0;
             for (i = 0; i < 3; i++) {
-                v1 = Vars.getVarValue(v1name, [i]);
+                v1 = Vars.getVarValue(make_var_array(v1_info, i));
                 num += v1 * v1;
             }
             num = Math.sqrt(num);
             return num;
         });
         make_one_func_tbl("vec3normalize", 1, [0], function (param) {
-            var v1name;
+            var v1_info;
             var v1 = [];
             var i, n;
 
-            v1name = get_var_info(param[0]);
+            v1_info = get_var_info(param[0]);
             n = 0;
             for (i = 0; i < 3; i++) {
-                v1[i] = Vars.getVarValue(v1name, [i]);
+                v1[i] = Vars.getVarValue(make_var_array(v1_info, i));
                 n += v1[i] * v1[i];
             }
             n = Math.sqrt(n);
             if (Math.abs(n) > 1.0e-17) {
                 for (i = 0; i < 3; i++) {
                     v1[i] /= n;
-                    Vars.setVarValue(v1name, v1[i], [i]);
+                    Vars.setVarValue(make_var_array(v1_info, i), v1[i]);
                 }
             }
             return nothing;
@@ -2545,10 +2546,10 @@ var SP_Plugin0001;
             if (!(i >= min_y && i <= max_y)) { continue; }
 
             // ***** 配列の存在チェック *****
-            if (!Vars.checkVar(var_info, [i])) { continue; }
+            if (!Vars.checkVar(make_var_array(var_info, i))) { continue; }
 
             // st2 = vars[a1 + "[" + i + "]"];
-            st2 = Vars.getVarValue(var_info, [i]);
+            st2 = Vars.getVarValue(make_var_array(var_info, i));
             st2 = String(st2);
             st2_len = st2.length;
             for (j = x1; j <= x2; j++) {
@@ -2581,10 +2582,10 @@ var SP_Plugin0001;
             if (!(i >= min_y && i <= max_y)) { continue; }
 
             // ***** 配列の存在チェック *****
-            if (!Vars.checkVar(var_info, [i])) { continue; }
+            if (!Vars.checkVar(make_var_array(var_info, i))) { continue; }
 
             // st2 = vars[a1 + "[" + i + "]"];
-            st2 = Vars.getVarValue(var_info, [i]);
+            st2 = Vars.getVarValue(make_var_array(var_info, i));
             st2 = String(st2);
             st2_len = st2.length;
             for (j = x1; j <= x2; j++) {
@@ -2654,15 +2655,15 @@ var SP_Plugin0001;
         if (y >= min_y && y <= max_y) {
 
             // // ***** 配列の存在チェック *****
-            // if (!Vars.checkVar(var_info, [y])) { return false; }
+            // if (!Vars.checkVar(make_var_array(var_info, y))) { return false; }
 
             // st1 = vars[var_info + "[" + y + "]"];
-            st1 = Vars.getVarValue(var_info, [y]);
+            st1 = Vars.getVarValue(make_var_array(var_info, y));
             st1 = String(st1);
             if (x >= 0 && x < st1.length) {
                 st1 = st1.substring(0, x) + ch + st1.substring(x + 1);
                 // vars[var_info + "[" + y + "]"] = st1;
-                Vars.setVarValue(var_info, st1, [y]);
+                Vars.setVarValue(make_var_array(var_info, y), st1);
             }
         }
         return true;
@@ -2674,11 +2675,11 @@ var SP_Plugin0001;
         // ***** 上書き処理 *****
         if (y >= min_y && y <= max_y) {
             // st1 = vars[var_info + "[" + y + "]"];
-            st1 = Vars.getVarValue(var_info, [y]);
+            st1 = Vars.getVarValue(make_var_array(var_info, y));
             st1 = String(st1);
             st1 = strovrsub(st1, x, st2);
             // vars[var_info + "[" + y + "]"] = st1;
-            Vars.setVarValue(var_info, st1, [y]);
+            Vars.setVarValue(make_var_array(var_info, y), st1);
         }
     }
     // ***** 文字列配列の上書き処理サブ2 *****
@@ -2690,11 +2691,11 @@ var SP_Plugin0001;
         // (半角/全角スペース以外を上書きする)
         if (y >= min_y && y <= max_y) {
             // st1 = vars[var_info + "[" + y + "]"];
-            st1 = Vars.getVarValue(var_info, [y]);
+            st1 = Vars.getVarValue(make_var_array(var_info, y));
             st1 = String(st1);
             st1 = strovrsub2(st1, x, st2);
             // vars[var_info + "[" + y + "]"] = st1;
-            Vars.setVarValue(var_info, st1, [y]);
+            Vars.setVarValue(make_var_array(var_info, y), st1);
         }
     }
     // ***** 文字列配列の上書き処理サブ3 *****
@@ -2706,11 +2707,11 @@ var SP_Plugin0001;
         // (半角/全角スペースのみ上書きする)
         if (y >= min_y && y <= max_y) {
             // st1 = vars[var_info + "[" + y + "]"];
-            st1 = Vars.getVarValue(var_info, [y]);
+            st1 = Vars.getVarValue(make_var_array(var_info, y));
             st1 = String(st1);
             st1 = strovrsub3(st1, x, st2);
             // vars[var_info + "[" + y + "]"] = st1;
-            Vars.setVarValue(var_info, st1, [y]);
+            Vars.setVarValue(make_var_array(var_info, y), st1);
         }
     }
     // ***** 文字列の繰り返し処理サブ *****

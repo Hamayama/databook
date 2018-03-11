@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2018-2-22 v14.12
+// 2018-3-12 v15.00
 
 
 // SPALM Web Interpreter
@@ -1074,7 +1074,7 @@ var SP_Interpreter;
                 case 8: // pointer
                     var_info = stack.pop();
                     var_info2 = Vars.getVarValue(var_info);
-                    if (!var_info2.tag_var) {
+                    if (var_info2.scope == null) {
                         throw new Error("ポインタの指す先が不正です。(変数のアドレスではなく、'" + code_tostr(var_info2) + "' が入っていました)");
                     }
                     stack.push(var_info2);
@@ -1082,9 +1082,9 @@ var SP_Interpreter;
                 case 9: // array
                     num = stack.pop();
                     var_info = stack.pop();
-                    // ***** 変数情報を配列に変更 *****
+                    // ***** 配列変数情報の生成 *****
                     // (変数情報を変更する場合は複製が必要)
-                    var_info2 = make_var_info(var_info.kind, var_info.name + "$" + num, var_info.scope);
+                    var_info2 = make_var_array(var_info, num);
                     stack.push(var_info2);
                     break;
                 case 10: // store
@@ -1633,7 +1633,7 @@ var SP_Interpreter;
         var ch;
         var tok;
         var loc_flag;
-        var var_obj;
+        var var_info;
         var func_name, func_stm, func_end;
         var param_num;
 
@@ -1778,10 +1778,10 @@ var SP_Interpreter;
                     code_push("pop", debugpos1, i);
                     // ***** 変数名のチェック *****
                     if (j < code_len) {
-                        var_obj = code[j];
-                        if (!var_obj.tag_var) {
+                        var_info = code[j];
+                        if (var_info.scope == null) {
                             debugpos2 = i;
-                            throw new Error("変数名が不正です。('" + code_tostr(var_obj, j) + "')");
+                            throw new Error("変数名が不正です。('" + code_tostr(var_info, j) + "')");
                         }
                     }
                     // ***** ローカル文フラグOFF *****
@@ -3410,15 +3410,25 @@ var SP_Interpreter;
     //  変更が必要な場合には、オブジェクトを複製して、複製したものを変更すること)
     function make_var_info(kind, name, scope) {
         var var_info = {};       // 変数情報
-        var_info.tag_var = true; //   識別用プロパティ
         var_info.kind = kind;    //   変数の種別(複数のORになる場合があるので注意)
                                  //     (=0:グローバル変数,
                                  //      =1:ローカル変数,
                                  //      =2:スコープ有効)
         var_info.name = name;    //   変数名
-        var_info.scope = scope;  //   変数が所属するスコープの番号
+        var_info.scope = scope;  //   変数が所属するスコープのスコープ番号
                                  //     (変数の種別がスコープ有効のときのみ使用可能)
+                                 //     (現状、このプロパティは、変数情報の識別用にも
+                                 //      使用(流用)している)
         return var_info;
+    }
+    // ***** 配列変数情報の生成 *****
+    // (変数情報から配列変数情報を生成して返す)
+    function make_var_array(var_info, index) {
+        var var_info2 = {};
+        var_info2.kind = var_info.kind;
+        var_info2.name = var_info.name + "$" + index;
+        var_info2.scope = var_info.scope;
+        return var_info2;
     }
     // ***** 変数情報の取得 *****
     function get_var_info(var_info) {
@@ -3445,23 +3455,19 @@ var SP_Interpreter;
                              //   (配列の1以降はローカル変数用)
         var local_scope_num; // ローカル変数のスコープ数
 
-        // ***** 変数のタイプチェック(内部処理用) *****
-        // (戻り値は、グローバル/ローカル変数のスコープの番号を返す)
-        function checkType(var_info) {
-            var var_kind;
-            var scope_no;
-
-            var_kind = var_info.kind;
-            // ***** スコープ有効のとき *****
-            if (var_kind & 2) {
-                scope_no = var_info.scope;
-                if (scope_no > local_scope_num) {
+        // ***** グローバル/ローカル変数のスコープ番号の取得(内部処理用) *****
+        function get_scope_no(var_info) {
+            // ***** ローカル変数未使用のとき *****
+            if (!use_local_vars) { return 0; }
+            // ***** 変数情報のスコープ番号が有効のとき *****
+            if (var_info.kind & 2) {
+                if (var_info.scope > local_scope_num) {
                     throw new Error("ポインタの指す先が不正です(スコープエラー)。");
                 }
-                return scope_no;
+                return var_info.scope;
             }
             // ***** スコープ番号を返す *****
-            return (var_kind & 1) ? local_scope_num : 0;
+            return (var_info.kind & 1) ? local_scope_num : 0;
         }
         // ***** 配列変数の一括操作(内部処理用) *****
         var controlArray = (function () {
@@ -3542,23 +3548,14 @@ var SP_Interpreter;
             }
         };
         // ***** 変数を削除する(staticメソッド) *****
-        Vars.deleteVar = function (var_info, array_indexes) {
-            var i;
-            var scope_no;
+        Vars.deleteVar = function (var_info) {
             var now_vars;
             var var_name;
 
-            // ***** 変数のタイプチェック *****
-            scope_no = use_local_vars ? checkType(var_info) : 0;
+            // ***** グローバル/ローカル変数のスコープを取得 *****
+            now_vars = vars_stack[get_scope_no(var_info)];
             // ***** 変数名の取得 *****
             var_name = var_info.name;
-            if (array_indexes) { // 配列変数対応
-                for (i = 0; i < array_indexes.length; i++) {
-                    var_name += "$" + array_indexes[i];
-                }
-            }
-            // ***** グローバル/ローカル変数のスコープを取得 *****
-            now_vars = vars_stack[scope_no];
             // ***** 変数を削除する *****
             // if (now_vars.hasOwnProperty(var_name)) {
             // if (hasOwn.call(now_vars, var_name)) {
@@ -3567,23 +3564,14 @@ var SP_Interpreter;
             }
         };
         // ***** 変数の存在チェック(staticメソッド) *****
-        Vars.checkVar = function (var_info, array_indexes) {
-            var i;
-            var scope_no;
+        Vars.checkVar = function (var_info) {
             var now_vars;
             var var_name;
 
-            // ***** 変数のタイプチェック *****
-            scope_no = use_local_vars ? checkType(var_info) : 0;
+            // ***** グローバル/ローカル変数のスコープを取得 *****
+            now_vars = vars_stack[get_scope_no(var_info)];
             // ***** 変数名の取得 *****
             var_name = var_info.name;
-            if (array_indexes) { // 配列変数対応
-                for (i = 0; i < array_indexes.length; i++) {
-                    var_name += "$" + array_indexes[i];
-                }
-            }
-            // ***** グローバル/ローカル変数のスコープを取得 *****
-            now_vars = vars_stack[scope_no];
             // ***** 変数の存在チェック *****
             // if (now_vars.hasOwnProperty(var_name)) {
             // if (hasOwn.call(now_vars, var_name)) {
@@ -3593,24 +3581,15 @@ var SP_Interpreter;
             return false;
         };
         // ***** 変数の値を取得する(staticメソッド) *****
-        Vars.getVarValue = function (var_info, array_indexes) {
-            var i;
-            var scope_no;
+        Vars.getVarValue = function (var_info) {
             var now_vars;
             var var_name;
             var num;
 
-            // ***** 変数のタイプチェック *****
-            scope_no = use_local_vars ? checkType(var_info) : 0;
+            // ***** グローバル/ローカル変数のスコープを取得 *****
+            now_vars = vars_stack[get_scope_no(var_info)];
             // ***** 変数名の取得 *****
             var_name = var_info.name;
-            if (array_indexes) { // 配列変数対応
-                for (i = 0; i < array_indexes.length; i++) {
-                    var_name += "$" + array_indexes[i];
-                }
-            }
-            // ***** グローバル/ローカル変数のスコープを取得 *****
-            now_vars = vars_stack[scope_no];
             // ***** 変数の値を取得する *****
             // if (now_vars.hasOwnProperty(var_name)) {
             // if (hasOwn.call(now_vars, var_name)) {
@@ -3622,40 +3601,29 @@ var SP_Interpreter;
             return 0;
         };
         // ***** 変数の値を設定する(staticメソッド) *****
-        Vars.setVarValue = function (var_info, num, array_indexes) {
-            var i;
-            var scope_no;
+        Vars.setVarValue = function (var_info, num) {
             var now_vars;
             var var_name;
 
-            // ***** 変数のタイプチェック *****
-            scope_no = use_local_vars ? checkType(var_info) : 0;
+            // ***** グローバル/ローカル変数のスコープを取得 *****
+            now_vars = vars_stack[get_scope_no(var_info)];
             // ***** 変数名の取得 *****
             var_name = var_info.name;
-            if (array_indexes) { // 配列変数対応
-                for (i = 0; i < array_indexes.length; i++) {
-                    var_name += "$" + array_indexes[i];
-                }
-            }
-            // ***** グローバル/ローカル変数のスコープを取得 *****
-            now_vars = vars_stack[scope_no];
             // ***** 変数の値を設定する *****
             now_vars[var_name] = num;
         };
         // ***** 配列変数の一括コピー(staticメソッド) *****
         Vars.copyArray = function (var_info, var_info2) {
             var i;
-            var scope_no;
-            var scope_no2;
             var now_vars;
             var now_vars2;
             var var_name;
             var var_name2;
             var var_name_len;
 
-            // ***** 変数のタイプチェック *****
-            scope_no = use_local_vars ? checkType(var_info) : 0;
-            scope_no2 = use_local_vars ? checkType(var_info2) : 0;
+            // ***** グローバル/ローカル変数のスコープを取得 *****
+            now_vars = vars_stack[get_scope_no(var_info)];
+            now_vars2 = vars_stack[get_scope_no(var_info2)];
             // ***** 変数名の取得 *****
             var_name = var_info.name + "$";
             var_name2 = var_info2.name + "$";
@@ -3668,9 +3636,6 @@ var SP_Interpreter;
                 throw new Error("コピー元とコピー先の配列変数名が同一です。('" + var_name + "')");
             }
 
-            // ***** グローバル/ローカル変数のスコープを取得 *****
-            now_vars = vars_stack[scope_no];
-            now_vars2 = vars_stack[scope_no2];
             // ***** 配列変数の一括コピー *****
             var_name_len = var_name.length;
             controlArray(now_vars, var_name, var_name_len, function (v) {
@@ -3680,17 +3645,14 @@ var SP_Interpreter;
         };
         // ***** 配列変数の一括削除(staticメソッド) *****
         Vars.deleteArray = function (var_info) {
-            var scope_no;
             var now_vars;
             var var_name;
             var var_name_len;
 
-            // ***** 変数のタイプチェック *****
-            scope_no = use_local_vars ? checkType(var_info) : 0;
+            // ***** グローバル/ローカル変数のスコープを取得 *****
+            now_vars = vars_stack[get_scope_no(var_info)];
             // ***** 変数名の取得 *****
             var_name = var_info.name + "$";
-            // ***** グローバル/ローカル変数のスコープを取得 *****
-            now_vars = vars_stack[scope_no];
             // ***** 配列変数の一括削除 *****
             var_name_len = var_name.length;
             controlArray(now_vars, var_name, var_name_len, function (v) {
@@ -4126,11 +4088,11 @@ var SP_Interpreter;
             num = 0;
             if (a3 == null) {
                 for (i = a2; true; i++) {
-                    if (Vars.checkVar(a1, [i])) { num++; } else { break; }
+                    if (Vars.checkVar(make_var_array(a1, i))) { num++; } else { break; }
                 }
             } else {
                 for (i = a2; i <= a3; i++) {
-                    if (Vars.checkVar(a1, [i])) { num++; }
+                    if (Vars.checkVar(make_var_array(a1, i))) { num++; }
                 }
             }
             return num;
@@ -4284,12 +4246,12 @@ var SP_Interpreter;
             while (true) {
 
                 // // ***** 配列の存在チェック *****
-                // if (!Vars.checkVar(a1, [a2 + i])) { break; }
+                // if (!Vars.checkVar(make_var_array(a1, a2 + i))) { break; }
 
                 // a6 = vars[a1 + "[" + (a2 + i) + "]"];
-                a6 = Vars.getVarValue(a1, [a2 + i]);
+                a6 = Vars.getVarValue(make_var_array(a1, a2 + i));
                 // vars[a3 + "[" + (a4 + i) + "]"] = a6;
-                Vars.setVarValue(a3, a6, [a4 + i]);
+                Vars.setVarValue(make_var_array(a3, a4 + i), a6);
                 i += i_plus;
                 if ((i_plus > 0 && i <= i_end) ||
                     (i_plus < 0 && i >= i_end)) { continue; }
@@ -4321,6 +4283,7 @@ var SP_Interpreter;
         });
         make_one_func_tbl("dbgdrawfix", 0, [], function (param) {
             var a1;
+
             // ***** Chrome v57 の Canvas の 不具合対策 *****
             // Chrome で GPU使用あり設定 (accelerated-2d-canvas : ON) のとき、
             // 256x256 より大きい Canvas を生成して、getImageData → drawImage
@@ -4454,7 +4417,7 @@ var SP_Interpreter;
             } else {
                 for (i = a2; i <= a3; i++) {
                     // delete vars[a1 + "[" + i + "]"];
-                    Vars.deleteVar(a1, [i]);
+                    Vars.deleteVar(make_var_array(a1, i));
                 }
             }
             return nothing;
@@ -5033,14 +4996,14 @@ var SP_Interpreter;
             i = a3;
             do {
                 // ***** 配列の存在チェック *****
-                if (a4 == null && !Vars.checkVar(a1, [i])) { break; }
+                if (a4 == null && !Vars.checkVar(make_var_array(a1, i))) { break; }
 
                 if (num == "") {
                     // num += vars[a1 + "[" + i + "]"];
-                    num += Vars.getVarValue(a1, [i]);
+                    num += Vars.getVarValue(make_var_array(a1, i));
                 } else {
                     // num += a2 + vars[a1 + "[" + i + "]"];
-                    num += a2 + Vars.getVarValue(a1, [i]);
+                    num += a2 + Vars.getVarValue(make_var_array(a1, i));
                 }
                 i++;
             } while (a4 == null || i <= a4);
@@ -5294,7 +5257,7 @@ var SP_Interpreter;
 
             for (i = a2; i <= a3; i++) {
                 // vars[a1 + "[" + i + "]"] = a4;
-                Vars.setVarValue(a1, a4, [i]);
+                Vars.setVarValue(make_var_array(a1, i), a4);
             }
             return nothing;
         });
@@ -5845,13 +5808,13 @@ var SP_Interpreter;
                 k = a2.indexOf(a3, j);
                 if (k >= 0) {
                     // vars[a1 + "[" + i + "]"] = a2.substring(j, k);
-                    Vars.setVarValue(a1, a2.substring(j, k), [i]);
+                    Vars.setVarValue(make_var_array(a1, i), a2.substring(j, k));
                     i++;
                     j = k + 1;
                 }
             }
             // vars[a1 + "[" + i + "]"] = a2.substring(j);
-            Vars.setVarValue(a1, a2.substring(j), [i]);
+            Vars.setVarValue(make_var_array(a1, i), a2.substring(j));
             return i + 1;
         });
         make_one_func_tbl("sptype", -1, [], function (param) {
@@ -6013,7 +5976,7 @@ var SP_Interpreter;
             for (i = 1; i < param.length; i++) {
                 a2 = param[i];
                 // vars[a1 + "[" + (i - 1) + "]"] = a2;
-                Vars.setVarValue(a1, a2, [i - 1]);
+                Vars.setVarValue(make_var_array(a1, i - 1), a2);
             }
             return nothing;
         });
@@ -6053,6 +6016,7 @@ var SP_Interpreter;
     SP_Interpreter.add_clear_var_funcs = function (name, func) { clear_var_funcs[name] = func; };
     SP_Interpreter.make_one_func_tbl = make_one_func_tbl;
     SP_Interpreter.Vars = Vars;
+    SP_Interpreter.make_var_array = make_var_array;
     SP_Interpreter.get_var_info = get_var_info;
     SP_Interpreter.to_global = to_global;
     SP_Interpreter.set_canvas_axis = set_canvas_axis;
