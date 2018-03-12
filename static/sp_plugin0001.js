@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_plugin0001.js
-// 2018-3-12 v15.00
+// 2018-3-12 v15.01
 
 
 // A Plugin for SPALM Web Interpreter
@@ -2821,6 +2821,7 @@ var SP_Plugin0001;
     // ***** 音楽全停止 *****
     function audstopall() {
         var aud_no;
+
         for (aud_no in audplayer) {
             if (audplayer.hasOwnProperty(aud_no)) {
                 audplayer[aud_no].mmlplayer.stop();
@@ -4799,9 +4800,9 @@ var MMLPlayer = (function () {
 // ***** 砂シミュレート用クラス *****
 var SandSim = (function () {
     // ***** コンストラクタ *****
-    function SandSim(can, ctx, left, top, width, height, r,
-        sand_col, threshold, border_mode) {
+    function SandSim(can, ctx, left, top, width, height, r, sand_col, threshold, border_mode) {
         var i;
+
         this.can = can;             // Canvas要素
         this.ctx = ctx;             // Canvasのコンテキスト
         this.left = left;           // シミュレート領域の左上X座標(px)

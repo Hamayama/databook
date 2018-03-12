@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2018-3-12 v15.00
+// 2018-3-12 v15.01
 
 
 // SPALM Web Interpreter
@@ -1025,8 +1025,8 @@ var SP_Interpreter;
 
         // ***** コード実行のループ *****
         loop_time_start = Date.now();
-        time_cnt = 0;
-        while (pc < code_len && !end_flag && !sleep_flag) {
+        time_cnt = 10;
+        while (!(end_flag || sleep_flag)) {
             // ***** コードを取り出す *****
             debugpc = pc;
             cod = code[pc++];
@@ -1444,9 +1444,9 @@ var SP_Interpreter;
                 }
             } else {
                 // (Date.now()が遅かったので10回に1回だけ測定する)
-                time_cnt++;
-                if (time_cnt >= 10) {
-                    time_cnt = 0;
+                time_cnt--;
+                if (time_cnt <= 0) {
+                    time_cnt = 10;
                     // loop_time_count = new Date().getTime() - loop_time_start;
                     loop_time_count = Date.now() - loop_time_start;
                     if (loop_time_count >= loop_time_max) {
@@ -3422,7 +3422,7 @@ var SP_Interpreter;
         return var_info;
     }
     // ***** 配列変数情報の生成 *****
-    // (変数情報から配列変数情報を生成して返す)
+    // (変数情報を元に配列変数情報を生成する)
     function make_var_array(var_info, index) {
         var var_info2 = {};
         var_info2.kind = var_info.kind;
@@ -3667,6 +3667,7 @@ var SP_Interpreter;
     // ***** キーボード処理 *****
     function keydown(ev) {
         var key_code, num;
+
         // ***** IE8対策 *****
         ev = ev || window.event;
         key_code = ev.keyCode;
@@ -3711,6 +3712,7 @@ var SP_Interpreter;
     }
     function keyup(ev) {
         var key_code, num;
+
         // ***** IE8対策 *****
         ev = ev || window.event;
         key_code = ev.keyCode;
@@ -3727,6 +3729,7 @@ var SP_Interpreter;
     }
     function keypress(ev) {
         var key_code;
+
         // ***** IE8対策 *****
         ev = ev || window.event;
         key_code = ev.keyCode;
@@ -3745,6 +3748,7 @@ var SP_Interpreter;
     // この関数を呼んでクリア可能とする
     function keyclear() {
         var key_code;
+
         // ***** すべてのキー状態をクリア *****
         for (key_code in key_down_stat) {
             if (key_down_stat.hasOwnProperty(key_code)) {
@@ -3759,6 +3763,7 @@ var SP_Interpreter;
     // ***** マウス処理 *****
     function mousedown(ev) {
         var btn_code;
+
         // ***** マウスボタン状態を取得 *****
         btn_code = ev.button;
         // ***** FlashCanvas用 *****
@@ -3780,6 +3785,7 @@ var SP_Interpreter;
     }
     function mouseup(ev) {
         var btn_code;
+
         // ***** マウスボタン状態を取得 *****
         btn_code = ev.button;
         // ***** FlashCanvas用 *****
@@ -3812,6 +3818,7 @@ var SP_Interpreter;
     }
     function getmousepos(ev) {
         var rect;
+
         // ***** IE8対策 *****
         // rect = ev.target.getBoundingClientRect();
         rect = can1.getBoundingClientRect();
@@ -3824,6 +3831,7 @@ var SP_Interpreter;
     // この関数を呼んでクリア可能とする
     function mousebuttonclear() {
         var btn_code;
+
         // ***** すべてのマウスボタン状態をクリア *****
         for (btn_code in mouse_btn_stat) {
             if (mouse_btn_stat.hasOwnProperty(btn_code)) {
@@ -3852,6 +3860,7 @@ var SP_Interpreter;
     }
     function gettouchpos(ev) {
         var tt, rect;
+
         // ***** タッチ数をチェック *****
         if (ev.targetTouches.length > 0) {
             tt = ev.targetTouches[0];
@@ -3870,6 +3879,7 @@ var SP_Interpreter;
     //                     =2:内部変数は初期化しない。ただし設定だけは初期化する))
     function init_canvas_setting(ctx, mode) {
         var color_val1, line_width1;
+
         // ***** 内部変数の初期化 *****
         if (mode == 0) {
             // ***** フォントサイズの初期化 *****
@@ -3943,6 +3953,7 @@ var SP_Interpreter;
     //  実際の画面上の座標(x1,y1)を計算して、配列にして返す)
     function conv_axis_point(x, y) {
         var x1, y1, t;
+
         // ***** 座標系の変換の分を補正 *****
         x1 = x;
         y1 = y;
@@ -3970,6 +3981,7 @@ var SP_Interpreter;
     // ***** ソフトキー表示 *****
     function disp_softkeys() {
         var text_st;
+
         // ***** ソフトキー表示エリアのクリアと表示 *****
         ctx2.clearRect(0, 0, can2.width, can2.height);
         ctx2.fillStyle = can2_forecolor_init;
