@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_plugin0001.js
-// 2018-3-12 v15.01
+// 2018-3-14 v15.02
 
 
 // A Plugin for SPALM Web Interpreter
@@ -1229,26 +1229,39 @@ var SP_Plugin0001;
             return ConvZenHan.toZenkaku(a1, a2);
         });
         make_one_func_tbl("transimg", 2, [0], function (param) {
-            var a1, a2;
+            var a1, a2, a3;
             var i;
-            var col_r, col_g, col_b;
+            var col_r, col_g, col_b, col_a;
+            var img_r, img_g, img_b, img_a;
+            var diff2;
             var img_data = {};
             var imgvars = get_imgvars();
 
             a1 = to_global(get_var_info(param[0])); // 画像変数名取得
             a2 = Math.trunc(param[1]); // RGB
+            if (param.length <= 2) {
+                a3 = 0;
+            } else {
+                a3 = Math.trunc(param[2]); // しきい値
+            }
             // if (imgvars.hasOwnProperty(a1)) {
             if (hasOwn.call(imgvars, a1)) {
                 col_r = (a2 & 0xff0000) >> 16; // R
                 col_g = (a2 & 0x00ff00) >> 8;  // G
                 col_b = (a2 & 0x0000ff);       // B
+                col_a = 255;                   // alpha(未使用)
                 // ***** 画像データの取得 *****
                 img_data = imgvars[a1].ctx.getImageData(0, 0, imgvars[a1].can.width, imgvars[a1].can.height);
                 // ***** 透明画像変換 *****
                 for (i = 0; i < img_data.data.length; i += 4) {
-                    if (img_data.data[i    ] == col_r &&
-                        img_data.data[i + 1] == col_g &&
-                        img_data.data[i + 2] == col_b) {
+                    img_r = img_data.data[i    ]; // R
+                    img_g = img_data.data[i + 1]; // G
+                    img_b = img_data.data[i + 2]; // B
+                    img_a = img_data.data[i + 3]; // alpha(未使用)
+                    diff2 = (img_r - col_r) * (img_r - col_r) +
+                            (img_g - col_g) * (img_g - col_g) +
+                            (img_b - col_b) * (img_b - col_b);
+                    if (diff2 <= a3 * a3 * 3) { // 3倍してスケールを合わせる
                         img_data.data[i    ] = 0;
                         img_data.data[i + 1] = 0;
                         img_data.data[i + 2] = 0;
@@ -3782,19 +3795,15 @@ var FloodFill = (function () {
         if (paint_mode == 0) {
             diff2 = (paint_col.r - pixel_col.r) * (paint_col.r - pixel_col.r) +
                     (paint_col.g - pixel_col.g) * (paint_col.g - pixel_col.g) +
-                    (paint_col.b - pixel_col.b) * (paint_col.b - pixel_col.b) +
-                    (paint_col.a - pixel_col.a) * (paint_col.a - pixel_col.a);
+                    (paint_col.b - pixel_col.b) * (paint_col.b - pixel_col.b);
+            ret = (diff2 <= threshold * threshold * 3); // 3倍してスケールを合わせる
         } else {
             diff2 = (bound_col.r - pixel_col.r) * (bound_col.r - pixel_col.r) +
                     (bound_col.g - pixel_col.g) * (bound_col.g - pixel_col.g) +
-                    (bound_col.b - pixel_col.b) * (bound_col.b - pixel_col.b) +
-                    (bound_col.a - pixel_col.a) * (bound_col.a - pixel_col.a);
+                    (bound_col.b - pixel_col.b) * (bound_col.b - pixel_col.b);
+            ret = !(diff2 <= threshold * threshold * 3); // 3倍してスケールを合わせる
         }
-        if (diff2 <= threshold * threshold * 4) { ret = true; } // 4倍してスケールを合わせる
         // ***** 戻り値を返す *****
-        if (paint_mode != 0) {
-            ret = !ret;
-        }
         return ret;
     }
     // ***** 線分をスキャンしてシードを登録(内部処理用) *****
@@ -4818,7 +4827,7 @@ var SandSim = (function () {
         this.sand_col.r = (sand_col & 0xff0000) >> 16; // 砂の色 R
         this.sand_col.g = (sand_col & 0x00ff00) >> 8;  // 砂の色 G
         this.sand_col.b = (sand_col & 0x0000ff);       // 砂の色 B
-        this.sand_col.a = 0;                           // 砂の色 alpha
+        this.sand_col.a = 255;                         // 砂の色 alpha(未使用)
         this.threshold = threshold; // 同色と判定するしきい値(0-255)
         this.sand_buf = [];         // 砂バッファ(配列)
         this.img_buf = [];          // 画像バッファ(配列)
@@ -4853,27 +4862,23 @@ var SandSim = (function () {
         for (i = 0; i < this.height; i++) {
             for (j = 0; j < this.width; j++) {
                 // ***** 色を取得 *****
-                r = img_data.data[(j + i * this.width) * 4];
-                g = img_data.data[(j + i * this.width) * 4 + 1];
-                b = img_data.data[(j + i * this.width) * 4 + 2];
-                // a = img_data.data[(j + i * this.width) * 4 + 3];
-                a = 0;
+                r = img_data.data[(j + i * this.width) * 4];     // R
+                g = img_data.data[(j + i * this.width) * 4 + 1]; // G
+                b = img_data.data[(j + i * this.width) * 4 + 2]; // B
+                a = img_data.data[(j + i * this.width) * 4 + 3]; // alpha(未使用)
                 // ***** 砂の色ならば砂バッファに登録 *****
                 diff2 = (this.sand_col.r - r) * (this.sand_col.r - r) +
                         (this.sand_col.g - g) * (this.sand_col.g - g) +
-                        (this.sand_col.b - b) * (this.sand_col.b - b) +
-                        (this.sand_col.a - a) * (this.sand_col.a - a);
-                // if (diff2 <= this.threshold * this.threshold * 4) { // 4倍してスケールを合わせる
-                if (diff2 <= this.threshold * this.threshold * 3) { // aは無効なので、3倍してスケールを合わせる
+                        (this.sand_col.b - b) * (this.sand_col.b - b);
+                if (diff2 <= this.threshold * this.threshold * 3) { // 3倍してスケールを合わせる
                     sand = {};
                     sand.x = j;
                     sand.y = i;
                     this.sand_buf.push(sand);
                 }
                 // ***** 色があれば画像バッファに登録 *****
-                col2 = r * r + g * g + b * b + a * a;
-                // if (col2 > this.threshold * this.threshold * 4) {   // 4倍してスケールを合わせる
-                if (col2 > this.threshold * this.threshold * 3) {   // aは無効なので、3倍してスケールを合わせる
+                col2 = r * r + g * g + b * b;
+                if (col2 > this.threshold * this.threshold * 3) { // 3倍してスケールを合わせる
                     this.img_buf[j + i * this.width] = 1;
                 } else {
                     this.img_buf[j + i * this.width] = 0;

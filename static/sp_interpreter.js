@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2018-3-12 v15.01
+// 2018-3-14 v15.02
 
 
 // SPALM Web Interpreter
@@ -4366,7 +4366,7 @@ var SP_Interpreter;
             // return nothing;
         });
         make_one_func_tbl("dbgtest", 3, [], function (param) {
-            var a1, a2, a3, a4;
+            var a1, a2, a3, a4, a5;
             var text_st;
             var ok_flag;
 
@@ -4375,16 +4375,28 @@ var SP_Interpreter;
             a3 = param[2];
             if (param.length <= 3) {
                 a4 = 0;
+                a5 = 0;
             } else {
-                a4 = Math.trunc(param[3]);
+                a4 = (+param[3]);
+                if (param.length <= 4) {
+                    a5 = 0;
+                } else {
+                    a5 = Math.trunc(param[4]);
+                }
             }
-            ok_flag = (a2 == a3);
+            if (a4 == 0) {
+                // (誤差を許さないテスト)
+                ok_flag = (a2 == a3);
+            } else {
+                // (誤差を許すテスト)
+                ok_flag = (Math.abs(a2 - a3) < a4);
+            }
             if (ok_flag) {
                 text_st = "OK";
             } else {
                 text_st = "NG (a = " + code_tostr(a2) + " , b = " + code_tostr(a3) + ")";
             }
-            if ((a4 == 1 && !ok_flag) || (a4 != 1 && a4 != 2)) {
+            if ((a5 == 1 && !ok_flag) || (a5 != 1 && a5 != 2)) {
                 DebugShow(a1 + " : " + text_st + "\n");
             }
             return ok_flag ? 0 : 1;
