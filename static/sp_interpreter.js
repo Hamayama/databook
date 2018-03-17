@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2018-3-14 v15.02
+// 2018-3-17 v15.03
 
 
 // SPALM Web Interpreter
@@ -3920,7 +3920,7 @@ var SP_Interpreter;
         // ***** 線の幅設定 *****
         ctx.lineWidth = line_width1;
         // ***** 座標系設定 *****
-        ctx.setTransform(1, 0, 0, 1, 0, 0);      // 座標系を初期化
+        init_canvas_axis(ctx); // 座標系を初期化
         if (mode == 1) { set_canvas_axis(ctx); } // 座標系を再設定
         // ***** 現在状態を保存 *****
         ctx.save();
@@ -3934,8 +3934,12 @@ var SP_Interpreter;
         // ***** Canvasの各種設定の初期化 *****
         init_canvas_setting(ctx, mode);
     }
+    // ***** Canvasの座標系の初期化 *****
+    function init_canvas_axis(ctx) {
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+    }
     // ***** Canvasの座標系の設定 *****
-    // (基本的に座標系を元に戻してから呼ぶこと)
+    // (基本的に座標系を初期化してから呼ぶこと)
     function set_canvas_axis(ctx) {
         // ***** 座標系の設定 *****
         // (拡大縮小 → 回転 → 平行移動 の順に実行する
@@ -4189,9 +4193,9 @@ var SP_Interpreter;
         make_one_func_tbl("cls", 0, [], function (param) {
             // ***** 画面クリア *****
             // ctx.clearRect(-axis.originx, -axis.originy, can.width, can.height);
-            ctx.setTransform(1, 0, 0, 1, 0, 0); // 座標系を元に戻す
-            ctx.clearRect(0, 0, can.width, can.height);  // 画面クリア
-            set_canvas_axis(ctx);               // 座標系を再設定
+            init_canvas_axis(ctx); // 座標系を初期化
+            ctx.clearRect(0, 0, can.width, can.height); // 画面クリア
+            set_canvas_axis(ctx);  // 座標系を再設定
             return nothing;
         });
         make_one_func_tbl("col", 1, [], function (param) {
@@ -4839,11 +4843,11 @@ var SP_Interpreter;
             ctx.closePath();
             // 以下は不要になったもよう(Chrome v27)
             // // ***** Chrome v23 でカーブを描画しない件の対策 *****
-            // ctx.rotate(45 * Math.PI / 180);     // 回転させるとなぜか描画する
+            // ctx.rotate(45 * Math.PI / 180); // 回転させるとなぜか描画する
             ctx.fill();
             // 以下は不要になったもよう(Chrome v27)
-            // ctx.setTransform(1, 0, 0, 1, 0, 0); // 座標系を元に戻す
-            // set_canvas_axis(ctx);               // 座標系を再設定
+            // init_canvas_axis(ctx); // 座標系を初期化
+            // set_canvas_axis(ctx);  // 座標系を再設定
             return nothing;
         });
         make_one_func_tbl("funccall", 1, [1], function (param) {
@@ -5387,8 +5391,8 @@ var SP_Interpreter;
             // ***** 座標系の原点座標設定 *****
             axis.originx = a1;
             axis.originy = a2;
-            ctx.setTransform(1, 0, 0, 1, 0, 0); // 座標系を元に戻す
-            set_canvas_axis(ctx);               // 座標系を再設定
+            init_canvas_axis(ctx); // 座標系を初期化
+            set_canvas_axis(ctx);  // 座標系を再設定
             return nothing;
         });
         make_one_func_tbl("oval", 6, [], function (param) {
@@ -5517,8 +5521,8 @@ var SP_Interpreter;
             axis.rotate = a1 * Math.PI / 180;
             axis.rotateox = a2;
             axis.rotateoy = a3;
-            ctx.setTransform(1, 0, 0, 1, 0, 0); // 座標系を元に戻す
-            set_canvas_axis(ctx);               // 座標系を再設定
+            init_canvas_axis(ctx); // 座標系を初期化
+            set_canvas_axis(ctx);  // 座標系を再設定
             return nothing;
         });
         make_one_func_tbl("round", 6, [], function (param) {
@@ -5546,11 +5550,11 @@ var SP_Interpreter;
             ctx.closePath();
             // 以下は不要になったもよう(Chrome v27)
             // // ***** Chrome v23 でカーブを描画しない件の対策 *****
-            // ctx.rotate(45 * Math.PI / 180);     // 回転させるとなぜか描画する
+            // ctx.rotate(45 * Math.PI / 180); // 回転させるとなぜか描画する
             ctx.stroke();
             // 以下は不要になったもよう(Chrome v27)
-            // ctx.setTransform(1, 0, 0, 1, 0, 0); // 座標系を元に戻す
-            // set_canvas_axis(ctx);               // 座標系を再設定
+            // init_canvas_axis(ctx); // 座標系を初期化
+            // set_canvas_axis(ctx);  // 座標系を再設定
             return nothing;
         });
         make_one_func_tbl("save", 1, [], function (param) {
@@ -5595,8 +5599,8 @@ var SP_Interpreter;
             axis.scaley = a2;
             axis.scaleox = a3;
             axis.scaleoy = a4;
-            ctx.setTransform(1, 0, 0, 1, 0, 0); // 座標系を元に戻す
-            set_canvas_axis(ctx);               // 座標系を再設定
+            init_canvas_axis(ctx); // 座標系を初期化
+            set_canvas_axis(ctx);  // 座標系を再設定
             return nothing;
         });
         make_one_func_tbl("scan", -1, [], function (param) {
@@ -6043,6 +6047,7 @@ var SP_Interpreter;
     SP_Interpreter.make_var_array = make_var_array;
     SP_Interpreter.get_var_info = get_var_info;
     SP_Interpreter.to_global = to_global;
+    SP_Interpreter.init_canvas_axis = init_canvas_axis;
     SP_Interpreter.set_canvas_axis = set_canvas_axis;
     SP_Interpreter.conv_axis_point = conv_axis_point;
     SP_Interpreter.max_array_size = max_array_size;

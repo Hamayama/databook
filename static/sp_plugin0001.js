@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_plugin0001.js
-// 2018-3-14 v15.02
+// 2018-3-17 v15.03
 
 
 // A Plugin for SPALM Web Interpreter
@@ -50,6 +50,7 @@ var SP_Plugin0001;
     var make_var_array = SP_Interpreter.make_var_array;
     var get_var_info = SP_Interpreter.get_var_info;
     var to_global = SP_Interpreter.to_global;
+    var init_canvas_axis = SP_Interpreter.init_canvas_axis;
     var set_canvas_axis = SP_Interpreter.set_canvas_axis;
     var conv_axis_point = SP_Interpreter.conv_axis_point;
     var max_array_size = SP_Interpreter.max_array_size;
@@ -611,9 +612,9 @@ var SP_Plugin0001;
             x1 = ret_array[0];
             y1 = ret_array[1];
             // ***** 領域塗りつぶし *****
-            ctx.setTransform(1, 0, 0, 1, 0, 0); // 座標系を元に戻す
+            init_canvas_axis(ctx); // 座標系を初期化
             FloodFill.fill(can, ctx, x1, y1, threshold, paint_mode, col, 255);
-            set_canvas_axis(ctx);               // 座標系を再設定
+            set_canvas_axis(ctx);  // 座標系を再設定
             return nothing;
         });
         make_one_func_tbl("fpoly", 4, [0, 1], function (param) {
@@ -1093,9 +1094,9 @@ var SP_Plugin0001;
 
             a1 = Math.trunc(param[0]);
             if (sand_obj.hasOwnProperty(a1)) {
-                ctx.setTransform(1, 0, 0, 1, 0, 0); // 座標系を元に戻す
+                init_canvas_axis(ctx); // 座標系を初期化
                 sand_obj[a1].draw();
-                set_canvas_axis(ctx);               // 座標系を再設定
+                set_canvas_axis(ctx);  // 座標系を再設定
             } else {
                 throw new Error("砂シミュレート用オブジェクト" + a1 + " は作成されていません。");
             }
