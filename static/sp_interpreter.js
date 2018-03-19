@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2018-3-17 v15.03
+// 2018-3-20 v15.04
 
 
 // SPALM Web Interpreter
@@ -3930,6 +3930,7 @@ var SP_Interpreter;
     //                     =1:内部変数は初期化しない))
     function reset_canvas_setting(ctx, mode) {
         // ***** 前回状態に復帰 *****
+        // (クリッピング(clip)を解除する)
         ctx.restore();
         // ***** Canvasの各種設定の初期化 *****
         init_canvas_setting(ctx, mode);
@@ -4183,7 +4184,8 @@ var SP_Interpreter;
             a4 = Math.trunc(param[3]); // H
 
             // ***** Canvasの各種設定のリセット *****
-            reset_canvas_setting(ctx, 1); // clipを解除する方法がrestoreしかない
+            // (クリッピング(clip)を解除する)
+            reset_canvas_setting(ctx, 1);
 
             ctx.beginPath();
             ctx.rect(a1, a2, a3, a4);
@@ -5710,6 +5712,7 @@ var SP_Interpreter;
             }
             disp_softkeys();
             // ***** Canvasの各種設定のリセット *****
+            // (クリッピング(clip)を解除する)
             reset_canvas_setting(ctx1, 0);
             return nothing;
         });
@@ -5953,6 +5956,7 @@ var SP_Interpreter;
                 throw new Error("Image変数 '" + a1 + "' は作成されていません。");
             }
             // ***** Canvasの各種設定のリセット *****
+            // (クリッピング(clip)を解除する)
             reset_canvas_setting(ctx, 0);
             return nothing;
         });
