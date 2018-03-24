@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2018-3-20 v15.04
+// 2018-3-24 v15.05
 
 
 // SPALM Web Interpreter
@@ -1771,7 +1771,7 @@ var SP_Interpreter;
                 loc_flag = (tok.charAt(0) == "l");
                 while (i < tok_end) {
                     // ***** ローカル文フラグON *****
-                    if (use_local_vars && loc_flag) { locstatement_flag = true; }
+                    if (loc_flag) { locstatement_flag = true; }
                     // ***** 因子のコンパイル *****
                     j = code_len + 1;
                     i = c_factor(i, tok_end);
@@ -1785,7 +1785,7 @@ var SP_Interpreter;
                         }
                     }
                     // ***** ローカル文フラグOFF *****
-                    if (use_local_vars && loc_flag) { locstatement_flag = false; }
+                    if (loc_flag) { locstatement_flag = false; }
                     // ***** カンマ区切りのチェック *****
                     if (token[i] == ",") { i++; } else { break; }
                 }
@@ -1817,9 +1817,7 @@ var SP_Interpreter;
                 // ***** 関数名の設定 *****
                 code_push('"' + func_name + '"', debugpos1, i);
                 // ***** ローカル変数名情報を1個生成する *****
-                if (use_local_vars) {
-                    locvarnames_stack.push({});
-                }
+                if (use_local_vars) { locvarnames_stack.push({}); }
                 // ***** 仮引数の取得 *****
                 token_match("(", i++);
                 if (token[i] == ")") {
@@ -1845,9 +1843,7 @@ var SP_Interpreter;
                 code_push("funcend", debugpos1, i);
                 i = func_end;
                 // ***** ローカル変数名情報を1個削除する *****
-                if (use_local_vars) {
-                    locvarnames_stack.pop();
-                }
+                if (use_local_vars) { locvarnames_stack.pop(); }
                 continue;
             }
 
@@ -2631,14 +2627,18 @@ var SP_Interpreter;
     }
 
     // ***** 変数名のコンパイル *****
-    // (var_arg_flag  変数が関数の仮引数かどうか)
-    function c_varname(tok_start, tok_end, var_arg_flag) {
+    // (var_arg_flag  変数が関数の仮引数かどうか
+    //  pre_type      グローバル/ローカル変数の明示指定
+    //                (=0:指定なし,=1:ローカル変数,=2:グローバル変数))
+    function c_varname(tok_start, tok_end, var_arg_flag, pre_type) {
         var i;
+        var ch;
         var var_name;
         var loc_flag;
 
         // ***** 引数のチェック *****
         if (var_arg_flag == null) { var_arg_flag = false; }
+        if (pre_type == null) { pre_type = 0; }
         // ***** 変数名の取得 *****
         i = tok_start;
         // debugpos1 = i;
@@ -2648,11 +2648,12 @@ var SP_Interpreter;
         if (var_name == "*") {
             if (token[i] == "(") {
                 i++;
-                i = c_varname(i, tok_end, var_arg_flag);
+                i = c_varname(i, tok_end, var_arg_flag, pre_type);
                 token_match(")", i++);
             } else {
-                i = c_varname(i, tok_end, var_arg_flag);
+                i = c_varname(i, tok_end, var_arg_flag, pre_type);
             }
+            // ***** 関数の仮引数でないとき *****
             if (!var_arg_flag) {
                 // ***** ポインタの設定 *****
                 code_push("pointer", debugpos1, i);
@@ -2667,43 +2668,49 @@ var SP_Interpreter;
             }
             return i;
         }
-        // ***** グローバル/ローカル変数の指定のチェック *****
-        loc_flag = false;
+        // ***** グローバル/ローカル変数の明示指定ありのとき *****
+        // (再帰的にコンパイルする)
         if (var_name == "global" || var_name == "glb" || var_name == "local" || var_name == "loc") {
-            loc_flag = (var_name.charAt(0) == "l");
-            var_name = token[i++];
-            checkvarname(var_name, i);
+            pre_type = (var_name.charAt(0) == "l") ? 1 : 2;
+            i = c_varname(i, tok_end, var_arg_flag, pre_type);
+            return i;
+        }
+        // ***** 変数名のチェック *****
+        ch = var_name.charAt(0);
+        if (!isName1(ch)) {
+            debugpos2 = i;
+            throw new Error("変数名が不正です。('" + var_name + "')");
+        }
+        if (reserved.hasOwnProperty(var_name) ||
+            func_tbl.hasOwnProperty(var_name)) {
+            debugpos2 = i;
+            throw new Error("名前 '" + var_name + "' は予約されているため、変数名には使用できません。");
+        }
+        // ***** ローカル変数のチェック *****
+        // (グローバル変数の明示指定なし、かつ、ローカル変数名情報が存在し、かつ、
+        //  「ローカル変数の明示指定あり、または、ローカル文である、または
+        //    ローカル変数名情報に登録済みである、または、関数の仮引数である」
+        //  場合には、ローカル変数とする)
+        if (pre_type != 2 && locvarnames_stack.length > 0 &&
+            (pre_type == 1 || locstatement_flag ||
+             hasOwn.call(locvarnames_stack[locvarnames_stack.length - 1], var_name) ||
+             var_arg_flag)) {
+            loc_flag = true;
         } else {
-            checkvarname(var_name, i);
-            if (!var_arg_flag) {
-                // ***** ローカル文フラグのチェック *****
-                // ***** ローカル変数名情報のチェック *****
-                if (use_local_vars &&
-                    (locstatement_flag ||
-                     (locvarnames_stack.length > 0 &&
-                      hasOwn.call(locvarnames_stack[locvarnames_stack.length - 1], var_name)))) {
-                    loc_flag = true;
-                }
-            } else {
-                // ***** 関数の仮引数のとき *****
-                // (デフォルトでローカル変数とする)
-                loc_flag = true;
-            }
+            loc_flag = false;
         }
         // ***** ローカル文フラグOFF *****
-        if (use_local_vars && locstatement_flag) { locstatement_flag = false; }
+        // (loc y=x のような 代入を持つ宣言に対応するために、
+        //  ここでもOFFにする必要がある)
+        if (locstatement_flag) { locstatement_flag = false; }
         // ***** ローカル変数名情報の更新 *****
-        if (use_local_vars && loc_flag &&
-            (locvarnames_stack.length > 0 &&
-             !hasOwn.call(locvarnames_stack[locvarnames_stack.length - 1], var_name))) {
+        if (loc_flag && locvarnames_stack.length > 0 &&
+            !hasOwn.call(locvarnames_stack[locvarnames_stack.length - 1], var_name)) {
             locvarnames_stack[locvarnames_stack.length - 1][var_name] = true;
         }
         // ***** モジュール名の追加 *****
         // (ローカル変数のときは追加しない)
-        // if (!use_local_vars || (use_local_vars && !loc_flag)) {
-        if (!(use_local_vars && loc_flag)) {
-            var_name = add_module_name(var_name);
-        }
+        if (!loc_flag) { var_name = add_module_name(var_name); }
         // ***** 変数名の設定 *****
         code_push("push", debugpos1, i);
         // code_push('"' + var_name + '"', debugpos1, i);
@@ -2718,25 +2725,6 @@ var SP_Interpreter;
         }
         // ***** 戻り値を返す *****
         return i;
-    }
-
-    // ***** 変数名のチェック *****
-    function checkvarname(var_name, tok_start) {
-        var i;
-        var ch;
-
-        // ***** 変数名のチェック *****
-        i = tok_start;
-        ch = var_name.charAt(0);
-        if (!isName1(ch)) {
-            debugpos2 = i;
-            throw new Error("変数名が不正です。('" + var_name + "')");
-        }
-        if (reserved.hasOwnProperty(var_name) ||
-            func_tbl.hasOwnProperty(var_name)) {
-            debugpos2 = i;
-            throw new Error("名前 '" + var_name + "' は予約されているため、変数名には使用できません。");
-        }
     }
 
     // ***** ラベル名のコンパイル *****
@@ -3930,7 +3918,7 @@ var SP_Interpreter;
     //                     =1:内部変数は初期化しない))
     function reset_canvas_setting(ctx, mode) {
         // ***** 前回状態に復帰 *****
-        // (クリッピング(clip)を解除する)
+        // (クリッピング領域の設定も解除する)
         ctx.restore();
         // ***** Canvasの各種設定の初期化 *****
         init_canvas_setting(ctx, mode);
@@ -4184,7 +4172,7 @@ var SP_Interpreter;
             a4 = Math.trunc(param[3]); // H
 
             // ***** Canvasの各種設定のリセット *****
-            // (クリッピング(clip)を解除する)
+            // (クリッピング領域の設定も解除する)
             reset_canvas_setting(ctx, 1);
 
             ctx.beginPath();
@@ -4308,6 +4296,8 @@ var SP_Interpreter;
             // の順に実行すると、Canvas の表示が更新されない状態になる。
             // このとき、HTML上で何か表示を変更すると、復旧する。
             // (Intel HD Graphics 5500 で確認)
+            // (本不具合は、Chrome v57 のマイナーバージョンアップ(v57.0.2987.133)で
+            //  修正されたが、しばらく対策は残しておく)
             a1 = document.getElementById("draw_fix1").textContent;
             document.getElementById("draw_fix1").textContent = (a1 != ".") ? "." : "";
             return nothing;
@@ -5712,7 +5702,7 @@ var SP_Interpreter;
             }
             disp_softkeys();
             // ***** Canvasの各種設定のリセット *****
-            // (クリッピング(clip)を解除する)
+            // (クリッピング領域の設定も解除する)
             reset_canvas_setting(ctx1, 0);
             return nothing;
         });
@@ -5956,7 +5946,7 @@ var SP_Interpreter;
                 throw new Error("Image変数 '" + a1 + "' は作成されていません。");
             }
             // ***** Canvasの各種設定のリセット *****
-            // (クリッピング(clip)を解除する)
+            // (クリッピング領域の設定も解除する)
             reset_canvas_setting(ctx, 0);
             return nothing;
         });
