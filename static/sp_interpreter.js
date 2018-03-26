@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2018-3-25 v15.06
+// 2018-3-26 v15.07
 
 
 // SPALM Web Interpreter
@@ -550,21 +550,18 @@ var SP_Interpreter;
 
     var phone_key_code = {      // 携帯のキーコードに変換するテーブル
         // [0]-[9] (テンキーも含める)
-        48:  1      , 49: (1 << 1), 50: (1 << 2), 51: (1 << 3), 52: (1 << 4),
-        53: (1 << 5), 54: (1 << 6), 55: (1 << 7), 56: (1 << 8), 57: (1 << 9),
-        96:  1      , 97: (1 << 1), 98: (1 << 2), 99: (1 << 3), 100:(1 << 4),
-        101:(1 << 5), 102:(1 << 6), 103:(1 << 7), 104:(1 << 8), 105:(1 << 9),
+        48: (1 << 0),  49: (1 << 1),  50: (1 << 2),  51: (1 << 3),  52: (1 << 4),
+        53: (1 << 5),  54: (1 << 6),  55: (1 << 7),  56: (1 << 8),  57: (1 << 9),
+        96: (1 << 0),  97: (1 << 1),  98: (1 << 2),  99: (1 << 3),  100:(1 << 4),
+        101:(1 << 5),  102:(1 << 6),  103:(1 << 7),  104:(1 << 8),  105:(1 << 9),
         // [*][#] は [z][x] にする
-        90:(1 << 10), 88:(1 << 11),
+        90: (1 << 10), 88: (1 << 11),
         // [←][↑][→][↓]
-        37:(1 << 13), // 12ではないので注意
-        38:(1 << 12), // 13ではないので注意
-        39:(1 << 14),
-        40:(1 << 15),
+        37: (1 << 13), 38: (1 << 12), 39: (1 << 14), 40: (1 << 15),
         // 決定ボタン は スペースキーとEnterキーとCtrlキー にする
-        32:(1 << 16), 13:(1 << 16), 17:(1 << 16),
+        32: (1 << 16), 13: (1 << 16), 17: (1 << 16),
         // [Soft1][Soft2] は [c][v] にする
-        67:(1 << 17), 86:(1 << 18) };
+        67: (1 << 17), 86: (1 << 18) };
 
     var opcode = {              // スタックマシンの命令コード
         push:1,        pop:2,         dup:3,         push0:4,       push1:5,
@@ -1041,10 +1038,8 @@ var SP_Interpreter;
                     stack.pop();
                     break;
                 case 3: // dup
-                    // num = stack.pop();
-                    // stack.push(num);
-                    // stack.push(num);
-                    num = stack[stack.length - 1];
+                    num = stack.pop();
+                    stack.push(num);
                     stack.push(num);
                     break;
                 case 4: // push0
@@ -1061,7 +1056,7 @@ var SP_Interpreter;
                     break;
                 case 7: // address
                     var_info = stack.pop();
-                    if (use_local_vars && !(var_info.kind & 2)) {
+                    if (!(var_info.kind & 2)) {
                         // ***** 変数情報のスコープを有効化 *****
                         // (変数情報を変更する場合は複製が必要)
                         var_info2 = make_var_info((var_info.kind | 2), var_info.name,
@@ -1278,12 +1273,12 @@ var SP_Interpreter;
                     break;
                 case 42: // switchgoto
                     num2 = stack.pop();
-                    num = stack[stack.length - 1]; // 条件不成立時は式の値を残す
+                    num = stack.pop();
                     if (num == num2) {
-                        stack.pop();
                         pc = code[pc];
                         break;
                     }
+                    stack.push(num); // 条件不成立時は式の値を残す
                     pc++;
                     break;
                 case 43: // gosub
@@ -2687,8 +2682,8 @@ var SP_Interpreter;
             throw new Error("名前 '" + var_name + "' は予約されているため、変数名には使用できません。");
         }
         // ***** ローカル変数のチェック *****
-        // (グローバル変数の明示指定なし、かつ、ローカル変数名情報が存在し、かつ、
-        //  「ローカル変数の明示指定あり、または、ローカル文である、または
+        // (グローバル変数の明示指定なし、かつ、ローカル変数名情報が存在する、かつ、
+        //  「ローカル変数の明示指定あり、または、ローカル文である、または、
         //    ローカル変数名情報に登録済みである、または、関数の仮引数である」
         //  場合には、ローカル変数とする)
         if (pre_type != 2 && locvarnames_stack.length > 0 &&
@@ -3445,8 +3440,6 @@ var SP_Interpreter;
 
         // ***** グローバル/ローカル変数のスコープ番号の取得(内部処理用) *****
         function get_scope_no(var_info) {
-            // ***** ローカル変数未使用のとき *****
-            if (!use_local_vars) { return 0; }
             // ***** 変数情報のスコープ番号が有効のとき *****
             if (var_info.kind & 2) {
                 if (var_info.scope > local_scope_num) {
@@ -3460,7 +3453,6 @@ var SP_Interpreter;
         // ***** 配列変数の一括操作(内部処理用) *****
         var controlArray = (function () {
             var f;
-
             if (Object.keys && Array.prototype.filter && Array.prototype.forEach) {
                 f = function (now_vars, var_name, var_name_len, func) {
                     Object.keys(now_vars).filter(function (v) {
@@ -3523,6 +3515,7 @@ var SP_Interpreter;
         // ***** 全変数を削除する(staticメソッド) *****
         Vars.clearVars = function () {
             var i;
+
             for (i = 0; i <= local_scope_num; i++) {
                 // vars_stack[i] = {};
                 vars_stack[i] = hashInit();
@@ -3602,7 +3595,6 @@ var SP_Interpreter;
         };
         // ***** 配列変数の一括コピー(staticメソッド) *****
         Vars.copyArray = function (var_info, var_info2) {
-            var i;
             var now_vars;
             var now_vars2;
             var var_name;
@@ -3618,8 +3610,7 @@ var SP_Interpreter;
 
             // ***** コピー元とコピー先の配列変数名が一致するときはエラーにする *****
             // (例えば、a[]をa[1][]にコピーすると無限ループのおそれがある)
-            i = var_name2.indexOf(var_name);
-            if (i == 0) {
+            if (var_name2.indexOf(var_name) == 0) {
                 var_name = var_name.substring(0, var_name.length - 1);
                 throw new Error("コピー元とコピー先の配列変数名が同一です。('" + var_name + "')");
             }
@@ -3659,7 +3650,8 @@ var SP_Interpreter;
         // ***** IE8対策 *****
         ev = ev || window.event;
         key_code = ev.keyCode;
-        // ***** プログラムの実行中は ブラウザのスクロール等を抑制する *****
+        // ***** プログラム実行中のとき *****
+        // (ブラウザのスクロール等を抑制する)
         if (running_flag) {
             // ***** スペース/矢印/PageUp/PageDown/Home/Endキーを無効化 *****
             if (key_code >= 32 && key_code <= 40) {
@@ -3685,7 +3677,8 @@ var SP_Interpreter;
             }
         }
         // ***** スペースキーのとき *****
-        // スペースキーを上で無効化したためkeypressが発生しないので、ここで処理する
+        // (スペースキーを上で無効化しており keypress が発生しないので、
+        //  ここで処理する)
         if (key_code == 32) {
             key_press_code = 32;
             // ***** キー入力バッファ2に追加 *****
@@ -3732,8 +3725,8 @@ var SP_Interpreter;
             run_continuously();
         }
     }
-    // ダイアログを表示するとkeyupが発生しないことがあるので、
-    // この関数を呼んでクリア可能とする
+    // (ダイアログを表示するとkeyupが発生しないことがあるので、
+    //  この関数を呼んでクリア可能とする)
     function keyclear() {
         var key_code;
 
@@ -3765,7 +3758,8 @@ var SP_Interpreter;
         getmousepos(ev);
     }
     function mousedown_canvas(ev) {
-        // ***** プログラムの実行中は Canvas内でのマウスの機能(領域選択等)を抑制する *****
+        // ***** プログラム実行中のとき *****
+        // (Canvas内でのマウスの機能(領域選択等)を抑制する)
         if (running_flag) {
             // ***** IE8対策 *****
             if (ev.preventDefault) { ev.preventDefault(); } else { ev.returnValue = false; }
@@ -3798,7 +3792,8 @@ var SP_Interpreter;
         mousey = -10000;
     }
     function contextmenu_canvas(ev) {
-        // ***** プログラムの実行中は Canvas内でのマウスの機能(メニュー表示等)を抑制する *****
+        // ***** プログラム実行中のとき *****
+        // (Canvas内でのマウスの機能(メニュー表示等)を抑制する)
         if (running_flag) {
             // ***** IE8対策 *****
             if (ev.preventDefault) { ev.preventDefault(); } else { ev.returnValue = false; }
@@ -3814,9 +3809,9 @@ var SP_Interpreter;
         mousex = ev.clientX - rect.left;
         mousey = ev.clientY - rect.top;
     }
-    // マウスカーソルが画面外に出たり ダイアログを表示すると、
-    // mouseupが発生しないことがあるので、
-    // この関数を呼んでクリア可能とする
+    // (マウスカーソルが画面外に出たり ダイアログを表示すると
+    //  mouseupが発生しないことがあるので、
+    //  この関数を呼んでクリア可能とする)
     function mousebuttonclear() {
         var btn_code;
 
