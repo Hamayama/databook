@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2018-3-26 v15.07
+// 2018-4-6 v15.08
 
 
 // SPALM Web Interpreter
@@ -1812,7 +1812,8 @@ var SP_Interpreter;
                 // ***** 関数名の設定 *****
                 code_push('"' + func_name + '"', debugpos1, i);
                 // ***** ローカル変数名情報を1個生成する *****
-                if (use_local_vars) { locvarnames_stack.push({}); }
+                // if (use_local_vars) { locvarnames_stack.push({}); }
+                if (use_local_vars) { locvarnames_stack.push(hashInit()); }
                 // ***** 仮引数の取得 *****
                 token_match("(", i++);
                 if (token[i] == ")") {
@@ -2622,18 +2623,18 @@ var SP_Interpreter;
     }
 
     // ***** 変数名のコンパイル *****
-    // (var_arg_flag  変数が関数の仮引数かどうか
-    //  pre_type      グローバル/ローカル変数の明示指定
-    //                (=0:指定なし,=1:ローカル変数,=2:グローバル変数))
-    function c_varname(tok_start, tok_end, var_arg_flag, pre_type) {
+    // (arg_flag  関数の仮引数フラグ
+    //  var_type  グローバル/ローカル変数の明示指定
+    //              (=0:指定なし,=1:ローカル変数,=2:グローバル変数))
+    function c_varname(tok_start, tok_end, arg_flag, var_type) {
         var i;
         var ch;
         var var_name;
         var loc_flag;
 
         // ***** 引数のチェック *****
-        if (var_arg_flag == null) { var_arg_flag = false; }
-        if (pre_type == null) { pre_type = 0; }
+        if (arg_flag == null) { arg_flag = false; }
+        if (var_type == null) { var_type = 0; }
         // ***** 変数名の取得 *****
         i = tok_start;
         // debugpos1 = i;
@@ -2643,13 +2644,13 @@ var SP_Interpreter;
         if (var_name == "*") {
             if (token[i] == "(") {
                 i++;
-                i = c_varname(i, tok_end, var_arg_flag, pre_type);
+                i = c_varname(i, tok_end, arg_flag, var_type);
                 token_match(")", i++);
             } else {
-                i = c_varname(i, tok_end, var_arg_flag, pre_type);
+                i = c_varname(i, tok_end, arg_flag, var_type);
             }
             // ***** 関数の仮引数でないとき *****
-            if (!var_arg_flag) {
+            if (!arg_flag) {
                 // ***** ポインタの設定 *****
                 code_push("pointer", debugpos1, i);
                 // ***** 配列変数のとき *****
@@ -2666,8 +2667,8 @@ var SP_Interpreter;
         // ***** グローバル/ローカル変数の明示指定ありのとき *****
         // (再帰的にコンパイルする)
         if (var_name == "global" || var_name == "glb" || var_name == "local" || var_name == "loc") {
-            pre_type = (var_name.charAt(0) == "l") ? 1 : 2;
-            i = c_varname(i, tok_end, var_arg_flag, pre_type);
+            var_type = (var_name.charAt(0) == "l") ? 1 : 2;
+            i = c_varname(i, tok_end, arg_flag, var_type);
             return i;
         }
         // ***** 変数名のチェック *****
@@ -2685,11 +2686,11 @@ var SP_Interpreter;
         // (グローバル変数の明示指定なし、かつ、ローカル変数名情報が存在する、かつ、
         //  「ローカル変数の明示指定あり、または、ローカル文である、または、
         //    ローカル変数名情報に登録済みである、または、関数の仮引数である」
-        //  場合には、ローカル変数とする)
-        if (pre_type != 2 && locvarnames_stack.length > 0 &&
-            (pre_type == 1 || locstatement_flag ||
-             hasOwn.call(locvarnames_stack[locvarnames_stack.length - 1], var_name) ||
-             var_arg_flag)) {
+        //  場合に、ローカル変数とする)
+        if (var_type != 2 && locvarnames_stack.length > 0 &&
+            (var_type == 1 || locstatement_flag ||
+             locvarnames_stack[locvarnames_stack.length - 1][var_name] != null ||
+             arg_flag)) {
             loc_flag = true;
         } else {
             loc_flag = false;
@@ -2700,7 +2701,7 @@ var SP_Interpreter;
         if (locstatement_flag) { locstatement_flag = false; }
         // ***** ローカル変数名情報の更新 *****
         if (loc_flag && locvarnames_stack.length > 0 &&
-            !hasOwn.call(locvarnames_stack[locvarnames_stack.length - 1], var_name)) {
+            locvarnames_stack[locvarnames_stack.length - 1][var_name] == null) {
             locvarnames_stack[locvarnames_stack.length - 1][var_name] = true;
         }
         // ***** モジュール名の追加 *****
