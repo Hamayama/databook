@@ -16,7 +16,7 @@ handlers:
 
 #- url: /static/?
 #  static_files: static/index.html
-#  upload: static/index.html
+#  upload: static/index\.html
 #  secure: always
 
 - url: /static
