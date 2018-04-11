@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2018-4-6 v15.08
+// 2018-4-11 v15.09
 
 
 // SPALM Web Interpreter
@@ -490,9 +490,10 @@ var SP_Interpreter;
     var end_token_num = 4;      // 終端のトークン数
 
     var pc;                     // プログラムカウンタ
-    var debugpc;                // エラーの場所
+    var debugpc;                // デバッグ用プログラムカウンタ(エラーの位置を示す)
+    var exec_flag;              // 実行フラグ
     var end_flag;               // 終了フラグ
-    var running_flag = false;   // 実行中フラグ
+    var running_flag = false;   // 実行中フラグ(GUI用)
     var loading_mode = 0;       // ロード中モード(=0:非ロード中,=1:ロード中,=2:ロード完了)
     var debug_mode = 0;         // デバッグモード(=0:通常モード,=1:デバッグモード)
     var debugpos1;              // デバッグ位置1
@@ -503,9 +504,8 @@ var SP_Interpreter;
     var sleep_data = {};        // スリープ時間調整用(連想配列オブジェクト)
     var loop_time_max = 3000;   // 最大ループ時間(msec)(これ以上時間がかかったらエラーとする)
     var loop_time_start;        // ループ開始時間(msec)
-    var loop_time_count;        // ループ経過時間(msec)
-    var loop_nocount_flag1;     // ループ時間ノーカウントフラグ1(ダイアログや時間のかかる処理用)
-    var loop_nocount_flag2;     // ループ時間ノーカウントフラグ2(dbgloopset用)
+    var loop_nocount_flag;      // ループ時間ノーカウントフラグ(ダイアログや時間のかかる処理用)
+    var loop_nocount_extend;    // ループ時間ノーカウント延長フラグ(dbgloopset用)
     var input_flag;             // キー入力待ちフラグ1(携帯互換用)
     var keyinput_flag;          // キー入力待ちフラグ2(PC用)
     var func_back = [];         // 関数の呼び出し元のスタック(配列)
@@ -713,7 +713,7 @@ var SP_Interpreter;
 
     // ***** 停止 *****
     function stop() {
-        end_flag = true;
+        set_end_flag(true);
         if (sleep_id != null) {
             clearTimeout(sleep_id);
             run_continuously();
@@ -917,12 +917,12 @@ var SP_Interpreter;
         param = [];
         pc = 0;
         debugpc = 0;
-        end_flag = false;
+        set_end_flag(false);
         running_flag = true; runstatchanged();
-        sleep_flag = false;
+        set_sleep_flag(false);
         sleep_data = {};
-        loop_nocount_flag1 = false;
-        loop_nocount_flag2 = false;
+        loop_nocount_flag = false;
+        loop_nocount_extend = false;
         input_flag = false;
         keyinput_flag = false;
         func_back = [];
@@ -960,7 +960,7 @@ var SP_Interpreter;
             execcode();
             // ***** スリープおよび継続実行(再帰的に実行) *****
             if (sleep_flag) {
-                sleep_flag = false;
+                set_sleep_flag(false);
                 if (!end_flag) {
                     sleep_id = setTimeout(run_continuously, sleep_time);
                     return false;
@@ -1018,12 +1018,13 @@ var SP_Interpreter;
         var func_body;
         var func_name;
         var func_start;
-        var time_cnt;
+        var loop_count;
+        var time_diff;
 
         // ***** コード実行のループ *****
         loop_time_start = Date.now();
-        time_cnt = 10;
-        while (!(end_flag || sleep_flag)) {
+        loop_count = 10;
+        while (exec_flag) {
             // ***** コードを取り出す *****
             debugpc = pc;
             cod = code[pc++];
@@ -1422,7 +1423,7 @@ var SP_Interpreter;
                     Vars.setVarValue(var_info, num);
                     break;
                 case 52: // end
-                    end_flag = true;
+                    set_end_flag(true);
                     break;
                 default:
                     // ***** 命令コードエラー *****
@@ -1430,21 +1431,21 @@ var SP_Interpreter;
                     // break;
             }
             // ***** 各種フラグのチェックと処理時間の測定 *****
-            if (loop_nocount_flag1) {
-                // (ループ時間ノーカウントフラグ2がOFFのときは、処理時間の測定をリセットする)
-                if (!loop_nocount_flag2) {
-                    loop_nocount_flag1 = false;
+            if (loop_nocount_flag) {
+                // (ループ時間ノーカウント延長フラグがOFFならば、処理時間の測定をリセットする)
+                if (!loop_nocount_extend) {
+                    loop_nocount_flag = false;
                     // loop_time_start = new Date().getTime();
                     loop_time_start = Date.now();
                 }
             } else {
                 // (Date.now()が遅かったので10回に1回だけ測定する)
-                time_cnt--;
-                if (time_cnt <= 0) {
-                    time_cnt = 10;
-                    // loop_time_count = new Date().getTime() - loop_time_start;
-                    loop_time_count = Date.now() - loop_time_start;
-                    if (loop_time_count >= loop_time_max) {
+                loop_count--;
+                if (loop_count <= 0) {
+                    loop_count = 10;
+                    // time_diff = new Date().getTime() - loop_time_start;
+                    time_diff = Date.now() - loop_time_start;
+                    if (time_diff >= loop_time_max) {
                         throw new Error("処理時間オーバーです(" + loop_time_max + "msec以上ブラウザに制御が返らず)。ループ内でsleep関数の利用を検討ください。");
                     }
                 }
@@ -2689,6 +2690,8 @@ var SP_Interpreter;
         //  場合に、ローカル変数とする)
         if (var_type != 2 && locvarnames_stack.length > 0 &&
             (var_type == 1 || locstatement_flag ||
+             // locvarnames_stack[locvarnames_stack.length - 1].hasOwnProperty(var_name) ||
+             // hasOwn.call(locvarnames_stack[locvarnames_stack.length - 1], var_name) ||
              locvarnames_stack[locvarnames_stack.length - 1][var_name] != null ||
              arg_flag)) {
             loc_flag = true;
@@ -2701,6 +2704,8 @@ var SP_Interpreter;
         if (locstatement_flag) { locstatement_flag = false; }
         // ***** ローカル変数名情報の更新 *****
         if (loc_flag && locvarnames_stack.length > 0 &&
+            // !locvarnames_stack[locvarnames_stack.length - 1].hasOwnProperty(var_name)) {
+            // !hasOwn.call(locvarnames_stack[locvarnames_stack.length - 1], var_name)) {
             locvarnames_stack[locvarnames_stack.length - 1][var_name] == null) {
             locvarnames_stack[locvarnames_stack.length - 1][var_name] = true;
         }
@@ -3263,6 +3268,17 @@ var SP_Interpreter;
         return (i < name.length) ? name.substring(i) : name;
     }
 
+    // ***** 終了/スリープフラグ設定 *****
+    // (実行フラグにも反映する)
+    function set_end_flag(flg) {
+        end_flag = flg;
+        exec_flag = !flg;
+    }
+    function set_sleep_flag(flg) {
+        sleep_flag = flg;
+        exec_flag = !flg;
+    }
+
     // ***** エラー場所の表示 *****
     function show_err_place(debugpos1, debugpos2) {
         var i, msg;
@@ -3289,6 +3305,7 @@ var SP_Interpreter;
         var sort_func2 = function (a, b) { return ((a.v == b.v) ? 0 : (a.v < b.v) ? -1 : 1); };
 
         for (key in obj) {
+            // if (obj.hasOwnProperty(key)) {
             if (hasOwn.call(obj, key)) {
                 obj1 = {};
                 obj1.k = key;
@@ -4303,13 +4320,13 @@ var SP_Interpreter;
 
             a1 = Math.trunc(param[0]);
             if (a1 == 0) {
-                loop_nocount_flag1 = true;
-                // (ループ時間ノーカウントフラグ2をOFFにして、処理時間の測定をリセットする)
-                loop_nocount_flag2 = false;
+                loop_nocount_flag = true;
+                // (ループ時間ノーカウント延長フラグをOFFにして、処理時間の測定をリセットする)
+                loop_nocount_extend = false;
             } else {
-                loop_nocount_flag1 = true;
-                // (ループ時間ノーカウントフラグ2をONにして、ノーカウントの状態を延長する)
-                loop_nocount_flag2 = true;
+                loop_nocount_flag = true;
+                // (ループ時間ノーカウント延長フラグをONにして、ノーカウントの状態を延長する)
+                loop_nocount_extend = true;
             }
             return nothing;
         });
@@ -4938,13 +4955,13 @@ var SP_Interpreter;
             // ***** キー入力なしのとき *****
             if (repeat_flag) {
                 input_flag = true;
-                sleep_flag = true;
+                set_sleep_flag(true);
                 sleep_time = 1000;
                 return 0;
             }
             if (a1 > 0 && !input_flag) {
                 input_flag = true;
-                sleep_flag = true;
+                set_sleep_flag(true);
                 sleep_time = a1;
                 return 0;
             }
@@ -4970,7 +4987,7 @@ var SP_Interpreter;
             num = prompt(a1, a2) || ""; // nullのときは空文字列にする
             keyclear();
             mousebuttonclear();
-            loop_nocount_flag1 = true;
+            loop_nocount_flag = true;
             return num;
         });
         make_one_func_tbl("int", 1, [], function (param) {
@@ -5047,13 +5064,13 @@ var SP_Interpreter;
             // ***** キー入力なしのとき *****
             if (repeat_flag) {
                 keyinput_flag = true;
-                sleep_flag = true;
+                set_sleep_flag(true);
                 sleep_time = 1000;
                 return 0;
             }
             if (a1 > 0 && !keyinput_flag) {
                 keyinput_flag = true;
-                sleep_flag = true;
+                set_sleep_flag(true);
                 sleep_time = a1;
                 return 0;
             }
@@ -5368,7 +5385,7 @@ var SP_Interpreter;
             alert(a1);
             keyclear();
             mousebuttonclear();
-            loop_nocount_flag1 = true;
+            loop_nocount_flag = true;
             return nothing;
         });
         make_one_func_tbl("origin", 2, [], function (param) {
@@ -5728,7 +5745,7 @@ var SP_Interpreter;
             var a1;
 
             a1 = Math.trunc(param[0]);
-            sleep_flag = true;
+            set_sleep_flag(true);
             sleep_time = a1;
             return nothing;
         });
@@ -5757,7 +5774,7 @@ var SP_Interpreter;
                 sleep_time = a1;
             }
             sleep_data[a2] = t_new + sleep_time;
-            sleep_flag = true;
+            set_sleep_flag(true);
             return nothing;
         });
         make_one_func_tbl("soft1", 1, [], function (param) {
@@ -5983,7 +6000,7 @@ var SP_Interpreter;
             num = confirm(a1) ? "YES" : "NO";
             keyclear();
             mousebuttonclear();
-            loop_nocount_flag1 = true;
+            loop_nocount_flag = true;
             return num;
         });
         make_one_func_tbl("@", 1, [0], function (param) {
@@ -6048,7 +6065,7 @@ var SP_Interpreter;
     SP_Interpreter.get_imgvars = function () { return imgvars; };
     SP_Interpreter.get_font_size = function () { return font_size; };
     SP_Interpreter.set_color_val = function (v) { color_val = v; };
-    SP_Interpreter.set_loop_nocount = function () { loop_nocount_flag1 = true; };
+    SP_Interpreter.set_loop_nocount = function () { loop_nocount_flag = true; };
 
 
 })(SP_Interpreter || (SP_Interpreter = {}));
