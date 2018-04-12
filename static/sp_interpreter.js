@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2018-4-11 v15.09
+// 2018-4-12 v15.10
 
 
 // SPALM Web Interpreter
@@ -273,12 +273,9 @@ function load_textfile(fname, ok_func, ng_func) {
     // ***** IE11対策 *****
     // http_obj.open("GET", fname, true);
     try { http_obj.open("GET", fname, true); } catch (ex1) { ng_func("="); return false; }
-    // HTTP/1.0 における汎用のヘッダフィールド
+    // (キャッシュの無効化)
     http_obj.setRequestHeader("Pragma", "no-cache");
-    // HTTP/1.1 におけるキャッシュ制御のヘッダフィールド
     http_obj.setRequestHeader("Cache-Control", "no-cache");
-    // 指定日時以降に更新があれば内容を返し、更新がなければ304ステータスを返す
-    // ヘッダフィールド。古い日時を指定すれば、必ず内容を返す。
     http_obj.setRequestHeader("If-Modified-Since", "Thu, 01 Jun 1970 00:00:00 GMT");
     // ***** IE8対策 *****
     // http_obj.send(null);
@@ -952,8 +949,10 @@ var SP_Interpreter;
     // (本関数は再帰的に呼び出される)
     function run_continuously() {
         var name;
+        var err_flag;
 
         // ***** コード実行開始 *****
+        err_flag = false;
         sleep_id = null;
         try {
             // ***** コード実行 *****
@@ -967,26 +966,7 @@ var SP_Interpreter;
                 }
             }
         } catch (ex) {
-            // ***** プラグイン用の実行後処理 *****
-            for (name in after_run_funcs) {
-                if (after_run_funcs.hasOwnProperty(name)) {
-                    after_run_funcs[name]();
-                }
-            }
-            // ***** エラー表示 *****
-            debugpos1 = code_info[debugpc].pos1;
-            debugpos2 = code_info[debugpc].pos2;
-            DebugShow("execcode: " + ex.message + ": debugpos=" + debugpos1 + ", debugpc=" + debugpc + "\n");
-            show_err_place(debugpos1, debugpos2);
-            // ***** 終了処理 *****
-            running_flag = false; runstatchanged();
-            DebugShow("実行終了\n");
-            DebugShow("globalvars=" + sort_obj_tostr(Vars.getGlobalVars(), 1) + "\n");
-            DebugShow("localvars=" + sort_obj_tostr(Vars.getLocalVars(), 1) + "\n");
-            DebugShow("label=" + sort_obj_tostr(label, 2) + "\n");
-            DebugShow("func=" + sort_obj_tostr(func, 2) + "\n");
-            DebugShow("stack=" + JSON.stringify(stack) + "\n");
-            return false;
+            err_flag = true;
         }
         // ***** プラグイン用の実行後処理 *****
         for (name in after_run_funcs) {
@@ -994,17 +974,24 @@ var SP_Interpreter;
                 after_run_funcs[name]();
             }
         }
+        // ***** エラー表示 *****
+        if (err_flag) {
+            debugpos1 = code_info[debugpc].pos1;
+            debugpos2 = code_info[debugpc].pos2;
+            DebugShow("execcode: " + ex.message + ": debugpos=" + debugpos1 + ", debugpc=" + debugpc + "\n");
+            show_err_place(debugpos1, debugpos2);
+        }
         // ***** 終了処理 *****
         running_flag = false; runstatchanged();
         DebugShow("実行終了\n");
-        if (debug_mode == 1) {
+        if (err_flag || debug_mode == 1) {
             DebugShow("globalvars=" + sort_obj_tostr(Vars.getGlobalVars(), 1) + "\n");
             DebugShow("localvars=" + sort_obj_tostr(Vars.getLocalVars(), 1) + "\n");
             DebugShow("label=" + sort_obj_tostr(label, 2) + "\n");
             DebugShow("func=" + sort_obj_tostr(func, 2) + "\n");
             DebugShow("stack=" + JSON.stringify(stack) + "\n");
         }
-        return true;
+        return !err_flag;
     }
 
     // ***** コード実行 *****
@@ -3656,7 +3643,8 @@ var SP_Interpreter;
                 delete now_vars[v];
             });
         };
-        return Vars; // これがないとクラスが動かないので注意
+        // ***** 作成したクラスを返す *****
+        return Vars;
     })();
 
     // ***** GUI関連処理等 *****
@@ -6183,7 +6171,8 @@ var Download = (function () {
             return can.toDataURL("image/png").replace("image/png", "image/octet-stream");
         });
     };
-    return Download; // これがないとクラスが動かないので注意
+    // ***** 作成したクラスを返す *****
+    return Download;
 })();
 
 

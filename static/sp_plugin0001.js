@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_plugin0001.js
-// 2018-3-25 v15.06
+// 2018-4-12 v15.10
 
 
 // A Plugin for SPALM Web Interpreter
@@ -3277,7 +3277,8 @@ var DigitCalc = (function () {
         DigitCalc.updateDigitObjStr(z2);
         return true;
     };
-    return DigitCalc; // これがないとクラスが動かないので注意
+    // ***** 作成したクラスを返す *****
+    return DigitCalc;
 })();
 
 
@@ -3638,7 +3639,8 @@ var ConvZenHan = (function () {
         DakutenMarge["ヲ゛"] = "\u30FA";
         DakutenMarge["う゛"] = "\u3094";
     }
-    return ConvZenHan; // これがないとクラスが動かないので注意
+    // ***** 作成したクラスを返す *****
+    return ConvZenHan;
 })();
 
 
@@ -3836,7 +3838,8 @@ var FloodFill = (function () {
             seed_buf.push(seed_info);
         }
     }
-    return FloodFill; // これがないとクラスが動かないので注意
+    // ***** 作成したクラスを返す *****
+    return FloodFill;
 })();
 
 
@@ -3945,7 +3948,8 @@ var Missile = (function () {
             }
         }
     };
-    return Missile; // これがないとクラスが動かないので注意
+    // ***** 作成したクラスを返す *****
+    return Missile;
 })();
 
 
@@ -4798,7 +4802,8 @@ var MMLPlayer = (function () {
         // DebugShow(mml_st + "\n");
         return mml_st;
     };
-    return MMLPlayer; // これがないとクラスが動かないので注意
+    // ***** 作成したクラスを返す *****
+    return MMLPlayer;
 })();
 // ***** 起動直後は正常に動作しないことがあるためコメントアウト (Chrome v44) *****
 // // ***** 音楽中断 *****
@@ -5005,7 +5010,8 @@ var SandSim = (function () {
             this.ctx.fillRect(this.left + this.sand_buf[i].x, this.top + this.sand_buf[i].y, 1, 1);
         }
     };
-    return SandSim; // これがないとクラスが動かないので注意
+    // ***** 作成したクラスを返す *****
+    return SandSim;
 })();
 
 
