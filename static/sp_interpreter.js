@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2018-4-15 v16.00
+// 2018-4-15 v16.01
 
 
 // SPALM Web Interpreter
@@ -1953,10 +1953,12 @@ var SP_Interpreter;
                 // ***** コードの生成 *****
                 // 式
                 i = c_expression2(switch_exp, switch_stm - 3);
+                token_match(")", i++); // 式の終端チェック
                 for (switch_case_no = 0; switch_case_no < switch_case_exp.length; switch_case_no++) {
                     if (switch_case_stm[switch_case_no] == switch_default_stm) { continue; }
                     // (caseの式はカンマ区切りなし)
                     i = c_expression(switch_case_exp[switch_case_no], switch_case_stm[switch_case_no] - 2);
+                    token_match(":", i++); // 式の終端チェック
                     code_push("switchgoto", debugpos1, i);
                     code_push('"case' + switch_case_no + '\\' + j + '"', debugpos1, i);
                 }
@@ -2058,6 +2060,7 @@ var SP_Interpreter;
                 debugpos1 = j - 1; // エラー表示位置調整
                 // 式
                 i = c_expression2(if_exp, if_stm - 3);
+                token_match(")", i++); // 式の終端チェック
                 code_push("ifnotgoto", debugpos1, i);
                 if (elsif_exp.length > 0) {
                     code_push('"elsif0\\' + j + '"', debugpos1, i);
@@ -2079,6 +2082,7 @@ var SP_Interpreter;
                     code_push("label", debugpos1, i);
                     code_push('"elsif' + elsif_no + '\\' + j + '"', debugpos1, i);
                     i = c_expression2(elsif_exp[elsif_no], elsif_stm[elsif_no] - 3);
+                    token_match(")", i++); // 式の終端チェック
                     code_push("ifnotgoto", debugpos1, i);
                     if (elsif_exp.length > elsif_no + 1) {
                         code_push('"elsif' + (elsif_no + 1) + '\\' + j + '"', debugpos1, i);
@@ -2140,6 +2144,7 @@ var SP_Interpreter;
                 // 式1
                 if (for_exp1 < for_exp2 - 1) {
                     i = c_expression2(for_exp1, for_exp2 - 2);
+                    token_match(";", i++); // 式の終端チェック
                     code_push("pop", debugpos1, i);
                 }
                 // 式2 (空なら無限ループ)
@@ -2147,6 +2152,7 @@ var SP_Interpreter;
                 code_push('"for_exp2\\' + j + '"', debugpos1, i);
                 if (for_exp2 < for_exp3 - 1) {
                     i = c_expression2(for_exp2, for_exp3 - 2);
+                    token_match(";", i++); // 式の終端チェック
                     code_push("ifnotgoto", debugpos1, i);
                     code_push('"for_end\\' + j + '"', debugpos1, i);
                 }
@@ -2158,6 +2164,7 @@ var SP_Interpreter;
                 code_push('"for_exp3\\' + j + '"', debugpos1, i);
                 if (for_exp3 < for_stm - 2) {
                     i = c_expression2(for_exp3, for_stm - 3);
+                    token_match(")", i++); // 式の終端チェック
                     code_push("pop", debugpos1, i);
                 }
                 code_push("goto", debugpos1, i);
@@ -2196,6 +2203,7 @@ var SP_Interpreter;
                 code_push("label", debugpos1, i);
                 code_push('"while_exp\\' + j + '"', debugpos1, i);
                 i = c_expression2(while_exp, while_stm - 3);
+                token_match(")", i++); // 式の終端チェック
                 code_push("ifnotgoto", debugpos1, i);
                 code_push('"while_end\\' + j + '"', debugpos1, i);
                 // 文
@@ -2246,6 +2254,7 @@ var SP_Interpreter;
                 i = c_statement(do_stm, do_exp - 3, '"do_end\\' + j + '"', '"do_stm\\' + j + '"');
                 // 式
                 i = c_expression2(do_exp, do_end - 2);
+                token_match(")", i++); // 式の終端チェック
                 code_push("ifgoto", debugpos1, i);
                 code_push('"do_stm\\' + j + '"', debugpos1, i);
                 // 終了
@@ -3078,13 +3087,9 @@ var SP_Interpreter;
                     ch2 = src.charAt(i);
                     // ***** エスケープのとき *****
                     if (ch == "\\") {
-                        if (ch2 == "\\" || ch2 == '"') {
-                            i++;
-                            continue;
-                        } else {
-                            token_push('"', line_no_tk);
-                            throw new Error("文字列のエスケープエラー");
-                        }
+                        if (ch2 == "\\" || ch2 == '"') { i++; continue; }
+                        token_push('"', line_no_tk);
+                        throw new Error("文字列のエスケープエラー");
                     }
                     // ***** デリミタのとき *****
                     if (ch == '"') { break; }
