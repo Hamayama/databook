@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2018-4-12 v15.10
+// 2018-4-15 v16.00
 
 
 // SPALM Web Interpreter
@@ -966,6 +966,7 @@ var SP_Interpreter;
                 }
             }
         } catch (ex) {
+            // ***** エラー発生 *****
             err_flag = true;
         }
         // ***** プラグイン用の実行後処理 *****
@@ -1277,7 +1278,7 @@ var SP_Interpreter;
                     // ***** 関数内のとき *****
                     if (func_back.length > 0) {
                         // ***** ローカル変数のスコープを1個削除する *****
-                        if (use_local_vars) { Vars.deleteLocalScope(); }
+                        Vars.deleteLocalScope();
                         // ***** 呼び出し元に戻る *****
                         pc = func_back.pop();
                         break;
@@ -1302,7 +1303,7 @@ var SP_Interpreter;
                         // ***** 戻り値は0とする *****
                         stack.push(0);
                         // ***** ローカル変数のスコープを1個削除する *****
-                        if (use_local_vars) { Vars.deleteLocalScope(); }
+                        Vars.deleteLocalScope();
                         // ***** 呼び出し元に戻る *****
                         pc = func_back.pop();
                         break;
@@ -1354,7 +1355,7 @@ var SP_Interpreter;
                         param[i] = stack.pop(); // 逆順に格納
                     }
                     // ***** 関数名の取得 *****
-                    func_name = to_global(stack.pop());
+                    func_name = get_var_name(stack.pop());
                     // ***** 関数の存在チェック *****
                     // if (!func.hasOwnProperty(func_name)) {
                     // if (!hasOwn.call(func, func_name)) {
@@ -1363,7 +1364,7 @@ var SP_Interpreter;
                         throw new Error("関数 '" + func_name + "' の呼び出しに失敗しました(関数が未定義もしくはユーザ定義関数ではない等)。");
                     }
                     // ***** ローカル変数のスコープを1個生成する *****
-                    if (use_local_vars) { Vars.makeLocalScope(); }
+                    Vars.makeLocalScope();
                     // ***** 関数の呼び出し元を保存 *****
                     func_back.push(pc);
                     // ***** 関数の呼び出し *****
@@ -1378,7 +1379,7 @@ var SP_Interpreter;
                         param[i] = stack.pop(); // 逆順に格納
                     }
                     // ***** 関数名の取得 *****
-                    func_name = to_global(stack.pop());
+                    func_name = get_var_name(stack.pop());
                     // ***** 関数内のとき *****
                     if (func_back.length > 0) {
                         // ***** 関数の存在チェック *****
@@ -1390,7 +1391,7 @@ var SP_Interpreter;
                         }
                         // ***** コールスタックを増加させないで関数を呼び出す *****
                         // ***** ローカル変数を削除する *****
-                        if (use_local_vars) { Vars.clearLocalVars(); }
+                        Vars.clearLocalVars();
                         // ***** 関数の呼び出し *****
                         // pc = func[func_name];
                         pc = func_start;
@@ -1417,7 +1418,8 @@ var SP_Interpreter;
                     throw new Error("未定義の命令コード (" + code_tostr(cod, pc - 1) + ") が見つかりました。");
                     // break;
             }
-            // ***** 各種フラグのチェックと処理時間の測定 *****
+            // ***** 処理時間の測定とチェック *****
+            // (ループ時間ノーカウントフラグがONならば、処理時間を測定しない)
             if (loop_nocount_flag) {
                 // (ループ時間ノーカウント延長フラグがOFFならば、処理時間の測定をリセットする)
                 if (!loop_nocount_extend) {
@@ -1426,7 +1428,7 @@ var SP_Interpreter;
                     loop_time_start = Date.now();
                 }
             } else {
-                // (Date.now()が遅かったので10回に1回だけ測定する)
+                // (Date.now()が遅かったので、10回に1回だけ処理時間を測定する)
                 loop_count--;
                 if (loop_count <= 0) {
                     loop_count = 10;
@@ -3248,7 +3250,6 @@ var SP_Interpreter;
         /* その他のときはモジュール名と「#」を前に付ける */
         return module_name + "#" + name;
     }
-
     // ***** モジュール名の削除 *****
     function del_module_name(name) {
         var i = name.lastIndexOf("#") + 1;
@@ -3423,9 +3424,9 @@ var SP_Interpreter;
         // ***** NOP *****
         return var_info;
     }
-    // ***** グローバル変数化 *****
-    // (画像変数名や関数名に変換するときに使用)
-    function to_global(var_info) {
+    // ***** 変数名の取得 *****
+    // (画像変数名や関数名を取得するために使用する)
+    function get_var_name(var_info) {
         return var_info.name;
     }
 
@@ -3934,12 +3935,12 @@ var SP_Interpreter;
         // ***** 座標系の設定 *****
         // (拡大縮小 → 回転 → 平行移動 の順に実行する
         //  (Canvasのマトリックス計算は逆順に実行されるので注意))
-        ctx.translate( axis.originx,   axis.originy);  // 原点座標を平行移動
+        ctx.translate( axis.originx,   axis.originy);  // 平行移動
         ctx.translate( axis.rotateox,  axis.rotateoy); // 回転の中心座標を元に戻す
-        ctx.rotate(axis.rotate);                       // 回転の角度を指定
+        ctx.rotate(axis.rotate);                       // 回転
         ctx.translate(-axis.rotateox, -axis.rotateoy); // 回転の中心座標を移動
         ctx.translate( axis.scaleox,   axis.scaleoy);  // 拡大縮小の中心座標を元に戻す
-        ctx.scale(axis.scalex, axis.scaley);           // 拡大縮小の倍率を指定
+        ctx.scale(axis.scalex, axis.scaley);           // 拡大縮小
         ctx.translate(-axis.scaleox,  -axis.scaleoy);  // 拡大縮小の中心座標を移動
     }
     // ***** Canvasの座標変換 *****
@@ -3959,13 +3960,13 @@ var SP_Interpreter;
         y1 += axis.scaleoy;
         x1 -= axis.rotateox; // 回転の中心座標を移動
         y1 -= axis.rotateoy;
-        // ここでtを使わないと、計算結果がおかしくなるので注意
+        // (ここでtを使わないと、計算結果がおかしくなるので注意)
         t  = x1 * Math.cos(axis.rotate) - y1 * Math.sin(axis.rotate); // 回転
         y1 = x1 * Math.sin(axis.rotate) + y1 * Math.cos(axis.rotate);
         x1 = t;
         x1 += axis.rotateox; // 回転の中心座標を元に戻す
         y1 += axis.rotateoy;
-        x1 += axis.originx;  // 原点座標を平行移動
+        x1 += axis.originx;  // 平行移動
         y1 += axis.originy;
         x1 |= 0; // 整数化
         y1 |= 0; // 整数化
@@ -4446,7 +4447,7 @@ var SP_Interpreter;
         make_one_func_tbl("disimg", 1, [0], function (param) {
             var a1;
 
-            a1 = to_global(get_var_info(param[0])); // 画像変数名取得
+            a1 = get_var_name(param[0]); // 画像変数名取得
             // if (imgvars.hasOwnProperty(a1)) {
             if (hasOwn.call(imgvars, a1)) {
                 delete imgvars[a1];
@@ -4519,7 +4520,7 @@ var SP_Interpreter;
         make_one_func_tbl("drawarea", 7, [0], function (param) {
             var a1, a2, a3, a4, a5, a6, a7;
 
-            a1 = to_global(get_var_info(param[0])); // 画像変数名取得
+            a1 = get_var_name(param[0]); // 画像変数名取得
             a2 = Math.trunc(param[1]); // 先X
             a3 = Math.trunc(param[2]); // 先Y
             a4 = Math.trunc(param[3]); // 元X
@@ -4543,7 +4544,7 @@ var SP_Interpreter;
         make_one_func_tbl("drawimg", 4, [0], function (param) {
             var a1, a2, a3, a4;
 
-            a1 = to_global(get_var_info(param[0])); // 画像変数名取得
+            a1 = get_var_name(param[0]); // 画像変数名取得
             a2 = Math.trunc(param[1]); // X
             a3 = Math.trunc(param[2]); // Y
             a4 = Math.trunc(param[3]); // アンカー
@@ -4582,7 +4583,7 @@ var SP_Interpreter;
             var can0;
             var img_w, img_h;
 
-            a1 = to_global(get_var_info(param[0])); // 画像変数名取得
+            a1 = get_var_name(param[0]); // 画像変数名取得
             a2 = Math.trunc(param[1]); // 元X
             a3 = Math.trunc(param[2]); // 元Y
             a4 = Math.trunc(param[3]); // 元W
@@ -4667,7 +4668,7 @@ var SP_Interpreter;
         make_one_func_tbl("drawscaledimg", 9, [0], function (param) {
             var a1, a2, a3, a4, a5, a6, a7, a8, a9;
 
-            a1 = to_global(get_var_info(param[0])); // 画像変数名取得
+            a1 = get_var_name(param[0]); // 画像変数名取得
             a2 = Math.trunc(param[1]); // 先X
             a3 = Math.trunc(param[2]); // 先Y
             a4 = Math.trunc(param[3]); // 先W
@@ -4899,7 +4900,7 @@ var SP_Interpreter;
         make_one_func_tbl("imgheight", 1, [0], function (param) {
             var a1;
 
-            a1 = to_global(get_var_info(param[0])); // 画像変数名取得
+            a1 = get_var_name(param[0]); // 画像変数名取得
             // if (imgvars.hasOwnProperty(a1)) {
             if (hasOwn.call(imgvars, a1)) { return imgvars[a1].can.height; }
             return 0;
@@ -4907,7 +4908,7 @@ var SP_Interpreter;
         make_one_func_tbl("imgwidth", 1, [0], function (param) {
             var a1;
 
-            a1 = to_global(get_var_info(param[0])); // 画像変数名取得
+            a1 = get_var_name(param[0]); // 画像変数名取得
             // if (imgvars.hasOwnProperty(a1)) {
             if (hasOwn.call(imgvars, a1)) { return imgvars[a1].can.width; }
             return 0;
@@ -5122,7 +5123,7 @@ var SP_Interpreter;
             var img_w, img_h;
             var img_data = {};
 
-            a1 = to_global(get_var_info(param[0])); // 画像変数名取得
+            a1 = get_var_name(param[0]); // 画像変数名取得
             a2 = String(param[1]); // 画像データ文字列
             // ***** FlashCanvas用 *****
             if (!ctx.createImageData) { throw new Error("画像生成機能が利用できません。"); }
@@ -5186,7 +5187,7 @@ var SP_Interpreter;
             var a1, a2;
             var img_obj = {};
 
-            a1 = to_global(get_var_info(param[0])); // 画像変数名取得
+            a1 = get_var_name(param[0]); // 画像変数名取得
             a2 = String(param[1]); // 画像データ文字列(data URI scheme)
             // ***** Canvasの生成 *****
             imgvars[a1] = {};
@@ -5227,7 +5228,7 @@ var SP_Interpreter;
         make_one_func_tbl("loadimgstat", 1, [0], function (param) {
             var a1;
 
-            a1 = to_global(get_var_info(param[0])); // 画像変数名取得
+            a1 = get_var_name(param[0]); // 画像変数名取得
             // ***** 画像ロード中フラグをチェックして返す *****
             // if (imgvars.hasOwnProperty(a1)) {
             if (hasOwn.call(imgvars, a1)) {
@@ -5285,7 +5286,7 @@ var SP_Interpreter;
         make_one_func_tbl("makeimg", 3, [0], function (param) {
             var a1, a2, a3;
 
-            a1 = to_global(get_var_info(param[0])); // 画像変数名取得
+            a1 = get_var_name(param[0]); // 画像変数名取得
             a2 = Math.trunc(param[1]); // W
             a3 = Math.trunc(param[2]); // H
 
@@ -5935,7 +5936,7 @@ var SP_Interpreter;
         make_one_func_tbl("trgt", 1, [0], function (param) {
             var a1;
 
-            a1 = to_global(get_var_info(param[0])); // 画像変数名取得
+            a1 = get_var_name(param[0]); // 画像変数名取得
             if (del_module_name(a1) == "off") {
                 can = can1;
                 ctx = ctx1;
@@ -6041,7 +6042,7 @@ var SP_Interpreter;
     SP_Interpreter.Vars = Vars;
     SP_Interpreter.make_var_array = make_var_array;
     SP_Interpreter.get_var_info = get_var_info;
-    SP_Interpreter.to_global = to_global;
+    SP_Interpreter.get_var_name = get_var_name;
     SP_Interpreter.init_canvas_axis = init_canvas_axis;
     SP_Interpreter.set_canvas_axis = set_canvas_axis;
     SP_Interpreter.conv_axis_point = conv_axis_point;

@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_plugin0001.js
-// 2018-4-12 v15.10
+// 2018-4-15 v16.00
 
 
 // A Plugin for SPALM Web Interpreter
@@ -49,7 +49,7 @@ var SP_Plugin0001;
     var Vars = SP_Interpreter.Vars;
     var make_var_array = SP_Interpreter.make_var_array;
     var get_var_info = SP_Interpreter.get_var_info;
-    var to_global = SP_Interpreter.to_global;
+    var get_var_name = SP_Interpreter.get_var_name;
     var init_canvas_axis = SP_Interpreter.init_canvas_axis;
     var set_canvas_axis = SP_Interpreter.set_canvas_axis;
     var conv_axis_point = SP_Interpreter.conv_axis_point;
@@ -1110,7 +1110,7 @@ var SP_Plugin0001;
 
             a1 = Math.trunc(param[0]);
             a2 = String(param[1]);
-            a3 = to_global(get_var_info(param[2])); // 画像変数名取得
+            a3 = get_var_name(param[2]); // 画像変数名取得
             if (param.length <= 3) {
                 off_x = 0;
                 off_y = 0;
@@ -1238,7 +1238,7 @@ var SP_Plugin0001;
             var img_data = {};
             var imgvars = get_imgvars();
 
-            a1 = to_global(get_var_info(param[0])); // 画像変数名取得
+            a1 = get_var_name(param[0]); // 画像変数名取得
             a2 = Math.trunc(param[1]); // RGB
             if (param.length <= 2) {
                 a3 = 0;
