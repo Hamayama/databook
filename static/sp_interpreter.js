@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2018-4-15 v16.01
+// 2018-4-15 v16.02
 
 
 // SPALM Web Interpreter
@@ -966,21 +966,18 @@ var SP_Interpreter;
                 }
             }
         } catch (ex) {
-            // ***** エラー発生 *****
+            // ***** エラー処理 *****
             err_flag = true;
+            debugpos1 = code_info[debugpc].pos1;
+            debugpos2 = code_info[debugpc].pos2;
+            DebugShow("execcode: " + ex.message + ": debugpos=" + debugpos1 + ", debugpc=" + debugpc + "\n");
+            show_err_place(debugpos1, debugpos2);
         }
         // ***** プラグイン用の実行後処理 *****
         for (name in after_run_funcs) {
             if (after_run_funcs.hasOwnProperty(name)) {
                 after_run_funcs[name]();
             }
-        }
-        // ***** エラー表示 *****
-        if (err_flag) {
-            debugpos1 = code_info[debugpc].pos1;
-            debugpos2 = code_info[debugpc].pos2;
-            DebugShow("execcode: " + ex.message + ": debugpos=" + debugpos1 + ", debugpc=" + debugpc + "\n");
-            show_err_place(debugpos1, debugpos2);
         }
         // ***** 終了処理 *****
         running_flag = false; runstatchanged();
