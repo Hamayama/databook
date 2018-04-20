@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2018-4-15 v16.02
+// 2018-4-20 v16.03
 
 
 // SPALM Web Interpreter
@@ -1399,11 +1399,7 @@ var SP_Interpreter;
                     // break;
                 case 51: // loadparam
                     // ***** 引数の値を仮引数にセットする *****
-                    if (param.length > 0) {
-                        num = param.pop(); // 逆順に取得
-                    } else {
-                        num = 0;
-                    }
+                    num = (param.length > 0) ? param.pop() : 0; // 逆順に取得
                     var_info = stack.pop();
                     Vars.setVarValue(var_info, num);
                     break;
@@ -1619,17 +1615,17 @@ var SP_Interpreter;
         var func_name, func_stm, func_end;
         var param_num;
 
-        var switch_exp, switch_stm, switch_default_stm, switch_end;
-        var switch_case_no;
-        var switch_case_exp = [];
-        var switch_case_stm = [];
-        var switch_case_stm_end;
+        var switch_exp, switch_stm, default_stm, switch_end;
+        var case_no;
+        var case_exp = [];
+        var case_stm = [];
+        var case_stm_end;
 
-        var if_exp, if_stm, if_stm_end, else_stm, if_end;
-        var elsif_no;
-        var elsif_exp = [];
-        var elsif_stm = [];
-        var elsif_stm_end = [];
+        var if_no;
+        var if_exp = [];
+        var if_stm = [];
+        var if_stm_end = [];
+        var else_stm, if_end;
 
         var for_exp1, for_exp2, for_exp3, for_stm, for_end;
         var while_exp, while_stm, while_end;
@@ -1819,7 +1815,6 @@ var SP_Interpreter;
                 token_match("{", i++);
                 func_stm = i;
                 i = block_search(i, tok_end, "{", "}");
-                token_match("}", i++);
                 func_end = i;
                 // ***** 文(ステートメント)のコンパイル(再帰的に実行) *****
                 i = c_statement(func_stm, func_end - 1, "", "");
@@ -1905,14 +1900,13 @@ var SP_Interpreter;
                     throw new Error("switch文の条件式がありません。");
                 }
                 i = block_search(i, tok_end, "(", ")");
-                token_match(")", i++);
                 // 文
                 token_match("{", i++);
                 switch_stm = i;
                 k = 1;
-                switch_case_exp = [];
-                switch_case_stm = [];
-                switch_default_stm = -1;
+                case_exp = [];
+                case_stm = [];
+                default_stm = -1;
                 while (i < tok_end) {
                     if (token[i] == "{") { k++; }
                     if (token[i] == "}") { k--; }
@@ -1921,24 +1915,23 @@ var SP_Interpreter;
                         if (token[i] == "case") {
                             i++;
                             // 式
-                            switch_case_exp.push(i);
+                            case_exp.push(i);
                             if (token[i] == ":") {
                                 debugpos2 = i + 1;
-                                throw new Error("case文の値がありません。");
+                                throw new Error("caseの値がありません。");
                             }
                             i = block_search(i, tok_end, "?", ":");
-                            token_match(":", i++);
                             // 文
-                            switch_case_stm.push(i);
+                            case_stm.push(i);
                             continue;
                         }
                         if (token[i] == "default") {
                             i++;
-                            switch_case_exp.push(i); // caseの1個としても登録
+                            case_exp.push(i); // caseの1個としても登録
                             token_match(":", i++);
                             // 文
-                            switch_default_stm = i;
-                            switch_case_stm.push(i); // caseの1個としても登録
+                            default_stm = i;
+                            case_stm.push(i); // caseの1個としても登録
                             continue;
                         }
                     }
@@ -1949,38 +1942,38 @@ var SP_Interpreter;
                 switch_end = i;
                 // ***** コードの生成 *****
                 // 式
-                i = c_expression2(switch_exp, switch_stm - 3);
+                i = c_expression2(switch_exp, switch_stm - 2);
                 token_match(")", i++); // 式の終端チェック
-                for (switch_case_no = 0; switch_case_no < switch_case_exp.length; switch_case_no++) {
-                    if (switch_case_stm[switch_case_no] == switch_default_stm) { continue; }
+                for (case_no = 0; case_no < case_exp.length; case_no++) {
+                    if (case_stm[case_no] == default_stm) { continue; }
                     // (caseの式はカンマ区切りなし)
-                    i = c_expression(switch_case_exp[switch_case_no], switch_case_stm[switch_case_no] - 2);
+                    i = c_expression(case_exp[case_no], case_stm[case_no] - 1);
                     token_match(":", i++); // 式の終端チェック
                     code_push("switchgoto", debugpos1, i);
-                    code_push('"case' + switch_case_no + '\\' + j + '"', debugpos1, i);
+                    code_push('"case' + case_no + '\\' + j + '"', debugpos1, i);
                 }
                 code_push("pop", debugpos1, i); // 式の値を捨てる
                 code_push("goto", debugpos1, i);
-                if (switch_default_stm >= 0) {
+                if (default_stm >= 0) {
                     code_push('"default\\' + j + '"', debugpos1, i);
                 } else {
                     code_push('"switch_end\\' + j + '"', debugpos1, i);
                 }
                 // 文
-                for (switch_case_no = 0; switch_case_no < switch_case_exp.length; switch_case_no++) {
+                for (case_no = 0; case_no < case_exp.length; case_no++) {
                     code_push("label", debugpos1, i);
-                    if (switch_case_stm[switch_case_no] == switch_default_stm) {
+                    if (case_stm[case_no] == default_stm) {
                         code_push('"default\\' + j + '"', debugpos1, i);
                     } else {
-                        code_push('"case' + switch_case_no + '\\' + j + '"', debugpos1, i);
+                        code_push('"case' + case_no + '\\' + j + '"', debugpos1, i);
                     }
-                    if (switch_case_no < switch_case_exp.length - 1) {
-                        switch_case_stm_end = switch_case_exp[switch_case_no + 1];
+                    if (case_no < case_exp.length - 1) {
+                        case_stm_end = case_exp[case_no + 1];
                     } else {
-                        switch_case_stm_end = switch_end;
+                        case_stm_end = switch_end;
                     }
                     // ***** 文(ステートメント)のコンパイル(再帰的に実行) *****
-                    i = c_statement(switch_case_stm[switch_case_no], switch_case_stm_end - 1, '"switch_end\\' + j + '"', continue_lbl);
+                    i = c_statement(case_stm[case_no], case_stm_end - 1, '"switch_end\\' + j + '"', continue_lbl);
                 }
                 // 終了
                 code_push("label", debugpos1, i);
@@ -1995,94 +1988,59 @@ var SP_Interpreter;
                 i++;
                 // ***** 解析とアドレスの取得 *****
                 j = i;
-                // 式
-                token_match("(", i++);
-                if_exp = i;
-                if (token[i] == ")") {
-                    debugpos2 = i + 1;
-                    throw new Error("if文の条件式がありません。");
-                }
-                i = block_search(i, tok_end, "(", ")");
-                token_match(")", i++);
-                // 文
-                token_match("{", i++);
-                if_stm = i;
-                i = block_search(i, tok_end, "{", "}");
-                token_match("}", i++);
-                if_stm_end = i;
-                // elsifまたはelse
-                elsif_exp = [];
-                elsif_stm = [];
-                elsif_stm_end = [];
-                else_stm = -1;
+                // ifまたはelsif
+                if_no = 0;
+                if_exp = [];
+                if_stm = [];
+                if_stm_end = [];
                 while (i < tok_end) {
-                    // elsif
-                    if (token[i] == "elsif") {
-                        debugpos1 = i; // エラー表示位置調整
-                        i++;
+                    if (if_no == 0 || token[i] == "elsif") {
+                        if (if_no > 0) {
+                            debugpos1 = i; // エラー表示位置調整
+                            i++;
+                        }
                         // 式
                         token_match("(", i++);
-                        elsif_exp.push(i);
+                        if_exp.push(i);
                         if (token[i] == ")") {
                             debugpos2 = i + 1;
-                            throw new Error("elsif文の条件式がありません。");
+                            throw new Error((if_no > 0 ? "els" : "") + "if文の条件式がありません。");
                         }
                         i = block_search(i, tok_end, "(", ")");
-                        token_match(")", i++);
                         // 文
                         token_match("{", i++);
-                        elsif_stm.push(i);
+                        if_stm.push(i);
                         i = block_search(i, tok_end, "{", "}");
-                        token_match("}", i++);
-                        elsif_stm_end.push(i);
-                        continue;
-                    }
-                    // else
-                    if (token[i] == "else") {
-                        debugpos1 = i; // エラー表示位置調整
-                        i++;
-                        // 文
-                        token_match("{", i++);
-                        else_stm = i;
-                        i = block_search(i, tok_end, "{", "}");
-                        token_match("}", i++);
-                        break;
-                    }
-                    // その他
-                    break;
+                        if_stm_end.push(i);
+                        if_no++;
+                    } else { break; }
+                }
+                // else
+                else_stm = -1;
+                if (token[i] == "else") {
+                    debugpos1 = i; // エラー表示位置調整
+                    i++;
+                    // 文
+                    token_match("{", i++);
+                    else_stm = i;
+                    i = block_search(i, tok_end, "{", "}");
                 }
                 // 終了
                 if_end = i;
                 // ***** コードの生成 *****
                 debugpos1 = j - 1; // エラー表示位置調整
-                // 式
-                i = c_expression2(if_exp, if_stm - 3);
-                token_match(")", i++); // 式の終端チェック
-                code_push("ifnotgoto", debugpos1, i);
-                if (elsif_exp.length > 0) {
-                    code_push('"elsif0\\' + j + '"', debugpos1, i);
-                } else if (else_stm >= 0) {
-                    code_push('"else\\' + j + '"', debugpos1, i);
-                } else {
-                    code_push('"if_end\\' + j + '"', debugpos1, i);
-                }
-                // 文
-                // ***** 文(ステートメント)のコンパイル(再帰的に実行) *****
-                i = c_statement(if_stm, if_stm_end - 1, break_lbl, continue_lbl);
-                if (elsif_exp.length > 0 || else_stm >=0) {
-                    code_push("goto", debugpos1, i);
-                    code_push('"if_end\\' + j + '"', debugpos1, i);
-                }
-                // elsif
-                for (elsif_no = 0; elsif_no < elsif_exp.length; elsif_no++) {
+                // ifまたはelsif
+                for (if_no = 0; if_no < if_exp.length; if_no++) {
                     // 式
-                    code_push("label", debugpos1, i);
-                    code_push('"elsif' + elsif_no + '\\' + j + '"', debugpos1, i);
-                    i = c_expression2(elsif_exp[elsif_no], elsif_stm[elsif_no] - 3);
+                    if (if_no > 0) {
+                        code_push("label", debugpos1, i);
+                        code_push('"elsif' + (if_no - 1) + '\\' + j + '"', debugpos1, i);
+                    }
+                    i = c_expression2(if_exp[if_no], if_stm[if_no] - 2);
                     token_match(")", i++); // 式の終端チェック
                     code_push("ifnotgoto", debugpos1, i);
-                    if (elsif_exp.length > elsif_no + 1) {
-                        code_push('"elsif' + (elsif_no + 1) + '\\' + j + '"', debugpos1, i);
+                    if (if_no < if_exp.length - 1) {
+                        code_push('"elsif' + if_no + '\\' + j + '"', debugpos1, i);
                     } else if (else_stm >= 0) {
                         code_push('"else\\' + j + '"', debugpos1, i);
                     } else {
@@ -2090,8 +2048,8 @@ var SP_Interpreter;
                     }
                     // 文
                     // ***** 文(ステートメント)のコンパイル(再帰的に実行) *****
-                    i = c_statement(elsif_stm[elsif_no], elsif_stm_end[elsif_no] - 1, break_lbl, continue_lbl);
-                    if (elsif_exp.length > elsif_no + 1 || else_stm >=0) {
+                    i = c_statement(if_stm[if_no], if_stm_end[if_no] - 1, break_lbl, continue_lbl);
+                    if (if_no < if_exp.length - 1 || else_stm >=0) {
                         code_push("goto", debugpos1, i);
                         code_push('"if_end\\' + j + '"', debugpos1, i);
                     }
@@ -2121,26 +2079,22 @@ var SP_Interpreter;
                 token_match("(", i++);
                 for_exp1 = i;
                 i = block_search(i, tok_end, "?", ";", true);
-                token_match(";", i++);
                 // 式2
                 for_exp2 = i;
                 i = block_search(i, tok_end, "?", ";", true);
-                token_match(";", i++);
                 // 式3
                 for_exp3 = i;
                 i = block_search(i, tok_end, "(", ")");
-                token_match(")", i++);
                 // 文
                 token_match("{", i++);
                 for_stm = i;
                 i = block_search(i, tok_end, "{", "}");
-                token_match("}", i++);
                 // 終了
                 for_end = i;
                 // ***** コードの生成 *****
                 // 式1
                 if (for_exp1 < for_exp2 - 1) {
-                    i = c_expression2(for_exp1, for_exp2 - 2);
+                    i = c_expression2(for_exp1, for_exp2 - 1);
                     token_match(";", i++); // 式の終端チェック
                     code_push("pop", debugpos1, i);
                 }
@@ -2148,7 +2102,7 @@ var SP_Interpreter;
                 code_push("label", debugpos1, i);
                 code_push('"for_exp2\\' + j + '"', debugpos1, i);
                 if (for_exp2 < for_exp3 - 1) {
-                    i = c_expression2(for_exp2, for_exp3 - 2);
+                    i = c_expression2(for_exp2, for_exp3 - 1);
                     token_match(";", i++); // 式の終端チェック
                     code_push("ifnotgoto", debugpos1, i);
                     code_push('"for_end\\' + j + '"', debugpos1, i);
@@ -2160,7 +2114,7 @@ var SP_Interpreter;
                 code_push("label", debugpos1, i);
                 code_push('"for_exp3\\' + j + '"', debugpos1, i);
                 if (for_exp3 < for_stm - 2) {
-                    i = c_expression2(for_exp3, for_stm - 3);
+                    i = c_expression2(for_exp3, for_stm - 2);
                     token_match(")", i++); // 式の終端チェック
                     code_push("pop", debugpos1, i);
                 }
@@ -2187,19 +2141,17 @@ var SP_Interpreter;
                     throw new Error("while文の条件式がありません。");
                 }
                 i = block_search(i, tok_end, "(", ")");
-                token_match(")", i++);
                 // 文
                 token_match("{", i++);
                 while_stm = i;
                 i = block_search(i, tok_end, "{", "}");
-                token_match("}", i++);
                 // 終了
                 while_end = i;
                 // ***** コードの生成 *****
                 // 式
                 code_push("label", debugpos1, i);
                 code_push('"while_exp\\' + j + '"', debugpos1, i);
-                i = c_expression2(while_exp, while_stm - 3);
+                i = c_expression2(while_exp, while_stm - 2);
                 token_match(")", i++); // 式の終端チェック
                 code_push("ifnotgoto", debugpos1, i);
                 code_push('"while_end\\' + j + '"', debugpos1, i);
@@ -2225,7 +2177,6 @@ var SP_Interpreter;
                 token_match("{", i++);
                 do_stm = i;
                 i = block_search(i, tok_end, "{", "}");
-                token_match("}", i++);
                 // キーワード
                 if (token[i] != "while") {
                     debugpos2 = i + 1;
@@ -2240,7 +2191,6 @@ var SP_Interpreter;
                     throw new Error("do文の条件式がありません。");
                 }
                 i = block_search(i, tok_end, "(", ")");
-                token_match(")", i++);
                 // 終了
                 do_end = i;
                 // ***** コードの生成 *****
@@ -2250,7 +2200,7 @@ var SP_Interpreter;
                 // ***** 文(ステートメント)のコンパイル(再帰的に実行) *****
                 i = c_statement(do_stm, do_exp - 3, '"do_end\\' + j + '"', '"do_stm\\' + j + '"');
                 // 式
-                i = c_expression2(do_exp, do_end - 2);
+                i = c_expression2(do_exp, do_end - 1);
                 token_match(")", i++); // 式の終端チェック
                 code_push("ifgoto", debugpos1, i);
                 code_push('"do_stm\\' + j + '"', debugpos1, i);
@@ -3208,8 +3158,9 @@ var SP_Interpreter;
     }
 
     // ***** ブロックの検索 *****
-    // (ch1とch2に囲まれたブロックを検索して 終了位置を返す
-    //  (ブロックのネストにも対応))
+    // (ch1とch2に囲まれたブロックを検索して 終了位置+1を返す。
+    //  ブロックのネストにも対応する。
+    //  先頭のch1は処理済みを前提とする)
     function block_search(tok_start, tok_end, ch1, ch2, for_exp_flag) {
         var i, nest;
 
@@ -3224,6 +3175,8 @@ var SP_Interpreter;
             if (nest == 0) { break; }
             i++;
         }
+        // (見つからなかったときはエラーとする)
+        token_match(ch2, i++);
         return i;
     }
 
@@ -4096,9 +4049,8 @@ var SP_Interpreter;
             // ***** カウント処理 *****
             num = 0;
             if (a3 == null) {
-                for (i = a2; true; i++) {
-                    if (Vars.checkVar(make_var_array(a1, i))) { num++; } else { break; }
-                }
+                i = a2;
+                while (Vars.checkVar(make_var_array(a1, i))) { num++; i++; }
             } else {
                 for (i = a2; i <= a3; i++) {
                     if (Vars.checkVar(make_var_array(a1, i))) { num++; }
@@ -4969,7 +4921,8 @@ var SP_Interpreter;
             } else {
                 a2 = String(param[1]);
                 if (param.length <= 3) {
-                    a3 = a4 = 0;
+                    a3 = 0; // 未使用
+                    a4 = 0; // 未使用
                 } else {
                     a3 = Math.trunc(param[2]); // 未使用
                     a4 = Math.trunc(param[3]); // 未使用
@@ -5018,19 +4971,18 @@ var SP_Interpreter;
             // ***** 連結処理 *****
             num = "";
             i = a3;
-            do {
-                // ***** 配列の存在チェック *****
-                if (a4 == null && !Vars.checkVar(make_var_array(a1, i))) { break; }
-
-                if (num == "") {
-                    // num += vars[a1 + "[" + i + "]"];
-                    num += Vars.getVarValue(make_var_array(a1, i));
-                } else {
+            if ((a4 != null && i <= a4) ||
+                (a4 == null && Vars.checkVar(make_var_array(a1, i)))) {
+                // num = vars[a1 + "[" + i + "]"];
+                num = Vars.getVarValue(make_var_array(a1, i));
+                i++;
+                while ((a4 != null && i <= a4) ||
+                       (a4 == null && Vars.checkVar(make_var_array(a1, i)))) {
                     // num += a2 + vars[a1 + "[" + i + "]"];
                     num += a2 + Vars.getVarValue(make_var_array(a1, i));
+                    i++;
                 }
-                i++;
-            } while (a4 == null || i <= a4);
+            }
             return num;
         });
         make_one_func_tbl("keydowncode", -1, [], function (param) {
@@ -5909,12 +5861,15 @@ var SP_Interpreter;
             } else if (param.length == 3) {
                 a2 = Math.trunc(param[1]); // X
                 a3 = Math.trunc(param[2]); // Y
-                a4 = 0;
+                a4 = 0;                    // アンカー
             } else if (param.length == 2) {
                 a2 = Math.trunc(param[1]); // X
-                a3 = a4 = 0;
+                a3 = 0;                    // Y
+                a4 = 0;                    // アンカー
             } else {
-                a2 = a3 = a4 = 0;
+                a2 = 0;                    // X
+                a3 = 0;                    // Y
+                a4 = 0;                    // アンカー
             }
             // ***** 水平方向 *****
             // if (a4 & 4)    { ctx.textAlign = "left"; }   // 左
@@ -5964,9 +5919,9 @@ var SP_Interpreter;
             var a1;
 
             if (param.length <= 0) {
-                a1 = 0;
+                a1 = 0; // 未使用
             } else {
-                a1 = Math.trunc(param[0]);
+                a1 = Math.trunc(param[0]); // 未使用
             }
             // ***** NOP *****
             return nothing;
