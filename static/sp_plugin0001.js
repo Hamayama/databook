@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_plugin0001.js
-// 2018-4-15 v16.00
+// 2018-4-20 v17.00
 
 
 // A Plugin for SPALM Web Interpreter
@@ -158,7 +158,7 @@ var SP_Plugin0001;
             audplayer[a1] = {};
             audplayer[a1].mmlplayer = new MMLPlayer();
             audplayer[a1].mmlplayer.setMML(a2);
-            // loop_nocount_flag1 = true;
+            // loop_nocount_flag = true;
             set_loop_nocount();
             return nothing;
         });
@@ -178,7 +178,7 @@ var SP_Plugin0001;
             audplayer[a1] = {};
             audplayer[a1].mmlplayer = new MMLPlayer();
             audplayer[a1].mmlplayer.setAUDData(a2);
-            // loop_nocount_flag1 = true;
+            // loop_nocount_flag = true;
             set_loop_nocount();
             return nothing;
         });
@@ -778,56 +778,78 @@ var SP_Plugin0001;
             // (商を返す)
             return DigitCalc.getDigitObjSignedStr(z);
         });
-        make_one_func_tbl("mismake", 13, [1, 2, 3, 4, 5, 6], function (param) {
+        make_one_func_tbl("mismake", 14, [2, 3, 4, 5, 6, 7], function (param) {
             var ch;
-            var no, useflag, x100, y100, degree, speed100;
+            var gno, no, useflag, x100, y100, degree, speed100;
             var useflag_var_info, x100_var_info, y100_var_info;
             var degree_var_info, speed100_var_info, ch_var_info;
             var min_x, max_x, min_y, max_y, div_x, div_y;
 
-            no = Math.trunc(param[0]);
-            useflag_var_info =  get_var_info(param[1]); // 制御用の変数情報を取得
-            x100_var_info =     get_var_info(param[2]); // 制御用の変数情報を取得
-            y100_var_info =     get_var_info(param[3]); // 制御用の変数情報を取得
-            degree_var_info =   get_var_info(param[4]); // 制御用の変数情報を取得
-            speed100_var_info = get_var_info(param[5]); // 制御用の変数情報を取得
-            ch_var_info =       get_var_info(param[6]); // 制御用の変数情報を取得
-            min_x = Math.trunc(param[7]);
-            max_x = Math.trunc(param[8]);
-            min_y = Math.trunc(param[9]);
-            max_y = Math.trunc(param[10]);
-            div_x = (+param[11]);
-            div_y = (+param[12]);
-            // ***** ミサイル作成 *****
+            gno = Math.trunc(param[0]);
+            no = Math.trunc(param[1]);
+            useflag_var_info =  get_var_info(param[2]); // 制御用の変数情報を取得
+            x100_var_info =     get_var_info(param[3]); // 制御用の変数情報を取得
+            y100_var_info =     get_var_info(param[4]); // 制御用の変数情報を取得
+            degree_var_info =   get_var_info(param[5]); // 制御用の変数情報を取得
+            speed100_var_info = get_var_info(param[6]); // 制御用の変数情報を取得
+            ch_var_info =       get_var_info(param[7]); // 制御用の変数情報を取得
+            min_x = Math.trunc(param[8]);
+            max_x = Math.trunc(param[9]);
+            min_y = Math.trunc(param[10]);
+            max_y = Math.trunc(param[11]);
+            div_x = (+param[12]);
+            div_y = (+param[13]);
+
+            // ***** ミサイルグループを生成 *****
+            if (!missile.hasOwnProperty(gno)) {
+                missile[gno] = {};
+            }
+
+            // ***** ミサイルを生成 *****
             useflag =  Math.trunc(Vars.getVarValue(useflag_var_info));
             x100 =     Math.trunc(Vars.getVarValue(x100_var_info));
             y100 =     Math.trunc(Vars.getVarValue(y100_var_info));
             degree =   (+Vars.getVarValue(degree_var_info));
             speed100 = Math.trunc(Vars.getVarValue(speed100_var_info));
             ch =       String(Vars.getVarValue(ch_var_info));
-            missile[no] = new Missile(no, useflag, x100, y100, degree, speed100, ch,
+            missile[gno][no] = new Missile(no, useflag, x100, y100, degree, speed100, ch,
                 min_x, max_x, min_y, max_y, div_x, div_y,
                 useflag_var_info, x100_var_info, y100_var_info,
                 degree_var_info, speed100_var_info, ch_var_info);
             return nothing;
         });
         make_one_func_tbl("mismove", 0, [], function (param) {
+            var gno, missile1;
             var mis, mis_no;
             var range_use, min_no, max_no;
 
-            if (param.length <= 1) {
-                range_use = false;
+            if (param.length <= 0) {
+                gno = 0;
                 min_no = 0;
                 max_no = 0;
             } else {
-                range_use = true;
-                min_no = Math.trunc(param[0]);
-                max_no = Math.trunc(param[1]);
+                gno = Math.trunc(param[0]);
+                if (param.length <= 2) {
+                    range_use = false;
+                    min_no = 0;
+                    max_no = 0;
+                } else {
+                    range_use = true;
+                    min_no = Math.trunc(param[1]);
+                    max_no = Math.trunc(param[2]);
+                }
             }
-            // ***** 全ミサイルを移動 *****
-            for (mis_no in missile) {
-                if (missile.hasOwnProperty(mis_no)) {
-                    mis = missile[mis_no];
+
+            // ***** ミサイルグループの存在チェック *****
+            if (!missile.hasOwnProperty(gno)) {
+                return nothing;
+            }
+
+            // ***** ミサイルを移動 *****
+            missile1 = missile[gno];
+            for (mis_no in missile1) {
+                if (missile1.hasOwnProperty(mis_no)) {
+                    mis = missile1[mis_no];
                     if (!range_use || (mis.no >= min_no && mis.no <= max_no)) {
                         mis.useflag = Math.trunc(Vars.getVarValue(mis.useflag_var_info));
                         if (mis.useflag != 0) {
@@ -854,20 +876,28 @@ var SP_Plugin0001;
             var i;
             var x1, y1;
             var ch, chs, ovr;
+            var gno, missile1;
             var mis, mis_no;
             var range_use, min_no, max_no;
 
             a1 = get_var_info(param[0]);
             a2 = Math.trunc(param[1]);
             a3 = Math.trunc(param[2]);
-            if (param.length <= 4) {
-                range_use = false;
+            if (param.length <= 3) {
+                gno = 0;
                 min_no = 0;
                 max_no = 0;
             } else {
-                range_use = true;
-                min_no = Math.trunc(param[3]);
-                max_no = Math.trunc(param[4]);
+                gno = Math.trunc(param[3]);
+                if (param.length <= 5) {
+                    range_use = false;
+                    min_no = 0;
+                    max_no = 0;
+                } else {
+                    range_use = true;
+                    min_no = Math.trunc(param[4]);
+                    max_no = Math.trunc(param[5]);
+                }
             }
 
             // ***** NaN対策 *****
@@ -880,10 +910,16 @@ var SP_Plugin0001;
                 throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
             }
 
-            // ***** 全ミサイルを描画 *****
-            for (mis_no in missile) {
-                if (missile.hasOwnProperty(mis_no)) {
-                    mis = missile[mis_no];
+            // ***** ミサイルグループの存在チェック *****
+            if (!missile.hasOwnProperty(gno)) {
+                return nothing;
+            }
+
+            // ***** ミサイルを描画 *****
+            missile1 = missile[gno];
+            for (mis_no in missile1) {
+                if (missile1.hasOwnProperty(mis_no)) {
+                    mis = missile1[mis_no];
                     if (!range_use || (mis.no >= min_no && mis.no <= max_no)) {
                         mis.useflag = Math.trunc(Vars.getVarValue(mis.useflag_var_info));
                         // (有効フラグが0以外で1000以下のときのみ表示)
@@ -923,23 +959,38 @@ var SP_Plugin0001;
         });
         make_one_func_tbl("misfreeno", 0, [], function (param) {
             var num;
+            var gno, missile1;
             var mis, mis_no;
             var range_use, min_no, max_no;
 
-            if (param.length <= 1) {
-                range_use = false;
+            if (param.length <= 0) {
+                gno = 0;
                 min_no = 0;
                 max_no = 0;
             } else {
-                range_use = true;
-                min_no = Math.trunc(param[0]);
-                max_no = Math.trunc(param[1]);
+                gno = Math.trunc(param[0]);
+                if (param.length <= 2) {
+                    range_use = false;
+                    min_no = 0;
+                    max_no = 0;
+                } else {
+                    range_use = true;
+                    min_no = Math.trunc(param[1]);
+                    max_no = Math.trunc(param[2]);
+                }
             }
-            // ***** ミサイル空番号を検索 *****
+
+            // ***** ミサイルグループの存在チェック *****
+            if (!missile.hasOwnProperty(gno)) {
+                return -1;
+            }
+
+            // ***** ミサイルの空番号を検索 *****
             num = -1;
-            for (mis_no in missile) {
-                if (missile.hasOwnProperty(mis_no)) {
-                    mis = missile[mis_no];
+            missile1 = missile[gno];
+            for (mis_no in missile1) {
+                if (missile1.hasOwnProperty(mis_no)) {
+                    mis = missile1[mis_no];
                     if (!range_use || (mis.no >= min_no && mis.no <= max_no)) {
                         mis.useflag = Math.trunc(Vars.getVarValue(mis.useflag_var_info));
                         if (mis.useflag == 0) {
@@ -1073,7 +1124,7 @@ var SP_Plugin0001;
             }
             sand_obj[a1] = new SandSim(can, ctx, x1, y1, w1, h1, r, col, threshold, border_mode);
             sand_obj[a1].makeTable();
-            // loop_nocount_flag1 = true;
+            // loop_nocount_flag = true;
             set_loop_nocount();
             return nothing;
         });
@@ -1111,19 +1162,23 @@ var SP_Plugin0001;
             a1 = Math.trunc(param[0]);
             a2 = String(param[1]);
             a3 = get_var_name(param[2]); // 画像変数名取得
-            if (param.length <= 3) {
+            if (param.length <= 4) {
                 off_x = 0;
                 off_y = 0;
             } else {
                 off_x = Math.trunc(param[3]);
                 off_y = Math.trunc(param[4]);
             }
+
             // ***** エラーチェック *****
             if (a2.length == 0) { return nothing; }
-            // ***** 画像文字割付を1個生成する *****
+
+            // ***** 画像文字割付グループを生成 *****
             if (!stimg.hasOwnProperty(a1)) {
                 stimg[a1] = {};
             }
+
+            // ***** 画像文字割付を生成 *****
             ch = a2.charAt(0); // 1文字だけにする
             // if (imgvars.hasOwnProperty(a3)) {
             if (hasOwn.call(imgvars, a3)) {
@@ -1411,7 +1466,7 @@ var SP_Plugin0001;
                 throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
             }
 
-            // ***** 画像文字割付の存在チェック *****
+            // ***** 画像文字割付グループの存在チェック *****
             if (!stimg.hasOwnProperty(n1)) {
                 return nothing;
             }
@@ -4435,14 +4490,16 @@ var MMLPlayer = (function () {
                 // ***** 絶対音長があるときは絶対音長を取得 *****
                 if (mml_st.charAt(i) == "%") {
                     i++;
-                    val = this.getValue(mml_st, i, 0, ret = {});
+                    ret = this.getValue(mml_st, i, 0);
+                    val = ret.val;
                     i = ret.i;
                     if (val < 0) { val = 0; }
                     if (val > 1000) { val = 1000; } // エラーチェック追加
                     nlength1 = val;
                 } else {
                     // ***** 音長があるときは音長を取得 *****
-                    val = this.getValue(mml_st, i, -1, ret = {});
+                    ret = this.getValue(mml_st, i, -1);
+                    val = ret.val;
                     i = ret.i;
                     if (val > 1000) { val = 1000; } // エラーチェック追加
                     if (val == 0) {
@@ -4518,7 +4575,8 @@ var MMLPlayer = (function () {
                     switch (c2) {
                         case "c": // チャンネル切替(0-(MAX_CH-1))
                             i++;
-                            val = this.getValue(mml_st, i, 0, ret = {});
+                            ret = this.getValue(mml_st, i, 0);
+                            val = ret.val;
                             i = ret.i;
                             if (val < 0) { val = 0; }
                             if (val > (MMLPlayer.MAX_CH - 1)) { val = MMLPlayer.MAX_CH - 1; }
@@ -4530,7 +4588,8 @@ var MMLPlayer = (function () {
                             break;
                         case "v": // ボリューム最大値(1-1000)
                             i++;
-                            val = this.getValue(mml_st, i, 0, ret = {});
+                            ret = this.getValue(mml_st, i, 0);
+                            val = ret.val;
                             i = ret.i;
                             if (val < 1) { val = 1; }
                             if (val > 1000) { val = 1000; } // エラーチェック追加
@@ -4555,7 +4614,8 @@ var MMLPlayer = (function () {
                     }
                     break;
                 case "t": // テンポ切替(20-300) → (20-1200)
-                    val = this.getValue(mml_st, i, 0, ret = {});
+                    ret = this.getValue(mml_st, i, 0);
+                    val = ret.val;
                     i = ret.i;
                     if (val < 20) { val = 20; }
                     // if (val > 300) { val = 300; }
@@ -4572,7 +4632,8 @@ var MMLPlayer = (function () {
                     }
                     break;
                 case "v": // チャンネル音量(0-vol_max)
-                    val = this.getValue(mml_st, i, 0, ret = {});
+                    ret = this.getValue(mml_st, i, 0);
+                    val = ret.val;
                     i = ret.i;
                     if (val < 0) { val = 0; }
                     if (val > vol_max) { val = vol_max; }
@@ -4580,14 +4641,16 @@ var MMLPlayer = (function () {
                     // _track.setChannelVolume(ch, volume[ch]);
                     break;
                 case "k": // ベロシティ(0-127)
-                    val = this.getValue(mml_st, i, 0, ret = {});
+                    ret = this.getValue(mml_st, i, 0);
+                    val = ret.val;
                     i = ret.i;
                     if (val < 0) { val = 0; }
                     if (val > 127) { val = 127; }
                     velocity[ch] = val;
                     break;
                 case "@": // 音色切替(0-1000)
-                    val = this.getValue(mml_st, i, 0, ret = {});
+                    ret = this.getValue(mml_st, i, 0);
+                    val = ret.val;
                     i = ret.i;
                     if (val < 0) { val = 0; }
                     if (val > 1000) { val = 1000; } // エラーチェック追加
@@ -4598,14 +4661,16 @@ var MMLPlayer = (function () {
                     // ***** 絶対音長があるときは絶対音長を取得 *****
                     if (mml_st.charAt(i) == "%") {
                         i++;
-                        val = this.getValue(mml_st, i, 0, ret = {});
+                        ret = this.getValue(mml_st, i, 0);
+                        val = ret.val;
                         i = ret.i;
                         if (val < 0) { val = 0; }
                         if (val > 1000) { val = 1000; } // エラーチェック追加
                         alength[ch] = val;
                     } else {
                         // ***** 音長を取得 *****
-                        val = this.getValue(mml_st, i, 0, ret = {});
+                        ret = this.getValue(mml_st, i, 0);
+                        val = ret.val;
                         i = ret.i;
                         if (val < 0) { val = 0; }
                         if (val > 1000) { val = 1000; } // エラーチェック追加
@@ -4622,14 +4687,16 @@ var MMLPlayer = (function () {
                     }
                     break;
                 case "q": // 発音割合指定(1-8)
-                    val = this.getValue(mml_st, i, 0, ret = {});
+                    ret = this.getValue(mml_st, i, 0);
+                    val = ret.val;
                     i = ret.i;
                     if (val < 1) { val = 1; }
                     if (val > 8) { val = 8; }
                     qtime[ch] = val;
                     break;
                 case "o": // オクターブ指定(0-8)
-                    val = this.getValue(mml_st, i, 0, ret = {});
+                    ret = this.getValue(mml_st, i, 0);
+                    val = ret.val;
                     i = ret.i;
                     if (val < 0) { val = 0; }
                     if (val > 8) { val = 8; }
@@ -4672,7 +4739,8 @@ var MMLPlayer = (function () {
                             // ***** ループ初回のとき *****
                             if (loop_count == -1) {
                                 // ***** ループ回数取得 *****
-                                val = this.getValue(mml_st, i, 0, ret = {});
+                                ret = this.getValue(mml_st, i, 0);
+                                val = ret.val;
                                 i = ret.i;
                                 if (val < 2)   { val = 2; }
                                 if (val > 100) { val = 100; } // エラーチェック追加
@@ -4723,30 +4791,33 @@ var MMLPlayer = (function () {
         return i;
     };
     // ***** MML内の数値を取得(内部処理用) *****
-    // (retには、空のオブジェクトを格納した変数を渡すこと。
-    //  最終の検索位置をret.iにセットして返す)
-    MMLPlayer.prototype.getValue = function (mml_st, i, err_val, ret) {
-        var c, start, mml_st_len;
+    // (数値valと最終の検索位置iを、オブジェクトに格納して返す)
+    MMLPlayer.prototype.getValue = function (mml_st, i, err_val) {
+        var ret = {};
+        var c, i2, mml_st_len;
 
         mml_st_len = mml_st.length;
         if (i >= mml_st_len) {
+            ret.val = err_val;
             ret.i = i;
-            return err_val;
+            return ret;
         }
         c = mml_st.charCodeAt(i);
         if (c < 0x30 || c > 0x39) {
+            ret.val = err_val;
             ret.i = i;
-            return err_val;
+            return ret;
         }
-        start = i;
-        i++;
-        while (i < mml_st_len) {
-            c = mml_st.charCodeAt(i);
+        i2 = i;
+        i2++;
+        while (i2 < mml_st_len) {
+            c = mml_st.charCodeAt(i2);
             if (c < 0x30 || c > 0x39) { break; }
-            i++;
+            i2++;
         }
-        ret.i = i;
-        return (+mml_st.substring(start, i));
+        ret.val = +mml_st.substring(i, i2);
+        ret.i = i2;
+        return ret;
     };
     // ***** MMLの前処理(内部処理用) *****
     MMLPlayer.prototype.preprocess = function (mml_st) {
@@ -4779,7 +4850,8 @@ var MMLPlayer = (function () {
                     i++;
                     mml_ch[ch] += mml_st.substring(start, i - 2);
                     start = i - 2;
-                    val = this.getValue(mml_st, i, 0, ret = {});
+                    ret = this.getValue(mml_st, i, 0);
+                    val = ret.val;
                     i = ret.i;
                     if (val < 0) { val = 0; }
                     if (val > (MMLPlayer.MAX_CH - 1)) { val = MMLPlayer.MAX_CH - 1; }
