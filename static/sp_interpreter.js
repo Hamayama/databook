@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2018-4-21 v17.01
+// 2018-4-21 v17.02
 
 
 // SPALM Web Interpreter
@@ -523,7 +523,8 @@ var SP_Interpreter;
 
     var sp_compati_flag;        // 互換モードフラグ
     var use_local_vars;         // ローカル変数使用有無
-    var locstatement_flag;      // ローカル文フラグ
+    var varstatement_type;      // グローバル/ローカル文のタイプ
+                                //   (=0:なし,=1:ローカル文,=2:グローバル文)
     var locvarnames_stack = []; // ローカル変数名情報のスタック(配列)
     var module_name;            // モジュール名
     var save_data = {};         // セーブデータ(連想配列オブジェクト)(仮)
@@ -860,6 +861,8 @@ var SP_Interpreter;
             return false;
         }
         // ***** プリプロセス *****
+        debugpos1 = 0;
+        debugpos2 = 0;
         try {
             preprocess();
         } catch (ex2) {
@@ -1599,7 +1602,7 @@ var SP_Interpreter;
         code_info = [];
         code_str = [];
         code_len = 0;
-        locstatement_flag = false;
+        varstatement_type = 0;
         locvarnames_stack = [];
         module_name = "";
         c_statement(0, token_len, "", "");
@@ -1610,7 +1613,7 @@ var SP_Interpreter;
         var i, j, k;
         var ch;
         var tok;
-        var loc_flag;
+        var var_type;
         var var_info;
         var func_name, func_stm, func_end;
         var param_num;
@@ -1741,15 +1744,15 @@ var SP_Interpreter;
                 continue;
             }
 
-            // ***** global/glb/local/loc文のとき *****
+            // ***** グローバル/ローカル文のとき *****
             // (この文でグローバル/ローカル変数の宣言を行う)
             // (loc a,b,c のように、複数の変数をカンマ区切りで一括宣言可能とする)
             if (tok == "global" || tok == "glb" || tok == "local" || tok == "loc") {
                 i++;
-                loc_flag = (tok.charAt(0) == "l");
+                var_type = (tok.charAt(0) == "l") ? 1 : 2;
                 while (i < tok_end) {
-                    // ***** ローカル文フラグON *****
-                    if (loc_flag) { locstatement_flag = true; }
+                    // ***** グローバル/ローカル文のタイプを設定 *****
+                    varstatement_type = var_type;
                     // ***** 因子のコンパイル *****
                     j = code_len + 1;
                     i = c_factor(i, tok_end);
@@ -1762,8 +1765,8 @@ var SP_Interpreter;
                             throw new Error("変数名が不正です。('" + code_tostr(var_info, j) + "')");
                         }
                     }
-                    // ***** ローカル文フラグOFF *****
-                    if (loc_flag) { locstatement_flag = false; }
+                    // ***** グローバル/ローカル文のタイプを解除 *****
+                    varstatement_type = 0;
                     // ***** カンマ区切りのチェック *****
                     if (token[i] == ",") { i++; } else { break; }
                 }
@@ -2629,12 +2632,13 @@ var SP_Interpreter;
             throw new Error("名前 '" + var_name + "' は予約されているため、変数名には使用できません。");
         }
         // ***** ローカル変数のチェック *****
-        // (グローバル変数の明示指定なし、かつ、ローカル変数名情報が存在する、かつ、
+        // (グローバル変数の明示指定なし、かつ、グローバル文でない、かつ、
+        //  ローカル変数名情報が存在する、かつ、
         //  「ローカル変数の明示指定あり、または、ローカル文である、または、
         //    ローカル変数名情報に登録済みである、または、関数の仮引数である」
         //  場合に、ローカル変数とする)
-        if (var_type != 2 && locvarnames_stack.length > 0 &&
-            (var_type == 1 || locstatement_flag ||
+        if (var_type != 2 && varstatement_type != 2 && locvarnames_stack.length > 0 &&
+            (var_type == 1 || varstatement_type == 1 ||
              // locvarnames_stack[locvarnames_stack.length - 1].hasOwnProperty(var_name) ||
              // hasOwn.call(locvarnames_stack[locvarnames_stack.length - 1], var_name) ||
              locvarnames_stack[locvarnames_stack.length - 1][var_name] != null ||
@@ -2643,10 +2647,10 @@ var SP_Interpreter;
         } else {
             loc_flag = false;
         }
-        // ***** ローカル文フラグOFF *****
+        // ***** グローバル/ローカル文のタイプを解除 *****
         // (loc y=x のような 代入を持つ宣言に対応するために、
-        //  ここでもOFFにする必要がある)
-        if (locstatement_flag) { locstatement_flag = false; }
+        //  ここでも解除する必要がある)
+        varstatement_type = 0;
         // ***** ローカル変数名情報の更新 *****
         if (loc_flag && locvarnames_stack.length > 0 &&
             // !locvarnames_stack[locvarnames_stack.length - 1].hasOwnProperty(var_name)) {
