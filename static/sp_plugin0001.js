@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_plugin0001.js
-// 2018-4-20 v17.00
+// 2018-4-21 v17.01
 
 
 // A Plugin for SPALM Web Interpreter
@@ -805,7 +805,7 @@ var SP_Plugin0001;
                 missile[gno] = {};
             }
 
-            // ***** ミサイルを生成 *****
+            // ***** ミサイルを作成 *****
             useflag =  Math.trunc(Vars.getVarValue(useflag_var_info));
             x100 =     Math.trunc(Vars.getVarValue(x100_var_info));
             y100 =     Math.trunc(Vars.getVarValue(y100_var_info));
@@ -1118,10 +1118,12 @@ var SP_Plugin0001;
             } else {
                 border_mode = Math.trunc(param[8]);
             }
+            // ***** 移動確率を取得 *****
             r = [];
             for (i = 0; i < 5; i++) {
                 r[i] = Vars.getVarValue(make_var_array(r1, i));
             }
+            // ***** 砂シミュレート用オブジェクトの作成 *****
             sand_obj[a1] = new SandSim(can, ctx, x1, y1, w1, h1, r, col, threshold, border_mode);
             sand_obj[a1].makeTable();
             // loop_nocount_flag = true;
@@ -1132,6 +1134,7 @@ var SP_Plugin0001;
             var a1;
 
             a1 = Math.trunc(param[0]);
+            // ***** 砂を移動 *****
             if (sand_obj.hasOwnProperty(a1)) {
                 sand_obj[a1].move();
             } else {
@@ -1144,6 +1147,7 @@ var SP_Plugin0001;
             var ctx = get_ctx();
 
             a1 = Math.trunc(param[0]);
+            // ***** 砂を描画 *****
             if (sand_obj.hasOwnProperty(a1)) {
                 init_canvas_axis(ctx); // 座標系を初期化
                 sand_obj[a1].draw();
@@ -3908,8 +3912,8 @@ var Missile = (function () {
         // ***** 初期化 *****
         this.no = no;                               // ミサイル番号
         this.useflag = useflag;                     // 有効フラグ
-        this.x100 = x100;                           // 座標x(文字で数える)の100倍の値
-        this.y100 = y100;                           // 座標y(文字で数える)の100倍の値
+        this.x100 = x100;                           // 座標x(単位:文字)の100倍の値
+        this.y100 = y100;                           // 座標y(単位:文字)の100倍の値
         this.degree = degree;                       // 角度(0-360)
         this.speed100 = speed100;                   // 速度の100倍の値
         this.ch = ch;                               // 表示する文字列
@@ -3919,12 +3923,12 @@ var Missile = (function () {
         this.max_y = max_y;                         // yの最大値
         this.div_x = div_x;                         // x方向の速度の倍率の逆数
         this.div_y = div_y;                         // y方向の速度の倍率の逆数
-        this.useflag_var_info = useflag_var_info;   // 有効フラグ                     の変数情報
-        this.x100_var_info = x100_var_info;         // 座標x(文字で数える)の100倍の値 の変数情報
-        this.y100_var_info = y100_var_info;         // 座標y(文字で数える)の100倍の値 の変数情報
-        this.degree_var_info = degree_var_info;     // 角度(0-360)                    の変数情報
-        this.speed100_var_info = speed100_var_info; // 速度の100倍の値                の変数情報
-        this.ch_var_info = ch_var_info;             // 表示する文字列                 の変数情報
+        this.useflag_var_info = useflag_var_info;   // 有効フラグ                  の変数情報
+        this.x100_var_info = x100_var_info;         // 座標x(単位:文字)の100倍の値 の変数情報
+        this.y100_var_info = y100_var_info;         // 座標y(単位:文字)の100倍の値 の変数情報
+        this.degree_var_info = degree_var_info;     // 角度(0-360)                 の変数情報
+        this.speed100_var_info = speed100_var_info; // 速度の100倍の値             の変数情報
+        this.ch_var_info = ch_var_info;             // 表示する文字列              の変数情報
 
         this.x100_add = 0;                          // x方向の増分の100倍の値(一時保存用)
         this.y100_add = 0;                          // y方向の増分の100倍の値(一時保存用)
