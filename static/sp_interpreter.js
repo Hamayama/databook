@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2018-4-21 v17.02
+// 2018-4-29 v17.03
 
 
 // SPALM Web Interpreter
@@ -3613,8 +3613,7 @@ var SP_Interpreter;
     function keydown(ev) {
         var key_code, num;
 
-        // ***** IE8対策 *****
-        ev = ev || window.event;
+        // ***** キーコードを取得 *****
         key_code = ev.keyCode;
         // ***** プログラム実行中のとき *****
         // (ブラウザのスクロール等を抑制する)
@@ -3645,23 +3644,12 @@ var SP_Interpreter;
         // ***** スペースキーのとき *****
         // (スペースキーを上で無効化しており keypress が発生しないので、
         //  ここで処理する)
-        if (key_code == 32) {
-            key_press_code = 32;
-            // ***** キー入力バッファ2に追加 *****
-            if (keyinput_buf.length >= input_buf_size) { keyinput_buf.shift(); }
-            keyinput_buf.push(key_press_code);
-            // ***** キー入力待ちならば解除 *****
-            if (keyinput_flag && sleep_id != null) {
-                clearTimeout(sleep_id);
-                run_continuously();
-            }
-        }
+        if (key_code == 32) { keypress(ev); }
     }
     function keyup(ev) {
         var key_code, num;
 
-        // ***** IE8対策 *****
-        ev = ev || window.event;
+        // ***** キーコードを取得 *****
         key_code = ev.keyCode;
         // ***** キーアップ *****
         key_down_stat[key_code] = false;
@@ -3677,8 +3665,7 @@ var SP_Interpreter;
     function keypress(ev) {
         var key_code;
 
-        // ***** IE8対策 *****
-        ev = ev || window.event;
+        // ***** キーコードを取得 *****
         key_code = ev.keyCode;
         // ***** キープレス *****
         key_press_code = key_code;
@@ -3711,7 +3698,7 @@ var SP_Interpreter;
     function mousedown(ev) {
         var btn_code;
 
-        // ***** マウスボタン状態を取得 *****
+        // ***** マウスボタンコードを取得 *****
         btn_code = ev.button;
         // ***** FlashCanvas用 *****
         if (typeof (FlashCanvas) != "undefined") {
@@ -3719,6 +3706,7 @@ var SP_Interpreter;
             if (btn_code == 2) { btn_code = -1; } // 右ボタンは無効化
             if (btn_code == 4) { btn_code =  1; } // 中ボタンを変換
         }
+        // ***** マウスボタン状態を設定 *****
         if (btn_code >= 0) { mouse_btn_stat[btn_code] = true; }
         // ***** マウス座標を取得 *****
         getmousepos(ev);
@@ -3734,7 +3722,7 @@ var SP_Interpreter;
     function mouseup(ev) {
         var btn_code;
 
-        // ***** マウスボタン状態を取得 *****
+        // ***** マウスボタンコードを取得 *****
         btn_code = ev.button;
         // ***** FlashCanvas用 *****
         if (typeof (FlashCanvas) != "undefined") {
@@ -3742,6 +3730,7 @@ var SP_Interpreter;
             if (btn_code == 2) { btn_code = -1; } // 右ボタンは無効化
             if (btn_code == 4) { btn_code =  1; } // 中ボタンを変換
         }
+        // ***** マウスボタン状態を設定 *****
         if (btn_code >= 0) { mouse_btn_stat[btn_code] = false; }
         // ***** マウス座標を取得 *****
         getmousepos(ev);
