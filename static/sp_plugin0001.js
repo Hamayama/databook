@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_plugin0001.js
-// 2018-4-21 v17.01
+// 2018-5-10 v17.04
 
 
 // A Plugin for SPALM Web Interpreter
@@ -31,14 +31,16 @@
 //     Missile     ミサイル用クラス
 //     MMLPlayer   MML音楽演奏用クラス
 //     SandSim     砂シミュレート用クラス
+//     QueData     キューデータ用クラス
 //
 var SP_Plugin0001;
 (function (SP_Plugin0001) {
-    var stimg = {};      // 画像文字割付用  (連想配列オブジェクト)
-    var missile = {};    // ミサイル用      (連想配列オブジェクト)
-    var audplayer = {};  // 音楽再生用      (連想配列オブジェクト)
-    var sand_obj = {};   // 砂シミュレート用(連想配列オブジェクト)
-    var aud_mode;        // 音楽モード      (=0:音楽なし,=1:音楽あり,=2:音楽演奏機能有無による)
+    var stimg = {};     // 画像文字割付用  (連想配列オブジェクト)
+    var missile = {};   // ミサイル用      (連想配列オブジェクト)
+    var audplayer = {}; // 音楽再生用      (連想配列オブジェクト)
+    var sandsim = {};   // 砂シミュレート用(連想配列オブジェクト)
+    var quedata = {};   // キューデータ用  (連想配列オブジェクト)
+    var aud_mode;       // 音楽モード      (=0:音楽なし,=1:音楽あり,=2:音楽演奏機能有無による)
 
     // ***** インタープリター参照用 *****
     // (必要に応じてインタープリターの内部情報を参照する)
@@ -84,7 +86,8 @@ var SP_Plugin0001;
             stimg = {};
             missile = {};
             audplayer = {};
-            sand_obj = {};
+            sandsim = {};
+            quedata = {};
             aud_mode = 1;
             // ***** 音楽再開 *****
             // (CPU負荷軽減のための処理)
@@ -102,7 +105,8 @@ var SP_Plugin0001;
         add_clear_var_funcs("SP_Plugin0001", function () {
             stimg = {};
             missile = {};
-            sand_obj = {};
+            sandsim = {};
+            quedata = {};
             // ***** 音楽全停止 *****
             audstopall();
         });
@@ -436,14 +440,24 @@ var SP_Plugin0001;
             // for (var prop in missile) { DebugShow(prop + " "); } DebugShow("\n");
             return nothing;
         });
+        make_one_func_tbl("disque", 1, [], function (param) {
+            var a1;
+
+            a1 = Math.trunc(param[0]);
+            if (quedata.hasOwnProperty(a1)) {
+                delete quedata[a1];
+            }
+            // for (var prop in quedata) { DebugShow(prop + " "); } DebugShow("\n");
+            return nothing;
+        });
         make_one_func_tbl("dissand", 1, [], function (param) {
             var a1;
 
             a1 = Math.trunc(param[0]);
-            if (sand_obj.hasOwnProperty(a1)) {
-                delete sand_obj[a1];
+            if (sandsim.hasOwnProperty(a1)) {
+                delete sandsim[a1];
             }
-            // for (var prop in sand_obj) { DebugShow(prop + " "); } DebugShow("\n");
+            // for (var prop in sandsim) { DebugShow(prop + " "); } DebugShow("\n");
             return nothing;
         });
         make_one_func_tbl("disstrimg", 1, [], function (param) {
@@ -1058,6 +1072,105 @@ var SP_Plugin0001;
             ctx.stroke();
             return nothing;
         });
+        make_one_func_tbl("quemake", 2, [], function (param) {
+            var a1, a2, a3;
+
+            a1 = Math.trunc(param[0]);
+            a2 = Math.trunc(param[1]);
+            if (param.length <= 2) {
+                a3 = 0;
+            } else {
+                a3 = param[2];
+            }
+
+            // ***** エラーチェック *****
+            // if (a2 < 1 || a2 > max_array_size) {
+            if (!(a2 >= 1 && a2 <= max_array_size)) {
+                throw new Error("キューデータのサイズが不正です。1-" + max_array_size + "の間である必要があります。");
+            }
+
+            // ***** キューデータの作成 *****
+            quedata[a1] = new QueData(a2, a3);
+            return nothing;
+        });
+        make_one_func_tbl("quepush", 2, [], function (param) {
+            var a1, a2;
+
+            a1 = Math.trunc(param[0]);
+            a2 = param[1];
+
+            // ***** データの追加 *****
+            if (quedata.hasOwnProperty(a1)) {
+                quedata[a1].push(a2);
+            } else {
+                throw new Error("キューデータ" + a1 + " は作成されていません。");
+            }
+            return nothing;
+        });
+        make_one_func_tbl("quepop", 1, [], function (param) {
+            var a1;
+
+            a1 = Math.trunc(param[0]);
+
+            // ***** 最新データの取り出し(スタック) *****
+            if (quedata.hasOwnProperty(a1)) {
+                return quedata[a1].pop();
+            } else {
+                throw new Error("キューデータ" + a1 + " は作成されていません。");
+            }
+        });
+        make_one_func_tbl("queshift", 1, [], function (param) {
+            var a1;
+
+            a1 = Math.trunc(param[0]);
+
+            // ***** 最古データの取り出し(キュー) *****
+            if (quedata.hasOwnProperty(a1)) {
+                return quedata[a1].shift();
+            } else {
+                throw new Error("キューデータ" + a1 + " は作成されていません。");
+            }
+        });
+        make_one_func_tbl("queref", 2, [], function (param) {
+            var a1, a2;
+
+            a1 = Math.trunc(param[0]);
+            a2 = Math.trunc(param[1]);
+
+            // ***** データの参照 *****
+            if (quedata.hasOwnProperty(a1)) {
+                return quedata[a1].ref(a2);
+            } else {
+                throw new Error("キューデータ" + a1 + " は作成されていません。");
+            }
+        });
+        make_one_func_tbl("queset", 3, [], function (param) {
+            var a1, a2, a3;
+
+            a1 = Math.trunc(param[0]);
+            a2 = Math.trunc(param[1]);
+            a3 = param[2];
+
+            // ***** データの設定 *****
+            if (quedata.hasOwnProperty(a1)) {
+                quedata[a1].set(a2, a3);
+            } else {
+                throw new Error("キューデータ" + a1 + " は作成されていません。");
+            }
+            return nothing;
+        });
+        make_one_func_tbl("quecount", 1, [], function (param) {
+            var a1;
+
+            a1 = Math.trunc(param[0]);
+
+            // ***** データ数の取得 *****
+            if (quedata.hasOwnProperty(a1)) {
+                return quedata[a1].count();
+            } else {
+                throw new Error("キューデータ" + a1 + " は作成されていません。");
+            }
+        });
         make_one_func_tbl("randint", 2, [], function (param) {
             var a1, a2;
             var t;
@@ -1124,8 +1237,8 @@ var SP_Plugin0001;
                 r[i] = Vars.getVarValue(make_var_array(r1, i));
             }
             // ***** 砂シミュレート用オブジェクトの作成 *****
-            sand_obj[a1] = new SandSim(can, ctx, x1, y1, w1, h1, r, col, threshold, border_mode);
-            sand_obj[a1].makeTable();
+            sandsim[a1] = new SandSim(can, ctx, x1, y1, w1, h1, r, col, threshold, border_mode);
+            sandsim[a1].makeTable();
             // loop_nocount_flag = true;
             set_loop_nocount();
             return nothing;
@@ -1135,8 +1248,8 @@ var SP_Plugin0001;
 
             a1 = Math.trunc(param[0]);
             // ***** 砂を移動 *****
-            if (sand_obj.hasOwnProperty(a1)) {
-                sand_obj[a1].move();
+            if (sandsim.hasOwnProperty(a1)) {
+                sandsim[a1].move();
             } else {
                 throw new Error("砂シミュレート用オブジェクト" + a1 + " は作成されていません。");
             }
@@ -1148,9 +1261,9 @@ var SP_Plugin0001;
 
             a1 = Math.trunc(param[0]);
             // ***** 砂を描画 *****
-            if (sand_obj.hasOwnProperty(a1)) {
+            if (sandsim.hasOwnProperty(a1)) {
                 init_canvas_axis(ctx); // 座標系を初期化
-                sand_obj[a1].draw();
+                sandsim[a1].draw();
                 set_canvas_axis(ctx);  // 座標系を再設定
             } else {
                 throw new Error("砂シミュレート用オブジェクト" + a1 + " は作成されていません。");
@@ -5088,6 +5201,70 @@ var SandSim = (function () {
     };
     // ***** 作成したクラスを返す *****
     return SandSim;
+})();
+
+
+// ***** キューデータ用クラス *****
+var QueData = (function () {
+    // ***** コンストラクタ *****
+    function QueData(size, init) {
+        this.size = size | 0; // 整数化
+        if (this.size <= 0) { this.size = 1; }
+        this.init = init;
+        this.buf = [];
+        this.next = 0;
+        this.last = 0;
+        this.num = 0;
+    }
+    // ***** データの追加 *****
+    QueData.prototype.push = function (data) {
+        this.buf[this.next] = data;
+        this.next = (this.next + 1) % this.size;
+        if (this.num < this.size) {
+            this.num++;
+        } else {
+            this.last = (this.last + 1) % this.size;
+        }
+    };
+    // ***** 最新データの取り出し(スタック) *****
+    QueData.prototype.pop = function () {
+        if (this.num <= 0) { return this.init; }
+        this.next = (this.next - 1) % this.size;
+        if (this.next < 0) { this.next += this.size; }
+        this.num--;
+        return this.buf[this.next];
+    };
+    // ***** 最古データの取り出し(キュー) *****
+    QueData.prototype.shift = function () {
+        var ret;
+        if (this.num <= 0) { return this.init; }
+        ret = this.buf[this.last];
+        this.last = (this.last + 1) % this.size;
+        this.num--;
+        return ret;
+    };
+    // ***** データの参照 *****
+    QueData.prototype.ref = function (index) {
+        var i;
+        if (this.num <= index) { return this.init; }
+        i = (this.next - index - 1) % this.size;
+        if (i < 0) { i += this.size; }
+        return this.buf[i];
+    };
+    // ***** データの設定 *****
+    QueData.prototype.set = function (index, data) {
+        var i;
+        if (this.num <= index) { return; }
+        i = (this.next - index - 1) % this.size;
+        if (i < 0) { i += this.size; }
+        this.buf[i] = data;
+    };
+    // ***** データ数の取得 *****
+    QueData.prototype.count = function () {
+        return this.num;
+    };
+    // ***** 作成したクラスを返す *****
+    return QueData;
 })();
 
 
