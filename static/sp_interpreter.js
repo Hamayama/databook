@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2018-5-10 v17.04
+// 2018-5-14 v17.05
 
 
 // SPALM Web Interpreter
@@ -87,15 +87,6 @@ function init_func(load_skip_flag) {
     // ***** デバッグモードの初期選択 *****
     if (get_one_url_para("debug") == "1") {
         document.getElementById("debug_chk1").checked = true;
-    }
-    // ***** モバイル仮対応 *****
-    // (キーボードやゲームパッドの入力画面を呼び出せるように、
-    //  左上に空のテキストボックスを置いておく)
-    // (しかし、現状では、使用できないキーボードアプリが多い
-    //  (keydownとkeyupがほぼ同時に発生するタイプ等))
-    // (2017-7-27)
-    if (MobileType() != "") {
-        document.getElementById("mobile_text1").style.display = "block";
     }
     return true;
 }

@@ -38,9 +38,43 @@ window.onload = function () {
     SP_Interpreter.setcolor("", "", "#000000", "#fffca8");
     // ***** プラグインの初期化 *****
     SP_Plugin0001.init();
+    // ***** モバイル仮対応 *****
+    // (モバイル時には、画面の左上にフレーム表示を追加する)
+    // (2017-7-27)(2018-5-14)
+    if (MobileType() != "") {
+        document.getElementById("mobile_frame1").style.display = "block";
+        document.getElementById("mobile_chk1").checked = false;
+    }
     // ***** 自動実行 *****
     run_button();
 };
+// ***** モバイル仮対応 *****
+// (キーボードやゲームパッドの入力画面を呼び出せるようにテキストボックスを追加)
+// (しかし、現状では、使用できないキーボードアプリが多い
+//  (keydownとkeyupがほぼ同時に発生するタイプ等))
+// (2017-7-27)
+function mobile_text1_keyup() {
+    document.getElementById("mobile_text1").value = "";
+}
+// ***** モバイル仮対応 *****
+// (画面固定用のチェックボックスを追加)
+// (2018-5-14)
+function mobile_touchmove(ev) { ev.preventDefault(); }
+function mobile_chk1_click() {
+    var opt;
+    // ***** Chrome v56 対策 *****
+    // (Edge には EdgA (Android用) と EdgiOS (iOS用) も存在するらしい)
+    if (BrowserType() == "Chrome" && window.navigator.userAgent.indexOf("Edg") < 0) {
+        opt = { passive: false };
+    } else {
+        opt = false;
+    }
+    if (document.getElementById("mobile_chk1").checked) {
+        document.addEventListener("touchmove", mobile_touchmove, opt);
+    } else {
+        document.removeEventListener("touchmove", mobile_touchmove, opt);
+    }
+}
 // -->
 </script>
 </head>
@@ -54,7 +88,10 @@ window.onload = function () {
 </tr><tr>
 <th width="33%"></th>
 <th align="center" width="33%"><div style="text-align: left; display: inline-block; /display: inline; /zoom: 1;">
-<input type="text" id="mobile_text1" size="5" onkeyup="this.value='';" autocomplete="off" style="display: none;">
+<div id="mobile_frame1" style="display: none;">
+<input type="text" id="mobile_text1" size="5" onkeyup="mobile_text1_keyup();" autocomplete="off">&nbsp;
+<input type="checkbox" name="mobile_chk1" id="mobile_chk1" onclick="mobile_chk1_click();" value="1"><!--
+--><span style="font-weight: normal; font-size: 90%;">画面固定</span></div>
 <canvas id="canvas1" width="240" height="320">
 Cannot use canvas tag.
 </canvas></div><canvas id="canvas2" width="240" height="18"></canvas></th>
