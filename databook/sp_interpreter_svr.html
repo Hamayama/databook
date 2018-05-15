@@ -39,7 +39,7 @@ window.onload = function () {
     // ***** プラグインの初期化 *****
     SP_Plugin0001.init();
     // ***** モバイル仮対応 *****
-    // (モバイル時には、画面の左上にフレーム表示を追加する)
+    // (モバイル時には、画面の左上に専用フレームを表示する)
     // (2017-7-27)(2018-5-14)
     if (MobileType() != "") {
         document.getElementById("mobile_frame1").style.display = "block";
@@ -49,7 +49,8 @@ window.onload = function () {
     run_button();
 };
 // ***** モバイル仮対応 *****
-// (キーボードやゲームパッドの入力画面を呼び出せるようにテキストボックスを追加)
+// (キーボードやゲームパッドの入力画面を呼び出せるように、
+//  画面の左上にテキストボックスを追加)
 // (しかし、現状では、使用できないキーボードアプリが多い
 //  (keydownとkeyupがほぼ同時に発生するタイプ等))
 // (2017-7-27)
@@ -61,14 +62,10 @@ function mobile_text1_keyup() {
 // (2018-5-14)
 function mobile_touchmove(ev) { ev.preventDefault(); }
 function mobile_chk1_click() {
-    var opt;
     // ***** Chrome v56 対策 *****
     // (Edge には EdgA (Android用) と EdgiOS (iOS用) も存在するらしい)
-    if (BrowserType() == "Chrome" && window.navigator.userAgent.indexOf("Edg") < 0) {
-        opt = { passive: false };
-    } else {
-        opt = false;
-    }
+    var opt = (BrowserType() == "Chrome" && window.navigator.userAgent.indexOf("Edg") < 0) ?
+              { passive: false } : false;
     if (document.getElementById("mobile_chk1").checked) {
         document.addEventListener("touchmove", mobile_touchmove, opt);
     } else {
