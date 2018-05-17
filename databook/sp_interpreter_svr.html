@@ -43,32 +43,36 @@ window.onload = function () {
     // (2017-7-27)(2018-5-14)
     if (MobileType() != "") {
         document.getElementById("mobile_frame1").style.display = "block";
-        document.getElementById("mobile_chk1").checked = false;
     }
     // ***** 自動実行 *****
     run_button();
 };
 // ***** モバイル仮対応 *****
 // (キーボードやゲームパッドの入力画面を呼び出せるように、
-//  画面の左上にテキストボックスを追加)
+//  画面の左上にテキストボックスとボタンを追加)
 // (しかし、現状では、使用できないキーボードアプリが多い
 //  (keydownとkeyupがほぼ同時に発生するタイプ等))
-// (2017-7-27)
+// (2017-7-27)(2018-5-18)
 function mobile_text1_keyup() {
     document.getElementById("mobile_text1").value = "";
 }
+function mobile_button1_click() {
+    document.getElementById("mobile_text1").focus();
+}
 // ***** モバイル仮対応 *****
-// (画面固定用のチェックボックスを追加)
-// (2018-5-14)
+// (画面固定用のボタンを追加)
+// (2018-5-14)(2018-5-18)
 function mobile_touchmove(ev) { ev.preventDefault(); }
-function mobile_chk1_click() {
+function mobile_button2_click() {
     // ***** Chrome v56 対策 *****
     // (Edge には EdgA (Android用) と EdgiOS (iOS用) も存在するらしい)
     var opt = (BrowserType() == "Chrome" && window.navigator.userAgent.indexOf("Edg") < 0) ?
               { passive: false } : false;
-    if (document.getElementById("mobile_chk1").checked) {
+    if (document.getElementById("mobile_button2").value == "画面固定") {
+        document.getElementById("mobile_button2").value = "固定解除";
         document.addEventListener("touchmove", mobile_touchmove, opt);
     } else {
+        document.getElementById("mobile_button2").value = "画面固定";
         document.removeEventListener("touchmove", mobile_touchmove, opt);
     }
 }
@@ -86,9 +90,9 @@ function mobile_chk1_click() {
 <th width="33%"></th>
 <th align="center" width="33%"><div style="text-align: left; display: inline-block; /display: inline; /zoom: 1;">
 <div id="mobile_frame1" style="display: none;">
-<input type="text" id="mobile_text1" size="5" onkeyup="mobile_text1_keyup();" autocomplete="off">&nbsp;
-<input type="checkbox" name="mobile_chk1" id="mobile_chk1" onclick="mobile_chk1_click();" value="1"><!--
---><span style="font-weight: normal; font-size: 90%;">画面固定</span></div>
+<input type="text" id="mobile_text1" size="5" onkeyup="mobile_text1_keyup();" autocomplete="off" style="width: 8px;">
+<input type="button" id="mobile_button1" value="入力呼出" onclick="mobile_button1_click();">
+<input type="button" id="mobile_button2" value="画面固定" onclick="mobile_button2_click();"></div>
 <canvas id="canvas1" width="240" height="320">
 Cannot use canvas tag.
 </canvas></div><canvas id="canvas2" width="240" height="18"></canvas></th>
