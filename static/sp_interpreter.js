@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2018-5-18 v17.07
+// 2018-6-23 v17.08
 
 
 // SPALM Web Interpreter
@@ -1036,11 +1036,10 @@ var SP_Interpreter;
                     break;
                 case 7: // address
                     var_info = stack.pop();
-                    if (!(var_info.kind & 2)) {
-                        // ***** 変数情報のスコープを有効化 *****
+                    if (var_info.kind == 1) {
+                        // ***** ポインタ変数情報の生成 *****
                         // (変数情報を変更する場合は複製が必要)
-                        var_info2 = make_var_info((var_info.kind | 2), var_info.name,
-                                                  (var_info.kind & 1) ? Vars.getLocalScopeNum() : 0);
+                        var_info2 = make_var_pointer(var_info);
                         stack.push(var_info2);
                         break;
                     }
@@ -1532,7 +1531,7 @@ var SP_Interpreter;
             }
         }
 
-        // ***** 生成したアドレス情報を処理する *****
+        // ***** 生成したアドレス情報をコードに反映する *****
         addrinfo_array_len = addrinfo_array.length;
         for (i2 = 0; i2 < addrinfo_array_len; i2++) {
             // ***** アドレス情報の内容を取り出す *****
@@ -3349,19 +3348,26 @@ var SP_Interpreter;
     //  変更が必要な場合には、オブジェクトを複製して、複製したものを変更すること)
     function make_var_info(kind, name, scope) {
         var var_info = {};       // 変数情報
-        var_info.kind = kind;    //   変数の種別(複数のORになる場合があるので注意)
+        var_info.kind = kind;    //   変数の種別
                                  //     (=0:グローバル変数,
                                  //      =1:ローカル変数,
-                                 //      =2:スコープ有効)
+                                 //      =2:ローカル変数かつスコープ番号有効)
         var_info.name = name;    //   変数名
         var_info.scope = scope;  //   変数が所属するスコープのスコープ番号
-                                 //     (変数の種別がスコープ有効のときのみ使用可能)
+                                 //     (変数の種別が 2 のときのみ有効)
                                  //     (現状、このプロパティは、変数情報の識別用にも
                                  //      使用(流用)している)
         return var_info;
     }
+    // ***** ポインタ変数情報の生成 *****
+    function make_var_pointer(var_info) {
+        var var_info2 = {};
+        var_info2.kind = 2;
+        var_info2.name = var_info.name;
+        var_info2.scope = Vars.getLocalScopeNum();
+        return var_info2;
+    }
     // ***** 配列変数情報の生成 *****
-    // (変数情報を元に配列変数情報を生成する)
     function make_var_array(var_info, index) {
         var var_info2 = {};
         var_info2.kind = var_info.kind;
@@ -3396,15 +3402,14 @@ var SP_Interpreter;
 
         // ***** グローバル/ローカル変数のスコープ番号の取得(内部処理用) *****
         function get_scope_no(var_info) {
-            // ***** 変数情報のスコープ番号が有効のとき *****
-            if (var_info.kind & 2) {
-                if (var_info.scope > local_scope_num) {
-                    throw new Error("ポインタの指す先が不正です(スコープエラー)。");
-                }
-                return var_info.scope;
+            switch (var_info.kind) {
+                case 0: return 0;
+                case 1: return local_scope_num;
+                case 2: if (var_info.scope > local_scope_num) {
+                            throw new Error("ポインタの指す先が不正です(スコープエラー)。");
+                        }
+                        return var_info.scope;
             }
-            // ***** スコープ番号を返す *****
-            return (var_info.kind & 1) ? local_scope_num : 0;
         }
         // ***** 配列変数の一括操作(内部処理用) *****
         var controlArray = (function () {
