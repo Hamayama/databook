@@ -28,7 +28,8 @@
     width: 100%;
     margin-top: 10px;
 }
-.data_input th {
+.data_input td {
+    font-weight: bold;
     white-space: nowrap;
 }
 
@@ -57,7 +58,7 @@
     color: #ffffff;
     white-space: nowrap;
 }
-.data_table .nowrap {
+.data_table td {
     white-space: nowrap;
 }
 
@@ -115,29 +116,29 @@ function show_help() {
 <div class="data_input">
 <form action="{{ editpage_url }}" method="post">
 <table><tr>
-<th align="left">タイトル:</th>
-<th align="left" width="50%"><input type="text" name="title" style="width: 100%;">
-<input type="hidden" name="db" value="{{ databook_name }}"></th>
-<th align="left" width="50%"><input type="submit" value=" 編集 "></th>
+<td>タイトル:</td>
+<td style="width: 50%;"><input type="text" name="title" style="width: 100%;">
+<input type="hidden" name="db" value="{{ databook_name }}"></td>
+<td style="width: 50%;"><input type="submit" value=" 編集 "></td>
 </tr></table>
 </form>
 <form action="{{ mainpage_url }}" method="get">
 <table><tr>
-<th align="left">単語検索:</th>
-<th align="left" width="50%"><input type="text" name="word" value="{{ search_word }}" style="width: 100%;">
-<input type="hidden" name="db" value="{{ databook_name }}"></th>
-<th align="left" width="50%"><input type="submit" value=" 検索 "></th>
+<td>単語検索:</td>
+<td style="width: 50%;"><input type="text" name="word" value="{{ search_word }}" style="width: 100%;">
+<input type="hidden" name="db" value="{{ databook_name }}"></td>
+<td style="width: 50%;"><input type="submit" value=" 検索 "></td>
 </tr></table>
 <table style="margin-top: 5px;">
 {% if message_data %}
     <tr>
-    <th align="left" style="white-space: normal;">{{ message_data }}</th>
+    <td style="white-space: normal;">{{ message_data }}</td>
     </tr>
 {% endif %}
 {% if search_flag %}
     <tr>
-    <th align="left">検索結果:{{ search_count }}件
-    <input type="button" value="一覧に戻る" onclick="location.href='{{ mainpage_url }}?db={{ databook_name }}';"></th>
+    <td>検索結果:{{ search_count }}件
+    <input type="button" value="一覧に戻る" onclick="location.href='{{ mainpage_url }}?db={{ databook_name }}';"></td>
     </tr>
 {% endif %}
 </table>
@@ -155,16 +156,16 @@ function show_help() {
 </tr>
 {% for article in articles %}
     <tr>
-    <td width="20%">{{ article.title }}</td>
-    <td width="20%">{{ article.author }}</td>
-    <td width="40%">{{ article.content }}</td>
-    <td class="nowrap">{{ article.date.strftime('%Y-%m-%d %H:%M:%S %Z') }}</td>
-    <td class="nowrap"><form action="{{ editpage_url }}" method="post">
+    <td style="width: 20%; white-space: normal;">{{ article.title }}</td>
+    <td style="width: 20%; white-space: normal;">{{ article.author }}</td>
+    <td style="width: 40%; white-space: normal;">{{ article.content }}</td>
+    <td>{{ article.date.strftime('%Y-%m-%d %H:%M:%S %Z') }}</td>
+    <td><form action="{{ editpage_url }}" method="post">
     <input type="hidden" name="title" value="{{ article.title }}">
     <input type="hidden" name="db" value="{{ databook_name }}">
     <input type="submit" value=" 編集 ">
     </form></td>
-    <td class="nowrap"><form action="{{ runpage_url }}" method="get" target="run_prog">
+    <td><form action="{{ runpage_url }}" method="get" target="run_prog">
     <input type="hidden" name="title" value="{{ article.title }}">
     <input type="hidden" name="db" value="{{ databook_name }}">
     <input type="submit" value=" 起動 ">

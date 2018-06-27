@@ -30,8 +30,9 @@
     width: 95%;
     margin-top: 10px;
 }
-.data_edit th {
+.data_edit td {
     font-size: 90%;
+    font-weight: bold;
     white-space: nowrap;
 }
 
@@ -85,25 +86,25 @@ function set_button_disabled(flag) {
 <div class="data_edit">
 <form action="{{ update_url }}" method="post">
 <table><tr>
-<th align="left" colspan="2">タイトル : {{ article.title }}
+<td colspan="2">タイトル : {{ article.title }}
 <input type="hidden" name="title" value="{{ article.title }}">
-<input type="hidden" name="db" value="{{ databook_name }}"></th>
+<input type="hidden" name="db" value="{{ databook_name }}"></td>
 </tr><tr>
-<th align="left">記入者 :</th>
-<th align="left" width="95%"><input type="text" name="author" value="{{ article.author }}" style="width: 50%;"></th>
+<td>記入者 :</td>
+<td style="width: 95%;"><input type="text" name="author" value="{{ article.author }}" style="width: 50%;"></td>
 </tr><tr>
-<th align="left">内容 :</th>
-<th align="left" width="95%"><input type="text" name="content" value="{{ article.content }}" style="width: 100%;"></th>
+<td>内容 :</td>
+<td style="width: 95%;"><input type="text" name="content" value="{{ article.content }}" style="width: 100%;"></td>
 </tr><tr>
-<th align="left" valign="top">ソース :</th>
-<th align="left" width="95%"><textarea name="source" cols="40" rows="16" style="width: 100%;">{{ article.source }}</textarea></th>
+<td style="vertical-align: top;">ソース :</td>
+<td style="width: 95%;"><textarea name="source" cols="40" rows="16" style="width: 100%;">{{ article.source }}</textarea></td>
 </tr><tr>
 {% if article.bkup_dates %}
-    <th align="left" colspan="2">日時 : {{ article.date.strftime('%Y-%m-%d %H:%M:%S %Z') }}</th>
+    <td colspan="2">日時 : {{ article.date.strftime('%Y-%m-%d %H:%M:%S %Z') }}</td>
     </tr><tr>
-    <th align="left" colspan="2"><input type="checkbox" name="datechg" id="datechg1" onclick="datechg_click();" style="margin-bottom: 11px;" value="1" {% if datechg_flag == 1 %}checked{% endif %}>日時を更新する</th>
+    <td colspan="2"><input type="checkbox" name="datechg" id="datechg1" onclick="datechg_click();" style="margin-bottom: 11px;" value="1" {% if datechg_flag == 1 %}checked{% endif %}>日時を更新する</td>
 {% else %}
-    <th align="left" colspan="2"><input type="hidden" name="datechg" value="1"></th>
+    <td colspan="2"><input type="hidden" name="datechg" value="1"></td>
 {% endif %}
 </tr></table>
 <input type="button" value="セーブ" onclick="show_connecting(); submit();">
@@ -136,12 +137,12 @@ function set_button_disabled(flag) {
 {% endif %}
 
 <table><tr>
-<th align="left" style="white-space: normal;">
+<td style="white-space: normal;">
 <div id="message_text1">{% if message_data %}<div style="margin-bottom: 8px;">{{ message_data }}</div>{% endif %}</div>
-</th>
+</td>
 </tr><tr>
 {% if article.bkup_dates %}
-    <th align="left"><form action="{{ editpage_url }}" method="post">
+    <td><form action="{{ editpage_url }}" method="post">
     <div style="margin-bottom: 8px;">履歴 : <select name="bkup_sel">
     {% for bkup_date in article.bkup_dates %}
         <option value="{{ loop.index }}">{{ bkup_date.strftime('%Y-%m-%d %H:%M:%S %Z') }}</option>
@@ -152,11 +153,11 @@ function set_button_disabled(flag) {
     <input type="hidden" name="datechg" id="datechg4" value="{{ datechg_flag }}">
     <input type="button" value="ロード" onclick="if (confirm('履歴（バックアップデータ）をロードします。よろしいですか？')) { show_connecting(); submit(); }">
     </div>
-    </form></th>
+    </form></td>
     </tr><tr>
-    <th align="left" style="white-space: normal;">（※）編集後セーブせずに起動をクリックすると、過去のセーブデータで起動しますのでご注意ください。</th>
+    <td style="white-space: normal;">（※）編集後セーブせずに起動をクリックすると、過去のセーブデータで起動しますのでご注意ください。</td>
 {% else %}
-    <th align="left" style="white-space: normal;">（※）新規データです。</th>
+    <td style="white-space: normal;">（※）新規データです。</td>
 {% endif %}
 </tr></table>
 </div>

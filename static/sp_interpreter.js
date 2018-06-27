@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2018-6-23 v17.08
+// 2018-6-27 v17.09
 
 
 // SPALM Web Interpreter
@@ -554,7 +554,7 @@ var SP_Interpreter;
 
     var opcode = {              // スタックマシンの命令コード
         push:1,        pop:2,         dup:3,         push0:4,       push1:5,
-        load:6,        address:7,     pointer:8,     array:9,       store:10,
+        load:6,        store:7,       array:8,       address:9,     pointer:10,
         preinc:11,     predec:12,     postinc:13,    postdec:14,    add:15,
         addstr:16,     sub:17,        mul:18,        div:19,        divint:20,
         mod:21,        shl:22,        shr:23,        ushr:24,       positive:25,
@@ -1034,7 +1034,20 @@ var SP_Interpreter;
                     Vars.setVarValue(var_info, num);
                     stack.push(num);
                     break;
-                case 7: // address
+                case 7: // store
+                    var_info = stack.pop();
+                    num = Vars.getVarValue(var_info);
+                    stack.push(num);
+                    break;
+                case 8: // array
+                    num = stack.pop();
+                    var_info = stack.pop();
+                    // ***** 配列変数情報の生成 *****
+                    // (変数情報を変更する場合は複製が必要)
+                    var_info2 = make_var_array(var_info, num);
+                    stack.push(var_info2);
+                    break;
+                case 9: // address
                     var_info = stack.pop();
                     if (var_info.kind == 1) {
                         // ***** ポインタ変数情報の生成 *****
@@ -1045,26 +1058,13 @@ var SP_Interpreter;
                     }
                     stack.push(var_info);
                     break;
-                case 8: // pointer
+                case 10: // pointer
                     var_info = stack.pop();
                     var_info2 = Vars.getVarValue(var_info);
                     if (var_info2.scope == null) {
                         throw new Error("ポインタの指す先が不正です。(変数のアドレスではなく、'" + code_tostr(var_info2) + "' が入っていました)");
                     }
                     stack.push(var_info2);
-                    break;
-                case 9: // array
-                    num = stack.pop();
-                    var_info = stack.pop();
-                    // ***** 配列変数情報の生成 *****
-                    // (変数情報を変更する場合は複製が必要)
-                    var_info2 = make_var_array(var_info, num);
-                    stack.push(var_info2);
-                    break;
-                case 10: // store
-                    var_info = stack.pop();
-                    num = Vars.getVarValue(var_info);
-                    stack.push(num);
                     break;
                 case 11: // preinc
                     var_info = stack.pop();
@@ -1416,7 +1416,7 @@ var SP_Interpreter;
             } else {
                 // (Date.now()が遅かったので、10回に1回だけ処理時間を測定する)
                 loop_count--;
-                if (loop_count <= 0) {
+                if (!loop_count) {
                     loop_count = 10;
                     // time_diff = new Date().getTime() - loop_time_start;
                     time_diff = Date.now() - loop_time_start;
