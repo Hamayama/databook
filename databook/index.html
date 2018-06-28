@@ -11,106 +11,60 @@
 .main_container {
     background-color: #fffca8; /* 背景色 */
     color: #000000;            /* 文字色 */
+    margin: 20px;
 }
-.main_frame {
-    margin-left: 10px;
-    margin-right: 10px;
-    margin-top: 10px;
-}
-.title_text {
-    margin-bottom: 10px;
-    text-align: center;
-    font-size: 105%;
-    font-weight: bold;
-}
+.title_text { text-align: center; font-size: 105%; font-weight: bold; }
+.warn_text  { color: #ff0000; }
 
-.data_input table {
-    width: 100%;
-    margin-top: 10px;
-}
-.data_input td {
-    font-weight: bold;
-    white-space: nowrap;
-}
+.data_input table { width: 100%; margin-top: 10px; }
+.data_input td    { font-weight: bold; white-space: nowrap; }
 
-.data_table table {
-    width: 100%;
-    margin-top: 10px;
-    border-collapse: collapse;
-}
-.data_table table, .data_table th, .data_table td {
-    border: 1px solid #606060;
-}
-.data_table tr {
-    background-color: #ffffff;
-}
-.data_table tr:nth-child(2n) {
-    background-color: #ffffff;
-}
-.data_table tr:nth-child(2n+1) {
-    background-color: #c0ffff;
-}
-.data_table tr:nth-child(5n+1) {
-    border-bottom: 2px solid #606060;
-}
-.data_table th {
-    background-color: #0060c0;
-    color: #ffffff;
-    white-space: nowrap;
-}
-.data_table td {
-    white-space: nowrap;
-}
-
-.warn_text {
-    color: #ff0000;
-}
-
+.data_table table { width: 100%; margin-top: 15px; border-collapse: collapse; }
+.data_table table, .data_table th, .data_table td { border: 1px solid #606060; }
+.data_table tr                 { background-color: #ffffff; }
+.data_table tr:nth-child(2n)   { background-color: #ffffff; }
+.data_table tr:nth-child(2n+1) { background-color: #c0ffff; }
+.data_table tr:nth-child(5n+1) { border-bottom: 2px solid #606060; }
+.data_table th { background-color: #0060c0; color: #ffffff; white-space: nowrap; }
+.data_table td { white-space: nowrap; }
 -->
 </style>
 <script type="text/javascript">
 <!--
 // ***** 説明の表示／非表示 *****
+var show_help_flag = false;
 function show_help() {
-    if (document.getElementById("show_help_status1").value == "0") {
-        document.getElementById("show_help_status1").value = "1";
-        document.getElementById("show_help_text1").innerHTML = "＜説明を隠す＞";
-        document.getElementById("help_text1").style.display = "block";
-    } else {
-        document.getElementById("show_help_status1").value = "0";
+    if (show_help_flag) {
+        show_help_flag = false;
         document.getElementById("show_help_text1").innerHTML = "＜説明を表示＞";
         document.getElementById("help_text1").style.display = "none";
+    } else {
+        show_help_flag = true;
+        document.getElementById("show_help_text1").innerHTML = "＜説明を隠す＞";
+        document.getElementById("help_text1").style.display = "block";
     }
 }
 // -->
 </script>
 </head>
 
-<body class="main_container">
-<div class="main_frame">
+<body class="main_container" id="top">
 <div class="title_text">{{ databook_title }}&nbsp;&nbsp;<span class="warn_text">{{ write_disabled_message }}</span></div>
-<b>{{ admin_message }}</b> <a href="{{ login_url|safe }}">{{ login_text }}</a><br><br>
-<a href="#" id="show_help_text1" onclick="show_help();">＜説明を表示＞</a><br>
-<form action="#" onsubmit="return false;" style="display: inline;">
-<input type="hidden" id="show_help_status1" value="0">
-</form>
-<div id="help_text1" style="display: none; margin-top: 10px; margin-bottom: 15px;">
-＜内容＞<br>
+<div style="margin-top: 10px;"><b>{{ admin_message }}</b>&nbsp;<a href="{{ login_url }}">{{ login_text }}</a></div>
+<div style="margin-top: 10px;"><a href="#TOP" id="show_help_text1" onclick="show_help();">＜説明を表示＞</a></div>
+
+<div id="help_text1" style="display: none;">
+<p>＜内容＞<br>
 &nbsp;&nbsp;SPALM Web Interpreter のプログラムを登録可能なデータベースです。(Google App Engine を利用しています)<br>
 &nbsp;&nbsp;タイトル名を入力して編集ボタンをクリックにより、データ編集画面を表示し、データの登録が行えます。<br>
-&nbsp;&nbsp;また、起動ボタンをクリックにより、SPALM Web Interpreter の実行画面を表示し、プログラムを実行できます。<br>
-<br>
-＜注意事項＞<br>
-（１）タイトル名の入力で、すでに登録ずみの名前を入力した場合には、既存データの編集画面になります。<br>
-<br>
-（２）現状、一度登録したタイトル名は、変更や削除を行うことができません。<br>
-<br>
-（３）データは、日付の新しい順に{{ mainpage_show_num }}件だけ表示されます。<br>
-&nbsp;&nbsp;それ以降のデータは、正確なタイトル名の入力もしくは検索でのみ表示されます。<br>
-<br>
-（４）現状、SPALM Web Interpreter の実行画面では、プログラム（ソース）をセーブすることはできません。<br>
-&nbsp;&nbsp;データ編集画面のソース欄にコピー＆ペーストして、データ編集画面でセーブする必要があります。<br>
-<br>
+&nbsp;&nbsp;また、起動ボタンをクリックにより、SPALM Web Interpreter の実行画面を表示し、プログラムを実行できます。</p>
+<p>＜注意事項＞<br>
+（１）タイトル名の入力で、すでに登録ずみの名前を入力した場合には、既存データの編集画面になります。</p>
+<p>（２）現状、一度登録したタイトル名は、変更や削除を行うことができません。</p>
+<p>（３）データは、日付の新しい順に{{ mainpage_show_num }}件だけ表示されます。<br>
+&nbsp;&nbsp;それ以降のデータは、正確なタイトル名の入力もしくは検索でのみ表示されます。</p>
+<p>（４）現状、SPALM Web Interpreter の実行画面では、プログラム（ソース）をセーブすることはできません。<br>
+&nbsp;&nbsp;データ編集画面のソース欄にコピー＆ペーストして、データ編集画面でセーブする必要があります。</p>
 </div>
 
 <div class="data_input">
@@ -129,20 +83,14 @@ function show_help() {
 <input type="hidden" name="db" value="{{ databook_name }}"></td>
 <td style="width: 50%;"><input type="submit" value=" 検索 "></td>
 </tr></table>
-<table style="margin-top: 5px;">
+</form>
 {% if message_data %}
-    <tr>
-    <td style="white-space: normal;">{{ message_data }}</td>
-    </tr>
+    <div style="margin-top: 10px; margin-left: 2px;"><b>{{ message_data }}</b></div>
 {% endif %}
 {% if search_flag %}
-    <tr>
-    <td>検索結果:{{ search_count }}件
-    <input type="button" value="一覧に戻る" onclick="location.href='{{ mainpage_url }}?db={{ databook_name }}';"></td>
-    </tr>
+    <div style="margin-top: 10px; margin-left: 2px;"><b>検索結果:{{ search_count }}件</b>
+    <input type="button" value="一覧に戻る" onclick="location.href='{{ mainpage_url }}?db={{ databook_name }}';"></div>
 {% endif %}
-</table>
-</form>
 </div>
 
 <div class="data_table">
@@ -175,7 +123,6 @@ function show_help() {
 </table>
 </div>
 
-</div>
 </body>
 </html>
 {% endautoescape %}

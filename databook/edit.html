@@ -11,35 +11,15 @@
 .main_container {
     background-color: #fffca8; /* 背景色 */
     color: #000000;            /* 文字色 */
+    margin: 20px;
 }
-.main_frame {
-    margin-left: 10px;
-    margin-right: 10px;
-    margin-top: 10px;
-}
-.title_text {
-    text-align: center;
-    font-size: 105%;
-    font-weight: bold;
-}
+.title_text { text-align: center; font-size: 105%; font-weight: bold; }
+.warn_text  { color: #ff0000; }
 
-.data_edit form {
-    display: inline;
-}
-.data_edit table {
-    width: 95%;
-    margin-top: 10px;
-}
-.data_edit td {
-    font-size: 90%;
-    font-weight: bold;
-    white-space: nowrap;
-}
-
-.warn_text {
-    color: #ff0000;
-}
-
+.data_edit       { font-size: 90%; font-weight: bold; }
+.data_edit form  { display: inline; }
+.data_edit table { width: 95%; margin-top: 10px; }
+.data_edit td    { white-space: nowrap; }
 -->
 </style>
 <script type="text/javascript">
@@ -56,17 +36,15 @@ function datechg_click() {
         if (document.getElementById("datechg4")) { document.getElementById("datechg4").value = "0"; }
     }
 }
-
 // ***** 通信中の表示 *****
 function show_connecting() {
     set_button_disabled(true);
-    document.getElementById("message_text1").innerHTML = "<div style='margin-bottom: 8px;'>（通信中です。お待ちください）<\/div>";
+    document.getElementById("message_text1").innerHTML = "（通信中です。お待ちください）";
+    document.getElementById("message_text1").style.display = "block";
 }
-
 // ***** ボタンの有効/無効設定 *****
 function set_button_disabled(flag) {
-    var i;
-    var elms;
+    var i, elms;
     elms = document.getElementsByTagName("input");
     for (i = 0; i < elms.length; i++) {
         if (elms[i].type == "button") {
@@ -74,21 +52,19 @@ function set_button_disabled(flag) {
         }
     }
 }
-
 // -->
 </script>
 </head>
 
 <body class="main_container">
-<div class="main_frame">
 <div class="title_text">データ編集(S)&nbsp;&nbsp;<span class="warn_text">{{ write_disabled_message }}</span></div>
 
 <div class="data_edit">
 <form action="{{ update_url }}" method="post">
-<table><tr>
-<td colspan="2">タイトル : {{ article.title }}
 <input type="hidden" name="title" value="{{ article.title }}">
-<input type="hidden" name="db" value="{{ databook_name }}"></td>
+<input type="hidden" name="db" value="{{ databook_name }}">
+<table><tr>
+<td colspan="2">タイトル : {{ article.title }}</td>
 </tr><tr>
 <td>記入者 :</td>
 <td style="width: 95%;"><input type="text" name="author" value="{{ article.author }}" style="width: 50%;"></td>
@@ -98,17 +74,19 @@ function set_button_disabled(flag) {
 </tr><tr>
 <td style="vertical-align: top;">ソース :</td>
 <td style="width: 95%;"><textarea name="source" cols="40" rows="16" style="width: 100%;">{{ article.source }}</textarea></td>
-</tr><tr>
 {% if article.bkup_dates %}
-    <td colspan="2">日時 : {{ article.date.strftime('%Y-%m-%d %H:%M:%S %Z') }}</td>
     </tr><tr>
-    <td colspan="2"><input type="checkbox" name="datechg" id="datechg1" onclick="datechg_click();" style="margin-bottom: 11px;" value="1" {% if datechg_flag == 1 %}checked{% endif %}>日時を更新する</td>
-{% else %}
-    <td colspan="2"><input type="hidden" name="datechg" value="1"></td>
+    <td colspan="2">日時 : {{ article.date.strftime('%Y-%m-%d %H:%M:%S %Z') }}</td>
 {% endif %}
 </tr></table>
-<input type="button" value="セーブ" onclick="show_connecting(); submit();">
+{% if article.bkup_dates %}
+    <div style="margin-top: 4px;"><input type="checkbox" name="datechg" id="datechg1" onclick="datechg_click();" value="1" {% if datechg_flag == 1 %}checked{% endif %}>日時を更新する</div>
+{% else %}
+    <input type="hidden" name="datechg" value="1">
+{% endif %}
+<input type="button" value="セーブ" onclick="show_connecting(); submit();" style="margin-top: 10px;">
 </form>
+
 <form action="{{ runpage_url }}" method="get" target="run_prog">
 <input type="hidden" name="title" value="{{ article.title }}">
 <input type="hidden" name="db" value="{{ databook_name }}">
@@ -117,6 +95,7 @@ function set_button_disabled(flag) {
 {% endif %}
 <input type="button" value="戻る" onclick="if (confirm('編集を終了します。よろしいですか？')) { show_connecting(); location.href='{{ mainpage_url }}?db={{ databook_name }}'; }" style="margin-left: 10px;">
 </form>
+
 {% if admin_login and article.bkup_dates %}
     <form action="{{ update_url }}" method="post">
     <input type="hidden" name="title" value="{{ article.title }}">
@@ -130,39 +109,37 @@ function set_button_disabled(flag) {
     <input type="hidden" name="db" value="{{ databook_name }}">
     <input type="hidden" name="datechg" id="datechg3" value="{{ datechg_flag }}">
     <input type="hidden" name="rename" value="1">
-    <b style="font-size: 90%; margin-left: 10px;">タイトル変更 :</b>
+    <span style="margin-left: 10px;">タイトル変更 :</span>
     <input type="text" name="newtitle" value="{{ article.title }}" style="margin-left: 0px;">
     <input type="button" value="変更" onclick="if (confirm('タイトルを変更します（他の未セーブの変更は破棄されます）。よろしいですか？')) { show_connecting(); submit(); }" style="margin-left: 0px;">
     </form>
 {% endif %}
 
-<table><tr>
-<td style="white-space: normal;">
-<div id="message_text1">{% if message_data %}<div style="margin-bottom: 8px;">{{ message_data }}</div>{% endif %}</div>
-</td>
-</tr><tr>
+{% if message_data %}
+    <div id="message_text1" style="margin-top: 10px;">{{ message_data }}</div>
+{% else %}
+    <div id="message_text1" style="margin-top: 10px; display: none;"></div>
+{% endif %}
+
 {% if article.bkup_dates %}
-    <td><form action="{{ editpage_url }}" method="post">
-    <div style="margin-bottom: 8px;">履歴 : <select name="bkup_sel">
+    <form action="{{ editpage_url }}" method="post">
+    <input type="hidden" name="title" value="{{ article.title }}">
+    <input type="hidden" name="db" value="{{ databook_name }}">
+    <input type="hidden" name="datechg" id="datechg4" value="{{ datechg_flag }}">
+    <div style="margin-top: 10px;">履歴 : <select name="bkup_sel">
     {% for bkup_date in article.bkup_dates %}
         <option value="{{ loop.index }}">{{ bkup_date.strftime('%Y-%m-%d %H:%M:%S %Z') }}</option>
     {% endfor %}
     </select>
-    <input type="hidden" name="title" value="{{ article.title }}">
-    <input type="hidden" name="db" value="{{ databook_name }}">
-    <input type="hidden" name="datechg" id="datechg4" value="{{ datechg_flag }}">
     <input type="button" value="ロード" onclick="if (confirm('履歴（バックアップデータ）をロードします。よろしいですか？')) { show_connecting(); submit(); }">
     </div>
-    </form></td>
-    </tr><tr>
-    <td style="white-space: normal;">（※）編集後セーブせずに起動をクリックすると、過去のセーブデータで起動しますのでご注意ください。</td>
+    </form>
+    <div style="margin-top: 10px;">（※）編集後セーブせずに起動をクリックすると、過去のセーブデータで起動しますのでご注意ください。</div>
 {% else %}
-    <td style="white-space: normal;">（※）新規データです。</td>
+    <div style="margin-top: 10px;">（※）新規データです。</div>
 {% endif %}
-</tr></table>
 </div>
 
-</div>
 </body>
 </html>
 {% endautoescape %}
