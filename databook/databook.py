@@ -13,7 +13,7 @@ from google.appengine.api import search
 from google.appengine.api import capabilities
 
 # databook.py
-# 2018-6-28 v1.30
+# 2018-6-30 v1.31
 
 # Google App Engine / Python による データベース アプリケーション1
 
