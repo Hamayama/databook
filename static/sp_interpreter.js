@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2018-6-30 v17.10
+// 2018-7-11 v18.00
 
 
 // SPALM Web Interpreter
@@ -517,7 +517,8 @@ var SP_Interpreter;
     var varstatement_type;      // グローバル/ローカル文のタイプ
                                 //   (=0:なし,=1:ローカル文,=2:グローバル文)
     var locvarnames_stack = []; // ローカル変数名情報のスタック(配列)
-    var module_name;            // モジュール名
+    var module_fullname;        // モジュール完全名
+    var module_fullname_stack = []; // モジュール完全名のスタック(配列)
     var save_data = {};         // セーブデータ(連想配列オブジェクト)(仮)
     var out_data = {};          // 外部データ(連想配列オブジェクト)
 
@@ -1594,7 +1595,8 @@ var SP_Interpreter;
         code_len = 0;
         varstatement_type = 0;
         locvarnames_stack = [];
-        module_name = "";
+        module_fullname = "";
+        module_fullname_stack = [];
         c_statement(0, token_len, "", "");
     }
 
@@ -1605,6 +1607,7 @@ var SP_Interpreter;
         var tok;
         var var_type;
         var var_info;
+        var module_name, module_stm, module_end;
         var func_name, func_stm, func_end;
         var param_num;
 
@@ -1681,25 +1684,36 @@ var SP_Interpreter;
             // ***** module文のとき *****
             if (tok == "module") {
                 i++;
-                token_match("(", i++);
                 // ***** モジュール名の取得 *****
                 module_name = token[i++];
                 // ***** モジュール名のチェック *****
-                if (module_name == "off") {
-                    module_name = "";
-                } else {
-                    ch = module_name.charAt(0);
-                    if (!isName1(ch)) {
-                        debugpos2 = i;
-                        throw new Error("モジュール名が不正です。('" + module_name + "')");
-                    }
-                    if (reserved.hasOwnProperty(module_name) ||
-                        func_tbl.hasOwnProperty(module_name)) {
-                        debugpos2 = i;
-                        throw new Error("名前 '" + module_name + "' は予約されています。モジュールの定義に失敗しました。");
-                    }
+                ch = module_name.charAt(0);
+                if (!isName1(ch)) {
+                    debugpos2 = i;
+                    throw new Error("モジュール名が不正です。('" + module_name + "')");
                 }
-                token_match(")", i++);
+                if (reserved.hasOwnProperty(module_name) ||
+                    func_tbl.hasOwnProperty(module_name)) {
+                    debugpos2 = i;
+                    throw new Error("名前 '" + module_name + "' は予約されています。モジュールの定義に失敗しました。");
+                }
+                // ***** モジュール完全名に追加 *****
+                module_fullname_stack.push(module_fullname);
+                if (module_fullname != "") {
+                    module_fullname += "#" + module_name;
+                } else {
+                    module_fullname = module_name;
+                }
+                // ***** 本体の取得 *****
+                token_match("{", i++);
+                module_stm = i;
+                i = block_search(i, tok_end, "{", "}");
+                module_end = i;
+                // ***** 文(ステートメント)のコンパイル(再帰的に実行) *****
+                i = c_statement(module_stm, module_end - 1, break_lbl, continue_lbl);
+                i = module_end;
+                // ***** モジュール完全名から削除 *****
+                module_fullname = module_fullname_stack.pop();
                 continue;
             }
 
@@ -3188,16 +3202,16 @@ var SP_Interpreter;
         if (name.charAt(0) == "#" && name.length > 1) {
             return name.substring(1);
         }
-        /* モジュール名が空のときはそのまま返す */
-        if (module_name == "") {
+        /* モジュール完全名が空のときはそのまま返す */
+        if (module_fullname == "") {
             return name;
         }
         /* 「#」が含まれるときはそのまま返す */
         if (name.indexOf("#") >= 0) {
             return name;
         }
-        /* その他のときはモジュール名と「#」を前に付ける */
-        return module_name + "#" + name;
+        /* その他のときはモジュール完全名と「#」を前に付ける */
+        return module_fullname + "#" + name;
     }
     // ***** モジュール名の削除 *****
     function del_module_name(name) {
