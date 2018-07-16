@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2018-7-11 v18.00
+// 2018-7-17 v18.01
 
 
 // SPALM Web Interpreter
@@ -1436,7 +1436,7 @@ var SP_Interpreter;
 
     // ***** アドレス解決 *****
     function resolveaddress() {
-        var i, i2;
+        var i, j;
         var cod;
         var lbl_name;
         var func_name;
@@ -1534,10 +1534,10 @@ var SP_Interpreter;
 
         // ***** 生成したアドレス情報をコードに反映する *****
         addrinfo_array_len = addrinfo_array.length;
-        for (i2 = 0; i2 < addrinfo_array_len; i2++) {
+        for (i = 0; i < addrinfo_array_len; i++) {
             // ***** アドレス情報の内容を取り出す *****
-            addrinfo = addrinfo_array[i2];
-            i = addrinfo.i;
+            addrinfo = addrinfo_array[i];
+            j = addrinfo.i;
             debugpos1 = addrinfo.debugpos1;
             cod = addrinfo.cod;
             lbl_name = addrinfo.lbl_name;
@@ -1547,7 +1547,7 @@ var SP_Interpreter;
             if (cod == "label") {
                 // ***** アドレスを設定 *****
                 // (未使用なので0とする)
-                code[i] = 0;
+                code[j] = 0;
                 continue;
             }
 
@@ -1555,7 +1555,7 @@ var SP_Interpreter;
             if (cod == "func") {
                 // ***** アドレスを設定 *****
                 // (関数の定義終了のアドレスを設定)
-                code[i] = funcinfo[func_name].func_end;
+                code[j] = funcinfo[func_name].func_end;
                 continue;
             }
 
@@ -1575,7 +1575,7 @@ var SP_Interpreter;
                 }
                 // ***** アドレスを設定 *****
                 // (ジャンプ先のアドレスを設定)
-                code[i] = label[lbl_name];
+                code[j] = label[lbl_name];
                 continue;
             }
         }
@@ -2881,7 +2881,7 @@ var SP_Interpreter;
 
     // ***** トークン分割 *****
     function tokenize() {
-        var i, i2;
+        var i;
         var i_start;
         var src_len;
         var ch, ch2, ch3, ch4;
@@ -3104,7 +3104,7 @@ var SP_Interpreter;
             token_push(temp_st, line_no_tk);
         }
         // ***** 終端のトークンを追加(安全のため) *****
-        for (i2 = 0; i2 < end_token_num; i2++) {
+        for (i = 0; i < end_token_num; i++) {
             token_push("end", line_no);
         }
     }
@@ -3465,10 +3465,8 @@ var SP_Interpreter;
         };
         // ***** ローカル変数を取得する(staticメソッド)(デバッグ用) *****
         Vars.getLocalVars = function () {
-            if (local_scope_num > 0) {
-                return vars_stack[local_scope_num];
-            }
-            return {};
+            // return (local_scope_num > 0) ? vars_stack[local_scope_num] : {};
+            return (local_scope_num > 0) ? vars_stack[local_scope_num] : hashInit();
         };
         // ***** ローカル変数のスコープを1個生成する(staticメソッド) *****
         Vars.makeLocalScope = function () {
@@ -3529,12 +3527,9 @@ var SP_Interpreter;
             // ***** 変数名の取得 *****
             var_name = var_info.name;
             // ***** 変数の存在チェック *****
-            // if (now_vars.hasOwnProperty(var_name)) {
-            // if (hasOwn.call(now_vars, var_name)) {
-            if (now_vars[var_name] != null) {
-                return true;
-            }
-            return false;
+            // return now_vars.hasOwnProperty(var_name);
+            // return hasOwn.call(now_vars, var_name);
+            return (now_vars[var_name] != null);
         };
         // ***** 変数の値を取得する(staticメソッド) *****
         Vars.getVarValue = function (var_info) {
