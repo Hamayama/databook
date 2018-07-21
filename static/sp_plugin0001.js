@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_plugin0001.js
-// 2018-5-10 v17.04
+// 2018-7-21 v18.02
 
 
 // A Plugin for SPALM Web Interpreter
@@ -198,14 +198,12 @@ var SP_Plugin0001;
                 return 0;
             }
 
-            if (audplayer.hasOwnProperty(a1)) {
-                if (audplayer[a1].mmlplayer.compiled == 1) {
-                    return 1;
-                }
-            } else {
+            // ***** 引数のチェック *****
+            if (!audplayer.hasOwnProperty(a1)) {
                 throw new Error("音楽プレイヤー" + a1 + " は作成されていません。");
             }
-            return 0;
+
+            return (audplayer[a1].mmlplayer.compiled == 1) ? 1 : 0;
         });
         make_one_func_tbl("audplay", 1, [], function (param) {
             var a1, a2;
@@ -220,11 +218,12 @@ var SP_Plugin0001;
             // ***** 音楽モードチェック *****
             if (audmodecheck()) { return nothing; }
 
-            if (audplayer.hasOwnProperty(a1)) {
-                audplayer[a1].mmlplayer.play(a2);
-            } else {
+            // ***** 引数のチェック *****
+            if (!audplayer.hasOwnProperty(a1)) {
                 throw new Error("音楽プレイヤー" + a1 + " は作成されていません。");
             }
+
+            audplayer[a1].mmlplayer.play(a2);
             return nothing;
         });
         make_one_func_tbl("audspeedrate", 2, [], function (param) {
@@ -236,11 +235,12 @@ var SP_Plugin0001;
             // ***** 音楽モードチェック *****
             if (audmodecheck()) { return nothing; }
 
-            if (audplayer.hasOwnProperty(a1)) {
-                audplayer[a1].mmlplayer.setSpeedRate(a2);
-            } else {
+            // ***** 引数のチェック *****
+            if (!audplayer.hasOwnProperty(a1)) {
                 throw new Error("音楽プレイヤー" + a1 + " は作成されていません。");
             }
+
+            audplayer[a1].mmlplayer.setSpeedRate(a2);
             return nothing;
         });
         make_one_func_tbl("audstat", 1, [], function (param) {
@@ -256,14 +256,13 @@ var SP_Plugin0001;
                 return -1;
             }
 
-            num = 0;
-            if (audplayer.hasOwnProperty(a1)) {
-                num = audplayer[a1].mmlplayer.getStatus();
-            } else {
+            // ***** 引数のチェック *****
+            if (!audplayer.hasOwnProperty(a1)) {
                 throw new Error("音楽プレイヤー" + a1 + " は作成されていません。");
             }
-            if (num == 1 || num == 2) { return 1; }
-            return 0;
+
+            num = audplayer[a1].mmlplayer.getStatus();
+            return (num == 1 || num == 2) ? 1 : 0;
         });
         make_one_func_tbl("audstop", 1, [], function (param) {
             var a1;
@@ -273,11 +272,12 @@ var SP_Plugin0001;
             // ***** 音楽モードチェック *****
             if (audmodecheck()) { return nothing; }
 
-            if (audplayer.hasOwnProperty(a1)) {
-                audplayer[a1].mmlplayer.stop();
-            } else {
+            // ***** 引数のチェック *****
+            if (!audplayer.hasOwnProperty(a1)) {
                 throw new Error("音楽プレイヤー" + a1 + " は作成されていません。");
             }
+
+            audplayer[a1].mmlplayer.stop();
             return nothing;
         });
         make_one_func_tbl("audvolume", 2, [], function (param) {
@@ -289,11 +289,12 @@ var SP_Plugin0001;
             // ***** 音楽モードチェック *****
             if (audmodecheck()) { return nothing; }
 
-            if (audplayer.hasOwnProperty(a1)) {
-                audplayer[a1].mmlplayer.setVolume(a2);
-            } else {
+            // ***** 引数のチェック *****
+            if (!audplayer.hasOwnProperty(a1)) {
                 throw new Error("音楽プレイヤー" + a1 + " は作成されていません。");
             }
+
+            audplayer[a1].mmlplayer.setVolume(a2);
             return nothing;
         });
         make_one_func_tbl("calcfractal", 8, [], function (param) {
@@ -321,7 +322,7 @@ var SP_Plugin0001;
                 }
             }
 
-            // ***** エラーチェック *****
+            // ***** 引数のチェック *****
             if (rep > 1000) { rep = 1000; }
 
             tr = x1 * dr + mr;
@@ -502,7 +503,7 @@ var SP_Plugin0001;
                         a7 = Math.trunc(param[7]); // 頂点数
                     }
 
-                    // ***** エラーチェック *****
+                    // ***** 引数のチェック *****
                     if (a7 > 1000) { a7 = 1000; }
 
                     // ***** 描画処理 *****
@@ -647,7 +648,7 @@ var SP_Plugin0001;
             a2 |= 0;
             a3 |= 0;
 
-            // ***** エラーチェック *****
+            // ***** 引数のチェック *****
             // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
             if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
                 throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
@@ -918,7 +919,7 @@ var SP_Plugin0001;
             a2 |= 0;
             a3 |= 0;
 
-            // ***** エラーチェック *****
+            // ***** 引数のチェック *****
             // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
             if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
                 throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
@@ -1037,7 +1038,7 @@ var SP_Plugin0001;
             a2 |= 0;
             a3 |= 0;
 
-            // ***** エラーチェック *****
+            // ***** 引数のチェック *****
             // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
             if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
                 throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
@@ -1083,7 +1084,7 @@ var SP_Plugin0001;
                 a3 = param[2];
             }
 
-            // ***** エラーチェック *****
+            // ***** 引数のチェック *****
             // if (a2 < 1 || a2 > max_array_size) {
             if (!(a2 >= 1 && a2 <= max_array_size)) {
                 throw new Error("キューデータのサイズが不正です。1-" + max_array_size + "の間である必要があります。");
@@ -1099,12 +1100,13 @@ var SP_Plugin0001;
             a1 = Math.trunc(param[0]);
             a2 = param[1];
 
-            // ***** データの追加 *****
-            if (quedata.hasOwnProperty(a1)) {
-                quedata[a1].push(a2);
-            } else {
+            // ***** 引数のチェック *****
+            if (!quedata.hasOwnProperty(a1)) {
                 throw new Error("キューデータ" + a1 + " は作成されていません。");
             }
+
+            // ***** データの追加 *****
+            quedata[a1].push(a2);
             return nothing;
         });
         make_one_func_tbl("quepop", 1, [], function (param) {
@@ -1112,24 +1114,26 @@ var SP_Plugin0001;
 
             a1 = Math.trunc(param[0]);
 
-            // ***** 最新データの取り出し(スタック) *****
-            if (quedata.hasOwnProperty(a1)) {
-                return quedata[a1].pop();
-            } else {
+            // ***** 引数のチェック *****
+            if (!quedata.hasOwnProperty(a1)) {
                 throw new Error("キューデータ" + a1 + " は作成されていません。");
             }
+
+            // ***** 最新データの取り出し(スタック) *****
+            return quedata[a1].pop();
         });
         make_one_func_tbl("queshift", 1, [], function (param) {
             var a1;
 
             a1 = Math.trunc(param[0]);
 
-            // ***** 最古データの取り出し(キュー) *****
-            if (quedata.hasOwnProperty(a1)) {
-                return quedata[a1].shift();
-            } else {
+            // ***** 引数のチェック *****
+            if (!quedata.hasOwnProperty(a1)) {
                 throw new Error("キューデータ" + a1 + " は作成されていません。");
             }
+
+            // ***** 最古データの取り出し(キュー) *****
+            return quedata[a1].shift();
         });
         make_one_func_tbl("queref", 2, [], function (param) {
             var a1, a2;
@@ -1137,12 +1141,13 @@ var SP_Plugin0001;
             a1 = Math.trunc(param[0]);
             a2 = Math.trunc(param[1]);
 
-            // ***** データの参照 *****
-            if (quedata.hasOwnProperty(a1)) {
-                return quedata[a1].ref(a2);
-            } else {
+            // ***** 引数のチェック *****
+            if (!quedata.hasOwnProperty(a1)) {
                 throw new Error("キューデータ" + a1 + " は作成されていません。");
             }
+
+            // ***** データの参照 *****
+            return quedata[a1].ref(a2);
         });
         make_one_func_tbl("queset", 3, [], function (param) {
             var a1, a2, a3;
@@ -1151,12 +1156,13 @@ var SP_Plugin0001;
             a2 = Math.trunc(param[1]);
             a3 = param[2];
 
-            // ***** データの設定 *****
-            if (quedata.hasOwnProperty(a1)) {
-                quedata[a1].set(a2, a3);
-            } else {
+            // ***** 引数のチェック *****
+            if (!quedata.hasOwnProperty(a1)) {
                 throw new Error("キューデータ" + a1 + " は作成されていません。");
             }
+
+            // ***** データの設定 *****
+            quedata[a1].set(a2, a3);
             return nothing;
         });
         make_one_func_tbl("quecount", 1, [], function (param) {
@@ -1164,12 +1170,13 @@ var SP_Plugin0001;
 
             a1 = Math.trunc(param[0]);
 
-            // ***** データ数の取得 *****
-            if (quedata.hasOwnProperty(a1)) {
-                return quedata[a1].count();
-            } else {
+            // ***** 引数のチェック *****
+            if (!quedata.hasOwnProperty(a1)) {
                 throw new Error("キューデータ" + a1 + " は作成されていません。");
             }
+
+            // ***** データ数の取得 *****
+            return quedata[a1].count();
         });
         make_one_func_tbl("randint", 2, [], function (param) {
             var a1, a2;
@@ -1287,7 +1294,7 @@ var SP_Plugin0001;
                 off_y = Math.trunc(param[4]);
             }
 
-            // ***** エラーチェック *****
+            // ***** 引数のチェック *****
             if (a2.length == 0) { return nothing; }
 
             // ***** 画像文字割付グループを生成 *****
@@ -1314,7 +1321,7 @@ var SP_Plugin0001;
             a1 = String(param[0]);
             a2 = Math.trunc(param[1]);
 
-            // ***** エラーチェック *****
+            // ***** 引数のチェック *****
             // if (a2 > max_str_size) {
             if (!(a2 <= max_str_size)) {
                 throw new Error("処理する文字数が不正です。" + max_str_size + "以下である必要があります。");
@@ -1411,41 +1418,44 @@ var SP_Plugin0001;
             var imgvars = get_imgvars();
 
             a1 = get_var_name(param[0]); // 画像変数名取得
-            a2 = Math.trunc(param[1]); // RGB
+            a2 = Math.trunc(param[1]);   // RGB
             if (param.length <= 2) {
                 a3 = 0;
             } else {
                 a3 = Math.trunc(param[2]); // しきい値
             }
-            // if (imgvars.hasOwnProperty(a1)) {
-            if (hasOwn.call(imgvars, a1)) {
-                col_r = (a2 & 0xff0000) >> 16; // R
-                col_g = (a2 & 0x00ff00) >> 8;  // G
-                col_b = (a2 & 0x0000ff);       // B
-                col_a = 255;                   // alpha(未使用)
-                // ***** 画像データの取得 *****
-                img_data = imgvars[a1].ctx.getImageData(0, 0, imgvars[a1].can.width, imgvars[a1].can.height);
-                // ***** 透明画像変換 *****
-                for (i = 0; i < img_data.data.length; i += 4) {
-                    img_r = img_data.data[i    ]; // R
-                    img_g = img_data.data[i + 1]; // G
-                    img_b = img_data.data[i + 2]; // B
-                    img_a = img_data.data[i + 3]; // alpha(未使用)
-                    diff2 = (img_r - col_r) * (img_r - col_r) +
-                            (img_g - col_g) * (img_g - col_g) +
-                            (img_b - col_b) * (img_b - col_b);
-                    if (diff2 <= a3 * a3 * 3) { // 3倍してスケールを合わせる
-                        img_data.data[i    ] = 0;
-                        img_data.data[i + 1] = 0;
-                        img_data.data[i + 2] = 0;
-                        img_data.data[i + 3] = 0;
-                    }
-                }
-                // ***** 画像データを格納 *****
-                imgvars[a1].ctx.putImageData(img_data, 0, 0);
-            } else {
+
+            // ***** 引数のチェック *****
+            // if (!imgvars.hasOwnProperty(a1)) {
+            if (!hasOwn.call(imgvars, a1)) {
                 throw new Error("Image変数 '" + a1 + "' は作成されていません。");
             }
+
+            // ***** 透過色の取得 *****
+            col_r = (a2 & 0xff0000) >> 16; // R
+            col_g = (a2 & 0x00ff00) >> 8;  // G
+            col_b = (a2 & 0x0000ff);       // B
+            col_a = 255;                   // alpha(未使用)
+            // ***** 画像データの取得 *****
+            img_data = imgvars[a1].ctx.getImageData(0, 0, imgvars[a1].can.width, imgvars[a1].can.height);
+            // ***** 透明画像変換 *****
+            for (i = 0; i < img_data.data.length; i += 4) {
+                img_r = img_data.data[i    ]; // R
+                img_g = img_data.data[i + 1]; // G
+                img_b = img_data.data[i + 2]; // B
+                img_a = img_data.data[i + 3]; // alpha(未使用)
+                diff2 = (img_r - col_r) * (img_r - col_r) +
+                        (img_g - col_g) * (img_g - col_g) +
+                        (img_b - col_b) * (img_b - col_b);
+                if (diff2 <= a3 * a3 * 3) { // 3倍してスケールを合わせる
+                    img_data.data[i    ] = 0;
+                    img_data.data[i + 1] = 0;
+                    img_data.data[i + 2] = 0;
+                    img_data.data[i + 3] = 0;
+                }
+            }
+            // ***** 画像データを格納 *****
+            imgvars[a1].ctx.putImageData(img_data, 0, 0);
             return nothing;
         });
         make_one_func_tbl("txtmake", 5, [0], function (param) {
@@ -1463,7 +1473,7 @@ var SP_Plugin0001;
             a2 |= 0;
             a3 |= 0;
 
-            // ***** エラーチェック *****
+            // ***** 引数のチェック *****
             // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
             if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
                 throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
@@ -1510,7 +1520,7 @@ var SP_Plugin0001;
             a2 |= 0;
             a3 |= 0;
 
-            // ***** エラーチェック *****
+            // ***** 引数のチェック *****
             // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
             if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
                 throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
@@ -1577,7 +1587,7 @@ var SP_Plugin0001;
             a2 |= 0;
             a3 |= 0;
 
-            // ***** エラーチェック *****
+            // ***** 引数のチェック *****
             // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
             if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
                 throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
@@ -1646,7 +1656,7 @@ var SP_Plugin0001;
             b2 |= 0;
             b3 |= 0;
 
-            // ***** エラーチェック *****
+            // ***** 引数のチェック *****
             // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
             if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
                 throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
@@ -1720,7 +1730,7 @@ var SP_Plugin0001;
             a2 |= 0;
             a3 |= 0;
 
-            // ***** エラーチェック *****
+            // ***** 引数のチェック *****
             // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
             if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
                 throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
@@ -1768,7 +1778,7 @@ var SP_Plugin0001;
             a2 |= 0;
             a3 |= 0;
 
-            // ***** エラーチェック *****
+            // ***** 引数のチェック *****
             // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
             if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
                 throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
@@ -1816,7 +1826,7 @@ var SP_Plugin0001;
             a2 |= 0;
             a3 |= 0;
 
-            // ***** エラーチェック *****
+            // ***** 引数のチェック *****
             // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
             if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
                 throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
@@ -1844,18 +1854,18 @@ var SP_Plugin0001;
             a2 |= 0;
             a3 |= 0;
 
-            // ***** エラーチェック *****
+            // ***** 引数のチェック *****
             // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
             if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
                 throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
             }
             // if (x1 > max_str_size || y1 > max_str_size) {
             if (!(x1 <= max_str_size && y1 <= max_str_size)) {
-                throw new Error("処理する文字数が不正です。" + max_str_size + "以下である必要があります。");
+                throw new Error("処理する文字数(座標)が不正です。" + max_str_size + "以下である必要があります。");
             }
             // if (x2 > max_str_size || y2 > max_str_size) {
             if (!(x2 <= max_str_size && y2 <= max_str_size)) {
-                throw new Error("処理する文字数が不正です。" + max_str_size + "以下である必要があります。");
+                throw new Error("処理する文字数(座標)が不正です。" + max_str_size + "以下である必要があります。");
             }
 
             // ***** 描画処理 *****
@@ -1880,18 +1890,18 @@ var SP_Plugin0001;
             a2 |= 0;
             a3 |= 0;
 
-            // ***** エラーチェック *****
+            // ***** 引数のチェック *****
             // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
             if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
                 throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
             }
             // if (x1 > max_str_size || y1 > max_str_size) {
             if (!(x1 <= max_str_size && y1 <= max_str_size)) {
-                throw new Error("処理する文字数が不正です。" + max_str_size + "以下である必要があります。");
+                throw new Error("処理する文字数(座標)が不正です。" + max_str_size + "以下である必要があります。");
             }
             // if (x2 > max_str_size || y2 > max_str_size) {
             if (!(x2 <= max_str_size && y2 <= max_str_size)) {
-                throw new Error("処理する文字数が不正です。" + max_str_size + "以下である必要があります。");
+                throw new Error("処理する文字数(座標)が不正です。" + max_str_size + "以下である必要があります。");
             }
 
             // ***** 描画処理 *****
@@ -1924,18 +1934,18 @@ var SP_Plugin0001;
             a2 |= 0;
             a3 |= 0;
 
-            // ***** エラーチェック *****
+            // ***** 引数のチェック *****
             // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
             if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
                 throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
             }
             // if (x1 > max_str_size || y1 > max_str_size) {
             if (!(x1 <= max_str_size && y1 <= max_str_size)) {
-                throw new Error("処理する文字数が不正です。" + max_str_size + "以下である必要があります。");
+                throw new Error("処理する文字数(座標)が不正です。" + max_str_size + "以下である必要があります。");
             }
             // if (x2 > max_str_size || y2 > max_str_size) {
             if (!(x2 <= max_str_size && y2 <= max_str_size)) {
-                throw new Error("処理する文字数が不正です。" + max_str_size + "以下である必要があります。");
+                throw new Error("処理する文字数(座標)が不正です。" + max_str_size + "以下である必要があります。");
             }
 
             // ***** 描画処理 *****
@@ -1969,14 +1979,14 @@ var SP_Plugin0001;
             a2 |= 0;
             a3 |= 0;
 
-            // ***** エラーチェック *****
+            // ***** 引数のチェック *****
             // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
             if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
                 throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
             }
             // if (r1 > max_str_size) {
             if (!(r1 <= max_str_size)) {
-                throw new Error("処理する文字数が不正です。" + max_str_size + "以下である必要があります。");
+                throw new Error("処理する文字数(半径)が不正です。" + max_str_size + "以下である必要があります。");
             }
             if (r1 <= 0) { return nothing; }
 
@@ -2036,14 +2046,14 @@ var SP_Plugin0001;
             a2 |= 0;
             a3 |= 0;
 
-            // ***** エラーチェック *****
+            // ***** 引数のチェック *****
             // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
             if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
                 throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
             }
             // if (r1 > max_str_size) {
             if (!(r1 <= max_str_size)) {
-                throw new Error("処理する文字数が不正です。" + max_str_size + "以下である必要があります。");
+                throw new Error("処理する文字数(半径)が不正です。" + max_str_size + "以下である必要があります。");
             }
             if (r1 <= 0) { return nothing; }
 
@@ -2092,7 +2102,7 @@ var SP_Plugin0001;
             b3 |= 0;
             b4 |= 0;
 
-            // ***** エラーチェック *****
+            // ***** 引数のチェック *****
             // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
             if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
                 throw new Error("処理する(文字列)配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
@@ -2118,10 +2128,10 @@ var SP_Plugin0001;
                 y[i] = Math.trunc(Vars.getVarValue(make_var_array(b2, j)));
                 j++;
 
-                // ***** エラーチェック *****
+                // ***** 座標のチェック *****
                 // if (x[i] > max_str_size || y[i] > max_str_size) {
                 if (!(x[i] <= max_str_size && y[i] <= max_str_size)) {
-                    throw new Error("処理する文字数が不正です。" + max_str_size + "以下である必要があります。");
+                    throw new Error("処理する文字数(座標)が不正です。" + max_str_size + "以下である必要があります。");
                 }
             }
 
@@ -2169,7 +2179,7 @@ var SP_Plugin0001;
             b3 |= 0;
             b4 |= 0;
 
-            // ***** エラーチェック *****
+            // ***** 引数のチェック *****
             // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
             if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
                 throw new Error("処理する(文字列)配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
@@ -2195,10 +2205,10 @@ var SP_Plugin0001;
                 y[i] = Math.trunc(Vars.getVarValue(make_var_array(b2, j)));
                 j++;
 
-                // ***** エラーチェック *****
+                // ***** 座標のチェック *****
                 // if (x[i] > max_str_size || y[i] > max_str_size) {
                 if (!(x[i] <= max_str_size && y[i] <= max_str_size)) {
-                    throw new Error("処理する文字数が不正です。" + max_str_size + "以下である必要があります。");
+                    throw new Error("処理する文字数(座標)が不正です。" + max_str_size + "以下である必要があります。");
                 }
             }
 
@@ -2314,7 +2324,7 @@ var SP_Plugin0001;
             a2 |= 0;
             a3 |= 0;
 
-            // ***** エラーチェック *****
+            // ***** 引数のチェック *****
             // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
             if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
                 throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
@@ -2352,18 +2362,18 @@ var SP_Plugin0001;
             a2 |= 0;
             a3 |= 0;
 
-            // ***** エラーチェック *****
+            // ***** 引数のチェック *****
             // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
             if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
                 throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
             }
             // if (x1 > max_str_size || y1 > max_str_size) {
             if (!(x1 <= max_str_size && y1 <= max_str_size)) {
-                throw new Error("処理する文字数が不正です。" + max_str_size + "以下である必要があります。");
+                throw new Error("処理する文字数(座標)が不正です。" + max_str_size + "以下である必要があります。");
             }
             // if (x2 > max_str_size || y2 > max_str_size) {
             if (!(x2 <= max_str_size && y2 <= max_str_size)) {
-                throw new Error("処理する文字数が不正です。" + max_str_size + "以下である必要があります。");
+                throw new Error("処理する文字数(座標)が不正です。" + max_str_size + "以下である必要があります。");
             }
             if (a4.length == 0) { return 0; }
 
@@ -2407,7 +2417,7 @@ var SP_Plugin0001;
             a2 |= 0;
             a3 |= 0;
 
-            // ***** エラーチェック *****
+            // ***** 引数のチェック *****
             // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
             if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
                 throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
@@ -2430,14 +2440,14 @@ var SP_Plugin0001;
             x4 = Math.ceil((x4 - offx) / chw) - 1;
             y4 = Math.ceil((y4 - offy) / chh) - 1;
 
-            // ***** エラーチェック *****
+            // ***** 座標のチェック *****
             // if (x3 > max_str_size || y3 > max_str_size) {
             if (!(x3 <= max_str_size && y3 <= max_str_size)) {
-                throw new Error("処理する文字数が不正です。" + max_str_size + "以下である必要があります。");
+                throw new Error("処理する文字数(座標)が不正です。" + max_str_size + "以下である必要があります。");
             }
             // if (x4 > max_str_size || y4 > max_str_size) {
             if (!(x4 <= max_str_size && y4 <= max_str_size)) {
-                throw new Error("処理する文字数が不正です。" + max_str_size + "以下である必要があります。");
+                throw new Error("処理する文字数(座標)が不正です。" + max_str_size + "以下である必要があります。");
             }
 
             // ***** 取得処理 *****
@@ -2503,7 +2513,7 @@ var SP_Plugin0001;
             a2 |= 0;
             a3 |= 0;
 
-            // ***** エラーチェック *****
+            // ***** 引数のチェック *****
             // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
             if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
                 throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
@@ -2526,14 +2536,14 @@ var SP_Plugin0001;
             x4 = Math.ceil((x4 - offx) / chw) - 1;
             y4 = Math.ceil((y4 - offy) / chh) - 1;
 
-            // ***** エラーチェック *****
+            // ***** 座標のチェック *****
             // if (x3 > max_str_size || y3 > max_str_size) {
             if (!(x3 <= max_str_size && y3 <= max_str_size)) {
-                throw new Error("処理する文字数が不正です。" + max_str_size + "以下である必要があります。");
+                throw new Error("処理する文字数(座標)が不正です。" + max_str_size + "以下である必要があります。");
             }
             // if (x4 > max_str_size || y4 > max_str_size) {
             if (!(x4 <= max_str_size && y4 <= max_str_size)) {
-                throw new Error("処理する文字数が不正です。" + max_str_size + "以下である必要があります。");
+                throw new Error("処理する文字数(座標)が不正です。" + max_str_size + "以下である必要があります。");
             }
 
             // ***** 取得処理 *****
@@ -2834,7 +2844,7 @@ var SP_Plugin0001;
         var ch;
         var st1;
 
-        // ***** エラーチェック *****
+        // ***** 引数のチェック *****
         if (st2.length == 0) { return false; }
         // ***** 点設定処理 *****
         ch = st2.charAt(0); // 1文字だけにする
@@ -2907,7 +2917,7 @@ var SP_Plugin0001;
 
         // ***** 戻り値の初期化 *****
         ret_st = "";
-        // ***** エラーチェック *****
+        // ***** 引数のチェック *****
         if (st1_len == 0 || count <= 0) { return ret_st; }
         // ***** 繰り返し処理 *****
         while (ret_st.length < count) {
@@ -2931,7 +2941,7 @@ var SP_Plugin0001;
 
         // ***** 戻り値の初期化 *****
         ret_st = st1;
-        // ***** エラーチェック *****
+        // ***** 引数のチェック *****
         if (st1_len == 0 || st2_len == 0) { return ret_st; }
         // ***** 上書き処理 *****
         // (境界の条件によって場合分け)
@@ -2958,7 +2968,7 @@ var SP_Plugin0001;
 
         // ***** 戻り値の初期化 *****
         ret_st = st1;
-        // ***** エラーチェック *****
+        // ***** 引数のチェック *****
         if (st1_len == 0 || st2_len == 0) { return ret_st; }
         // ***** 上書き処理 *****
         // (半角/全角スペース以外を上書きする)
@@ -2986,7 +2996,7 @@ var SP_Plugin0001;
 
         // ***** 戻り値の初期化 *****
         ret_st = st1;
-        // ***** エラーチェック *****
+        // ***** 引数のチェック *****
         if (st1_len == 0 || st2_len == 0) { return ret_st; }
         // ***** 上書き処理 *****
         // (半角/全角スペースのみ上書きする)
@@ -3064,7 +3074,7 @@ var DigitCalc = (function () {
         x.str = "";
         x.digit = [];
         x.digit_len = 0;
-        // ***** エラーチェック *****
+        // ***** 引数のチェック *****
         if (num_st == "NaN") {
             x.str = "NaN";
             return false;
@@ -3093,7 +3103,7 @@ var DigitCalc = (function () {
                 exp_num = (+ret[4]);
                 // (整数部に指数部を反映)
                 if (exp_num > 0) {
-                    // ***** エラーチェック *****
+                    // ***** 桁数のチェック *****
                     if (exp_num + int_st.length > DigitCalc.MAX_DIGIT_LEN) {
                         x.str = "Infinity";
                         return false;
@@ -3111,7 +3121,7 @@ var DigitCalc = (function () {
             x.str = "NaN";
             return false;
         }
-        // ***** エラーチェック *****
+        // ***** 桁数のチェック *****
         if (x.str.length > DigitCalc.MAX_DIGIT_LEN) {
             x.str = "Infinity";
             return false;
@@ -3132,7 +3142,7 @@ var DigitCalc = (function () {
         var i;
         var arr_st;
 
-        // ***** エラーチェック *****
+        // ***** 桁数のチェック *****
         if (x.digit_len <= 0) {
             // ( NaN 等もあるのでここで初期化はしない)
             // x.sign = "+";
@@ -3151,7 +3161,7 @@ var DigitCalc = (function () {
         reg_exp = /^0*(\d+)/;
         ret = reg_exp.exec(x.str);
         if (ret && ret[1]) { x.str = ret[1]; } else { x.str = "0"; }
-        // ***** エラーチェック *****
+        // ***** 桁数のチェック *****
         if (x.str.length > DigitCalc.MAX_DIGIT_LEN) {
             // x.sign = "+";
             x.str = "Infinity";
@@ -3187,7 +3197,7 @@ var DigitCalc = (function () {
         z.str = "NaN";
         z.digit = [];
         z.digit_len = 0;
-        // ***** エラーチェック *****
+        // ***** 引数のチェック *****
         if (x.str == "NaN" || y.str == "NaN") {
             return false;
         }
@@ -3315,7 +3325,7 @@ var DigitCalc = (function () {
         z.str = "NaN";
         z.digit = [];
         z.digit_len = 0;
-        // ***** エラーチェック *****
+        // ***** 引数のチェック *****
         if (x.str == "NaN" || y.str == "NaN") {
             return false;
         }
@@ -3369,7 +3379,7 @@ var DigitCalc = (function () {
         z2.str = "NaN";
         z2.digit = [];
         z2.digit_len = 0;
-        // ***** エラーチェック *****
+        // ***** 引数のチェック *****
         if (x.str == "NaN" || y.str == "NaN") {
             return false;
         }
@@ -3851,7 +3861,7 @@ var FloodFill = (function () {
         bound_col.g = (bound_col0 & 0x00ff00) >> 8;  // 境界色 G
         bound_col.b = (bound_col0 & 0x0000ff);       // 境界色 B
         bound_col.a = bound_alpha0;                  // 境界色 alpha
-        // ***** エラーチェック *****
+        // ***** 引数のチェック *****
         if (x0 < 0 || x0 >= width)  { return false; }
         if (y0 < 0 || y0 >= height) { return false; }
         // ***** 画像データの取得 *****
@@ -3943,7 +3953,7 @@ var FloodFill = (function () {
         ret_col.g = 0;
         ret_col.b = 0;
         ret_col.a = 0;
-        // ***** エラーチェック *****
+        // ***** 引数のチェック *****
         if (x < 0 || x >= width)  { return ret_col; }
         if (y < 0 || y >= height) { return ret_col; }
         // ***** 点の色を取得 *****
@@ -3962,7 +3972,7 @@ var FloodFill = (function () {
 
         // ***** 戻り値の初期化 *****
         ret = false;
-        // ***** エラーチェック *****
+        // ***** 引数のチェック *****
         if (x < 0 || x >= width)  { return ret; }
         if (y < 0 || y >= height) { return ret; }
         // ***** 色の比較 *****
@@ -5237,6 +5247,7 @@ var QueData = (function () {
     // ***** 最古データの取り出し(キュー) *****
     QueData.prototype.shift = function () {
         var ret;
+
         if (this.num <= 0) { return this.init; }
         ret = this.buf[this.last];
         this.last = (this.last + 1) % this.size;
@@ -5246,6 +5257,7 @@ var QueData = (function () {
     // ***** データの参照 *****
     QueData.prototype.ref = function (index) {
         var i;
+
         if (this.num <= index) { return this.init; }
         i = (this.next - index - 1) % this.size;
         if (i < 0) { i += this.size; }
@@ -5254,6 +5266,7 @@ var QueData = (function () {
     // ***** データの設定 *****
     QueData.prototype.set = function (index, data) {
         var i;
+
         if (this.num <= index) { return; }
         i = (this.next - index - 1) % this.size;
         if (i < 0) { i += this.size; }

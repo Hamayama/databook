@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2018-7-17 v18.01
+// 2018-7-21 v18.02
 
 
 // SPALM Web Interpreter
@@ -1562,7 +1562,7 @@ var SP_Interpreter;
             // ***** ジャンプのとき *****
             if (cod == "goto"       || cod == "ifgoto" || cod == "ifnotgoto" ||
                 cod == "switchgoto" || cod == "gosub") {
-                // ***** エラーチェック *****
+                // ***** ジャンプ先のチェック *****
                 // if (!label.hasOwnProperty(lbl_name)) {
                 // if (!hasOwn.call(label, lbl_name)) {
                 if (label[lbl_name] == null) {
@@ -4038,7 +4038,7 @@ var SP_Interpreter;
             // ***** NaN対策 *****
             a2 |= 0;
 
-            // ***** エラーチェック *****
+            // ***** 引数のチェック *****
             // if (a3 != null && (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size)) {
             if (!(a3 == null || (a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size))) {
                 throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
@@ -4182,7 +4182,7 @@ var SP_Interpreter;
             a4 |= 0;
             a5 |= 0;
 
-            // ***** エラーチェック *****
+            // ***** 引数のチェック *****
             // if (a5 > max_array_size) {
             if (!(a5 <= max_array_size)) {
                 throw new Error("処理する配列の個数が不正です。" + max_array_size + "以下である必要があります。");
@@ -4358,8 +4358,7 @@ var SP_Interpreter;
             return Math.cos(a1 * Math.PI / 180);
         });
         make_one_func_tbl("devpixratio", -1, [], function (param) {
-            if (window.devicePixelRatio) { return window.devicePixelRatio; }
-            return 0;
+            return window.devicePixelRatio || 0;
         });
         make_one_func_tbl("disarray", 1, [0], function (param) {
             var a1, a2, a3;
@@ -4379,7 +4378,7 @@ var SP_Interpreter;
                 }
             }
 
-            // ***** エラーチェック *****
+            // ***** 引数のチェック *****
             // if (a2 != null && (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size)) {
             if (!(a2 == null || (a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size))) {
                 throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
@@ -4473,33 +4472,35 @@ var SP_Interpreter;
             var a1, a2, a3, a4, a5, a6, a7;
 
             a1 = get_var_name(param[0]); // 画像変数名取得
-            a2 = Math.trunc(param[1]); // 先X
-            a3 = Math.trunc(param[2]); // 先Y
-            a4 = Math.trunc(param[3]); // 元X
-            a5 = Math.trunc(param[4]); // 元Y
-            a6 = Math.trunc(param[5]); // W
-            a7 = Math.trunc(param[6]); // H
+            a2 = Math.trunc(param[1]);   // 先X
+            a3 = Math.trunc(param[2]);   // 先Y
+            a4 = Math.trunc(param[3]);   // 元X
+            a5 = Math.trunc(param[4]);   // 元Y
+            a6 = Math.trunc(param[5]);   // W
+            a7 = Math.trunc(param[6]);   // H
+            // ***** screen指定のとき *****
             if (del_module_name(a1) == "screen") {
                 // ***** 画像を描画(表示画面→ターゲット) *****
                 ctx.drawImage(can1, a4, a5, a6, a7, a2, a3, a6, a7);
-            } else {
-                // if (imgvars.hasOwnProperty(a1)) {
-                if (hasOwn.call(imgvars, a1)) {
-                    // ***** 画像を描画(画像変数→ターゲット) *****
-                    ctx.drawImage(imgvars[a1].can, a4, a5, a6, a7, a2, a3, a6, a7);
-                } else {
-                    throw new Error("Image変数 '" + a1 + "' は作成されていません。");
-                }
+                return nothing;
             }
+            // ***** 引数のチェック *****
+            // if (!imgvars.hasOwnProperty(a1)) {
+            if (!hasOwn.call(imgvars, a1)) {
+                throw new Error("Image変数 '" + a1 + "' は作成されていません。");
+            }
+            // ***** 画像を描画(画像変数→ターゲット) *****
+            ctx.drawImage(imgvars[a1].can, a4, a5, a6, a7, a2, a3, a6, a7);
             return nothing;
         });
         make_one_func_tbl("drawimg", 4, [0], function (param) {
             var a1, a2, a3, a4;
 
             a1 = get_var_name(param[0]); // 画像変数名取得
-            a2 = Math.trunc(param[1]); // X
-            a3 = Math.trunc(param[2]); // Y
-            a4 = Math.trunc(param[3]); // アンカー
+            a2 = Math.trunc(param[1]);   // X
+            a3 = Math.trunc(param[2]);   // Y
+            a4 = Math.trunc(param[3]);   // アンカー
+            // ***** screen指定のとき *****
             if (del_module_name(a1) == "screen") {
                 // ***** 水平方向 *****
                 // if (a4 & 4)   { }                        // 左
@@ -4511,23 +4512,23 @@ var SP_Interpreter;
                 else if (a4 & 2) { a3 -= can1.height / 2; } // 中央
                 // ***** 画像を描画(表示画面→ターゲット) *****
                 ctx.drawImage(can1, a2, a3);
-            } else {
-                // if (imgvars.hasOwnProperty(a1)) {
-                if (hasOwn.call(imgvars, a1)) {
-                    // ***** 水平方向 *****
-                    // if (a4 & 4)   { }                                   // 左
-                    if (a4 & 8)      { a2 -= imgvars[a1].can.width; }      // 右
-                    else if (a4 & 1) { a2 -= imgvars[a1].can.width / 2; }  // 中央
-                    // ***** 垂直方向 *****
-                    // if (a4 & 16)  { }                                   // 上
-                    if (a4 & 32)     { a3 -= imgvars[a1].can.height; }     // 下
-                    else if (a4 & 2) { a3 -= imgvars[a1].can.height / 2; } // 中央
-                    // ***** 画像を描画(画像変数→ターゲット) *****
-                    ctx.drawImage(imgvars[a1].can, a2, a3);
-                } else {
-                    throw new Error("Image変数 '" + a1 + "' は作成されていません。");
-                }
+                return nothing;
             }
+            // ***** 引数のチェック *****
+            // if (!imgvars.hasOwnProperty(a1)) {
+            if (!hasOwn.call(imgvars, a1)) {
+                throw new Error("Image変数 '" + a1 + "' は作成されていません。");
+            }
+            // ***** 水平方向 *****
+            // if (a4 & 4)   { }                                   // 左
+            if (a4 & 8)      { a2 -= imgvars[a1].can.width; }      // 右
+            else if (a4 & 1) { a2 -= imgvars[a1].can.width / 2; }  // 中央
+            // ***** 垂直方向 *****
+            // if (a4 & 16)  { }                                   // 上
+            if (a4 & 32)     { a3 -= imgvars[a1].can.height; }     // 下
+            else if (a4 & 2) { a3 -= imgvars[a1].can.height / 2; } // 中央
+            // ***** 画像を描画(画像変数→ターゲット) *****
+            ctx.drawImage(imgvars[a1].can, a2, a3);
             return nothing;
         });
         make_one_func_tbl("drawimgex", 9, [0], function (param) {
@@ -4536,27 +4537,28 @@ var SP_Interpreter;
             var img_w, img_h;
 
             a1 = get_var_name(param[0]); // 画像変数名取得
-            a2 = Math.trunc(param[1]); // 元X
-            a3 = Math.trunc(param[2]); // 元Y
-            a4 = Math.trunc(param[3]); // 元W
-            a5 = Math.trunc(param[4]); // 元H
-            a6 = Math.trunc(param[5]); // 変換
-            a7 = Math.trunc(param[6]); // 先X
-            a8 = Math.trunc(param[7]); // 先Y
-            a9 = Math.trunc(param[8]); // アンカー
+            a2 = Math.trunc(param[1]);   // 元X
+            a3 = Math.trunc(param[2]);   // 元Y
+            a4 = Math.trunc(param[3]);   // 元W
+            a5 = Math.trunc(param[4]);   // 元H
+            a6 = Math.trunc(param[5]);   // 変換
+            a7 = Math.trunc(param[6]);   // 先X
+            a8 = Math.trunc(param[7]);   // 先Y
+            a9 = Math.trunc(param[8]);   // アンカー
 
             // ***** コピー元の画像を取得 *****
+            // ***** screen指定のとき *****
             if (del_module_name(a1) == "screen") {
                 // (表示画面をコピー元とする)
                 can0 = can1;
             } else {
-                // if (imgvars.hasOwnProperty(a1)) {
-                if (hasOwn.call(imgvars, a1)) {
-                    // (画像変数をコピー元とする)
-                    can0 = imgvars[a1].can;
-                } else {
+                // ***** 引数のチェック *****
+                // if (!imgvars.hasOwnProperty(a1)) {
+                if (!hasOwn.call(imgvars, a1)) {
                     throw new Error("Image変数 '" + a1 + "' は作成されていません。");
                 }
+                // (画像変数をコピー元とする)
+                can0 = imgvars[a1].can;
             }
 
             // ***** アンカーの座標を計算 *****
@@ -4621,26 +4623,27 @@ var SP_Interpreter;
             var a1, a2, a3, a4, a5, a6, a7, a8, a9;
 
             a1 = get_var_name(param[0]); // 画像変数名取得
-            a2 = Math.trunc(param[1]); // 先X
-            a3 = Math.trunc(param[2]); // 先Y
-            a4 = Math.trunc(param[3]); // 先W
-            a5 = Math.trunc(param[4]); // 先H
-            a6 = Math.trunc(param[5]); // 元X
-            a7 = Math.trunc(param[6]); // 元Y
-            a8 = Math.trunc(param[7]); // 元W
-            a9 = Math.trunc(param[8]); // 元H
+            a2 = Math.trunc(param[1]);   // 先X
+            a3 = Math.trunc(param[2]);   // 先Y
+            a4 = Math.trunc(param[3]);   // 先W
+            a5 = Math.trunc(param[4]);   // 先H
+            a6 = Math.trunc(param[5]);   // 元X
+            a7 = Math.trunc(param[6]);   // 元Y
+            a8 = Math.trunc(param[7]);   // 元W
+            a9 = Math.trunc(param[8]);   // 元H
+            // ***** screen指定のとき *****
             if (del_module_name(a1) == "screen") {
                 // ***** 画像を描画(表示画面→ターゲット) *****
                 ctx.drawImage(can1, a6, a7, a8, a9, a2, a3, a4, a5);
-            } else {
-                // if (imgvars.hasOwnProperty(a1)) {
-                if (hasOwn.call(imgvars, a1)) {
-                    // ***** 画像を描画(画像変数→ターゲット) *****
-                    ctx.drawImage(imgvars[a1].can, a6, a7, a8, a9, a2, a3, a4, a5);
-                } else {
-                    throw new Error("Image変数 '" + a1 + "' は作成されていません。");
-                }
+                return nothing;
             }
+            // ***** 引数のチェック *****
+            // if (!imgvars.hasOwnProperty(a1)) {
+            if (!hasOwn.call(imgvars, a1)) {
+                throw new Error("Image変数 '" + a1 + "' は作成されていません。");
+            }
+            // ***** 画像を描画(画像変数→ターゲット) *****
+            ctx.drawImage(imgvars[a1].can, a6, a7, a8, a9, a2, a3, a4, a5);
             return nothing;
         });
         make_one_func_tbl("dsin", 1, [], function (param) {
@@ -4834,7 +4837,7 @@ var SP_Interpreter;
             x1 = ret_array[0];
             y1 = ret_array[1];
 
-            // ***** エラーチェック *****
+            // ***** 座標のチェック *****
             // if (x1 < 0 || x1 >= can.width || y1 < 0 || y1 >= can.height) { return 0; }
             if (!(x1 >= 0 && x1 < can.width && y1 >= 0 && y1 < can.height)) { return 0; }
 
@@ -4853,17 +4856,15 @@ var SP_Interpreter;
             var a1;
 
             a1 = get_var_name(param[0]); // 画像変数名取得
-            // if (imgvars.hasOwnProperty(a1)) {
-            if (hasOwn.call(imgvars, a1)) { return imgvars[a1].can.height; }
-            return 0;
+            // return imgvars.hasOwnProperty(a1) ? imgvars[a1].can.height : 0;
+            return hasOwn.call(imgvars, a1) ? imgvars[a1].can.height : 0;
         });
         make_one_func_tbl("imgwidth", 1, [0], function (param) {
             var a1;
 
             a1 = get_var_name(param[0]); // 画像変数名取得
-            // if (imgvars.hasOwnProperty(a1)) {
-            if (hasOwn.call(imgvars, a1)) { return imgvars[a1].can.width; }
-            return 0;
+            // return imgvars.hasOwnProperty(a1) ? imgvars[a1].can.width : 0;
+            return hasOwn.call(imgvars, a1) ? imgvars[a1].can.width : 0;
         });
         make_one_func_tbl("index", 2, [], function (param) {
             var a1, a2, a3;
@@ -4960,7 +4961,7 @@ var SP_Interpreter;
             // ***** NaN対策 *****
             a3 |= 0;
 
-            // ***** エラーチェック *****
+            // ***** 引数のチェック *****
             // if (a4 != null && (a4 - a3 + 1 < 1 || a4 - a3 + 1 > max_array_size)) {
             if (!(a4 == null || (a4 - a3 + 1 >= 1 && a4 - a3 + 1 <= max_array_size))) {
                 throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
@@ -5076,7 +5077,7 @@ var SP_Interpreter;
             var img_data = {};
 
             a1 = get_var_name(param[0]); // 画像変数名取得
-            a2 = String(param[1]); // 画像データ文字列
+            a2 = String(param[1]);       // 画像データ文字列
             // ***** FlashCanvas用 *****
             if (!ctx.createImageData) { throw new Error("画像生成機能が利用できません。"); }
             // ***** 画像データの取得 *****
@@ -5094,7 +5095,7 @@ var SP_Interpreter;
             img_w = Math.trunc(g_data[i++]);
             img_h = Math.trunc(g_data[i++]);
 
-            // ***** エラーチェック *****
+            // ***** 画像サイズのチェック *****
             // if (img_w <= 0 || img_w > max_image_size || img_h <= 0 || img_h > max_image_size) {
             if (!(img_w > 0 && img_w <= max_image_size && img_h > 0 && img_h <= max_image_size)) {
                 throw new Error("画像の縦横のサイズが不正です。1-" + max_image_size + "の間である必要があります。");
@@ -5140,7 +5141,7 @@ var SP_Interpreter;
             var img_obj = {};
 
             a1 = get_var_name(param[0]); // 画像変数名取得
-            a2 = String(param[1]); // 画像データ文字列(data URI scheme)
+            a2 = String(param[1]);       // 画像データ文字列(data URI scheme)
             // ***** Canvasの生成 *****
             imgvars[a1] = {};
             imgvars[a1].can = document.createElement("canvas");
@@ -5182,11 +5183,8 @@ var SP_Interpreter;
 
             a1 = get_var_name(param[0]); // 画像変数名取得
             // ***** 画像ロード中フラグをチェックして返す *****
-            // if (imgvars.hasOwnProperty(a1)) {
-            if (hasOwn.call(imgvars, a1)) {
-                if (imgvars[a1].loading) { return 1; }
-            }
-            return 0;
+            // return (imgvars.hasOwnProperty(a1) && imgvars[a1].loading) ? 1 : 0;
+            return (hasOwn.call(imgvars, a1) && imgvars[a1].loading) ? 1 : 0;
         });
         make_one_func_tbl("lock", 0, [], function (param) {
             // ***** NOP *****
@@ -5223,7 +5221,7 @@ var SP_Interpreter;
                 }
             }
 
-            // ***** エラーチェック *****
+            // ***** 引数のチェック *****
             // if (a3 - a2 + 1 < 1 || a3 - a2 + 1 > max_array_size) {
             if (!(a3 - a2 + 1 >= 1 && a3 - a2 + 1 <= max_array_size)) {
                 throw new Error("処理する配列の個数が不正です。1-" + max_array_size + "の間である必要があります。");
@@ -5239,10 +5237,10 @@ var SP_Interpreter;
             var a1, a2, a3;
 
             a1 = get_var_name(param[0]); // 画像変数名取得
-            a2 = Math.trunc(param[1]); // W
-            a3 = Math.trunc(param[2]); // H
+            a2 = Math.trunc(param[1]);   // W
+            a3 = Math.trunc(param[2]);   // H
 
-            // ***** エラーチェック *****
+            // ***** 引数のチェック *****
             // if (a2 <= 0 || a2 > max_image_size || a3 <= 0 || a3 > max_image_size) {
             if (!(a2 > 0 && a2 <= max_image_size && a3 > 0 && a3 <= max_image_size)) {
                 throw new Error("画像の縦横のサイズが不正です。1-" + max_image_size + "の範囲で指定してください。");
@@ -5534,7 +5532,7 @@ var SP_Interpreter;
                 }
             }
 
-            // ***** エラーチェック *****
+            // ***** 引数のチェック *****
             // if (a1 < -max_scale_size || a1 > max_scale_size || a2 < -max_scale_size || a2 > max_scale_size) {
             if (!(a1 >= -max_scale_size && a1 <= max_scale_size && a2 >= -max_scale_size && a2 <= max_scale_size)) {
                 throw new Error("座標系の倍率の値が不正です。-" + max_scale_size + "から" + max_scale_size + "までの数値を指定してください。");
@@ -5574,7 +5572,7 @@ var SP_Interpreter;
 
             a1 = Math.trunc(param[0]);
 
-            // ***** エラーチェック *****
+            // ***** 引数のチェック *****
             // if (a1 <= 0 || a1 > max_font_size) {
             if (!(a1 > 0 && a1 <= max_font_size)) {
                 throw new Error("フォントサイズが不正です。1-" + max_font_size + "の範囲で指定してください。");
@@ -5633,7 +5631,7 @@ var SP_Interpreter;
                 a4 = Math.trunc(param[3]); // H2
             }
 
-            // ***** エラーチェック *****
+            // ***** 引数のチェック *****
             // if (a1 <= 0 || a1 > max_image_size || a2 <= 0 || a2 > max_image_size ||
             //     a3 <= 0 || a3 > max_image_size || a4 <= 0 || a4 > max_image_size) {
             if (!(a1 > 0 && a1 <= max_image_size && a2 > 0 && a2 <= max_image_size &&
@@ -5728,7 +5726,7 @@ var SP_Interpreter;
                 a2 = Math.trunc(param[1]);
             }
 
-            // ***** エラーチェック *****
+            // ***** 引数のチェック *****
             // if (a2 <= 0 || a2 > max_font_size2) {
             if (!(a2 > 0 && a2 <= max_font_size2)) {
                 throw new Error("フォントサイズが不正です。1-" + max_font_size2 + "の範囲で指定してください。");
@@ -5750,7 +5748,7 @@ var SP_Interpreter;
                 a2 = Math.trunc(param[1]);
             }
 
-            // ***** エラーチェック *****
+            // ***** 引数のチェック *****
             // if (a2 <= 0 || a2 > max_font_size2) {
             if (!(a2 > 0 && a2 <= max_font_size2)) {
                 throw new Error("フォントサイズが不正です。1-" + max_font_size2 + "の範囲で指定してください。");
@@ -5892,15 +5890,20 @@ var SP_Interpreter;
             var a1;
 
             a1 = get_var_name(param[0]); // 画像変数名取得
+            // ***** 描画先を指定 *****
             if (del_module_name(a1) == "off") {
+                // (表示画面を描画先とする)
                 can = can1;
                 ctx = ctx1;
-            // } else if (imgvars.hasOwnProperty(a1)) {
-            } else if (hasOwn.call(imgvars, a1)) {
+            } else {
+                // ***** 引数のチェック *****
+                // if (!imgvars.hasOwnProperty(a1)) {
+                if (!hasOwn.call(imgvars, a1)) {
+                    throw new Error("Image変数 '" + a1 + "' は作成されていません。");
+                }
+                // (画像変数を描画先とする)
                 can = imgvars[a1].can;
                 ctx = imgvars[a1].ctx;
-            } else {
-                throw new Error("Image変数 '" + a1 + "' は作成されていません。");
             }
             // ***** Canvasの各種設定のリセット *****
             // (クリッピング領域の設定も解除する)
