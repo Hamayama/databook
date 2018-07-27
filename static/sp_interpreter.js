@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2018-7-21 v18.02
+// 2018-7-27 v18.03
 
 
 // SPALM Web Interpreter
@@ -4470,6 +4470,7 @@ var SP_Interpreter;
         });
         make_one_func_tbl("drawarea", 7, [0], function (param) {
             var a1, a2, a3, a4, a5, a6, a7;
+            var can0;
 
             a1 = get_var_name(param[0]); // 画像変数名取得
             a2 = Math.trunc(param[1]);   // 先X
@@ -4478,57 +4479,56 @@ var SP_Interpreter;
             a5 = Math.trunc(param[4]);   // 元Y
             a6 = Math.trunc(param[5]);   // W
             a7 = Math.trunc(param[6]);   // H
-            // ***** screen指定のとき *****
-            if (del_module_name(a1) == "screen") {
-                // ***** 画像を描画(表示画面→ターゲット) *****
-                ctx.drawImage(can1, a4, a5, a6, a7, a2, a3, a6, a7);
-                return nothing;
-            }
+
             // ***** 引数のチェック *****
-            // if (!imgvars.hasOwnProperty(a1)) {
-            if (!hasOwn.call(imgvars, a1)) {
-                throw new Error("Image変数 '" + a1 + "' は作成されていません。");
+            if (del_module_name(a1) == "screen") {
+                // (表示画面をコピー元とする)
+                can0 = can1;
+            } else {
+                // if (!imgvars.hasOwnProperty(a1)) {
+                if (!hasOwn.call(imgvars, a1)) {
+                    throw new Error("Image変数 '" + a1 + "' は作成されていません。");
+                }
+                // (画像変数をコピー元とする)
+                can0 = imgvars[a1].can;
             }
-            // ***** 画像を描画(画像変数→ターゲット) *****
-            ctx.drawImage(imgvars[a1].can, a4, a5, a6, a7, a2, a3, a6, a7);
+
+            // ***** 画像を描画 *****
+            ctx.drawImage(can0, a4, a5, a6, a7, a2, a3, a6, a7);
             return nothing;
         });
         make_one_func_tbl("drawimg", 4, [0], function (param) {
             var a1, a2, a3, a4;
+            var can0;
 
             a1 = get_var_name(param[0]); // 画像変数名取得
             a2 = Math.trunc(param[1]);   // X
             a3 = Math.trunc(param[2]);   // Y
             a4 = Math.trunc(param[3]);   // アンカー
-            // ***** screen指定のとき *****
-            if (del_module_name(a1) == "screen") {
-                // ***** 水平方向 *****
-                // if (a4 & 4)   { }                        // 左
-                if (a4 & 8)      { a2 -= can1.width; }      // 右
-                else if (a4 & 1) { a2 -= can1.width / 2; }  // 中央
-                // ***** 垂直方向 *****
-                // if (a4 & 16)  { }                        // 上
-                if (a4 & 32)     { a3 -= can1.height; }     // 下
-                else if (a4 & 2) { a3 -= can1.height / 2; } // 中央
-                // ***** 画像を描画(表示画面→ターゲット) *****
-                ctx.drawImage(can1, a2, a3);
-                return nothing;
-            }
+
             // ***** 引数のチェック *****
-            // if (!imgvars.hasOwnProperty(a1)) {
-            if (!hasOwn.call(imgvars, a1)) {
-                throw new Error("Image変数 '" + a1 + "' は作成されていません。");
+            if (del_module_name(a1) == "screen") {
+                // (表示画面をコピー元とする)
+                can0 = can1;
+            } else {
+                // if (!imgvars.hasOwnProperty(a1)) {
+                if (!hasOwn.call(imgvars, a1)) {
+                    throw new Error("Image変数 '" + a1 + "' は作成されていません。");
+                }
+                // (画像変数をコピー元とする)
+                can0 = imgvars[a1].can;
             }
+
             // ***** 水平方向 *****
-            // if (a4 & 4)   { }                                   // 左
-            if (a4 & 8)      { a2 -= imgvars[a1].can.width; }      // 右
-            else if (a4 & 1) { a2 -= imgvars[a1].can.width / 2; }  // 中央
+            // if (a4 & 4)   { }                        // 左
+            if (a4 & 8)      { a2 -= can0.width; }      // 右
+            else if (a4 & 1) { a2 -= can0.width / 2; }  // 中央
             // ***** 垂直方向 *****
-            // if (a4 & 16)  { }                                   // 上
-            if (a4 & 32)     { a3 -= imgvars[a1].can.height; }     // 下
-            else if (a4 & 2) { a3 -= imgvars[a1].can.height / 2; } // 中央
-            // ***** 画像を描画(画像変数→ターゲット) *****
-            ctx.drawImage(imgvars[a1].can, a2, a3);
+            // if (a4 & 16)  { }                        // 上
+            if (a4 & 32)     { a3 -= can0.height; }     // 下
+            else if (a4 & 2) { a3 -= can0.height / 2; } // 中央
+            // ***** 画像を描画 *****
+            ctx.drawImage(can0, a2, a3);
             return nothing;
         });
         make_one_func_tbl("drawimgex", 9, [0], function (param) {
@@ -4546,13 +4546,11 @@ var SP_Interpreter;
             a8 = Math.trunc(param[7]);   // 先Y
             a9 = Math.trunc(param[8]);   // アンカー
 
-            // ***** コピー元の画像を取得 *****
-            // ***** screen指定のとき *****
+            // ***** 引数のチェック *****
             if (del_module_name(a1) == "screen") {
                 // (表示画面をコピー元とする)
                 can0 = can1;
             } else {
-                // ***** 引数のチェック *****
                 // if (!imgvars.hasOwnProperty(a1)) {
                 if (!hasOwn.call(imgvars, a1)) {
                     throw new Error("Image変数 '" + a1 + "' は作成されていません。");
@@ -4621,6 +4619,7 @@ var SP_Interpreter;
         });
         make_one_func_tbl("drawscaledimg", 9, [0], function (param) {
             var a1, a2, a3, a4, a5, a6, a7, a8, a9;
+            var can0;
 
             a1 = get_var_name(param[0]); // 画像変数名取得
             a2 = Math.trunc(param[1]);   // 先X
@@ -4631,19 +4630,21 @@ var SP_Interpreter;
             a7 = Math.trunc(param[6]);   // 元Y
             a8 = Math.trunc(param[7]);   // 元W
             a9 = Math.trunc(param[8]);   // 元H
-            // ***** screen指定のとき *****
-            if (del_module_name(a1) == "screen") {
-                // ***** 画像を描画(表示画面→ターゲット) *****
-                ctx.drawImage(can1, a6, a7, a8, a9, a2, a3, a4, a5);
-                return nothing;
-            }
+
             // ***** 引数のチェック *****
-            // if (!imgvars.hasOwnProperty(a1)) {
-            if (!hasOwn.call(imgvars, a1)) {
-                throw new Error("Image変数 '" + a1 + "' は作成されていません。");
+            if (del_module_name(a1) == "screen") {
+                // (表示画面をコピー元とする)
+                can0 = can1;
+            } else {
+                // if (!imgvars.hasOwnProperty(a1)) {
+                if (!hasOwn.call(imgvars, a1)) {
+                    throw new Error("Image変数 '" + a1 + "' は作成されていません。");
+                }
+                // (画像変数をコピー元とする)
+                can0 = imgvars[a1].can;
             }
-            // ***** 画像を描画(画像変数→ターゲット) *****
-            ctx.drawImage(imgvars[a1].can, a6, a7, a8, a9, a2, a3, a4, a5);
+            // ***** 画像を描画 *****
+            ctx.drawImage(can0, a6, a7, a8, a9, a2, a3, a4, a5);
             return nothing;
         });
         make_one_func_tbl("dsin", 1, [], function (param) {
@@ -5594,8 +5595,8 @@ var SP_Interpreter;
             var a1, a2, a3;
             var col_r, col_g, col_b;
 
-            a1 = (+param[0]);   // X
-            a2 = (+param[1]);   // Y
+            a1 = (+param[0]); // X
+            a2 = (+param[1]); // Y
             a3 = Math.trunc(param[2]); // RGB
             col_r = (a3 & 0xff0000) >> 16; // R
             col_g = (a3 & 0x00ff00) >> 8;  // G
@@ -5843,8 +5844,6 @@ var SP_Interpreter;
         make_one_func_tbl("text", 1, [], function (param) {
             var a1, a2, a3, a4;
 
-            // ***** 文字列に変換 *****
-            // a1 = param[0];
             a1 = String(param[0]);
 
             // ***** Chrome v24 で全角スペースが半角のサイズで表示される件の対策 *****
@@ -5890,13 +5889,13 @@ var SP_Interpreter;
             var a1;
 
             a1 = get_var_name(param[0]); // 画像変数名取得
-            // ***** 描画先を指定 *****
+
+            // ***** 引数のチェック *****
             if (del_module_name(a1) == "off") {
                 // (表示画面を描画先とする)
                 can = can1;
                 ctx = ctx1;
             } else {
-                // ***** 引数のチェック *****
                 // if (!imgvars.hasOwnProperty(a1)) {
                 if (!hasOwn.call(imgvars, a1)) {
                     throw new Error("Image変数 '" + a1 + "' は作成されていません。");
@@ -5905,6 +5904,7 @@ var SP_Interpreter;
                 can = imgvars[a1].can;
                 ctx = imgvars[a1].ctx;
             }
+
             // ***** Canvasの各種設定のリセット *****
             // (クリッピング領域の設定も解除する)
             reset_canvas_setting(ctx, 0);
