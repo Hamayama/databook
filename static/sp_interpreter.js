@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2018-7-27 v18.03
+// 2018-7-28 v18.04
 
 
 // SPALM Web Interpreter
@@ -5616,6 +5616,7 @@ var SP_Interpreter;
             } else {
                 a2 = (+param[1]);
             }
+            if (a2 == 0) { return Math.round(a1); }
             scl = Math.pow(10, a2);
             return Math.round(a1 * scl) / scl;
         });
