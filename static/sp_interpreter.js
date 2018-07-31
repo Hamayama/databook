@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2018-7-28 v18.04
+// 2018-7-31 v18.05
 
 
 // SPALM Web Interpreter
@@ -3511,11 +3511,7 @@ var SP_Interpreter;
             // ***** 変数名の取得 *****
             var_name = var_info.name;
             // ***** 変数を削除する *****
-            // if (now_vars.hasOwnProperty(var_name)) {
-            // if (hasOwn.call(now_vars, var_name)) {
-            if (now_vars[var_name] != null) {
-                delete now_vars[var_name];
-            }
+            delete now_vars[var_name];
         };
         // ***** 変数の存在チェック(staticメソッド) *****
         Vars.checkVar = function (var_info) {
@@ -4399,10 +4395,7 @@ var SP_Interpreter;
             var a1;
 
             a1 = get_var_name(param[0]); // 画像変数名取得
-            // if (imgvars.hasOwnProperty(a1)) {
-            if (hasOwn.call(imgvars, a1)) {
-                delete imgvars[a1];
-            }
+            delete imgvars[a1];
             // for (var prop in imgvars) { DebugShow(prop + " "); } DebugShow("\n");
             return nothing;
         });

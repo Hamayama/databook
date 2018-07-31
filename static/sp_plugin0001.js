@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_plugin0001.js
-// 2018-7-21 v18.02
+// 2018-7-31 v18.05
 
 
 // A Plugin for SPALM Web Interpreter
@@ -348,7 +348,8 @@ var SP_Plugin0001;
             return a1.charCodeAt(a2);
         });
         make_one_func_tbl("charfrom", 1, [], function (param) {
-            var a1, a2, a3, a4;
+            var a1, a2;
+            var sr1, sr2;
             var pair_flag;
 
             a1 = Math.trunc(param[0]);
@@ -364,12 +365,12 @@ var SP_Plugin0001;
                 return String.fromCharCode(a1, a2);
             }
             // ***** サロゲートペアを使用する文字のとき *****
-            if (a1 > 0xffff) {
+            if (a1 >= 0x10000) {
                 // ***** UTF-16の文字コードを実際のコード(サロゲートペア)に変換 *****
-                a2 = a1 - 0x10000;
-                a3 = 0xd800 + (a2 >> 10);      // 上位サロゲート
-                a4 = 0xdc00 + (a2 & 0x3ff);    // 下位サロゲート
-                return String.fromCharCode(a3, a4);
+                a1 -= 0x10000;
+                sr1 = 0xd800 + (a1 >> 10);   // 上位サロゲート
+                sr2 = 0xdc00 + (a1 & 0x3ff); // 下位サロゲート
+                return String.fromCharCode(sr1, sr2);
             }
             // ***** サロゲートペアを使用しない文字のとき *****
             return String.fromCharCode(a1);
@@ -429,15 +430,14 @@ var SP_Plugin0001;
                 audplayer[a1].mmlplayer.stop();
                 delete audplayer[a1];
             }
+            // for (var prop in audplayer) { DebugShow(prop + " "); } DebugShow("\n");
             return nothing;
         });
         make_one_func_tbl("dismis", 1, [], function (param) {
             var a1;
 
             a1 = Math.trunc(param[0]);
-            if (missile.hasOwnProperty(a1)) {
-                delete missile[a1];
-            }
+            delete missile[a1];
             // for (var prop in missile) { DebugShow(prop + " "); } DebugShow("\n");
             return nothing;
         });
@@ -445,9 +445,7 @@ var SP_Plugin0001;
             var a1;
 
             a1 = Math.trunc(param[0]);
-            if (quedata.hasOwnProperty(a1)) {
-                delete quedata[a1];
-            }
+            delete quedata[a1];
             // for (var prop in quedata) { DebugShow(prop + " "); } DebugShow("\n");
             return nothing;
         });
@@ -455,9 +453,7 @@ var SP_Plugin0001;
             var a1;
 
             a1 = Math.trunc(param[0]);
-            if (sandsim.hasOwnProperty(a1)) {
-                delete sandsim[a1];
-            }
+            delete sandsim[a1];
             // for (var prop in sandsim) { DebugShow(prop + " "); } DebugShow("\n");
             return nothing;
         });
@@ -465,9 +461,7 @@ var SP_Plugin0001;
             var a1;
 
             a1 = Math.trunc(param[0]);
-            if (stimg.hasOwnProperty(a1)) {
-                delete stimg[a1];
-            }
+            delete stimg[a1];
             // for (var prop in stimg) { DebugShow(prop + " "); } DebugShow("\n");
             return nothing;
         });
