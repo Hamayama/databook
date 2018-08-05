@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2018-7-31 v18.05
+// 2018-8-5 v18.06
 
 
 // SPALM Web Interpreter
@@ -575,16 +575,22 @@ var SP_Interpreter;
         "while":26,    "do":27 };
 
     var operator = {            // 演算子(値は命令コードと優先順位)
-        "!":   ["lognot",   0],  "~":   ["not",      0],  "+u":  ["positive", 0],
-        "-u":  ["negative", 0],  "++":  ["preinc",   0],  "--":  ["predec",   0],
-        "++p": ["postinc",  0],  "--p": ["postdec",  0],  "*":   ["mul",     40],
-        "/":   ["div",     40],  "\\":  ["divint",  40],  "%":   ["mod",     40],
-        "+":   ["add",     30],  ".":   ["addstr",  30],  "-":   ["sub",     30],
-        "==":  ["cmpeq",   20],  "!=":  ["cmpne",   20],  "<":   ["cmplt",   20],
-        "<=":  ["cmple",   20],  ">":   ["cmpgt",   20],  ">=":  ["cmpge",   20],
-        "<<":  ["shl",     20],  ">>":  ["shr",     20],  ">>>": ["ushr",    20],
-        "&":   ["and",     10],  "|":   ["or",      10],  "^":   ["xor",     10],
-        "&&":  ["",        10],  "||":  ["",        10],  "?":   ["",        10] };
+        "!":    ["lognot",   0], "~":    ["not",      0], "+u":   ["positive", 0],
+        "-u":   ["negative", 0], "++":   ["preinc",   0], "--":   ["predec",   0],
+        "++p":  ["postinc",  0], "--p":  ["postdec",  0], "*":    ["mul",     40],
+        "/":    ["div",     40], "\\":   ["divint",  40], "%":    ["mod",     40],
+        "+":    ["add",     30], ".":    ["addstr",  30], "-":    ["sub",     30],
+        "==":   ["cmpeq",   20], "!=":   ["cmpne",   20], "<":    ["cmplt",   20],
+        "<=":   ["cmple",   20], ">":    ["cmpgt",   20], ">=":   ["cmpge",   20],
+        "<<":   ["shl",     20], ">>":   ["shr",     20], ">>>":  ["ushr",    20],
+        "&":    ["and",     10], "|":    ["or",      10], "^":    ["xor",     10],
+        "&&":   ["",        10], "||":   ["",        10], "?":    ["",        10],
+        ",":    ["",         0], "=":    ["",         0], "+=":   ["add",      0],
+        "-=":   ["sub",      0], "*=":   ["mul",      0], "/=":   ["div",      0],
+        "\\=":  ["divint",   0], "%=":   ["mod",      0], ".=":   ["addstr",   0],
+        "&=":   ["and",      0], "|=":   ["or",       0], "^=":   ["xor",      0],
+        "<<=":  ["shl",      0], ">>=":  ["shr",      0], ">>>=": ["ushr",     0],
+        "(":    ["",         0], "[":    ["",         0] };
 
     // ***** hasOwnPropertyをプロパティ名に使うかもしれない場合の対策 *****
     // (変数名、関数名、ラベル名、画像変数名について、
@@ -2542,16 +2548,16 @@ var SP_Interpreter;
             if (tok == "+="   || tok == "-="   || tok == "*="   || tok == "/="   ||
                 tok == "\\="  || tok == "%="   || tok == ".="   ||
                 tok == "&="   || tok == "|="   || tok == "^="   ||
-                tok == "<<="  || tok == ">>>=" || tok == ">>=") {
+                tok == "<<="  || tok == ">>="  || tok == ">>>=") {
                 i++;
                 code_push("dup", debugpos1, i);
                 code_push("store", debugpos1, i);
                 i = c_expression(i, tok_end);
                 if (sp_compati_flag && tok == "/=") {
                     // (互換モードのときは、除算は整数除算にする)
-                    code_push(operator_code("\\"), debugpos1, i);
+                    code_push(operator_code("\\="), debugpos1, i);
                 } else {
-                    code_push(operator_code(tok.substring(0, tok.length - 1)), debugpos1, i);
+                    code_push(operator_code(tok), debugpos1, i);
                 }
                 code_push("load", debugpos1, i);
                 return i;
@@ -3098,7 +3104,9 @@ var SP_Interpreter;
             // ***** セミコロン「;」の挿入 *****
             // (行頭のポインタ「*」の前にセミコロン「;」を自動挿入する
             //  (これによって、乗算の「*」と解釈されることを防ぐ))
-            if (temp_st == "*" && newline_flag) {
+            // (ただし、直前が演算子のときは挿入しない)
+            if (temp_st == "*" && newline_flag &&
+                token_len > 0 && !operator.hasOwnProperty(token[token_len - 1])) {
                 token_push(";", line_no_tk);
             }
             token_push(temp_st, line_no_tk);
