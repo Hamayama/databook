@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2018-8-5 v18.06
+// 2018-8-6 v18.07
 
 
 // SPALM Web Interpreter
@@ -3369,16 +3369,16 @@ var SP_Interpreter;
     // (変数情報は、生成後に変更してはいけない(複数回参照されるので不具合のもとになる)
     //  変更が必要な場合には、オブジェクトを複製して、複製したものを変更すること)
     function make_var_info(kind, name, scope) {
-        var var_info = {};       // 変数情報
-        var_info.kind = kind;    //   変数の種別
-                                 //     (=0:グローバル変数,
-                                 //      =1:ローカル変数,
-                                 //      =2:ローカル変数かつスコープ番号有効)
-        var_info.name = name;    //   変数名
-        var_info.scope = scope;  //   変数が所属するスコープのスコープ番号
-                                 //     (変数の種別が 2 のときのみ有効)
-                                 //     (現状、このプロパティは、変数情報の識別用にも
-                                 //      使用(流用)している)
+        var var_info = {};      // 変数情報
+        var_info.kind = kind;   //   変数の種別
+                                //     (=0:グローバル変数,
+                                //      =1:ローカル変数,
+                                //      =2:ローカル変数かつスコープ有効)
+        var_info.name = name;   //   変数名
+        var_info.scope = scope; //   変数が所属するスコープのスコープ番号
+                                //     (変数の種別が 2 のときのみ有効)
+                                //     (現状、このプロパティは、変数情報の識別用にも
+                                //      使用(流用)している)
         return var_info;
     }
     // ***** ポインタ変数情報の生成 *****
@@ -3416,21 +3416,21 @@ var SP_Interpreter;
         function Vars() { }
 
         // ***** 内部変数 *****
-        var vars_stack = []; // グローバル/ローカル変数のスコープ(配列)
+        var vars_scope = []; // グローバル/ローカル変数のスコープ(配列)
                              //   (変数の内容はここに格納される)
                              //   (配列の0はグローバル変数用)
                              //   (配列の1以降はローカル変数用)
         var local_scope_num; // ローカル変数のスコープ数
 
-        // ***** グローバル/ローカル変数のスコープ番号の取得(内部処理用) *****
-        function get_scope_no(var_info) {
+        // ***** グローバル/ローカル変数の取得(内部処理用) *****
+        function getVars(var_info) {
             switch (var_info.kind) {
-                case 0: return 0;
-                case 1: return local_scope_num;
+                case 0: return vars_scope[0];
+                case 1: return vars_scope[local_scope_num];
                 case 2: if (var_info.scope > local_scope_num) {
                             throw new Error("ポインタの指す先が不正です(スコープエラー)。");
                         }
-                        return var_info.scope;
+                        return vars_scope[var_info.scope];
             }
         }
         // ***** 配列変数の一括操作(内部処理用) *****
@@ -3462,30 +3462,30 @@ var SP_Interpreter;
 
         // ***** 変数初期化(staticメソッド) *****
         Vars.init = function () {
-            vars_stack = [];            // グローバル/ローカル変数のスコープ(配列)の初期化
-            // vars_stack[0] = {};         // グローバル変数のスコープの初期化
-            vars_stack[0] = hashInit(); // グローバル変数のスコープの初期化
+            vars_scope = [];            // グローバル/ローカル変数のスコープ(配列)の初期化
+            // vars_scope[0] = {};         // グローバル変数のスコープの初期化
+            vars_scope[0] = hashInit(); // グローバル変数のスコープの初期化
             local_scope_num = 0;        // ローカル変数のスコープ数の初期化
         };
         // ***** グローバル変数を取得する(staticメソッド)(デバッグ用) *****
         Vars.getGlobalVars = function () {
-            return vars_stack[0];
+            return vars_scope[0];
         };
         // ***** ローカル変数を取得する(staticメソッド)(デバッグ用) *****
         Vars.getLocalVars = function () {
-            // return (local_scope_num > 0) ? vars_stack[local_scope_num] : {};
-            return (local_scope_num > 0) ? vars_stack[local_scope_num] : hashInit();
+            // return (local_scope_num > 0) ? vars_scope[local_scope_num] : {};
+            return (local_scope_num > 0) ? vars_scope[local_scope_num] : hashInit();
         };
         // ***** ローカル変数のスコープを1個生成する(staticメソッド) *****
         Vars.makeLocalScope = function () {
             local_scope_num++;
-            // vars_stack[local_scope_num] = {};
-            vars_stack[local_scope_num] = hashInit();
+            // vars_scope[local_scope_num] = {};
+            vars_scope[local_scope_num] = hashInit();
         };
         // ***** ローカル変数のスコープを1個削除する(staticメソッド) *****
         Vars.deleteLocalScope = function () {
             if (local_scope_num > 0) {
-                vars_stack.pop();
+                vars_scope.pop();
                 local_scope_num--;
             }
         };
@@ -3498,15 +3498,15 @@ var SP_Interpreter;
             var i;
 
             for (i = 0; i <= local_scope_num; i++) {
-                // vars_stack[i] = {};
-                vars_stack[i] = hashInit();
+                // vars_scope[i] = {};
+                vars_scope[i] = hashInit();
             }
         };
         // ***** ローカル変数を削除する(staticメソッド) *****
         Vars.clearLocalVars = function () {
             if (local_scope_num > 0) {
-                // vars_stack[local_scope_num] = {};
-                vars_stack[local_scope_num] = hashInit();
+                // vars_scope[local_scope_num] = {};
+                vars_scope[local_scope_num] = hashInit();
             }
         };
         // ***** 変数を削除する(staticメソッド) *****
@@ -3514,8 +3514,8 @@ var SP_Interpreter;
             var now_vars;
             var var_name;
 
-            // ***** グローバル/ローカル変数のスコープを取得 *****
-            now_vars = vars_stack[get_scope_no(var_info)];
+            // ***** グローバル/ローカル変数の取得 *****
+            now_vars = getVars(var_info);
             // ***** 変数名の取得 *****
             var_name = var_info.name;
             // ***** 変数を削除する *****
@@ -3526,8 +3526,8 @@ var SP_Interpreter;
             var now_vars;
             var var_name;
 
-            // ***** グローバル/ローカル変数のスコープを取得 *****
-            now_vars = vars_stack[get_scope_no(var_info)];
+            // ***** グローバル/ローカル変数の取得 *****
+            now_vars = getVars(var_info);
             // ***** 変数名の取得 *****
             var_name = var_info.name;
             // ***** 変数の存在チェック *****
@@ -3541,8 +3541,8 @@ var SP_Interpreter;
             var var_name;
             var num;
 
-            // ***** グローバル/ローカル変数のスコープを取得 *****
-            now_vars = vars_stack[get_scope_no(var_info)];
+            // ***** グローバル/ローカル変数の取得 *****
+            now_vars = getVars(var_info);
             // ***** 変数名の取得 *****
             var_name = var_info.name;
             // ***** 変数の値を取得する *****
@@ -3560,8 +3560,8 @@ var SP_Interpreter;
             var now_vars;
             var var_name;
 
-            // ***** グローバル/ローカル変数のスコープを取得 *****
-            now_vars = vars_stack[get_scope_no(var_info)];
+            // ***** グローバル/ローカル変数の取得 *****
+            now_vars = getVars(var_info);
             // ***** 変数名の取得 *****
             var_name = var_info.name;
             // ***** 変数の値を設定する *****
@@ -3575,9 +3575,9 @@ var SP_Interpreter;
             var var_name2;
             var var_name_len;
 
-            // ***** グローバル/ローカル変数のスコープを取得 *****
-            now_vars = vars_stack[get_scope_no(var_info)];
-            now_vars2 = vars_stack[get_scope_no(var_info2)];
+            // ***** グローバル/ローカル変数の取得 *****
+            now_vars = getVars(var_info);
+            now_vars2 = getVars(var_info2);
             // ***** 変数名の取得 *****
             var_name = var_info.name + "$";
             var_name2 = var_info2.name + "$";
@@ -3602,8 +3602,8 @@ var SP_Interpreter;
             var var_name;
             var var_name_len;
 
-            // ***** グローバル/ローカル変数のスコープを取得 *****
-            now_vars = vars_stack[get_scope_no(var_info)];
+            // ***** グローバル/ローカル変数の取得 *****
+            now_vars = getVars(var_info);
             // ***** 変数名の取得 *****
             var_name = var_info.name + "$";
             // ***** 配列変数の一括削除 *****
