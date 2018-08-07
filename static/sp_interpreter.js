@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2018-8-6 v18.07
+// 2018-8-7 v18.08
 
 
 // SPALM Web Interpreter
@@ -3582,9 +3582,10 @@ var SP_Interpreter;
             var_name = var_info.name + "$";
             var_name2 = var_info2.name + "$";
 
-            // ***** コピー元とコピー先の配列変数名が一致するときはエラーにする *****
+            // ***** コピー元とコピー先の配列変数のスコープが同じ、かつ、 *****
+            // ***** 配列変数名が一致する場合には、エラーにする *****
             // (例えば、a[]をa[1][]にコピーすると無限ループのおそれがある)
-            if (var_name2.indexOf(var_name) == 0) {
+            if (now_vars == now_vars2 && var_name2.indexOf(var_name) == 0) {
                 var_name = var_name.substring(0, var_name.length - 1);
                 throw new Error("コピー元とコピー先の配列変数名が同一です。('" + var_name + "')");
             }
