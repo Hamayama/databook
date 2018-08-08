@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_plugin0001.js
-// 2018-7-31 v18.05
+// 2018-8-8 v18.09
 
 
 // A Plugin for SPALM Web Interpreter
@@ -1171,6 +1171,49 @@ var SP_Plugin0001;
 
             // ***** データ数の取得 *****
             return quedata[a1].count();
+        });
+        make_one_func_tbl("radacos", 1, [], function (param) {
+            var a1;
+
+            a1 = (+param[0]);
+            return Math.acos(a1);
+        });
+        make_one_func_tbl("radasin", 1, [], function (param) {
+            var a1;
+
+            a1 = (+param[0]);
+            return Math.asin(a1);
+        });
+        make_one_func_tbl("radatan", 1, [], function (param) {
+            var a1;
+
+            a1 = (+param[0]);
+            return Math.atan(a1);
+        });
+        make_one_func_tbl("radatan2", 2, [], function (param) {
+            var a1, a2;
+
+            a1 = (+param[0]);
+            a2 = (+param[1]);
+            return Math.atan2(a1, a2);
+        });
+        make_one_func_tbl("radcos", 1, [], function (param) {
+            var a1;
+
+            a1 = (+param[0]);
+            return Math.cos(a1);
+        });
+        make_one_func_tbl("radsin", 1, [], function (param) {
+            var a1;
+
+            a1 = (+param[0]);
+            return Math.sin(a1);
+        });
+        make_one_func_tbl("radtan", 1, [], function (param) {
+            var a1;
+
+            a1 = (+param[0]);
+            return Math.tan(a1);
         });
         make_one_func_tbl("randint", 2, [], function (param) {
             var a1, a2;

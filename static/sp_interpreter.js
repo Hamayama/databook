@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2018-8-7 v18.08
+// 2018-8-8 v18.09
 
 
 // SPALM Web Interpreter
