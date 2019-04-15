@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2018-8-8 v18.09
+// 2019-4-15 v18.10
 
 
 // SPALM Web Interpreter
@@ -2590,6 +2590,7 @@ var SP_Interpreter;
         var ch;
         var var_name;
         var loc_flag;
+        var def_flag;
 
         // ***** 引数のチェック *****
         if (arg_flag == null) { arg_flag = false; }
@@ -2601,6 +2602,7 @@ var SP_Interpreter;
         // ***** ポインタのとき *****
         // (括弧があれば外して、再帰的にコンパイルする)
         if (var_name == "*") {
+            def_flag = (varstatement_type > 0);
             if (token[i] == "(") {
                 i++;
                 i = c_varname(i, tok_end, arg_flag, var_type);
@@ -2608,8 +2610,10 @@ var SP_Interpreter;
             } else {
                 i = c_varname(i, tok_end, arg_flag, var_type);
             }
-            // ***** 関数の仮引数でないとき *****
-            if (!arg_flag) {
+            // ***** ポインタのチェック *****
+            // (関数の仮引数、または、グローバル/ローカル文のときは、
+            //  ポインタを処理しない)
+            if (!(arg_flag || def_flag)) {
                 // ***** ポインタの設定 *****
                 code_push("pointer", debugpos1, i);
                 // ***** 配列変数のとき *****
