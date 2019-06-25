@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2019-4-15 v18.11
+// 2019-6-25 v18.12
 
 
 // SPALM Web Interpreter
@@ -1068,7 +1068,7 @@ var SP_Interpreter;
                 case 10: // pointer
                     var_info = stack.pop();
                     var_info2 = Vars.getVarValue(var_info);
-                    if (var_info2.scope == null) {
+                    if (var_info2.sc_no == null) {
                         throw new Error("ポインタの指す先が不正です。(変数のアドレスではなく、'" + code_tostr(var_info2) + "' が入っていました)");
                     }
                     stack.push(var_info2);
@@ -1770,7 +1770,7 @@ var SP_Interpreter;
                     // ***** 変数名のチェック *****
                     if (j < code_len) {
                         var_info = code[j];
-                        if (var_info.scope == null) {
+                        if (var_info.sc_no == null) {
                             debugpos2 = i;
                             throw new Error("変数名が不正です。('" + code_tostr(var_info, j) + "')");
                         }
@@ -3319,12 +3319,12 @@ var SP_Interpreter;
             case 10: // グローバル変数
                 // (変数情報を生成して格納)
                 var_name = tok.substring(1, tok.length - 1);  // ダブルクォートを外す
-                code[code_len] = make_var_info(0, var_name, 0);
+                code[code_len] = make_var_info(0, var_name);
                 break;
             case 11: // ローカル変数
                 // (変数情報を生成して格納)
                 var_name = tok.substring(1, tok.length - 1);  // ダブルクォートを外す
-                code[code_len] = make_var_info(1, var_name, 0);
+                code[code_len] = make_var_info(1, var_name);
                 break;
             default: // その他
                 debugpos1 = pos1;
@@ -3369,17 +3369,20 @@ var SP_Interpreter;
     // (グローバル/ローカル変数にアクセスするための情報を生成する)
     // (変数情報は、生成後に変更してはいけない(複数回参照されるので不具合のもとになる)
     //  変更が必要な場合には、オブジェクトを複製して、複製したものを変更すること)
-    function make_var_info(kind, name, scope) {
-        var var_info = {};      // 変数情報
-        var_info.kind = kind;   //   変数の種別
-                                //     (=0:グローバル変数,
-                                //      =1:ローカル変数,
-                                //      =2:ローカル変数かつスコープ有効)
-        var_info.name = name;   //   変数名
-        var_info.scope = scope; //   変数が所属するスコープのスコープ番号
-                                //     (変数の種別が 2 のときのみ有効)
-                                //     (現状、このプロパティは、変数情報の識別用にも
-                                //      使用(流用)している)
+    function make_var_info(kind, name) {
+        var var_info = {};    // 変数情報
+        var_info.kind = kind; //   変数の種別
+                              //     (=0:グローバル変数,
+                              //      =1:ローカル変数,
+                              //      =2:ローカル変数かつスコープ有効)
+        var_info.name = name; //   変数名
+        var_info.sc_no = 0;   //   変数が所属するスコープのスコープ番号
+                              //     (変数の種別が 2 のときのみ有効)
+                              //     (現状、このプロパティは、変数情報の識別用にも
+                              //      使用(流用)している)
+        var_info.sc_id = 0;   //   変数が所属するスコープのスコープID
+                              //     (変数の種別が 2 のときのみ有効)
+                              //     (ポインタの指す先の存在チェック用)
         return var_info;
     }
     // ***** ポインタ変数情報の生成 *****
@@ -3387,7 +3390,8 @@ var SP_Interpreter;
         var var_info2 = {};
         var_info2.kind = 2;
         var_info2.name = var_info.name;
-        var_info2.scope = Vars.getLocalScopeNum();
+        var_info2.sc_no = Vars.getLocalScopeNum();
+        var_info2.sc_id = Vars.getLocalScopeID();
         return var_info2;
     }
     // ***** 配列変数情報の生成 *****
@@ -3395,7 +3399,8 @@ var SP_Interpreter;
         var var_info2 = {};
         var_info2.kind = var_info.kind;
         var_info2.name = var_info.name + "$" + index;
-        var_info2.scope = var_info.scope;
+        var_info2.sc_no = var_info.sc_no;
+        var_info2.sc_id = var_info.sc_id;
         return var_info2;
     }
     // ***** 変数情報の取得 *****
@@ -3417,21 +3422,25 @@ var SP_Interpreter;
         function Vars() { }
 
         // ***** 内部変数 *****
-        var vars_scope = []; // グローバル/ローカル変数のスコープ(配列)
-                             //   (変数の内容はここに格納される)
-                             //   (配列の0はグローバル変数用)
-                             //   (配列の1以降はローカル変数用)
-        var local_scope_num; // ローカル変数のスコープ数
+        var vars_scope = [];    // グローバル/ローカル変数のスコープ(配列)
+                                //   (変数の内容はここに格納される)
+                                //   (配列の0はグローバル変数用)
+                                //   (配列の1以降はローカル変数用)
+        var vars_scope_id = []; // グローバル/ローカル変数のスコープID
+                                //   (ポインタの指す先の存在チェック用)
+        var local_scope_num;    // ローカル変数のスコープ数
+        var local_scope_id;     // ローカル変数のスコープID
 
         // ***** グローバル/ローカル変数の取得(内部処理用) *****
         function getVars(var_info) {
             switch (var_info.kind) {
                 case 0: return vars_scope[0];
                 case 1: return vars_scope[local_scope_num];
-                case 2: if (var_info.scope > local_scope_num) {
+                case 2: if (var_info.sc_no > local_scope_num ||
+                            var_info.sc_id != vars_scope_id[var_info.sc_no]) {
                             throw new Error("ポインタの指す先が不正です(スコープエラー)。");
                         }
-                        return vars_scope[var_info.scope];
+                        return vars_scope[var_info.sc_no];
             }
         }
         // ***** 配列変数の一括操作(内部処理用) *****
@@ -3466,7 +3475,9 @@ var SP_Interpreter;
             vars_scope = [];            // グローバル/ローカル変数のスコープ(配列)の初期化
             // vars_scope[0] = {};         // グローバル変数のスコープの初期化
             vars_scope[0] = hashInit(); // グローバル変数のスコープの初期化
+            vars_scope_id[0] = 0;       // グローバル変数のスコープIDの初期化
             local_scope_num = 0;        // ローカル変数のスコープ数の初期化
+            local_scope_id = 1;         // ローカル変数のスコープIDの初期化
         };
         // ***** グローバル変数を取得する(staticメソッド)(デバッグ用) *****
         Vars.getGlobalVars = function () {
@@ -3482,17 +3493,24 @@ var SP_Interpreter;
             local_scope_num++;
             // vars_scope[local_scope_num] = {};
             vars_scope[local_scope_num] = hashInit();
+            vars_scope_id[local_scope_num] = local_scope_id++;
+            if (local_scope_id > 1e15) { local_scope_id = 1; }
         };
         // ***** ローカル変数のスコープを1個削除する(staticメソッド) *****
         Vars.deleteLocalScope = function () {
             if (local_scope_num > 0) {
                 vars_scope.pop();
+                vars_scope_id.pop();
                 local_scope_num--;
             }
         };
         // ***** ローカル変数のスコープの保存数を取得する(staticメソッド) *****
         Vars.getLocalScopeNum = function () {
             return local_scope_num;
+        };
+        // ***** ローカル変数のスコープIDを取得する(staticメソッド) *****
+        Vars.getLocalScopeID = function () {
+            return vars_scope_id[local_scope_num];
         };
         // ***** 全変数を削除する(staticメソッド) *****
         Vars.clearVars = function () {
