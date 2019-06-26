@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2019-6-26 v18.13
+// 2019-6-26 v18.14
 
 
 // SPALM Web Interpreter
@@ -3436,13 +3436,19 @@ var SP_Interpreter;
         // ***** グローバル/ローカル変数の取得(内部処理用) *****
         function getVars(var_info) {
             switch (var_info.kind) {
-                case 0: return vars_scope[0];
-                case 1: return vars_scope[local_scope_num];
-                case 2: if (var_info.sc_no > local_scope_num ||
-                            var_info.sc_id != vars_scope_id[var_info.sc_no]) {
-                            throw new Error("ポインタの指す先が不正です(スコープエラー)。");
-                        }
-                        return vars_scope[var_info.sc_no];
+                case 0: // グローバル変数
+                    return vars_scope[0];
+                case 1: // ローカル変数
+                    return vars_scope[local_scope_num];
+                case 2: // ローカル変数かつスコープ有効
+                    // スコープの存在をチェック
+                    if (var_info.sc_no > local_scope_num ||
+                        var_info.sc_id != vars_scope_id[var_info.sc_no]) {
+                        throw new Error("ポインタの指す先が不正です(スコープエラー)。");
+                    }
+                    return vars_scope[var_info.sc_no];
+                default: // その他
+                    throw new Error("変数の種別エラー。");
             }
         }
         // ***** 配列変数の一括操作(内部処理用) *****
