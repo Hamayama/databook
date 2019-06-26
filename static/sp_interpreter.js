@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2019-6-25 v18.12
+// 2019-6-26 v18.13
 
 
 // SPALM Web Interpreter
@@ -3382,7 +3382,7 @@ var SP_Interpreter;
                               //      使用(流用)している)
         var_info.sc_id = 0;   //   変数が所属するスコープのスコープID
                               //     (変数の種別が 2 のときのみ有効)
-                              //     (ポインタの指す先の存在チェック用)
+                              //     (スコープの存在チェック用)
         return var_info;
     }
     // ***** ポインタ変数情報の生成 *****
@@ -3427,7 +3427,9 @@ var SP_Interpreter;
                                 //   (配列の0はグローバル変数用)
                                 //   (配列の1以降はローカル変数用)
         var vars_scope_id = []; // グローバル/ローカル変数のスコープID
-                                //   (ポインタの指す先の存在チェック用)
+                                //   (スコープの存在チェック用)
+                                //   (配列の0はグローバル変数用(未使用))
+                                //   (配列の1以降はローカル変数用)
         var local_scope_num;    // ローカル変数のスコープ数
         var local_scope_id;     // ローカル変数のスコープID
 
@@ -3475,7 +3477,7 @@ var SP_Interpreter;
             vars_scope = [];            // グローバル/ローカル変数のスコープ(配列)の初期化
             // vars_scope[0] = {};         // グローバル変数のスコープの初期化
             vars_scope[0] = hashInit(); // グローバル変数のスコープの初期化
-            vars_scope_id[0] = 0;       // グローバル変数のスコープIDの初期化
+            vars_scope_id[0] = 0;       // グローバル変数のスコープID(未使用)の初期化
             local_scope_num = 0;        // ローカル変数のスコープ数の初期化
             local_scope_id = 1;         // ローカル変数のスコープIDの初期化
         };
@@ -3504,7 +3506,7 @@ var SP_Interpreter;
                 local_scope_num--;
             }
         };
-        // ***** ローカル変数のスコープの保存数を取得する(staticメソッド) *****
+        // ***** ローカル変数のスコープ数を取得する(staticメソッド) *****
         Vars.getLocalScopeNum = function () {
             return local_scope_num;
         };
