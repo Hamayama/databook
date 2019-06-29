@@ -62,19 +62,15 @@ function mobile_button1_click() {
 }
 // ***** モバイル仮対応 *****
 // (画面固定用のボタンを追加)
-// (2018-5-14)(2018-5-18)
+// (2018-5-14)(2018-5-18)(2019-6-29)
 function mobile_touchmove(ev) { ev.preventDefault(); }
 function mobile_button2_click() {
-    // ***** Chrome v56 対策 *****
-    // (Edge には EdgA (Android用) と EdgiOS (iOS用) も存在するらしい)
-    var opt = (BrowserType() == "Chrome" && window.navigator.userAgent.indexOf("Edg") < 0) ?
-              { passive: false } : false;
     if (document.getElementById("mobile_button2").value == "画面固定") {
         document.getElementById("mobile_button2").value = "固定解除";
-        document.addEventListener("touchmove", mobile_touchmove, opt);
+        document.addEventListener("touchmove", mobile_touchmove, { passive: false });
     } else {
         document.getElementById("mobile_button2").value = "画面固定";
-        document.removeEventListener("touchmove", mobile_touchmove, opt);
+        document.removeEventListener("touchmove", mobile_touchmove, { passive: false });
     }
 }
 // -->
