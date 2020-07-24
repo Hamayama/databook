@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2019-6-29 v18.15
+// 2020-7-24 v18.16
 
 
 // SPALM Web Interpreter
@@ -5876,8 +5876,9 @@ var SP_Interpreter;
 
             a1 = String(param[0]);
 
-            // ***** Chrome v24 で全角スペースが半角のサイズで表示される件の対策 *****
-            a1 = a1.replace(/　/g, "  "); // 全角スペースを半角スペース2個に変換
+            // 以下は不要になったもよう(Chrome v84)
+            // // ***** Chrome v24 で全角スペースが半角のサイズで表示される件の対策 *****
+            // a1 = a1.replace(/　/g, "  "); // 全角スペースを半角スペース2個に変換
 
             if (param.length >= 4) {
                 a2 = Math.trunc(param[1]); // X

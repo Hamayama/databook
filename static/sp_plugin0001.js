@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_plugin0001.js
-// 2018-8-8 v18.09
+// 2020-7-24 v18.16
 
 
 // A Plugin for SPALM Web Interpreter
@@ -1579,8 +1579,9 @@ var SP_Plugin0001;
                 st1 = Vars.getVarValue(make_var_array(a1, i));
                 st1 = String(st1);
 
-                // ***** Chrome v24 で全角スペースが半角のサイズで表示される件の対策 *****
-                st1 = st1.replace(/　/g, "  "); // 全角スペースを半角スペース2個に変換
+                // 以下は不要になったもよう(Chrome v84)
+                // // ***** Chrome v24 で全角スペースが半角のサイズで表示される件の対策 *****
+                // st1 = st1.replace(/　/g, "  "); // 全角スペースを半角スペース2個に変換
 
                 // ***** 文字列表示 *****
                 // ctx.textAlign = "left";
