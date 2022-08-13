@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 // sp_interpreter.js
-// 2020-7-24 v18.16
+// 2022-8-13 v18.17
 
 
 // SPALM Web Interpreter
@@ -1693,8 +1693,7 @@ var SP_Interpreter;
                 // ***** モジュール名の取得 *****
                 module_name = token[i++];
                 // ***** モジュール名のチェック *****
-                ch = module_name.charAt(0);
-                if (!isName1(ch)) {
+                if (!isNameOK(module_name)) {
                     debugpos2 = i;
                     throw new Error("モジュール名が不正です。('" + module_name + "')");
                 }
@@ -1790,8 +1789,7 @@ var SP_Interpreter;
                 // ***** 関数名の取得 *****
                 func_name = token[i++];
                 // ***** 関数名のチェック *****
-                ch = func_name.charAt(0);
-                if (!isName1(ch)) {
+                if (!isNameOK(func_name)) {
                     debugpos2 = i;
                     throw new Error("関数名が不正です。('" + func_name + "')");
                 }
@@ -1846,7 +1844,7 @@ var SP_Interpreter;
                 func_name = token[i];
                 // ***** 関数名または関数ポインタのチェック *****
                 ch = func_name.charAt(0);
-                if (!(isName1(ch) || ch == "*")) {
+                if (!(isNameOK(func_name) || ch == "*")) {
                     debugpos2 = i + 1;
                     throw new Error("関数名が不正です。('" + func_name + "')");
                 }
@@ -2498,7 +2496,7 @@ var SP_Interpreter;
             return i;
         }
         // ***** 名前かポインタのとき *****
-        if (isName1(ch) || ch == "*") {
+        if (isNameOK(tok) || ch == "*") {
 
             // ***** 変数名のコンパイル *****
             i = c_varname(i, tok_end);
@@ -2587,7 +2585,6 @@ var SP_Interpreter;
     //              (=0:指定なし,=1:ローカル変数,=2:グローバル変数))
     function c_varname(tok_start, tok_end, arg_flag, var_type) {
         var i;
-        var ch;
         var var_name;
         var loc_flag;
 
@@ -2632,8 +2629,7 @@ var SP_Interpreter;
             return i;
         }
         // ***** 変数名のチェック *****
-        ch = var_name.charAt(0);
-        if (!isName1(ch)) {
+        if (!isNameOK(var_name)) {
             debugpos2 = i;
             throw new Error("変数名が不正です。('" + var_name + "')");
         }
@@ -2693,7 +2689,6 @@ var SP_Interpreter;
     // (ラベル名にはダブルクォート付きも許可する(過去との互換性維持のため))
     function c_labelname(tok_start) {
         var i;
-        var ch;
         var lbl_name;
 
         // ***** ラベル名の取得 *****
@@ -2711,10 +2706,8 @@ var SP_Interpreter;
             lbl_name = lbl_name.substring(1, lbl_name.length - 1);
         }
         // ***** ラベル名のチェック *****
-        // (符号ありの数値を許可(特別扱い))
-        ch = lbl_name.charAt(0);
-        if (!(isName1(ch) ||
-              isDigit1(ch) || (isSign1(ch) && isDigit1(lbl_name.charAt(1))))) {
+        // (符号ありの数値を許可(ラベル名用に特別扱い))
+        if (!isLabelNameOK(lbl_name)) {
             debugpos2 = i;
             throw new Error("ラベル名が不正です。('" + lbl_name + "')");
         }
@@ -2813,8 +2806,7 @@ var SP_Interpreter;
                 // ***** 定数名の取得 *****
                 cst_name = token[i++];
                 // ***** 定数名のチェック *****
-                ch = cst_name.charAt(0);
-                if (!isName1(ch)) {
+                if (!isConstNameOK(cst_name)) {
                     debugpos2 = i;
                     throw new Error("定数名が不正です。('" + cst_name + "')");
                 }
@@ -2843,8 +2835,7 @@ var SP_Interpreter;
                 // ***** 定数名の取得 *****
                 cst_name = token[i++];
                 // ***** 定数名のチェック *****
-                ch = cst_name.charAt(0);
-                if (!isName1(ch)) {
+                if (!isConstNameOK(cst_name)) {
                     debugpos2 = i;
                     throw new Error("定数名が不正です。('" + cst_name + "')");
                 }
@@ -2900,6 +2891,7 @@ var SP_Interpreter;
         var temp_no;
         var hex_flag;
         var digit_mode;
+        var sharp_flag;
 
         // ***** ソース解析のループ *****
         i = 0;
@@ -3029,15 +3021,26 @@ var SP_Interpreter;
                 continue;
             }
             // ***** 名前のとき *****
-            if (isName1(ch)) {
+            // (モジュールの区切り記号「#」も含める)
+            if (isName1(ch) || ch == "#") {
+                sharp_flag = (ch == "#");
                 while (i < src_len) {
                     // ***** 1文字取り出す(iの加算なし) *****
                     ch = src.charAt(i);
                     // ***** 名前か数字のチェック *****
-                    if (isName1(ch) || isDigit1(ch)) { i++; } else { break; }
+                    // (符号ありの数値を許可(ラベル名用に特別扱い))
+                    if (isName1(ch) || isDigit1(ch) || (sharp_flag && isSign1(ch)) || ch == "#") {
+                        i++;
+                        sharp_flag = (ch == "#");
+                        continue;
+                    }
+                    break;
                 }
                 temp_st = src.substring(i_start, i);
                 token_push(temp_st, line_no_tk);
+                if (sharp_flag) {
+                    throw new Error("#で終了する名前は使用できません。(分割ロード(#～#)には未対応です)");
+                }
                 continue;
             }
             // ***** 文字列のとき *****
@@ -3149,7 +3152,32 @@ var SP_Interpreter;
     // ***** 名前チェック(1文字のみ) *****
     function isName1(ch) {
         var c = ch.charCodeAt(0);
-        return ((c >= 0x41 && c <= 0x5A) || (c >= 0x61 && c <= 0x7A) || ch == "_" || ch == "#");
+        return ((c >= 0x41 && c <= 0x5A) || (c >= 0x61 && c <= 0x7A) || ch == "_");
+    }
+    // ***** 名前チェック(先頭の1～2文字のみ) *****
+    // (モジュールの区切り記号「#」も含める)
+    function isNameOK(name_st) {
+        var ch = name_st.charAt(0);
+        if (ch == "#") {
+            ch = name_st.charAt(1);
+        }
+        return (isName1(ch) || ch == "#");
+    }
+    // ***** ラベル名チェック(先頭の1～2文字のみ) *****
+    // (モジュールの区切り記号「#」も含める)
+    function isLabelNameOK(name_st) {
+        var ch = name_st.charAt(0);
+        if (ch == "#") {
+            ch = name_st.charAt(1);
+        }
+        // (符号ありの数値を許可(ラベル名用に特別扱い))
+        return (isName1(ch) || isDigit1(ch) || isSign1(ch) || ch == "#");
+    }
+    // ***** 定数名チェック(先頭の1文字のみ) *****
+    // (定数名は、モジュールと無関係のため、モジュールの区切り記号「#」は含めない)
+    function isConstNameOK(name_st) {
+        var ch = name_st.charAt(0);
+        return isName1(ch);
     }
 
     // ***** トークン追加 *****
