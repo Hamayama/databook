@@ -64,19 +64,19 @@ function set_button_disabled(flag) {
 <input type="hidden" name="title" value="{{ article.title }}">
 <input type="hidden" name="db" value="{{ databook_name }}">
 <table><tr>
-<td colspan="2">タイトル : {{ article.title }}</td>
+<td colspan="2">タイトル：{{ article.title }}</td>
 </tr><tr>
-<td>記入者 :</td>
+<td>記入者：</td>
 <td style="width: 95%;"><input type="text" name="author" value="{{ article.author }}" style="width: 50%;"></td>
 </tr><tr>
-<td>内容 :</td>
+<td>内容：</td>
 <td style="width: 95%;"><input type="text" name="content" value="{{ article.content }}" style="width: 100%;"></td>
 </tr><tr>
-<td style="vertical-align: top;">ソース :</td>
+<td style="vertical-align: top;">ソース：</td>
 <td style="width: 95%;"><textarea name="source" cols="40" rows="16" style="width: 100%;">{{ article.source }}</textarea></td>
 {% if article.bkup_dates %}
     </tr><tr>
-    <td colspan="2">日時 : {{ article.date.strftime('%Y-%m-%d %H:%M:%S %Z') }}</td>
+    <td colspan="2">日時：{{ article.date.strftime('%Y-%m-%d %H:%M:%S %Z') }}</td>
 {% endif %}
 </tr></table>
 {% if article.bkup_dates %}
@@ -126,12 +126,13 @@ function set_button_disabled(flag) {
     <input type="hidden" name="title" value="{{ article.title }}">
     <input type="hidden" name="db" value="{{ databook_name }}">
     <input type="hidden" name="datechg" id="datechg4" value="{{ datechg_flag }}">
-    <div style="margin-top: 10px;">履歴 : <select name="bkup_sel">
+    <div style="margin-top: 10px;">履歴：<select name="bkup_sel">
     {% for bkup_date in article.bkup_dates %}
         <option value="{{ loop.index }}">{{ bkup_date.strftime('%Y-%m-%d %H:%M:%S %Z') }}</option>
     {% endfor %}
     </select>
     <input type="button" value="ロード" onclick="if (confirm('履歴（バックアップデータ）をロードします。よろしいですか？')) { show_connecting(); submit(); }">
+    （← 新しいものが先頭に表示されます）
     </div>
     </form>
     <div style="margin-top: 10px;">（※）編集後セーブせずに起動をクリックすると、過去のセーブデータで起動しますのでご注意ください。</div>

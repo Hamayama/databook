@@ -6,6 +6,7 @@ import datetime
 import urllib
 import webapp2
 import jinja2
+import logging
 
 from google.appengine.api import users
 from google.appengine.ext import ndb
@@ -13,7 +14,7 @@ from google.appengine.api import search
 from google.appengine.api import capabilities
 
 # databook.py
-# 2018-6-30 v1.32
+# 2022-8-18 v1.35
 
 # Google App Engine / Python による データベース アプリケーション1
 
@@ -171,13 +172,15 @@ class MainPage(webapp2.RequestHandler):
             write_disabled_message = '【現在書き込みは禁止しています】'
 
 
-        # 全文検索の単語を取得
+        # 全文検索の単語と、検索のオフセットを取得
         search_flag = False
         search_count = 0
-        search_word = self.request.get('word').strip()
-        # 全文検索の単語の先頭が「=」のときは特別扱い
+        req_search_word = self.request.get('word').strip()
+        req_show_offset = self.request.get('offset').strip()
+        search_word = req_search_word
+        show_offset = int(req_show_offset) if req_show_offset.isdigit() else 0
         show_all_flag = False
-        show_offset = 0
+        # 全文検索の単語の先頭が「=」のときは特別扱い
         if search_word.startswith('='):
             i = 1
             while i < len(search_word):
@@ -187,27 +190,19 @@ class MainPage(webapp2.RequestHandler):
                     i += 1
                     show_all_flag = True
                     continue
-                # 数字のときは表示件数のオフセットとする
-                if ch.isdigit():
+                # 「,」のときは処理継続
+                if ch == ',':
                     i += 1
-                    j = i - 1
-                    while i < len(search_word):
-                        ch = search_word[i]
-                        if ch.isdigit():
-                            i += 1
-                            continue
-                        break
-                    k = i
-                    if (k - j) > 5: k = j + 5
-                    show_offset = int(search_word[j:k])
                     continue
                 # その他のときは抜ける
                 break
-            search_word2 = search_word[i:]
-        else:
-            search_word2 = search_word
+            search_word = search_word[i:].strip()
+        # # (デバッグ用ログ)
+        # logging.debug('search_word={0}'. format(search_word))
+        # logging.debug('show_offset={0}'. format(show_offset))
+
         # 全文検索の単語をチェック
-        if search_word2:
+        if search_word:
             # 全文検索を行うとき
             articles = []
             # 検索結果を日付の降順でソートする指定
@@ -221,7 +216,7 @@ class MainPage(webapp2.RequestHandler):
             query_opts = search.QueryOptions(limit=mainpage_show_num, offset=show_offset, sort_options=sort_opts, returned_fields=['title'])
             try:
                 # 単語とクエリーオプションを指定して全文検索実行
-                query_obj = search.Query(query_string=search_word2, options=query_opts)
+                query_obj = search.Query(query_string=search_word, options=query_opts)
                 search_results = search.Index(name=databook_indexname).search(query=query_obj)
                 # 検索結果から記事のタイトルを取得する
                 req_titles = []
@@ -236,7 +231,7 @@ class MainPage(webapp2.RequestHandler):
                     articles = articles_query.fetch(mainpage_show_num)
             except (search.QueryError, search.InvalidRequest), e:
                 # クエリーエラーのとき
-                message_data = message_data + '（クエリーエラー:検索文字列に記号が含まれると発生することがあります）'
+                message_data += '（クエリーエラー（検索文字列に記号が含まれると発生することがあります））'
             search_flag = True
             search_count = len(articles)
         else:
@@ -276,7 +271,8 @@ class MainPage(webapp2.RequestHandler):
                                                 message_data=message_data,
                                                 search_flag=search_flag,
                                                 search_count=search_count,
-                                                search_word=search_word,
+                                                search_word=req_search_word,
+                                                show_offset=show_offset,
                                                 admin_login=admin_login,
                                                 admin_message=admin_message,
                                                 login_url=login_url,
@@ -385,10 +381,10 @@ class EditPage(webapp2.RequestHandler):
                     # article.date = article.bkup_dates[req_bkup_no]
                     date_temp = article.bkup_dates[req_bkup_no]
                     date_temp = date_temp.replace(tzinfo=UTC()).astimezone(JapanTZ())
-                    message_data = message_data + '（「' + date_temp.strftime('%Y-%m-%d %H:%M:%S %Z') + '」の履歴をロードしました）'
+                    message_data += '（「' + date_temp.strftime('%Y-%m-%d %H:%M:%S %Z') + '」の履歴をロードしました）'
             # 全文検索用ドキュメントの登録チェック
             if not article.search_doc_id:
-                message_data = message_data + '（全文検索未登録）'
+                message_data += '（全文検索未登録）'
 
 
         # 文字コード変換(表示用)
@@ -593,14 +589,14 @@ class Databook(webapp2.RequestHandler):
         if write_enabled:
             if rename_flag == 0:
                 article.put()
-                message_data = message_data + '（セーブしました）'
+                message_data += '（セーブしました）'
             elif rename_flag == 1:
                 article.put()
-                message_data = message_data + '（タイトルを変更しました）'
+                message_data += '（タイトルを変更しました）'
             else:
-                message_data = message_data + '（タイトルを変更できません（名称が不正もしくは同名が存在する等））'
+                message_data += '（タイトルを変更できません（名称が不正もしくは同名が存在する等））'
         else:
-            message_data = message_data + '（書き込みが禁止されています）'
+            message_data += '（書き込みが禁止されています）'
 
 
         # # メインページに戻る
