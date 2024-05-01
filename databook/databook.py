@@ -21,7 +21,7 @@ from google.appengine.api import search
 from google.appengine.api import capabilities
 
 # databook.py
-# 2024-5-1 v1.50
+# 2024-5-2 v1.50
 
 # Google App Engine / Python による データベース アプリケーション1
 

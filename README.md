@@ -5,7 +5,7 @@
 - Google App Engine / Python を利用した データベース アプリケーション1 です。  
   内容は、SPALM Web Interpreter のプログラムを、Web上で管理するものとなっています。  
 
-- GAE スタンダードの Python 2 で動作していたものを、  
+- GAE スタンダード環境 の Python 2 で動作していたものを、  
   Python 3 で動作するように変更しました。(2024-5-2)
 
 - databook.py というファイルが、プログラムの本体になります。  
