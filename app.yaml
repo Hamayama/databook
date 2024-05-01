@@ -1,8 +1,11 @@
 #application: hamayapp
 #version: 1
-runtime: python27
-api_version: 1
-threadsafe: true
+runtime: python312
+#api_version: 1
+#threadsafe: true
+
+app_engine_apis: true
+entrypoint: gunicorn -b :$PORT databook.databook:app
 
 automatic_scaling:
   max_instances: 1
@@ -20,13 +23,18 @@ handlers:
 #  upload: static/index\.html
 #  secure: always
 
+- url: /static/hamaypage/(.+)/
+  static_files: static/hamaypage/\1/index.html
+  upload: static/hamaypage/(.+)/index\.html
+  secure: always
+
 - url: /static
   static_dir: static
   secure: always
 
-- url: /databook.*
-  script: databook.databook.application
-  secure: always
+#- url: /databook.*
+#  script: databook.databook.application
+#  secure: always
 #  login: required
 
 #- url: .*
@@ -36,8 +44,8 @@ handlers:
 #builtins:
 #- remote_api: on
 
-libraries:
-- name: webapp2
-  version: latest
-- name: jinja2
-  version: latest
+#libraries:
+#- name: webapp2
+#  version: latest
+#- name: jinja2
+#  version: latest

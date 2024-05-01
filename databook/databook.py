@@ -4,9 +4,16 @@
 import os
 import datetime
 import urllib
-import webapp2
+
+# webapp2 を Flask に変更
+#import webapp2
+from flask import Flask, render_template, request, redirect
+
 import jinja2
 import logging
+
+# GAEの互換用設定を追加
+from google.appengine.api import wrap_wsgi_app
 
 from google.appengine.api import users
 from google.appengine.ext import ndb
@@ -14,7 +21,7 @@ from google.appengine.api import search
 from google.appengine.api import capabilities
 
 # databook.py
-# 2022-8-18 v1.35
+# 2024-5-1 v1.50
 
 # Google App Engine / Python による データベース アプリケーション1
 
@@ -50,7 +57,8 @@ databook_name_list = {
 
 # データブックの名前を取得する
 def get_databook_name(req_databook_name):
-    if not databook_name_list.has_key(req_databook_name):
+    #if not databook_name_list.has_key(req_databook_name):
+    if req_databook_name not in databook_name_list:
         databook_name = 'Databook1'
     else:
         databook_name = req_databook_name
@@ -58,7 +66,8 @@ def get_databook_name(req_databook_name):
 
 # データブックの表示タイトルを取得する
 def get_databook_title(req_databook_name):
-    if not databook_name_list.has_key(req_databook_name):
+    #if not databook_name_list.has_key(req_databook_name):
+    if req_databook_name not in databook_name_list:
         databook_title = databook_name_list['Databook1']
     else:
         databook_title = databook_name_list[req_databook_name]
@@ -66,7 +75,8 @@ def get_databook_title(req_databook_name):
 
 # 全文検索用インデックスの名前を取得する
 def get_databook_indexname(req_databook_name):
-    if not databook_name_list.has_key(req_databook_name):
+    #if not databook_name_list.has_key(req_databook_name):
+    if req_databook_name not in databook_name_list:
         databook_indexname = 'Databook1_Index'
     else:
         databook_indexname = req_databook_name + '_Index'
@@ -105,10 +115,17 @@ class Article(ndb.Model):
     show_flag = ndb.IntegerProperty()
 
 
-# ***** jinja2ライブラリの環境設定 *****
+# ***** Flaskライブラリの設定 *****
+app = Flask(__name__, template_folder = '')
+app.wsgi_app = wrap_wsgi_app(app.wsgi_app)
+
+
+# ***** jinja2ライブラリの設定 *****
+#jinja_environment = jinja2.Environment(
+#    loader=jinja2.FileSystemLoader(os.path.dirname(__file__)),
+#    extensions=['jinja2.ext.autoescape'])
 jinja_environment = jinja2.Environment(
-    loader=jinja2.FileSystemLoader(os.path.dirname(__file__)),
-    extensions=['jinja2.ext.autoescape'])
+    loader=jinja2.FileSystemLoader(os.path.dirname(__file__)))
 
 
 # ***** ローカル日時変換用(日本は+9時間) *****
@@ -133,14 +150,20 @@ class JapanTZ(datetime.tzinfo):
 # ****************************************
 
 # ***** メインページの表示 *****
-class MainPage(webapp2.RequestHandler):
-    def get(self):
+#class MainPage(webapp2.RequestHandler):
+#    def get(self):
+@app.route(mainpage_url)
+def MainPage():
+    if True:
         # データブックの名前を取得
-        databook_name = get_databook_name(self.request.get('db'))
+        #databook_name = get_databook_name(self.request.get('db'))
+        databook_name = get_databook_name(request.args.get('db', ''))
         # データブックの表示タイトルを取得
-        databook_title = get_databook_title(self.request.get('db'))
+        #databook_title = get_databook_title(self.request.get('db'))
+        databook_title = get_databook_title(request.args.get('db', ''))
         # 全文検索用インデックスの名前を取得
-        databook_indexname = get_databook_indexname(self.request.get('db'))
+        #databook_indexname = get_databook_indexname(self.request.get('db'))
+        databook_indexname = get_databook_indexname(request.args.get('db', ''))
         # 表示メッセージの初期化
         message_data = ''
 
@@ -159,10 +182,12 @@ class MainPage(webapp2.RequestHandler):
 
         # ログイン/ログアウトURL設定
         if users.get_current_user():
-            login_url = users.create_logout_url(self.request.uri)
+            #login_url = users.create_logout_url(self.request.uri)
+            login_url = users.create_logout_url(request.url)
             login_text = '[ログアウト]'
         else:
-            login_url = users.create_login_url(self.request.uri)
+            #login_url = users.create_login_url(self.request.uri)
+            login_url = users.create_login_url(request.url)
             # login_text = '[ログイン]'
             login_text = '[管理]'
 
@@ -175,8 +200,10 @@ class MainPage(webapp2.RequestHandler):
         # 全文検索の単語と、検索のオフセットを取得
         search_flag = False
         search_count = 0
-        req_search_word = self.request.get('word').strip()
-        req_show_offset = self.request.get('offset').strip()
+        #req_search_word = self.request.get('word').strip()
+        req_search_word = request.args.get('word', '').strip()
+        #req_show_offset = self.request.get('offset').strip()
+        req_show_offset = request.args.get('offset', '').strip()
         search_word = req_search_word
         show_offset = int(req_show_offset) if req_show_offset.isdigit() else 0
         show_all_flag = False
@@ -229,7 +256,8 @@ class MainPage(webapp2.RequestHandler):
                     else:
                         articles_query = Article.query(Article.title.IN(req_titles), Article.show_flag == 1, ancestor=databook_key(databook_name)).order(-Article.date)
                     articles = articles_query.fetch(mainpage_show_num)
-            except (search.QueryError, search.InvalidRequest), e:
+            #except (search.QueryError, search.InvalidRequest), e:
+            except (search.QueryError, search.InvalidRequest) as e:
                 # クエリーエラーのとき
                 message_data += '（クエリーエラー（検索文字列に記号が含まれると発生することがあります））'
             search_flag = True
@@ -254,42 +282,66 @@ class MainPage(webapp2.RequestHandler):
             article.date = article.date.replace(tzinfo=UTC()).astimezone(JapanTZ())
 
         # 文字コード変換(表示用)
-        databook_title = databook_title.decode('utf-8')
-        message_data = message_data.decode('utf-8')
-        admin_message = admin_message.decode('utf-8')
-        login_text = login_text.decode('utf-8')
-        write_disabled_message = write_disabled_message.decode('utf-8')
+        #databook_title = databook_title.decode('utf-8')
+        #message_data = message_data.decode('utf-8')
+        #admin_message = admin_message.decode('utf-8')
+        #login_text = login_text.decode('utf-8')
+        #write_disabled_message = write_disabled_message.decode('utf-8')
 
         # メインページのテンプレートに記事データを埋め込んで表示
-        template = jinja_environment.get_template(mainpage_html)
-        self.response.out.write(template.render(databook_title=databook_title,
-                                                databook_name=databook_name,
-                                                articles=articles,
-                                                mainpage_url=mainpage_url,
-                                                editpage_url=editpage_url,
-                                                runpage_url=runpage_url,
-                                                message_data=message_data,
-                                                search_flag=search_flag,
-                                                search_count=search_count,
-                                                search_word=req_search_word,
-                                                show_offset=show_offset,
-                                                admin_login=admin_login,
-                                                admin_message=admin_message,
-                                                login_url=login_url,
-                                                login_text=login_text,
-                                                mainpage_show_num=mainpage_show_num,
-                                                write_disabled_message=write_disabled_message))
+        #template = jinja_environment.get_template(mainpage_html)
+        #self.response.out.write(template.render(databook_title=databook_title,
+        #                                        databook_name=databook_name,
+        #                                        articles=articles,
+        #                                        mainpage_url=mainpage_url,
+        #                                        editpage_url=editpage_url,
+        #                                        runpage_url=runpage_url,
+        #                                        message_data=message_data,
+        #                                        search_flag=search_flag,
+        #                                        search_count=search_count,
+        #                                        search_word=req_search_word,
+        #                                        show_offset=show_offset,
+        #                                        admin_login=admin_login,
+        #                                        admin_message=admin_message,
+        #                                        login_url=login_url,
+        #                                        login_text=login_text,
+        #                                        mainpage_show_num=mainpage_show_num,
+        #                                        write_disabled_message=write_disabled_message))
+        template = render_template(mainpage_html,
+                                   databook_title=databook_title,
+                                   databook_name=databook_name,
+                                   articles=articles,
+                                   mainpage_url=mainpage_url,
+                                   editpage_url=editpage_url,
+                                   runpage_url=runpage_url,
+                                   message_data=message_data,
+                                   search_flag=search_flag,
+                                   search_count=search_count,
+                                   search_word=req_search_word,
+                                   show_offset=show_offset,
+                                   admin_login=admin_login,
+                                   admin_message=admin_message,
+                                   login_url=login_url,
+                                   login_text=login_text,
+                                   mainpage_show_num=mainpage_show_num,
+                                   write_disabled_message=write_disabled_message)
+        return template
 
 
 # ***** 実行ページの表示 *****
-class RunPage(webapp2.RequestHandler):
-    # def post(self):
-    def get(self):
+#class RunPage(webapp2.RequestHandler):
+#    # def post(self):
+#    def get(self):
+@app.route(runpage_url)
+def RunPage():
+    if True:
         # データブックの名前を取得
-        databook_name = get_databook_name(self.request.get('db'))
+        #databook_name = get_databook_name(self.request.get('db'))
+        databook_name = get_databook_name(request.args.get('db', ''))
 
         # 記事のタイトルをチェック
-        req_title = self.request.get('title').strip()
+        #req_title = self.request.get('title').strip()
+        req_title = request.args.get('title', '').strip()
         if not req_title:
             no_article = 1
         else:
@@ -311,28 +363,39 @@ class RunPage(webapp2.RequestHandler):
 
         # 記事が存在しなければ 404 Not Found エラーにする
         if no_article == 1:
-            webapp2.abort(404)
-            return
+            #webapp2.abort(404)
+            #return
+            return "", 404
 
         # 実行ページのテンプレートに記事データを埋め込んで表示
-        template = jinja_environment.get_template(runpage_html)
-        self.response.out.write(template.render(databook_name=databook_name,
-                                                article=article))
+        #template = jinja_environment.get_template(runpage_html)
+        #self.response.out.write(template.render(databook_name=databook_name,
+        #                                        article=article))
+        template = render_template(runpage_html,
+                                   databook_name=databook_name,
+                                   article=article)
+        return template
 
 
 # ***** 編集ページの表示 *****
-class EditPage(webapp2.RequestHandler):
-    def post(self):
+#class EditPage(webapp2.RequestHandler):
+#    def post(self):
+@app.route(editpage_url, methods=["POST"])
+def EditPage():
+    if True:
         # データブックの名前を取得
-        databook_name = get_databook_name(self.request.get('db'))
+        #databook_name = get_databook_name(self.request.get('db'))
+        databook_name = get_databook_name(request.form.get('db', ''))
         # 表示メッセージの初期化
         message_data = ''
 
         # 記事のタイトルをチェック
-        req_title = self.request.get('title').strip()
+        #req_title = self.request.get('title').strip()
+        req_title = request.form.get('title', '').strip()
         if not req_title:
-            self.redirect(mainpage_url + '?' + urllib.urlencode({'db': databook_name}))
-            return
+            #self.redirect(mainpage_url + '?' + urllib.urlencode({'db': databook_name}))
+            #return
+            return redirect(mainpage_url + '?' + urllib.parse.urlencode({'db': databook_name}))
 
         # 管理者ログインのチェック
         admin_login = False
@@ -346,7 +409,8 @@ class EditPage(webapp2.RequestHandler):
 
         # 日時更新のチェック(デフォルトON)
         datechg_flag = 1
-        if self.request.get('datechg') == '0':
+        #if self.request.get('datechg') == '0':
+        if request.form.get('datechg', '') == '0':
             datechg_flag = 0
 
 
@@ -371,7 +435,8 @@ class EditPage(webapp2.RequestHandler):
         else:
             article = articles[0]
             # バックアップをロードするかのチェック
-            req_bkup_sel = self.request.get('bkup_sel')
+            #req_bkup_sel = self.request.get('bkup_sel')
+            req_bkup_sel = request.form.get('bkup_sel', '')
             if req_bkup_sel and req_bkup_sel.isdigit():
                 req_bkup_no = int(req_bkup_sel) - 1
                 if req_bkup_no >= 0 and req_bkup_no < len(article.bkup_dates):
@@ -388,8 +453,8 @@ class EditPage(webapp2.RequestHandler):
 
 
         # 文字コード変換(表示用)
-        message_data = message_data.decode('utf-8')
-        write_disabled_message = write_disabled_message.decode('utf-8')
+        #message_data = message_data.decode('utf-8')
+        #write_disabled_message = write_disabled_message.decode('utf-8')
 
         # ローカル日時変換(表示用)
         article.date = article.date.replace(tzinfo=UTC()).astimezone(JapanTZ())
@@ -397,34 +462,53 @@ class EditPage(webapp2.RequestHandler):
             article.bkup_dates[i] = article.bkup_dates[i].replace(tzinfo=UTC()).astimezone(JapanTZ())
 
         # 編集ページのテンプレートに記事データを埋め込んで表示
-        template = jinja_environment.get_template(editpage_html)
-        self.response.out.write(template.render(databook_name=databook_name,
-                                                article=article,
-                                                update_url=update_url,
-                                                runpage_url=runpage_url,
-                                                mainpage_url=mainpage_url,
-                                                editpage_url=editpage_url,
-                                                message_data=message_data,
-                                                admin_login=admin_login,
-                                                datechg_flag=datechg_flag,
-                                                write_disabled_message=write_disabled_message))
+        #template = jinja_environment.get_template(editpage_html)
+        #self.response.out.write(template.render(databook_name=databook_name,
+        #                                        article=article,
+        #                                        update_url=update_url,
+        #                                        runpage_url=runpage_url,
+        #                                        mainpage_url=mainpage_url,
+        #                                        editpage_url=editpage_url,
+        #                                        message_data=message_data,
+        #                                        admin_login=admin_login,
+        #                                        datechg_flag=datechg_flag,
+        #                                        write_disabled_message=write_disabled_message))
+        template = render_template(editpage_html,
+                                   databook_name=databook_name,
+                                   article=article,
+                                   update_url=update_url,
+                                   runpage_url=runpage_url,
+                                   mainpage_url=mainpage_url,
+                                   editpage_url=editpage_url,
+                                   message_data=message_data,
+                                   admin_login=admin_login,
+                                   datechg_flag=datechg_flag,
+                                   write_disabled_message=write_disabled_message)
+        return template
 
 
 # ***** データブックの更新 *****
-class Databook(webapp2.RequestHandler):
-    def post(self):
+#class Databook(webapp2.RequestHandler):
+#    def post(self):
+@app.route(update_url, methods=["POST"])
+def Databook():
+    if True:
         # データブックの名前を取得
-        databook_name = get_databook_name(self.request.get('db'))
+        #databook_name = get_databook_name(self.request.get('db'))
+        databook_name = get_databook_name(request.form.get('db', ''))
         # 全文検索用インデックスの名前を取得
-        databook_indexname = get_databook_indexname(self.request.get('db'))
+        #databook_indexname = get_databook_indexname(self.request.get('db'))
+        databook_indexname = get_databook_indexname(request.form.get('db', ''))
         # 表示メッセージの初期化
         message_data = ''
 
         # 記事のタイトルをチェック
-        req_title = self.request.get('title').strip()
+        #req_title = self.request.get('title').strip()
+        req_title = request.form.get('title', '').strip()
         if not req_title:
-            self.redirect(mainpage_url + '?' + urllib.urlencode({'db': databook_name}))
-            return
+            #self.redirect(mainpage_url + '?' + urllib.urlencode({'db': databook_name}))
+            #return
+            return redirect(mainpage_url + '?' + urllib.parse.urlencode({'db': databook_name}))
 
         # 管理者ログインのチェック
         admin_login = False
@@ -440,7 +524,8 @@ class Databook(webapp2.RequestHandler):
 
         # 日時更新のチェック(デフォルトOFF)
         datechg_flag = 0
-        if self.request.get('datechg') == '1':
+        #if self.request.get('datechg') == '1':
+        if request.form.get('datechg', '') == '1':
             datechg_flag = 1
 
 
@@ -470,10 +555,14 @@ class Databook(webapp2.RequestHandler):
         #     article.author = users.get_current_user().nickname()
 
         # 送信されたデータを記事に設定
-        if self.request.get('delete') != '1' and self.request.get('rename') != '1':
-            article.author = self.request.get('author').strip()
-            article.content = self.request.get('content').strip()
-            article.source = self.request.get('source')
+        #if self.request.get('delete') != '1' and self.request.get('rename') != '1':
+        if request.form.get('delete', '') != '1' and request.form.get('rename', '') != '1':
+            #article.author = self.request.get('author').strip()
+            #article.content = self.request.get('content').strip()
+            #article.source = self.request.get('source')
+            article.author = request.form.get('author', '').strip()
+            article.content = request.form.get('content', '').strip()
+            article.source = request.form.get('source', '')
             if datechg_flag == 1:
                 article.date = datetime.datetime.now()
 
@@ -486,14 +575,16 @@ class Databook(webapp2.RequestHandler):
 
         # 記事の削除(保守用)
         # if article.author.startswith('=delete'):
-        if write_enabled and self.request.get('delete') == '1':
+        #if write_enabled and self.request.get('delete') == '1':
+        if write_enabled and request.form.get('delete', '') == '1':
             if admin_login and article.bkup_dates:
                 # (関連する全文検索用ドキュメントがあればそれも削除)
                 if article.search_doc_id:
                     search.Index(name=databook_indexname).delete(article.search_doc_id)
                 article.key.delete()
-            self.redirect(mainpage_url + '?' + urllib.urlencode({'db': databook_name}))
-            return
+            #self.redirect(mainpage_url + '?' + urllib.urlencode({'db': databook_name}))
+            #return
+            return redirect(mainpage_url + '?' + urllib.parse.urlencode({'db': databook_name}))
 
         # 全文検索用ドキュメントの個別削除(保守用)
         if write_enabled and article.author.startswith('=index_delete'):
@@ -501,8 +592,9 @@ class Databook(webapp2.RequestHandler):
                 doc_id = article.content
                 if doc_id:
                     search.Index(name=databook_indexname).delete(doc_id)
-            self.redirect(mainpage_url + '?' + urllib.urlencode({'db': databook_name}))
-            return
+            #self.redirect(mainpage_url + '?' + urllib.urlencode({'db': databook_name}))
+            #return
+            return (mainpage_url + '?' + urllib.parse.urlencode({'db': databook_name}))
 
         # 全文検索用ドキュメントの全削除(保守用)
         if write_enabled and article.author.startswith('=all_index_delete'):
@@ -513,13 +605,16 @@ class Databook(webapp2.RequestHandler):
                     if not doc_ids:
                         break
                     search_index.delete(doc_ids)
-            self.redirect(mainpage_url + '?' + urllib.urlencode({'db': databook_name}))
-            return
+            #self.redirect(mainpage_url + '?' + urllib.urlencode({'db': databook_name}))
+            #return
+            return redirect(mainpage_url + '?' + urllib.parse.urlencode({'db': databook_name}))
 
         # 記事のタイトル変更(保守用)
         rename_flag = 0
-        if write_enabled and self.request.get('rename') == '1':
-            new_title = self.request.get('newtitle').strip()
+        #if write_enabled and self.request.get('rename') == '1':
+        if write_enabled and request.form.get('rename', '') == '1':
+            #new_title = self.request.get('newtitle').strip()
+            new_title = request.form.get('newtitle', '').strip()
             if admin_login and new_title and new_title != article.title and article.bkup_dates:
                 # 記事を検索(新タイトルで1件だけ)
                 articles_query = Article.query(Article.title == new_title, ancestor=databook_key(databook_name)).order(-Article.date)
@@ -601,10 +696,11 @@ class Databook(webapp2.RequestHandler):
 
         # # メインページに戻る
         # self.redirect(mainpage_url + '?' + urllib.urlencode({'db': databook_name}))
+        #redirect(mainpage_url + '?' + urllib.parse.urlencode({'db': databook_name}))
 
         # 文字コード変換(表示用)
-        message_data = message_data.decode('utf-8')
-        write_disabled_message = write_disabled_message.decode('utf-8')
+        #message_data = message_data.decode('utf-8')
+        #write_disabled_message = write_disabled_message.decode('utf-8')
 
         # ローカル日時変換(表示用)
         article.date = article.date.replace(tzinfo=UTC()).astimezone(JapanTZ())
@@ -612,27 +708,39 @@ class Databook(webapp2.RequestHandler):
             article.bkup_dates[i] = article.bkup_dates[i].replace(tzinfo=UTC()).astimezone(JapanTZ())
 
         # 編集ページのテンプレートに記事データを埋め込んで表示
-        template = jinja_environment.get_template(editpage_html)
-        self.response.out.write(template.render(databook_name=databook_name,
-                                                article=article,
-                                                update_url=update_url,
-                                                runpage_url=runpage_url,
-                                                mainpage_url=mainpage_url,
-                                                editpage_url=editpage_url,
-                                                message_data=message_data,
-                                                admin_login=admin_login,
-                                                datechg_flag=datechg_flag,
-                                                write_disabled_message=write_disabled_message))
+        #template = jinja_environment.get_template(editpage_html)
+        #self.response.out.write(template.render(databook_name=databook_name,
+        #                                        article=article,
+        #                                        update_url=update_url,
+        #                                        runpage_url=runpage_url,
+        #                                        mainpage_url=mainpage_url,
+        #                                        editpage_url=editpage_url,
+        #                                        message_data=message_data,
+        #                                        admin_login=admin_login,
+        #                                        datechg_flag=datechg_flag,
+        #                                        write_disabled_message=write_disabled_message))
+        template = render_template(editpage_html,
+                                   databook_name=databook_name,
+                                   article=article,
+                                   update_url=update_url,
+                                   runpage_url=runpage_url,
+                                   mainpage_url=mainpage_url,
+                                   editpage_url=editpage_url,
+                                   message_data=message_data,
+                                   admin_login=admin_login,
+                                   datechg_flag=datechg_flag,
+                                   write_disabled_message=write_disabled_message)
+        return template
 
 
 # ****************************************
 #                実行開始
 # ****************************************
 
-# ***** アプリケーションの実行 *****
-application = webapp2.WSGIApplication([
-    (mainpage_url, MainPage),
-    (runpage_url,  RunPage ),
-    (editpage_url, EditPage),
-    (update_url,   Databook),
-], debug=True)
+## ***** アプリケーションの実行 *****
+#application = webapp2.WSGIApplication([
+#    (mainpage_url, MainPage),
+#    (runpage_url,  RunPage ),
+#    (editpage_url, EditPage),
+#    (update_url,   Databook),
+#], debug=True)

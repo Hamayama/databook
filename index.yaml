@@ -19,13 +19,13 @@ indexes:
 - kind: Article
   ancestor: yes
   properties:
-  - name: title
+  - name: show_flag
   - name: date
     direction: desc
 
 - kind: Article
   ancestor: yes
   properties:
-  - name: show_flag
+  - name: title
   - name: date
     direction: desc
