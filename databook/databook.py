@@ -9,7 +9,9 @@ import urllib
 #import webapp2
 from flask import Flask, render_template, request, redirect
 
-import jinja2
+# jinja2 は Flask に含まれるので削除
+#import jinja2
+
 import logging
 
 # GAEの互換用設定を追加
@@ -21,7 +23,7 @@ from google.appengine.api import search
 from google.appengine.api import capabilities
 
 # databook.py
-# 2024-5-2 v1.50
+# 2024-5-3 v1.51
 
 # Google App Engine / Python による データベース アプリケーション1
 
@@ -124,8 +126,6 @@ app.wsgi_app = wrap_wsgi_app(app.wsgi_app)
 #jinja_environment = jinja2.Environment(
 #    loader=jinja2.FileSystemLoader(os.path.dirname(__file__)),
 #    extensions=['jinja2.ext.autoescape'])
-jinja_environment = jinja2.Environment(
-    loader=jinja2.FileSystemLoader(os.path.dirname(__file__)))
 
 
 # ***** ローカル日時変換用(日本は+9時間) *****

@@ -32,6 +32,11 @@ handlers:
   static_dir: static
   secure: always
 
+#- url: /
+#  static_files: databook/redirect.html
+#  upload: databook/redirect\.html
+#  secure: always
+
 #- url: /databook.*
 #  script: databook.databook.application
 #  secure: always
