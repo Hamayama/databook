@@ -5,12 +5,9 @@ entrypoint: gunicorn -b :$PORT databook.databook:app
 
 instance_class: F1
 automatic_scaling:
-  min_instances: 0
   max_instances: 1
-  min_idle_instances: 0
   max_idle_instances: 1
   min_pending_latency: 15s
-  max_pending_latency: automatic
 
 handlers:
 - url: /favicon\.ico
