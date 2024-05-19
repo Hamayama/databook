@@ -35,6 +35,6 @@ handlers:
 #  secure: always
 
 #- url: /databook.*
-#  script: databook.databook.application
+#  script: auto
 #  secure: always
 ##  login: required
