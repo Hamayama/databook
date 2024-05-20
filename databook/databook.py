@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 # -*- coding:utf-8 -*-
 
-import os
+#import os
 import datetime
 import urllib
+import logging
 
 # webapp2 を Flask に変更
 #import webapp2
@@ -11,8 +12,6 @@ from flask import Flask, render_template, request, redirect
 
 # jinja2 は Flask に含まれるので削除
 #import jinja2
-
-import logging
 
 # GAEの互換用設定を追加
 from google.appengine.api import wrap_wsgi_app
@@ -23,7 +22,7 @@ from google.appengine.api import search
 from google.appengine.api import capabilities
 
 # databook.py
-# 2024-5-20 v1.53
+# 2024-5-20 v1.54
 
 # Google App Engine / Python による データベース アプリケーション1
 
@@ -737,7 +736,7 @@ def Databook():
 #                実行開始
 # ****************************************
 
-## ***** アプリケーションの実行 *****
+# ***** アプリケーションの実行 *****
 #application = webapp2.WSGIApplication([
 #    (mainpage_url, MainPage),
 #    (runpage_url,  RunPage ),
