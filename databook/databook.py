@@ -22,7 +22,7 @@ from google.appengine.api import search
 from google.appengine.api import capabilities
 
 # databook.py
-# 2024-5-21 v1.55
+# 2024-5-21 v1.56
 
 # Google App Engine / Python による データベース アプリケーション1
 
@@ -588,12 +588,11 @@ def Databook():
         # 全文検索用ドキュメントの個別削除(保守用)
         if write_enabled and article.author.startswith('=index_delete'):
             if admin_login:
-                doc_id = article.content
-                if doc_id:
-                    search.Index(name=databook_indexname).delete(doc_id)
+                if article.search_doc_id:
+                    search.Index(name=databook_indexname).delete(article.search_doc_id)
             #self.redirect(mainpage_url + '?' + urllib.urlencode({'db': databook_name}))
             #return
-            return (mainpage_url + '?' + urllib.parse.urlencode({'db': databook_name}))
+            return redirect(mainpage_url + '?' + urllib.parse.urlencode({'db': databook_name}))
 
         # 全文検索用ドキュメントの全削除(保守用)
         if write_enabled and article.author.startswith('=all_index_delete'):
