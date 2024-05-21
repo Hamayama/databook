@@ -20,11 +20,6 @@ handlers:
 #  upload: static/index\.html
 #  secure: always
 
-- url: /static/hamaypage/(.+)/
-  static_files: static/hamaypage/\1/index.html
-  upload: static/hamaypage/(.+)/index\.html
-  secure: always
-
 - url: /static
   static_dir: static
   secure: always
