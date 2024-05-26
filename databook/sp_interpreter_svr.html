@@ -31,7 +31,7 @@ td { font-weight: bold; }
 <script type="text/javascript">
 <!--
 // ***** 動作開始 *****
-window.onload = function () {
+function start_func_0() {
     // ***** 初期化 *****
     init_func(true);
     // ***** 色設定 *****
@@ -47,7 +47,15 @@ window.onload = function () {
     }
     // ***** 自動実行 *****
     run_button();
-};
+}
+// (window.onload が呼ばれないことがある件の対策)
+if (document.addEventListener) {
+    addEventListener("DOMContentLoaded", start_func_0, false);
+} else if (window.attachEvent) {
+    window.attachEvent("onload", start_func_0);
+} else {
+    window.onload = start_func_0;
+}
 // ***** モバイル仮対応 *****
 // (キーボードやゲームパッドの入力画面を呼び出せるように、
 //  画面の左上にテキストボックスとボタンを追加)
